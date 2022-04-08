@@ -7,7 +7,6 @@
 #  include <stdint.h>
 #endif
 
-#  include "../micronfs.h"
 #  include "crc32.c"
 #  include <assert.h>
 
@@ -18,11 +17,6 @@ typedef struct name_cache_ptr_t
 {
     uint32_t v;
 } name_cache_ptr_t;
-
-typedef struct filehandle_ptr_t
-{
-    uint32_t v;
-} filehandle_ptr_t;
 
 typedef struct name_cache_node_t
 {
@@ -194,10 +188,6 @@ meta_data_entry_t* CreateFileEntry(cache_t* cache, meta_data_entry_t* parentDir,
 const char* toCharPtr(cache_t* cache, name_cache_ptr_t ptr);
 
 void ResetCache(cache_t* cache);
-
-filehandle_ptr_t handleToPtr(cache_t* cache, const fhandle3* handle);
-fhandle3 ptrToHandle(cache_t* cache, filehandle_ptr_t fh_ptr);
-
 
 /// Adds or updates a file
 meta_data_entry_t* AddFile(cache_t* cache, const char* full_path,

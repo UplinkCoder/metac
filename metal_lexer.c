@@ -1,9 +1,15 @@
 #include "metal_lexer.h"
+#include "compat.h"
 
-static metal_token_enum_t lexFixedToken(const char _chrs[7]) {
+#include <assert.h>
+#include <string.h>
+
+static metal_token_enum_t MetalLexFixedLengthToken(const char _chrs[7]) {
     switch(_chrs[0]) {
         default :
             return tok_invalid;
+        case '\0' :
+            return tok_eof;
 
         case '!' :
             return tok_bang;
@@ -115,6 +121,23 @@ static metal_token_enum_t lexFixedToken(const char _chrs[7]) {
         case ']' :
             return tok_rBracket;
 
+
+        case '{' :
+            return tok_lBrace;
+
+        case '}' :
+            return tok_rBrace;
+
+
+        case '~' :
+            switch (_chrs[1]) {
+            default :
+            return tok_cat;
+            case '=' :
+                return tok_cat_ass;
+            }
+
+// keywords ------------- we might not want to lex em this way
         case 'a' :
             switch (_chrs[1]) {
             default : return tok_invalid;
@@ -266,20 +289,6 @@ static metal_token_enum_t lexFixedToken(const char _chrs[7]) {
                 }
             }
 
-        case '{' :
-            return tok_lBrace;
-
-        case '}' :
-            return tok_rBrace;
-
-
-        case '~' :
-            switch (_chrs[1]) {
-            default :
-            return tok_cat;
-            case '=' :
-                return tok_cat_ass;
-            }
 
         }
     }
@@ -287,8 +296,62 @@ static metal_token_enum_t lexFixedToken(const char _chrs[7]) {
     return tok_invalid;
 }
 
+static uint32_t MetalTokenLength(metal_token_enum_t t)
+{
+    switch(t) {
+        case tok_dollar_paren : return 2; // $(
+        case tok_comment_end : return 2; // */
+        case tok_dotdot : return 2; // ..
+        case tok_comment_begin : return 2; // /*
+        case tok_comment_single : return 2; // //
+        case tok_lessEqual : return 2;// <=
+        case tok_greaterEqual : return 2;// >=
+        case tok_spaceShip : return 3;// <=>
+        case tok_equalsequals : return 2; // ==
+        case tok_full_slice : return 2; // []
+        case tok_cat_ass : return 2; // ~=
+        case tok_eof : return 0;
+
+        case tok_kw_assert : return 6; // assert
+        case tok_kw_eject : return 5; // eject
+        case tok_kw_enum : return 4; // enum
+        case tok_kw_inject : return 6; // inject
+        case tok_kw_struct : return 6; // struct
+        case tok_kw_type : return 4; // type
+        case tok_kw_typedef : return 7; // typedef
+        case tok_kw_union : return 5; // union
+    }
+
+    return 1;
+}
+
+
+void InitLexer(metal_lexer_t* self)
+{
+    self->tokens_size = 0;
+    self->tokens_capacity = (sizeof(self->inlineTokens) / sizeof(self->inlineTokens[0]));
+    self->tokens = self->inlineTokens;
+}
+
+metal_lexer_state_t LexerStateFromString(const char* str)
+{
+    uint32_t length = strlen(str);
+    return LexerStateFromBuffer(str, length + 1);
+}
+
+metal_lexer_state_t LexerStateFromBuffer(const char* buffer, uint32_t bufferLength)
+{
+    assert(buffer[bufferLength] == '\0');
+    
+    metal_lexer_state_t result = 
+        {buffer, buffer, 1, 1, 0, bufferLength, (block_idx_t)0};
+    
+    
+}
+
+
 #if TEST_LEXER
-#include <assert.h>
+#include <string.h>
 
 void test_lexer()
 {
@@ -334,16 +397,20 @@ void test_lexer()
         "inject",
         "eject",
         "assert",
-        "typedef"
+        "typedef",
+        "\0"
     };
 
     int idx = 0;
     for(metal_token_enum_t tok = tok_lParen; idx < (sizeof(test) / sizeof(test[0])); (*(int*)&tok)++)
     {
-        metal_token_enum_t lexed = lexFixedToken(test[idx++]);
+        const char* word = test[idx++];
+        metal_token_enum_t lexed = MetalLexFixedLengthToken(word);
         assert(lexed == tok);
+        assert(strlen(word) == MetalTokenLength(tok));
     }
 }
+
 
 int main(int argc, char* argv[])
 {
@@ -400,4 +467,6 @@ int main(int argc, char* argv[])
     tok_kw_eject,// "eject"
     tok_kw_assert, // "assert"
     tok_kw_typedef, // "typedef"
+
+    tok_eof, // "EOF"
 */

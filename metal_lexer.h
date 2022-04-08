@@ -23,6 +23,7 @@ typedef enum metal_token_enum_t {
     tok_identifier, // "identifier"
     tok_unsignedNumber, // "unsigned number"
     tok_signedNumber, // "signed number"
+
     tok_lParen, // "("
     tok_rParen, // ")"
     tok_lBrace, // "{"
@@ -33,7 +34,7 @@ typedef enum metal_token_enum_t {
     tok_comma, // ","
     tok_dot, // "."
     tok_dotdot, // ".."
-    tok_comment_begin, // "/*" */
+    tok_comment_begin, // "/*"
     tok_comment_end, // "*/"
     tok_comment_single, // "//"
     tok_quote, // "\""
@@ -48,7 +49,7 @@ typedef enum metal_token_enum_t {
     tok_cat_ass, // "~="
 
     tok_semicolon,// ";"
-    tok_colon,
+    tok_colon, // ":"
     tok_dollar, // "$"
     tok_dollar_paren, // "$("
     tok_assign, // "="
@@ -71,6 +72,7 @@ typedef enum metal_token_enum_t {
     tok_kw_assert, // "assert"
     tok_kw_typedef, // "typedef"
 
+    tok_eof, // "EOF"
     tok_max
 } metal_token_enum_t;
 
@@ -165,4 +167,14 @@ typedef struct metal_lexer_t {
     uint32_t tokens_capacity;
 
     metal_token_t inlineTokens[2048];
+
 } metal_lexer_t;
+
+
+static metal_token_enum_t MetalLexFixedLengthToken(const char _chrs[7]);
+
+void InitLexer(metal_lexer_t* self);
+metal_lexer_state_t LexerStateFromString(const char* str);
+metal_lexer_state_t LexerStateFromBuffer(const char* buffer, uint32_t bufferLength);
+
+

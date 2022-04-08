@@ -1,8 +1,16 @@
 #ifdef _WIN32
 #  include "stdint_msvc.h"
+# ifndef __cplusplus
+#  error "win32 compile only works in c++ mode ... use /TP"
+# endif
 #else
 #  include <stdint.h>
 #endif
+
+#ifndef __cplusplus
+# include "stdbool.h"
+#endif
+
 
 #ifdef __cplusplus
 #  define EXTERN_C extern "C"
