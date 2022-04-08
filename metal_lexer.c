@@ -138,21 +138,36 @@ static metal_token_enum_t lexFixedToken(const char _chrs[7]) {
                 }
             }
 
-        case 'e' :
+        case 'e' : {
             switch (_chrs[1]) {
-            case 'n' :
+            default: return tok_invalid;
+            case 'n' : {
                 switch (_chrs[2]) {
-                default :
-                return tok_invalid;
+                default : return tok_invalid;
                 case 'u' :
                     switch (_chrs[3]) {
-                    default :
-                    return tok_invalid;
+                    default : return tok_invalid;
                     case 'm' :
                         return tok_kw_enum;
                     }
                 }
             }
+            case 'j' :
+                switch (_chrs[2]) {
+                default : return tok_invalid;
+                case 'e' :
+                    switch (_chrs[3]) {
+                    default : return tok_invalid;
+                    case 'c' :
+                        switch(_chrs[4]) {
+                        default : return tok_invalid;
+                        case 't' :
+                            return tok_kw_eject;
+                        }
+                    }
+                }
+            }
+        }
 
         case 'i' :
             switch (_chrs[1]) {
@@ -271,8 +286,9 @@ static metal_token_enum_t lexFixedToken(const char _chrs[7]) {
 
     return tok_invalid;
 }
-#include <assert.h>
 
+#if TEST_LEXER
+#include <assert.h>
 
 void test_lexer()
 {
@@ -315,6 +331,10 @@ void test_lexer()
         "union",
         "type",
         "enum",
+        "inject",
+        "eject",
+        "assert",
+        "typedef"
     };
 
     int idx = 0;
@@ -329,7 +349,7 @@ int main(int argc, char* argv[])
 {
     test_lexer();
 }
-
+#endif
 /*
     tok_lParen, // "("
     tok_rParen, // ")"
