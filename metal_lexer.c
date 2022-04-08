@@ -302,7 +302,7 @@ static uint32_t MetalTokenLength(metal_token_enum_t t)
         case tok_dollar_paren : return 2; // $(
         case tok_comment_end : return 2; // */
         case tok_dotdot : return 2; // ..
-        case tok_comment_begin : return 2; // /*
+        case tok_comment_begin : return 2; // /* */
         case tok_comment_single : return 2; // //
         case tok_lessEqual : return 2;// <=
         case tok_greaterEqual : return 2;// >=
@@ -342,11 +342,10 @@ metal_lexer_state_t LexerStateFromString(const char* str)
 metal_lexer_state_t LexerStateFromBuffer(const char* buffer, uint32_t bufferLength)
 {
     assert(buffer[bufferLength] == '\0');
-    
-    metal_lexer_state_t result = 
+
+    metal_lexer_state_t result =
         {buffer, buffer, 1, 1, 0, bufferLength, (block_idx_t)0};
-    
-    
+
 }
 
 
@@ -419,54 +418,3 @@ int main(int argc, char* argv[])
     return 0;
 }
 #endif
-/*
-    tok_lParen, // "("
-    tok_rParen, // ")"
-    tok_lBrace, // "{"
-    tok_rBrace, // "}"
-    tok_lBracket, // "["
-    tok_rBracket, // "]"
-
-    tok_comma, // ","
-    tok_dot, // "."
-    tok_dotdot, // ".."
-    tok_comment_begin, // "\/*"
-    tok_comment_end, // "*\/"
-    tok_comment_single, // "//"
-    tok_quote, // "\""
-    tok_bang, // "!"
-    tok_minus, // "-",
-    tok_plus, // "+"
-    tok_div, // "/"
-    tok_star,// "*"
-    tok_addr, // "&"
-
-    tok_cat, // "~"
-    tok_cat_ass, // "~="
-
-    tok_semicolon,// ";"
-    tok_colon, // ":"
-    tok_dollar, // "$"
-    tok_dollar_paren, // "$("
-    tok_assign, // "="
-    tok_equalsequals, // "=="
-    tok_lessThan, //  "<"
-    tok_lessEqual, // "<="
-    tok_full_slice, // "[]"
-
-    tok_greaterThan, // ">"
-    tok_greaterEqual, // ">="
-
-    tok_spaceShip, // "<=>"
-
-    tok_kw_struct, // "struct"
-    tok_kw_union, // "union"
-    tok_kw_type,  // "type"
-    tok_kw_enum, // "enum"
-    tok_kw_inject, // "inject"
-    tok_kw_eject,// "eject"
-    tok_kw_assert, // "assert"
-    tok_kw_typedef, // "typedef"
-
-    tok_eof, // "EOF"
-*/
