@@ -348,6 +348,8 @@ void test_lexer()
 int main(int argc, char* argv[])
 {
     test_lexer();
+
+    return 0;
 }
 #endif
 /*
