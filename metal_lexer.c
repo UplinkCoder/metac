@@ -3,6 +3,7 @@
 
 #include <assert.h>
 #include <string.h>
+#include <stdio.h>
 
 static metal_token_enum_t MetalLexFixedLengthToken(const char _chrs[7]) {
     switch(_chrs[0]) {
@@ -16,7 +17,6 @@ static metal_token_enum_t MetalLexFixedLengthToken(const char _chrs[7]) {
 
         case '"' :
             return tok_quote;
-
 
         case '$' :
             switch (_chrs[1]) {
@@ -61,7 +61,6 @@ static metal_token_enum_t MetalLexFixedLengthToken(const char _chrs[7]) {
                 return tok_dotdot;
             }
 
-
         case '/' :
             switch (_chrs[1]) {
             default :
@@ -77,8 +76,6 @@ static metal_token_enum_t MetalLexFixedLengthToken(const char _chrs[7]) {
 
         case ';' :
             return tok_semicolon;
-
-
 
         case '<' :
             switch (_chrs[1]) {
@@ -127,7 +124,6 @@ static metal_token_enum_t MetalLexFixedLengthToken(const char _chrs[7]) {
 
         case '}' :
             return tok_rBrace;
-
 
         case '~' :
             switch (_chrs[1]) {
@@ -296,9 +292,10 @@ static metal_token_enum_t MetalLexFixedLengthToken(const char _chrs[7]) {
     return tok_invalid;
 }
 
-static uint32_t MetalTokenLength(metal_token_enum_t t)
+static uint32_t StaticMetalTokenLength(metal_token_enum_t t)
 {
     switch(t) {
+        default :  return 1;
         case tok_dollar_paren : return 2; // $(
         case tok_comment_end : return 2; // */
         case tok_dotdot : return 2; // ..
@@ -321,33 +318,159 @@ static uint32_t MetalTokenLength(metal_token_enum_t t)
         case tok_kw_typedef : return 7; // typedef
         case tok_kw_union : return 5; // union
     }
-
-    return 1;
+}
+uint32_t fastLog10(uint32_t val)
+{
+    return (val < 10) ? 0 : (val < 100) ? 1 : (val < 1000) ? 2 : (val < 10000) ? 3
+        : (val < 100000) ? 4 : (val < 1000000) ? 5 : (val < 10000000) ? 6
+        : (val < 100000000) ? 7 : (val < 1000000000) ? 8 : 9;
 }
 
+uint32_t MetalTokenLength(metal_token_t token)
+{
+    if (token.TokenType >= tok_lParen)
+    {
+        return StaticMetalTokenLength(token.TokenType);
+    }
+    else
+    {
+        if (token.TokenType == tok_unsignedNumber || token.TokenType == tok_signedNumber)
+        {
+            uint64_t v = (token.TokenType == tok_unsignedNumber ? token.ValueU64 : token.ValueU64);
+            return (uint32_t)(fastLog10(v) + 1 + (token.TokenType == tok_signedNumber));
+        }
+        else if (token.TokenType == tok_identifier)
+        {
+            return token.Length;
+        }
+    }
+}
 
-void InitLexer(metal_lexer_t* self)
+void InitMetalLexer(metal_lexer_t* self)
 {
     self->tokens_size = 0;
     self->tokens_capacity = (sizeof(self->inlineTokens) / sizeof(self->inlineTokens[0]));
     self->tokens = self->inlineTokens;
 }
 
-metal_lexer_state_t LexerStateFromString(const char* str)
+metal_lexer_state_t MetalLexerStateFromString(const char* str)
 {
     uint32_t length = strlen(str);
-    return LexerStateFromBuffer(str, length + 1);
+    return MetalLexerStateFromBuffer(str, length + 1);
 }
 
-metal_lexer_state_t LexerStateFromBuffer(const char* buffer, uint32_t bufferLength)
+metal_lexer_state_t MetalLexerStateFromBuffer(const char* buffer, uint32_t bufferLength)
 {
     assert(buffer[bufferLength] == '\0');
 
     metal_lexer_state_t result =
-        {buffer, buffer, 1, 1, 0, bufferLength, (block_idx_t)0};
+        {buffer, 1, 1, 0, bufferLength, (block_idx_t)0};
 
+    return result;
+}
+#define ParseError(STATE, MSG) \
+    fprintf(stderr, "ParseError: %s\n", MSG);
+
+static inline bool IsIdentifierChar(char c)
+{
+    char upper_c = (c & ~32);
+    return  (upper_c >= 'A' && upper_c <= 'Z') || c == '_';
 }
 
+static inline bool IsNumericChar(char c)
+{
+    return ((((unsigned)c) - '0') <= 9);
+}
+
+metal_token_t* MetalLexerLexNextToken(metal_lexer_t* self, metal_lexer_state_t* state,
+                                      const char* text, uint32_t len)
+{
+    assert(text[len] == '\0');
+    metal_token_t* result = 0;
+
+    metal_token_t token = {0};
+    token.TokenType = 0;
+    token.Position = state->Position;
+    token.SourceId = state->SourceId;
+
+    assert(self->tokens_capacity > self->tokens_size);
+    char c = *text++;
+
+    while(c && (c == ' ' || c == '\t'))
+        c = *text++;
+
+    if ((token.TokenType = MetalLexFixedLengthToken(text)) == tok_invalid)
+    {
+        // const char* begin = text;
+        if(c)
+        {
+             if (IsIdentifierChar(c))
+             {
+                 uint32_t length = 1;
+                 token.Identfier = text - 1;
+                 while(IsIdentifierChar(*text++)) {length++;}
+                 token.TokenType = tok_identifier;
+                 // token.Identfier = // AddIdentifier(lexer, )
+                 token.Length = length;
+             } else if (IsNumericChar(c))
+             {
+                 token.TokenType = tok_unsignedNumber;
+                 bool isHex;
+                 uint64_t value;
+            LparseDigits:
+                value = 0;
+                isHex = false;
+
+                if (c == '0')
+                {
+                    if ((c = *text++) == 'x')
+                    {
+                        isHex = true;
+                        assert(0); // TODO Implement hex literal parsing.
+                    }
+                    else if (!IsNumericChar(c = *text++))
+                    {
+                        value = 0;
+                        goto LParseNumberDone;
+                    }
+                    else
+                    {
+                        ParseError(state, "octal literal not supported");
+                    }
+                }
+
+                value = c - '0';
+                while(IsNumericChar((c = *text++)))
+                {
+                    value *= 10;
+                    value += c - '0';
+                }
+            LParseNumberDone:
+                token.ValueU64 = value;
+             }
+             else if (c == '-')
+             {
+                 if (IsNumericChar(c = *text++))
+                 {
+                     token.TokenType = tok_signedNumber;
+                     goto LparseDigits;
+                 }
+             }
+        }
+    }
+
+    if (token.TokenType)
+    {
+        result = self->tokens + self->tokens_size++;
+        *result = token;
+    }
+    else
+    {
+        static metal_token_t stop_token = {0};
+        result = &stop_token;
+    }
+    return result;
+}
 
 #if TEST_LEXER
 #include <string.h>
@@ -401,6 +524,7 @@ void test_lexer()
     };
 
     int idx = 0;
+
     for(metal_token_enum_t tok = tok_lParen; idx < (sizeof(test) / sizeof(test[0])); (*(int*)&tok)++)
     {
         const char* word = test[idx++];

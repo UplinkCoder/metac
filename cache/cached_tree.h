@@ -47,7 +47,6 @@ typedef struct meta_data_entry_t
         struct cached_file_t* cached_file;
         struct cached_dir_t* cached_dir;
     };
-    filehandle_ptr_t handle;
 } meta_data_entry_t;
 
 /// contains cached data which is likely to change
@@ -140,12 +139,6 @@ typedef struct cache_t
     uint32_t file_entries_size;
     uint32_t file_entries_capacity;
 
-    uint32_t* limbs;
-    uint32_t limbs_size;
-    uint32_t limbs_capacity;
-
-    fhandle3 rootHandle;
-
     freelist_entry_t* freelist;
 } cache_t;
 
@@ -210,21 +203,6 @@ static inline uint32_t EntryKey(const char* name, size_t name_length)
     uint32_t entry_key = (name_crc & 0xFFFF)
                              | (name_length << 16);
     return entry_key;
-}
-
-static inline uint32_t fhandle3_length(const fhandle3* handle)
-{
-    uint32_t length = 0;
-	int i;
-    for(i = 0; i < 8;i++)
-    {
-        if (((uint32_t*)handle->handle)[i] == 0)
-            break;
-
-        length += 4;
-    }
-
-    return length;
 }
 
 #  ifndef ALIGN4

@@ -6,14 +6,14 @@ typedef uint16_t crc32c_lower16_t;
 typedef struct metal_lexer_state_t
 {
     char const* text;
-    const char* ptr;
 
-    uint32_t col;
-    uint32_t line;
-    uint32_t pos;
-    uint32_t size;
+    uint32_t Column;
+    uint32_t Line;
+    uint32_t Position;
+    uint32_t Size;
 
     block_idx_t outer_block;
+    uint16_t SourceId;
 
 } metal_lexer_state_t;
 
@@ -79,26 +79,26 @@ typedef enum metal_token_enum_t {
 typedef struct metal_token_t {
     metal_token_enum_t TokenType;
 
-    uint32_t pos;
-    uint32_t source_id;
+    uint32_t Position;
+    uint32_t SourceId;
     union {
         struct {
             union
             {
                 struct {
-                    crc32c_lower16_t crc32_lw_16;
-                    uint16_t length;
+                    crc32c_lower16_t Crc32CLw16;
+                    uint16_t Length;
                 } ;
-                uint32_t identifier_key;
+                uint32_t IdentifierKey;
             };
-            char* identfier;
+            char* Identfier;
         };
-        uint64_t u64_value;
-        int64_t i64_value;
-        uint32_t u32_value;
-        int32_t i32_value;
-        float f23_value;
-        double f52_value;
+        uint64_t ValueU64;
+        int64_t ValueI64;
+        uint32_t ValueU32;
+        int32_t ValueI32;
+        float ValueF23;
+        double ValueF52;
     };
 
     /// 0 means file scope
@@ -107,6 +107,7 @@ typedef struct metal_token_t {
 } metal_token_t;
 
 
+uint32_t MetalTokenLength(metal_token_t token);
 
 /*
 meta_var[2] c_array_helpers(meta_var ptr)
@@ -133,7 +134,7 @@ eject array_helpers_and_methods(meta_var ptr)
     eject array_methods(ptr, size_capa[1], size_capa[2]);
 }
 
-/*
+
 eject array_methods(meta_var ptr, meta_var size, meta_var capacity)
 {
     assert(size.name.length == ptr.name.length + "_size".length);
@@ -171,10 +172,8 @@ typedef struct metal_lexer_t {
 } metal_lexer_t;
 
 
-static metal_token_enum_t MetalLexFixedLengthToken(const char _chrs[7]);
-
-void InitLexer(metal_lexer_t* self);
-metal_lexer_state_t LexerStateFromString(const char* str);
-metal_lexer_state_t LexerStateFromBuffer(const char* buffer, uint32_t bufferLength);
-
-
+void InitMetalLexer(metal_lexer_t* self);
+metal_lexer_state_t MetalLexerStateFromString(const char* str);
+metal_lexer_state_t MetalLexerStateFromBuffer(const char* buffer, uint32_t bufferLength);
+metal_token_t* MetalLexerLexNextToken(metal_lexer_t* self, metal_lexer_state_t* state,
+                                      const char* text, uint32_t len);
