@@ -414,7 +414,7 @@ uint32_t MetalTokenLength(metal_token_t token)
             return token.Length;
         }
     }
-    
+
     assert(0);
 }
 
@@ -643,7 +643,7 @@ metal_token_t* MetalLexerLexNextToken(metal_lexer_t* self,
 #if TEST_LEXER
 #include <string.h>
 
-void tests_lexer()
+void test_lexer()
 {
     const char *test[] =
     {
@@ -659,7 +659,6 @@ void tests_lexer()
         "/*",
         "*/",
         "//",
-        "\"",
         "!",
         "-",
         "+",
@@ -700,7 +699,7 @@ void tests_lexer()
         const char* word = test[idx++];
         metal_token_enum_t lexed = MetalLexFixedLengthToken(word);
         assert(lexed == tok);
-        assert(strlen(word) == MetalTokenLength(tok));
+        assert(strlen(word) == StaticMetalTokenLength(tok));
     }
 }
 
