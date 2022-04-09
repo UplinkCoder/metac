@@ -103,21 +103,22 @@
  *
  */
 
-#include <termios.h>
-#include <unistd.h>
+#include "win32_support_mod.inl"
+
 #include <stdlib.h>
+#include <stdarg.h>
 #include <stdio.h>
+#include <assert.h>
 #include <errno.h>
 #include <string.h>
+#include <signal.h>
 #include <stdlib.h>
-#include <ctype.h>
-#include <sys/stat.h>
 #include <sys/types.h>
-#include <sys/ioctl.h>
-#include <unistd.h>
+#include <sys/stat.h>
+#include <ctype.h>
 #include "linenoise.h"
 
-#include "ocaml_community_mod.c"
+#include "ocaml_community_mod.inl"
 
 #ifdef __cplusplus
 #  define CCHAR const char

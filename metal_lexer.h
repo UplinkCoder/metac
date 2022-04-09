@@ -1,3 +1,5 @@
+#ifndef _METAL_LEXER_H_
+#define _METAL_LEXER_H_
 #include "compat.h"
 
 typedef uint32_t block_idx_t;
@@ -5,14 +7,14 @@ typedef uint16_t crc32c_lower16_t;
 
 typedef struct metal_lexer_state_t
 {
-    char const* text;
+    char const* Text;
 
     uint32_t Column;
     uint32_t Line;
     uint32_t Position;
     uint32_t Size;
 
-    block_idx_t outer_block;
+    block_idx_t OuterBlock;
     uint16_t SourceId;
 
 } metal_lexer_state_t;
@@ -22,7 +24,8 @@ typedef enum metal_token_enum_t {
 
     tok_identifier, // "identifier"
     tok_unsignedNumber, // "unsigned number"
-    tok_signedNumber, // "signed number"
+    // tok_signedNumber, // "signed number"
+    tok_stringLiteral, // string_Literal
 
     tok_lParen, // "("
     tok_rParen, // ")"
@@ -37,7 +40,7 @@ typedef enum metal_token_enum_t {
     tok_comment_begin, // "/*"
     tok_comment_end, // "*/"
     tok_comment_single, // "//"
-    tok_quote, // "\""
+    // tok_quote, // "\""
     tok_bang, // "!"
     tok_minus, // "-",
     tok_plus, // "+"
@@ -81,7 +84,8 @@ typedef struct metal_token_t {
 
     uint32_t Position;
     uint32_t SourceId;
-    union {
+    union { // switch(TokenType)
+        // case tok_identfier :
         struct {
             union
             {
@@ -91,8 +95,21 @@ typedef struct metal_token_t {
                 } ;
                 uint32_t IdentifierKey;
             };
-            char* Identfier;
+            const char* Identifier;
         };
+        // case tok_string :
+        struct {
+            union
+            {
+                struct {
+                    crc32c_lower16_t Crc32CLw16_;
+                    uint16_t Length_;
+                } ;
+                uint32_t StringKey;
+            };
+            const char* String;
+        };
+
         uint64_t ValueU64;
         int64_t ValueI64;
         uint32_t ValueU32;
@@ -173,7 +190,8 @@ typedef struct metal_lexer_t {
 
 
 void InitMetalLexer(metal_lexer_t* self);
-metal_lexer_state_t MetalLexerStateFromString(const char* str);
-metal_lexer_state_t MetalLexerStateFromBuffer(const char* buffer, uint32_t bufferLength);
+metal_lexer_state_t MetalLexerStateFromString(uint32_t sourceId, const char* str);
+metal_lexer_state_t MetalLexerStateFromBuffer(uint32_t sourceId, const char* buffer, uint32_t bufferLength);
 metal_token_t* MetalLexerLexNextToken(metal_lexer_t* self, metal_lexer_state_t* state,
                                       const char* text, uint32_t len);
+#endif // _METAL_LEXER_H_

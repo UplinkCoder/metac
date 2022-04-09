@@ -1,3 +1,5 @@
+#define cast(T) (T)
+
 #ifdef _WIN32
 #  include "stdint_msvc.h"
 # ifndef __cplusplus
