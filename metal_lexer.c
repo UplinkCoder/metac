@@ -508,7 +508,8 @@ static inline char EscapedChar(char c)
 }
 
 metal_token_t* MetalLexerLexNextToken(metal_lexer_t* self,
-        metal_lexer_state_t* state, const char* text, uint32_t len)
+                                      metal_lexer_state_t* state,
+                                      const char* text, uint32_t len)
 {
     assert(text[len] == '\0');
     metal_token_t* result = 0;
@@ -521,9 +522,19 @@ metal_token_t* MetalLexerLexNextToken(metal_lexer_t* self,
     uint32_t eaten_chars = 0;
     char c = *text++;
 
-    while (c && (c == ' ' || c == '\t'))
+    while (c && (c == ' ' || c == '\t' || c == '\n' || c == '\r'))
     {
         c = *text++;
+        if (c == '\n')
+        {
+            state->Line++;
+            state->Column = 0;
+        }
+        if (c == '\r')
+        {
+            state->Column = 0;
+        }
+        state->Column++;
         eaten_chars++;
     }
     if (c)
