@@ -40,7 +40,6 @@ typedef enum metal_token_enum_t {
     tok_comment_begin, // "/*"
     tok_comment_end, // "*/"
     tok_comment_single, // "//"
-    // tok_quote, // "\""
     tok_bang, // "!"
     tok_minus, // "-",
     tok_plus, // "+"
@@ -54,7 +53,6 @@ typedef enum metal_token_enum_t {
     tok_semicolon,// ";"
     tok_colon, // ":"
     tok_dollar, // "$"
-    tok_dollar_paren, // "$("
     tok_assign, // "="
     tok_equalsequals, // "=="
     tok_lessThan, //  "<"

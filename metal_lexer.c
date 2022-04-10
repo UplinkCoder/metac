@@ -19,13 +19,7 @@ static metal_token_enum_t MetalLexFixedLengthToken(const char _chrs[7])
         return tok_bang;
 
     case '$':
-        switch (_chrs[1])
-        {
-        default:
             return tok_dollar;
-        case '(':
-            return tok_dollar_paren;
-        }
 
     case '&':
         return tok_addr;
@@ -359,7 +353,6 @@ static uint32_t StaticMetalTokenLength(metal_token_enum_t t)
 {
     switch(t) {
         default :  return 1;
-        case tok_dollar_paren : return 2; // $(
         case tok_comment_end : return 2; // */
         case tok_dotdot : return 2; // ..
         case tok_comment_begin : return 2; // /* */
@@ -471,11 +464,11 @@ static inline bool IsNumericChar(char c)
 static inline metal_token_enum_t classify(char c)
 {
     metal_token_enum_t result = tok_invalid;
-    
+
     if (IsIdentifierChar(c))
     {
         result = tok_identifier;
-    }    
+    }
     else if (IsNumericChar(c))
     {
         result = tok_unsignedNumber;
@@ -484,7 +477,7 @@ static inline metal_token_enum_t classify(char c)
     {
         result = tok_stringLiteral;
     }
-    
+
     return result;
 }
 
@@ -551,7 +544,6 @@ metal_token_t* MetalLexerLexNextToken(metal_lexer_t* self,
             }
             else if (IsNumericChar(c))
             {
-                
                 token.TokenType = tok_unsignedNumber;
                 bool isHex;
                 uint64_t value;
@@ -564,7 +556,7 @@ metal_token_t* MetalLexerLexNextToken(metal_lexer_t* self,
                     ++text;
                     c = *(text++);
                     eaten_chars++;
-                    
+
                     if (c == 'x')
                     {
                         isHex = true;
@@ -617,7 +609,6 @@ metal_token_t* MetalLexerLexNextToken(metal_lexer_t* self,
                     ParseError(state, "Unterminted string literal");
                 }
                 token.Length = string_length;
-                
             }
         }
     }
@@ -670,7 +661,6 @@ void test_lexer()
         ";",
         ":",
         "$",
-        "$(",
         "=",
         "==",
         "<",
