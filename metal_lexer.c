@@ -605,9 +605,12 @@ metal_token_t* MetalLexerLexNextToken(metal_lexer_t* self,
             }
             else if (c == '"')
             {
+                ++text;
+                // eaten_chars++;
                 token.TokenType = tok_stringLiteral;
-                c = *text++;
                 token.String = text;
+                c = *text++;
+                // printf("c: %c\n", c);
                 uint32_t string_length = 0;
                 eaten_chars++;
                 while(c && c != '"')
@@ -619,7 +622,7 @@ metal_token_t* MetalLexerLexNextToken(metal_lexer_t* self,
                         c = EscapedChar(*text++);
                         if (c == 'E')
                         {
-                            ParseError(state, "invalid escape seqeunce");
+                            ParseError(state, "Invalid escape seqeunce");
                         }
                     }
                     c = *text++;
@@ -629,6 +632,8 @@ metal_token_t* MetalLexerLexNextToken(metal_lexer_t* self,
                 {
                     ParseError(state, "Unterminted string literal");
                 }
+                eaten_chars++;
+                c = *text++;
                 token.Length = string_length;
                 token.Crc32CLw16 = (crc32c(~0, token.String, token.Length) & 0xFFFF);
             }
@@ -665,19 +670,19 @@ void test_lexer()
         "{",
         "}",
         "[",
-        "]",       
+        "]",
          "/*",
         "*/",
-        
+
         "//",
-        
+
         "!",
         "&",
         ";",
         ":",
         "$",
         "[]",
-        
+
 
         ",",
         ".",
@@ -687,7 +692,7 @@ void test_lexer()
         "+",
         "/",
         "*",
-        
+
         "~",
         "~=",
         "=",
@@ -698,7 +703,7 @@ void test_lexer()
         ">",
         ">=",
         "<=>",
-        
+
         "struct",
         "union",
         "type",

@@ -35,11 +35,10 @@ metal_expression_t* _newExp_mem = 0;
       (((N) + 3) & ~3)
 #endif
 
-
 metal_binary_expression_type_t BinExpTypeFromTokenType(metal_token_enum_t tokenType)
 {
     metal_binary_expression_type_t result = bin_invalid;
-    
+
     switch(tokenType)
     {
         case tok_plus :
@@ -58,11 +57,12 @@ metal_binary_expression_type_t BinExpTypeFromTokenType(metal_token_enum_t tokenT
             return bin_eq;
         case tok_notEqual :
             return bin_neq;
-        
+
         case tok_star :
             return bin_mul;
     }
 }
+
 metal_expression_type_t ExpTypeFromTokenType(metal_token_enum_t tokenType)
 {
     if (tokenType == tok_unsignedNumber)
@@ -73,7 +73,7 @@ metal_expression_type_t ExpTypeFromTokenType(metal_token_enum_t tokenType)
     {
         return exp_string;
     }
-    
+
     else if (tokenType == tok_kw_inject)
     {
         return exp_inject;
@@ -103,19 +103,19 @@ metal_expression_type_t ExpTypeFromTokenType(metal_token_enum_t tokenType)
         assert(0);
         return exp_invalid;
     }
-    
+
 }
 
 metal_expression_t* AllocNewExpression(metal_expression_type_t t)
 {
     metal_expression_t* result = 0;
-    
+
     if(!_newExp_mem)
     {
         _newExp_mem = cast(metal_expression_t*) malloc(sizeof(metal_expression_t) * 4096);
         _newExp_capacity = 4096;
     }
-    
+
     if (_newExp_capacity < _newExp_size)
     {
         _newExp_capacity = ALIGN4(cast(uint32_t) (_newExp_capacity * 1.6f));
@@ -126,7 +126,7 @@ metal_expression_t* AllocNewExpression(metal_expression_type_t t)
         result = _newExp_mem + _newExp_size++;
         result->Type = t;
     }
-    
+
     return result;
 }
 
@@ -178,7 +178,7 @@ metal_expression_t* parseExpression(metal_parser_t* self, metal_expression_t* pr
     else if (tokenType == tok_stringLiteral)
     {
         // result = GetOrAddStringLiteral(_string_table, currentToken);
-        
+
         result = AllocNewExpression(exp_string);
         result->String = currentToken->String;
         result->Length = currentToken->Length;
@@ -197,20 +197,20 @@ metal_expression_t* parseExpression(metal_parser_t* self, metal_expression_t* pr
     {
         assert(0);
     }
-    
+
     printf("TokenType: %s\n", MetalTokenEnum_toChars(tokenType));
     currentToken = MetalParserNextToken(self);
     tokenType =
         (currentToken ? currentToken->TokenType : tok_invalid);
     printf("Next TokenType: %s\n", MetalTokenEnum_toChars(tokenType));
-    
+
     if (isOperator(tokenType))
     {
         printf("It's an operator\n");
         tokenType = currentToken->TokenType;
         metal_expression_t* E1 = result;
         metal_expression_t* E2 = parseExpression(self, 0);
-        
+
         result = AllocNewExpression(exp_binary + (tokenType - tok_comma));
     }
 }
@@ -224,9 +224,8 @@ metal_expression_t* parseExpressionFromString(const char* exp)
 
     InitMetalLexer(&lexer);
     LexString(&lexer, exp);
-    
+
     MetalParserInitFromLexer(&parser, &lexer);
-    
 
     metal_expression_t* result = parseExpression(&parser, 0);
     return result;
