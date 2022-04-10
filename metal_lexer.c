@@ -5,6 +5,8 @@
 #include <string.h>
 #include <stdio.h>
 
+#include "cache/crc32.c"
+
 static metal_token_enum_t MetalLexFixedLengthToken(const char _chrs[7])
 {
     switch (_chrs[0])
@@ -16,7 +18,13 @@ static metal_token_enum_t MetalLexFixedLengthToken(const char _chrs[7])
         return tok_eof;
 
     case '!':
-        return tok_bang;
+        switch (_chrs[1])
+        {
+        default:
+            return tok_bang;
+        case '=':
+            return tok_notEqual;
+        }
 
     case '$':
             return tok_dollar;
@@ -95,7 +103,7 @@ static metal_token_enum_t MetalLexFixedLengthToken(const char _chrs[7])
         default:
             return tok_assign;
         case '=':
-            return tok_equalsequals;
+            return tok_equalsEquals;
         }
 
     case '>':
@@ -360,7 +368,8 @@ static uint32_t StaticMetalTokenLength(metal_token_enum_t t)
         case tok_lessEqual : return 2;// <=
         case tok_greaterEqual : return 2;// >=
         case tok_spaceShip : return 3;// <=>
-        case tok_equalsequals : return 2; // ==
+        case tok_equalsEquals : return 2; // ==
+        case tok_notEqual : return 2; // !=
         case tok_full_slice : return 2; // []
         case tok_cat_ass : return 2; // ~=
         case tok_eof : return 0;
@@ -541,6 +550,7 @@ metal_token_t* MetalLexerLexNextToken(metal_lexer_t* self,
                 token.TokenType = tok_identifier;
 
                 token.Length = length;
+                token.Crc32CLw16 = (crc32c(~0, token.Identifier, token.Length) & 0xFFFF);
             }
             else if (IsNumericChar(c))
             {
@@ -609,6 +619,7 @@ metal_token_t* MetalLexerLexNextToken(metal_lexer_t* self,
                     ParseError(state, "Unterminted string literal");
                 }
                 token.Length = string_length;
+                token.Crc32CLw16 = (crc32c(~0, token.String, token.Length) & 0xFFFF);
             }
         }
     }
@@ -643,32 +654,40 @@ void test_lexer()
         "{",
         "}",
         "[",
-        "]",
+        "]",       
+         "/*",
+        "*/",
+        
+        "//",
+        
+        "!",
+        "&",
+        ";",
+        ":",
+        "$",
+        "[]",
+        
+
         ",",
         ".",
         "..",
-        "/*",
-        "*/",
-        "//",
-        "!",
+
         "-",
         "+",
         "/",
         "*",
-        "&",
+        
         "~",
         "~=",
-        ";",
-        ":",
-        "$",
         "=",
         "==",
+        "!=",
         "<",
         "<=",
-        "[]",
         ">",
         ">=",
         "<=>",
+        
         "struct",
         "union",
         "type",

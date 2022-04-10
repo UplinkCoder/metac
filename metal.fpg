@@ -1,4 +1,4 @@
-xASTNode {
+MetalNode {
     Identifier @internal {
         [a-zA-Z_][] identifier
     }
@@ -7,8 +7,75 @@ xASTNode {
         [0-9][] digits 
     }
 
+    Operator @enumify
+    {
+        Add { 
+            "+"
+        }
+
+        Sub {
+             "-"
+        }
+
+        Mul {
+             "*"
+        }
+
+        Div {
+             "/"
+        }
+
+        Cat {
+             "~"
+        }
+
+        CatAss {
+             "~="
+        }
+
+        Assign {
+             "="
+        }
+
+        Eq {
+            "=="
+        }
+        
+        Neq {
+            "!="
+        }
+
+        Lt {
+             "<"
+        }
+
+        Gt {
+             ">"
+        }
+
+        Le {
+             "<="
+        }
+
+        Ge {
+             ">="
+        }
+
+        SpaceShip {
+             "<=>"
+        }
+
+        Dot {
+             "."
+        }
+
+        Arrow {
+             "->"
+        }
+    }
+
     Expression {
-\
+
         IntExp {
             Digits number;
         }
@@ -52,56 +119,8 @@ xASTNode {
             Identfier identifier
         }
 
-        AddExp { 
-            Expression lhs, "+", Expression rhs
-        }
-
-        SubExp {
-            Expression lhs, "-", Expression rhs
-        }
-
-        MulExp {
-            Expression lhs, "*", Expression rhs
-        }
-
-        DivExp {
-            Expression lhs, "+", Expression rhs
-        }
-
-        CatExp {
-            Expression lhs, "~", Expression rhs
-        }
-
-        CatAssExp {
-            Expression lhs, "~=", Expression rhs
-        }
-
-        AssignExp {
-            Expression lhs, "=", Expression rhs
-        }
-
-        LtExp {
-            Expression lhs, "<", Expression rhs
-        }
-
-        GtExp {
-            Expression lhs, ">", Expression rhs
-        }
-
-        LeExp {
-            Expression lhs, "<=", Expression rhs
-        }
-
-        GeExp {
-            Expression lhs, ">=", Expression rhs
-        }
-
-        SpaceShipExp {
-            Expression lhs, "<=>", Expression rhs
-        }
-
-        ExpDotExp {
-            Expression lhs, ".", Expression rhs
+        BinaryExpression {
+             Expression rhs, Operator op, Expression rhs
         }
 
         SliceExp {
@@ -127,12 +146,8 @@ xASTNode {
             "//"
         }
 
-        CommentBegin {
-            "/*"
-        }
-
-        CommentEnd {
-            "*/"
+        CommentMultilline {
+            "/*," char[], "*/"
         }
     }
 

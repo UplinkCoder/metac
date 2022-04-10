@@ -34,35 +34,41 @@ typedef enum metal_token_enum_t {
     tok_lBracket, // "["
     tok_rBracket, // "]"
 
-    tok_comma, // ","
-    tok_dot, // "."
-    tok_dotdot, // ".."
     tok_comment_begin, // "/*"
     tok_comment_end, // "*/"
     tok_comment_single, // "//"
     tok_bang, // "!"
+    tok_addr, // "&"
+    tok_semicolon,// ";"
+    tok_colon, // ":"
+    tok_dollar, // "$"
+    tok_full_slice, // "[]"
+    
+    tok_first_binary,
+    // binary ops
+    tok_comma = tok_first_binary, // ","
+    tok_dot, // "."
+    tok_dotdot, // ".."
+    
     tok_minus, // "-",
     tok_plus, // "+"
     tok_div, // "/"
     tok_star,// "*"
-    tok_addr, // "&"
-
+    
     tok_cat, // "~"
     tok_cat_ass, // "~="
 
-    tok_semicolon,// ";"
-    tok_colon, // ":"
-    tok_dollar, // "$"
     tok_assign, // "="
-    tok_equalsequals, // "=="
+    tok_equalsEquals, // "=="
+    tok_notEqual, // "!="
     tok_lessThan, //  "<"
     tok_lessEqual, // "<="
-    tok_full_slice, // "[]"
-
+    
     tok_greaterThan, // ">"
     tok_greaterEqual, // ">="
 
     tok_spaceShip, // "<=>"
+    // end binary ops
 
     tok_kw_struct, // "struct"
     tok_kw_union, // "union"

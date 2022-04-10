@@ -43,6 +43,8 @@ LinputLoop:
                     parseExpressionFromString(line);
                 //
                 parsingExpression = false;
+                promt_ = "REPL>";
+                goto LinputLoop;
             }
             
             metal_token_t token =

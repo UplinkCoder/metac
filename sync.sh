@@ -4,7 +4,7 @@ LINENOISE_DIR="3rd_party/linenoise"
 if [ -d $DST ]; then
     cp README.md LICENSE \
        endian.h stdint_msvc.h compat.h int_to_str.c \
-       build.bat build.sh sync.sh run_tests.sh run_tests.bat \
+       build.bat build.sh sync.sh sync_from.sh run_tests.sh run_tests.bat \
        metal_lexer.c metal_lexer.h metal_parser.c metal_parser.h \
        metal.fpg \
        metal_lexer_toChars.c \

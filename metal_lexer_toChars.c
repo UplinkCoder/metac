@@ -69,7 +69,7 @@ const char* MetalTokenEnum_toChars(metal_token_enum_t tok)
         result = "$";
     if (tok == tok_assign)
         result = "=";
-    if (tok == tok_equalsequals)
+    if (tok == tok_equalsEquals)
         result = "==";
     if (tok == tok_lessThan)
         result =  "<";
