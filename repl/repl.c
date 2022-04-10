@@ -1,3 +1,5 @@
+#include "../compat.h"
+
 #include "../metal_lexer.h"
 #include "../metal_parser.h"
 #include "../3rd_party/linenoise/linenoise.c"
@@ -14,17 +16,35 @@ int main(int argc, const char* argv[])
     InitMetalLexer(&lexer);
     metal_parser_t parser;
     MetalParserInitFromLexer(&parser, &lexer);
-
-    while ((line = linenoise("REPL>")))
+    bool parsingExpression = false;
+    const char* promt_ = "REPL>"; 
+LinputLoop:    
+    while ((line = linenoise(promt_)))
     {
         linenoiseHistoryAdd(line);
         uint32_t line_length = strlen(line);
         if (*line == ':' && (*(line + 1) == 'q'))
             return 0;
 
+        if (*line == ':' && (*(line + 1) == 'e'))
+        {
+            assert(parsingExpression == false);
+            parsingExpression = true;
+            promt_ = "Exp>";
+            goto LinputLoop;
+        }
+
         while (line_length > 0)
         {
             uint32_t initalPosition = repl_state.Position;
+            if (parsingExpression)
+            {
+                metal_expression_t* exp =
+                    parseExpressionFromString(line);
+                //
+                parsingExpression = false;
+            }
+            
             metal_token_t token =
                 *MetalLexerLexNextToken(&lexer, &repl_state, line, line_length);
 
@@ -48,6 +68,7 @@ int main(int argc, const char* argv[])
                 printf("    \"%.*s\"\n", token.Length, token.String);
             }
 #endif
+            
             line_length -= eaten_chars;
             line += eaten_chars;
 

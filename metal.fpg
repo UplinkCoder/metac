@@ -1,0 +1,161 @@
+xASTNode {
+    Identifier @internal {
+        [a-zA-Z_][] identifier
+    }
+
+    Digits @internal {
+        [0-9][] digits 
+    }
+
+    Expression {
+\
+        IntExp {
+            Digits number;
+        }
+
+        StringExp {
+            "\"", char[] string, "\""
+        }
+
+        InjectExp {
+            "inject", Expression ie
+        }
+
+        EjectExp {
+            "eject", Expression ee
+        }
+
+        AssertExp {
+            "assert", "(", Expression ae, ",", StringLiteral msg, ")"
+        }
+
+        OuterParenExp {
+            "$(", Expression[] exps : ",", ")"
+        }
+        
+        OuterExp {
+            "$", Identfier outer_name
+        }
+        AddrExp {
+            "&", Expression lhs
+        }
+
+        PtrExp {
+            "*", Expression lhs
+        }
+
+        ParenExp {
+            "(", Expresion lhs, ")"
+        }
+
+        IdentifierExp {
+            Identfier identifier
+        }
+
+        AddExp { 
+            Expression lhs, "+", Expression rhs
+        }
+
+        SubExp {
+            Expression lhs, "-", Expression rhs
+        }
+
+        MulExp {
+            Expression lhs, "*", Expression rhs
+        }
+
+        DivExp {
+            Expression lhs, "+", Expression rhs
+        }
+
+        CatExp {
+            Expression lhs, "~", Expression rhs
+        }
+
+        CatAssExp {
+            Expression lhs, "~=", Expression rhs
+        }
+
+        AssignExp {
+            Expression lhs, "=", Expression rhs
+        }
+
+        LtExp {
+            Expression lhs, "<", Expression rhs
+        }
+
+        GtExp {
+            Expression lhs, ">", Expression rhs
+        }
+
+        LeExp {
+            Expression lhs, "<=", Expression rhs
+        }
+
+        GeExp {
+            Expression lhs, ">=", Expression rhs
+        }
+
+        SpaceShipExp {
+            Expression lhs, "<=>", Expression rhs
+        }
+
+        ExpDotExp {
+            Expression lhs, ".", Expression rhs
+        }
+
+        SliceExp {
+            Expression slice, "[", Expression lower, "..", Expression upper, "]"
+        }
+
+        FullSliceExp {
+            Expression var, "[]"
+        }
+
+        CallExp {
+            Expression func, "(", Expression[] args : ",", ")"
+        }
+    }
+
+    
+    Variable @internal {
+        "type" / Identfier type, Identifier name
+    }
+
+    Comment {
+        CommentLine @internal {
+            "//"
+        }
+
+        CommentBegin {
+            "/*"
+        }
+
+        CommentEnd {
+            "*/"
+        }
+    }
+
+
+    Typedef { 
+        "typedef", Type type, Identifier name, ";"
+    }
+
+    Type {
+        Struct {
+            "struct", Identifier name,  "{", Variable[] members : ";", "}"
+        }
+
+        Union {
+            "union", Identifier name, "{", Variable[] members : ";", "}"
+        }
+
+        Enum {
+            "enum", Identifier name, "{", Identfier[] member_names : ",", "}"
+        }
+
+        ArrayType {
+            Type elementType , "[", Expression e, "]"
+        }
+    }
+}

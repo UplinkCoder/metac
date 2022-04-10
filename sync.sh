@@ -6,6 +6,8 @@ if [ -d $DST ]; then
        endian.h stdint_msvc.h compat.h int_to_str.c \
        build.bat build.sh sync.sh run_tests.sh run_tests.bat \
        metal_lexer.c metal_lexer.h metal_parser.c metal_parser.h \
+       metal.fpg \
+       metal_lexer_toChars.c \
        $DST
 
     chmod +x $DST/build.sh $DST/sync.sh $DST/run_tests.sh
