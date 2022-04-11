@@ -251,10 +251,19 @@ metac_expression_t* ParseExpression(metac_parser_t* self, metac_expression_t* pr
         result->Length = currentToken->Length;
         result->Hash = currentToken->IdentifierKey;
     }
+    else if (tokenType == tok_kw_eject)
+    {
+        result = AllocNewExpression(exp_eject);
+        result->E1 = ParseExpression(self, 0);
+        result->Hash = mix(
+            crc32c(~0, "eject", sizeof("eject") - 1),
+            result->E1->Hash
+        );
+    }
     else if (tokenType == tok_kw_inject)
     {
         result = AllocNewExpression(exp_eject);
-        result->E1 = ParseExpression(self, result);
+        result->E1 = ParseExpression(self, 0);
         result->Hash = mix(
             crc32c(~0, "inject", sizeof("inject") - 1),
             result->E1->Hash
@@ -425,6 +434,5 @@ void TestParseExprssion(void)
     assert(!strcmp(PrintExpression("(12 - (16 - 99 ))")));
     ReorderExpression(exp);
     assert(!strcmp(PrintExpression("((12 - 16 ) - 99 )")));
-
 }
 #endif

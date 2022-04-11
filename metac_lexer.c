@@ -48,7 +48,13 @@ static metac_token_enum_t MetaCLexFixedLengthToken(const char _chrs[7])
         }
 
     case '+':
-        return tok_plus;
+        switch (_chrs[1])
+        {
+        default:
+            return tok_plus;
+        case '+':
+            return tok_plusplus;
+        }
 
     case ',':
         return tok_comma;
@@ -58,6 +64,8 @@ static metac_token_enum_t MetaCLexFixedLengthToken(const char _chrs[7])
         {
         default:
             return tok_minus;
+        case '-':
+            return tok_minusminus;
         case '>':
             return tok_arrow;
         }
@@ -384,6 +392,8 @@ static uint32_t StaticMetaCTokenLength(metac_token_enum_t t)
 {
     switch(t) {
         default :  return 1;
+        case tok_plusplus : return 2; // ++
+        case tok_minusminus : return 2; // --
         case tok_comment_end : return 2; // */
         case tok_arrow : return 2; // ->
         case tok_dotdot : return 2; // ..
@@ -724,6 +734,9 @@ void test_lexer()
         "*/",
 
         "//",
+
+        "++",
+        "--",
 
         "!",
         "&",

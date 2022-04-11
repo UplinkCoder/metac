@@ -39,6 +39,9 @@ typedef struct metac_lexer_state_t
     M(tok_comment_end) \
     \
     M(tok_comment_single) \
+    \
+    M(tok_plusplus) \
+    M(tok_minusminus) \
     M(tok_bang) \
     M(tok_addr) \
     M(tok_semicolon) \
