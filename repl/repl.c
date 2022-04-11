@@ -1,23 +1,23 @@
 #include "../compat.h"
 
-#include "../metal_lexer.h"
-#include "../metal_parser.h"
+#include "../metac_lexer.h"
+#include "../metac_parser.h"
 #include "../3rd_party/linenoise/linenoise.c"
 #include "../int_to_str.c"
 #include <stdio.h>
 
-const char* MetalTokenEnum_toChars(metal_token_enum_t tok);
-const char* PrintExpression(metal_expression_t*);
+const char* MetaCTokenEnum_toChars(metac_token_enum_t tok);
+const char* PrintExpression(metac_expression_t*);
 
 int main(int argc, const char* argv[])
 {
     const char* line;
 
-    metal_lexer_state_t repl_state = {0, 0, 0, 0};
-    metal_lexer_t lexer;
-    InitMetalLexer(&lexer);
-    metal_parser_t parser;
-    MetalParserInitFromLexer(&parser, &lexer);
+    metac_lexer_state_t repl_state = {0, 0, 0, 0};
+    metac_lexer_t lexer;
+    InitMetaCLexer(&lexer);
+    metac_parser_t parser;
+    MetaCParserInitFromLexer(&parser, &lexer);
     bool parsingExpression = false;
     const char* promt_ = "REPL>";
 LinputLoop:
@@ -41,7 +41,7 @@ LinputLoop:
             uint32_t initalPosition = repl_state.Position;
             if (parsingExpression)
             {
-                metal_expression_t* exp =
+                metac_expression_t* exp =
                     ParseExpressionFromString(line);
                 //
 
@@ -52,14 +52,14 @@ LinputLoop:
                 goto LinputLoop;
             }
 
-            metal_token_t token =
-                *MetalLexerLexNextToken(&lexer, &repl_state, line, line_length);
+            metac_token_t token =
+                *MetaCLexerLexNextToken(&lexer, &repl_state, line, line_length);
 
             uint32_t eaten_chars = repl_state.Position - initalPosition;
-            const uint32_t token_length = MetalTokenLength(token);
+            const uint32_t token_length = MetaCTokenLength(token);
 #if 1
             printf("read tokenType: %s {length: %d}\n",
-                    MetalTokenEnum_toChars(token.TokenType), token_length);
+                    MetaCTokenEnum_toChars(token.TokenType), token_length);
 
             if (token.TokenType == tok_identifier)
             {

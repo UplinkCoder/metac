@@ -1,4 +1,4 @@
-#include "metal_lexer.h"
+#include "metac_lexer.h"
 #include "compat.h"
 
 #include <assert.h>
@@ -7,7 +7,7 @@
 
 #include "cache/crc32.c"
 
-static metal_token_enum_t MetalLexFixedLengthToken(const char _chrs[7])
+static metac_token_enum_t MetaCLexFixedLengthToken(const char _chrs[7])
 {
     switch (_chrs[0])
     {
@@ -363,7 +363,24 @@ static metal_token_enum_t MetalLexFixedLengthToken(const char _chrs[7])
     return tok_invalid;
 }
 
-static uint32_t StaticMetalTokenLength(metal_token_enum_t t)
+const char* MetaCTokenEnum_toChars(metac_token_enum_t type)
+{
+    const char* result = 0;
+
+#define CASE_MACRO(TOKEN) \
+    case TOKEN : {result = #TOKEN;} break;
+
+    switch(type)
+    {
+        FOREACH_TOKEN(CASE_MACRO)
+    }
+
+    return result;
+
+#undef CASE_MACRO
+}
+
+static uint32_t StaticMetaCTokenLength(metac_token_enum_t t)
 {
     switch(t) {
         default :  return 1;
@@ -392,7 +409,7 @@ static uint32_t StaticMetalTokenLength(metal_token_enum_t t)
     }
 }
 
-uint32_t fastLog10(uint32_t val)
+static inline uint32_t fastLog10(uint32_t val)
 {
     return (val < 10) ? 0
          : (val < 100) ? 1
@@ -405,11 +422,11 @@ uint32_t fastLog10(uint32_t val)
          : (val < 1000000000) ? 8 : 9;
 }
 
-uint32_t MetalTokenLength(metal_token_t token)
+uint32_t MetaCTokenLength(metac_token_t token)
 {
     if (token.TokenType >= tok_lParen)
     {
-        return StaticMetalTokenLength(token.TokenType);
+        return StaticMetaCTokenLength(token.TokenType);
     }
     else
     {
@@ -428,7 +445,7 @@ uint32_t MetalTokenLength(metal_token_t token)
     return 0;
 }
 
-void InitMetalLexer(metal_lexer_t* self)
+void InitMetaCLexer(metac_lexer_t* self)
 {
     self->tokens_size = 0;
     self->tokens_capacity =
@@ -436,17 +453,17 @@ void InitMetalLexer(metal_lexer_t* self)
     self->tokens = self->inlineTokens;
 }
 
-metal_lexer_state_t MetalLexerStateFromString(uint32_t sourceId, const char* str)
+metac_lexer_state_t MetaCLexerStateFromString(uint32_t sourceId, const char* str)
 {
     uint32_t length = strlen(str);
-    return MetalLexerStateFromBuffer(sourceId, str, length + 1);
+    return MetaCLexerStateFromBuffer(sourceId, str, length + 1);
 }
 
-metal_lexer_state_t MetalLexerStateFromBuffer(uint32_t sourceId, const char* buffer, uint32_t bufferLength)
+metac_lexer_state_t MetaCLexerStateFromBuffer(uint32_t sourceId, const char* buffer, uint32_t bufferLength)
 {
     assert(buffer[bufferLength] == '\0');
 
-    metal_lexer_state_t result;
+    metac_lexer_state_t result;
 
     result.Text = buffer;
     result.Column = 1;
@@ -470,7 +487,7 @@ metal_lexer_state_t MetalLexerStateFromBuffer(uint32_t sourceId, const char* buf
 static inline bool IsIdentifierChar(char c)
 {
     const char upper_c = (c & ~32);
-    return (upper_c >= 'A' && upper_c <= 'Z') || c == '_';
+    return (upper_c >= 'A' & upper_c <= 'Z') | c == '_';
 }
 
 static inline bool IsNumericChar(char c)
@@ -478,9 +495,9 @@ static inline bool IsNumericChar(char c)
     return (((cast(unsigned) c) - '0') <= 9);
 }
 
-static inline metal_token_enum_t classify(char c)
+static inline metac_token_enum_t classify(char c)
 {
-    metal_token_enum_t result = tok_invalid;
+    metac_token_enum_t result = tok_invalid;
 
     if (IsIdentifierChar(c))
     {
@@ -515,14 +532,14 @@ static inline char EscapedChar(char c)
     return 'E';
 }
 
-metal_token_t* MetalLexerLexNextToken(metal_lexer_t* self,
-                                      metal_lexer_state_t* state,
+metac_token_t* MetaCLexerLexNextToken(metac_lexer_t* self,
+                                      metac_lexer_state_t* state,
                                       const char* text, uint32_t len)
 {
     assert(text[len] == '\0');
-    metal_token_t* result = 0;
+    metac_token_t* result = 0;
 
-    metal_token_t token = {(metal_token_enum_t)0};
+    metac_token_t token = {(metac_token_enum_t)0};
     token.SourceId = state->SourceId;
 
     assert(self->tokens_capacity > self->tokens_size);
@@ -550,7 +567,7 @@ metal_token_t* MetalLexerLexNextToken(metal_lexer_t* self,
     }
 
     token.Position = state->Position + eaten_chars;
-    if ((token.TokenType = MetalLexFixedLengthToken(text)) == tok_invalid)
+    if ((token.TokenType = MetaCLexFixedLengthToken(text)) == tok_invalid)
     {
         // const char* begin = text;
         if (c)
@@ -648,7 +665,7 @@ metal_token_t* MetalLexerLexNextToken(metal_lexer_t* self,
     }
     else
     {
-        eaten_chars += StaticMetalTokenLength(token.TokenType);
+        eaten_chars += StaticMetaCTokenLength(token.TokenType);
     }
 
     if (token.TokenType)
@@ -658,7 +675,7 @@ metal_token_t* MetalLexerLexNextToken(metal_lexer_t* self,
     }
     else
     {
-        static metal_token_t stop_token = {tok_eof};
+        static metac_token_t stop_token = {tok_eof};
         result = &stop_token;
     }
     state->Position += eaten_chars;
@@ -729,7 +746,7 @@ void test_lexer()
 
     int idx = 0;
 
-    for (metal_token_enum_t tok = tok_lParen;
+    for (metac_token_enum_t tok = tok_lParen;
         idx < (sizeof(test) / sizeof(test[0]));
         (*(int*)&tok)++)
     {
@@ -743,9 +760,9 @@ void test_lexer()
         {
             continue;
         }
-        metal_token_enum_t lexed = MetalLexFixedLengthToken(word);
+        metac_token_enum_t lexed = MetaCLexFixedLengthToken(word);
         assert(lexed == tok);
-        assert(strlen(word) == StaticMetalTokenLength(tok));
+        assert(strlen(word) == StaticMetaCTokenLength(tok));
     }
 }
 

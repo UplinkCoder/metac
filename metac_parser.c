@@ -1,20 +1,20 @@
-#include "metal_parser.h"
+#include "metac_parser.h"
 #include <string.h>
 #include <stdlib.h>
 #include <assert.h>
 #include "cache/crc32.c"
-const char* MetalTokenEnum_toChars(metal_token_enum_t t);
+const char* MetaCTokenEnum_toChars(metac_token_enum_t t);
 
 
-void MetalParserInitFromLexer(metal_parser_t* self, metal_lexer_t* lexer)
+void MetaCParserInitFromLexer(metac_parser_t* self, metac_lexer_t* lexer)
 {
     self->Lexer = lexer;
     self->CurrentTokenIndex = 0;
 }
 
-metal_token_t* MetalParserNextToken(metal_parser_t* self)
+metac_token_t* MetaCParserNextToken(metac_parser_t* self)
 {
-    metal_token_t* result = 0;
+    metac_token_t* result = 0;
     assert(self->Lexer->tokens_size);
 
     if (self->CurrentTokenIndex < self->Lexer->tokens_size)
@@ -29,9 +29,9 @@ metal_token_t* MetalParserNextToken(metal_parser_t* self)
     return result;
 }
 
-metal_token_t* MetalParserPeekToken(metal_parser_t* self, int32_t p)
+metac_token_t* MetaCParserPeekToken(metac_parser_t* self, int32_t p)
 {
-    metal_token_t* result = 0;
+    metac_token_t* result = 0;
     assert(self->Lexer->tokens_size);
 
     if (cast(uint32_t)(self->CurrentTokenIndex + (p - 1)) < self->Lexer->tokens_size)
@@ -47,29 +47,29 @@ metal_token_t* MetalParserPeekToken(metal_parser_t* self, int32_t p)
 }
 
 
-void MetalParserMatch(metal_parser_t* self, metal_token_enum_t type)
+void MetaCParserMatch(metac_parser_t* self, metac_token_enum_t type)
 {
-    metal_token_t* token = MetalParserNextToken(self);
-    metal_token_enum_t got = token->TokenType;
+    metac_token_t* token = MetaCParserNextToken(self);
+    metac_token_enum_t got = token->TokenType;
     if (got != type)
     {
         printf("Expected: %s -- Got: %s\n",
-            MetalTokenEnum_toChars(type), MetalTokenEnum_toChars(got));
+            MetaCTokenEnum_toChars(type), MetaCTokenEnum_toChars(got));
     }
 }
 
 uint32_t _newExp_size = 0;
 uint32_t _newExp_capacity = 0;
-metal_expression_t* _newExp_mem = 0;
+metac_expression_t* _newExp_mem = 0;
 
 #ifndef ALIGN4
 #  define ALIGN4(N) \
       (((N) + 3) & ~3)
 #endif
 
-metal_expression_type_t BinExpTypeFromTokenType(metal_token_enum_t tokenType)
+metac_expression_type_t BinExpTypeFromTokenType(metac_token_enum_t tokenType)
 {
-    metal_expression_type_t result = exp_invalid;
+    metac_expression_type_t result = exp_invalid;
 
     switch(tokenType)
     {
@@ -100,7 +100,7 @@ metal_expression_type_t BinExpTypeFromTokenType(metal_token_enum_t tokenType)
             return exp_mul;
     }
 }
-const char* BinExpTypeToChars(metal_expression_type_t t)
+const char* BinExpTypeToChars(metac_expression_type_t t)
 {
     switch(t)
     {
@@ -119,7 +119,7 @@ const char* BinExpTypeToChars(metal_expression_type_t t)
         case exp_neq : return "!=";
     }
 }
-metal_expression_type_t ExpTypeFromTokenType(metal_token_enum_t tokenType)
+metac_expression_type_t ExpTypeFromTokenType(metac_token_enum_t tokenType)
 {
     if (tokenType == tok_unsignedNumber)
     {
@@ -162,20 +162,20 @@ metal_expression_type_t ExpTypeFromTokenType(metal_token_enum_t tokenType)
 
 }
 
-metal_expression_t* AllocNewExpression(metal_expression_type_t t)
+metac_expression_t* AllocNewExpression(metac_expression_type_t t)
 {
-    metal_expression_t* result = 0;
+    metac_expression_t* result = 0;
 
     if(!_newExp_mem)
     {
-        _newExp_mem = cast(metal_expression_t*) malloc(sizeof(metal_expression_t) * 4096);
+        _newExp_mem = cast(metac_expression_t*) malloc(sizeof(metac_expression_t) * 4096);
         _newExp_capacity = 4096;
     }
 
     if (_newExp_capacity < _newExp_size)
     {
         _newExp_capacity = ALIGN4(cast(uint32_t) (_newExp_capacity * 1.6f));
-        _newExp_mem = cast(metal_expression_t*) realloc(_newExp_mem, _newExp_capacity);
+        _newExp_mem = cast(metac_expression_t*) realloc(_newExp_mem, _newExp_capacity);
     }
     else
     {
@@ -186,18 +186,18 @@ metal_expression_t* AllocNewExpression(metal_expression_type_t t)
     return result;
 }
 
-static inline void LexString(metal_lexer_t* lexer, const char* line)
+static inline void LexString(metac_lexer_t* lexer, const char* line)
 {
     uint32_t line_length = strlen(line);
-    metal_lexer_state_t lexer_state =
-        MetalLexerStateFromString(0, line);
+    metac_lexer_state_t lexer_state =
+        MetaCLexerStateFromString(0, line);
 
     while(line_length > 0)
     {
         uint32_t initialPosition = lexer_state.Position;
 
-        metal_token_t token =
-            *MetalLexerLexNextToken(lexer, &lexer_state, line, line_length);
+        metac_token_t token =
+            *MetaCLexerLexNextToken(lexer, &lexer_state, line, line_length);
 
         uint32_t eaten_chars = lexer_state.Position - initialPosition;
         line += eaten_chars;
@@ -205,7 +205,7 @@ static inline void LexString(metal_lexer_t* lexer, const char* line)
     }
 }
 
-bool IsBinaryOperator(metal_token_enum_t t)
+bool IsBinaryOperator(metac_token_enum_t t)
 {
     return (t >= tok_comma && t < tok_kw_struct);
 }
@@ -215,19 +215,19 @@ uint32_t mix(uint32_t a, uint32_t b)
     return a ^ b;
 }
 
-metal_expression_t* ParseExpression(metal_parser_t* self, metal_expression_t* prev)
+metac_expression_t* ParseExpression(metac_parser_t* self, metac_expression_t* prev)
 {
-    metal_expression_t* result = 0;
+    metac_expression_t* result = 0;
 
-    metal_token_t* currentToken = MetalParserNextToken(self);
-    metal_token_enum_t tokenType =
+    metac_token_t* currentToken = MetaCParserNextToken(self);
+    metac_token_enum_t tokenType =
         (currentToken ? currentToken->TokenType : tok_invalid);
 
     if (tokenType == tok_lParen)
     {
         result = AllocNewExpression(exp_paren);
         result->E1 = ParseExpression(self, 0);
-        MetalParserMatch(self, tok_rParen);
+        MetaCParserMatch(self, tok_rParen);
     }
     else if (tokenType == tok_unsignedNumber)
     {
@@ -262,24 +262,24 @@ metal_expression_t* ParseExpression(metal_parser_t* self, metal_expression_t* pr
     }
     else
     {
-        printf("Unexpected Token: %s\n", MetalTokenEnum_toChars(tokenType));
+        printf("Unexpected Token: %s\n", MetaCTokenEnum_toChars(tokenType));
         assert(0);
     }
 
-//    printf("TokenType: %s\n", MetalTokenEnum_toChars(tokenType));
-//  printf("Next TokenType: %s\n", MetalTokenEnum_toChars(tokenType));
+//    printf("TokenType: %s\n", MetaCTokenEnum_toChars(tokenType));
+//  printf("Next TokenType: %s\n", MetaCTokenEnum_toChars(tokenType));
 
-    metal_token_t* peekNext = MetalParserPeekToken(self, 1);
+    metac_token_t* peekNext = MetaCParserPeekToken(self, 1);
     if (peekNext && IsBinaryOperator(peekNext->TokenType))
     {
-        metal_token_enum_t op = peekNext->TokenType;
-        MetalParserMatch(self, op);
+        metac_token_enum_t op = peekNext->TokenType;
+        MetaCParserMatch(self, op);
 //        printf("It's an operator\n");
 
-        metal_expression_type_t exp_type = BinExpTypeFromTokenType(op);
+        metac_expression_type_t exp_type = BinExpTypeFromTokenType(op);
 
-        metal_expression_t* E1 = result;
-        metal_expression_t* E2 = ParseExpression(self, 0);
+        metac_expression_t* E1 = result;
+        metac_expression_t* E2 = ParseExpression(self, 0);
 
         result = AllocNewExpression(exp_type);
         result->E1 = E1;
@@ -289,26 +289,26 @@ metal_expression_t* ParseExpression(metal_parser_t* self, metal_expression_t* pr
     return result;
 }
 
-metal_expression_t* ParseExpressionFromString(const char* exp)
+metac_expression_t* ParseExpressionFromString(const char* exp)
 {
-    metal_lexer_t lexer;
-    metal_parser_t parser;
-    metal_lexer_state_t lexer_state =
-        MetalLexerStateFromString(0, exp);
+    metac_lexer_t lexer;
+    metac_parser_t parser;
+    metac_lexer_state_t lexer_state =
+        MetaCLexerStateFromString(0, exp);
 
-    InitMetalLexer(&lexer);
+    InitMetaCLexer(&lexer);
     LexString(&lexer, exp);
 
-    MetalParserInitFromLexer(&parser, &lexer);
+    MetaCParserInitFromLexer(&parser, &lexer);
 
-    metal_expression_t* result = ParseExpression(&parser, 0);
+    metac_expression_t* result = ParseExpression(&parser, 0);
     return result;
 }
 
 #include <stdio.h>
 
 
-const char* MetalExpType_toChars(metal_expression_type_t type)
+const char* MetalExpType_toChars(metac_expression_type_t type)
 {
     const char* result = 0;
 
@@ -325,12 +325,12 @@ const char* MetalExpType_toChars(metal_expression_type_t type)
 #undef CASE_MACRO
 }
 
-bool IsBinaryExp(metal_expression_type_t type)
+bool IsBinaryExp(metac_expression_type_t type)
 {
     return (type > exp_bin_invalid && type < exp_bin_max);
 }
 
-const char* PrintExpression(metal_expression_t* exp)
+const char* PrintExpression(metac_expression_t* exp)
 {
     char scratchpad[512];
     uint32_t expStringLength = 0;
@@ -396,7 +396,7 @@ const char* PrintExpression(metal_expression_t* exp)
     return result;
 }
 
-uint32_t OpToPrecedence(metal_expression_type_t exp)
+uint32_t OpToPrecedence(metac_expression_type_t exp)
 {
     if (exp == exp_paren)
     {
@@ -413,7 +413,7 @@ uint32_t OpToPrecedence(metal_expression_type_t exp)
     return 0;
 }
 
-void ReorderExpression(metal_expression_t* exp)
+void ReorderExpression(metac_expression_t* exp)
 {
     uint32_t prec = OpToPrecedence(exp->Type);
 }
@@ -421,7 +421,7 @@ void ReorderExpression(metal_expression_t* exp)
 #ifdef TEST_PARSER
 void TestParseExprssion(void)
 {
-    metal_expression_t* expr = ParseExpression("12 - 16 - 99");
+    metac_expression_t* expr = ParseExpression("12 - 16 - 99");
     assert(!strcmp(PrintExpression("(12 - (16 - 99 ))")));
     ReorderExpression(exp);
     assert(!strcmp(PrintExpression("((12 - 16 ) - 99 )")));

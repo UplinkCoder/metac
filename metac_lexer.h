@@ -1,11 +1,11 @@
-#ifndef _METAL_LEXER_H_
-#define _METAL_LEXER_H_
+#ifndef _METAC_LEXER_H_
+#define _METAC_LEXER_H_
 #include "compat.h"
 
 typedef uint32_t block_idx_t;
 typedef uint16_t crc32c_lower16_t;
 
-typedef struct metal_lexer_state_t
+typedef struct metac_lexer_state_t
 {
     char const* Text;
 
@@ -17,7 +17,7 @@ typedef struct metal_lexer_state_t
     block_idx_t OuterBlock;
     uint16_t SourceId;
 
-} metal_lexer_state_t;
+} metac_lexer_state_t;
 
 #define FOREACH_TOKEN(M) \
     M(tok_invalid) \
@@ -87,15 +87,15 @@ typedef struct metal_lexer_state_t
 #define WITH_COMMA(TOK) \
     TOK,
 
-typedef enum metal_token_enum_t
+typedef enum metac_token_enum_t
 {
     FOREACH_TOKEN(WITH_COMMA)
-} metal_token_enum_t;
+} metac_token_enum_t;
 
 #undef WITH_COMMA
 
-typedef struct metal_token_t {
-    metal_token_enum_t TokenType;
+typedef struct metac_token_t {
+    metac_token_enum_t TokenType;
 
     uint32_t Position;
     uint32_t SourceId;
@@ -136,10 +136,10 @@ typedef struct metal_token_t {
     /// 0 means file scope
     /// otherwise it's the token_idx of the enclosing block
     uint32_t outer_scope;
-} metal_token_t;
+} metac_token_t;
 
 
-uint32_t MetalTokenLength(metal_token_t token);
+uint32_t MetaCTokenLength(metac_token_t token);
 
 /*
 meta_var[2] c_array_helpers(meta_var ptr)
@@ -192,21 +192,21 @@ eject array_methods(meta_var ptr, meta_var size, meta_var capacity)
 }
 */
 
-typedef struct metal_lexer_t {
+typedef struct metac_lexer_t {
     // inject array_methods(tokens, token_size, token_capacity);
 
-    metal_token_t* tokens;
+    metac_token_t* tokens;
     uint32_t tokens_size;
     uint32_t tokens_capacity;
 
-    metal_token_t inlineTokens[2048];
+    metac_token_t inlineTokens[2048];
 
-} metal_lexer_t;
+} metac_lexer_t;
 
 
-void InitMetalLexer(metal_lexer_t* self);
-metal_lexer_state_t MetalLexerStateFromString(uint32_t sourceId, const char* str);
-metal_lexer_state_t MetalLexerStateFromBuffer(uint32_t sourceId, const char* buffer, uint32_t bufferLength);
-metal_token_t* MetalLexerLexNextToken(metal_lexer_t* self, metal_lexer_state_t* state,
+void InitMetaCLexer(metac_lexer_t* self);
+metac_lexer_state_t MetaCLexerStateFromString(uint32_t sourceId, const char* str);
+metac_lexer_state_t MetaCLexerStateFromBuffer(uint32_t sourceId, const char* buffer, uint32_t bufferLength);
+metac_token_t* MetaCLexerLexNextToken(metac_lexer_t* self, metac_lexer_state_t* state,
                                       const char* text, uint32_t len);
-#endif // _METAL_LEXER_H_
+#endif // _METAC_LEXER_H_

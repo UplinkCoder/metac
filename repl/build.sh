@@ -1,6 +1,5 @@
 if [ -z $CC ]; then
     CC=cc
 fi
-$CC repl.c -I.. ../cache/cached_tree.c ../metal_lexer.c ../metal_parser.c \
-    ../metal_lexer_toChars.c \
+$CC repl.c -I.. ../cache/cached_tree.c ../metac_lexer.c ../metac_parser.c \
     -g2 -Os -o repl -lm

@@ -54,4 +54,3 @@ static inline char* u64tohexstr(uint64_t v, char buffer[17])
     }
     return buffer + i + 1;
 }
-
