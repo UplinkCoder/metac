@@ -39,11 +39,7 @@ typedef struct metac_lexer_state_t
     M(tok_comment_end) \
     \
     M(tok_comment_single) \
-    \
-    M(tok_plusplus) \
-    M(tok_minusminus) \
     M(tok_bang) \
-    M(tok_addr) \
     M(tok_semicolon) \
     M(tok_colon) \
     M(tok_dollar) \
@@ -56,10 +52,30 @@ typedef struct metac_lexer_state_t
     M(tok_dot) \
     M(tok_dotdot) \
     \
-    M(tok_minus) \
     M(tok_plus) \
+    M(tok_plusplus) \
+    M(tok_add_ass) \
+    \
+    M(tok_minus) \
+    M(tok_minusminus) \
+    M(tok_sub_ass) \
+    \
     M(tok_div) \
+    M(tok_div_ass) \
+    \
+    M(tok_xor) \
+    M(tok_xor_ass) \
+    \
+    M(tok_or) \
+    M(tok_oror) \
+    M(tok_or_ass) \
+    \
+    M(tok_and) \
+    M(tok_andand) \
+    M(tok_and_ass) \
+    \
     M(tok_star) \
+    M(tok_mul_ass) \
     \
     M(tok_cat) \
     M(tok_cat_ass) \
@@ -67,10 +83,19 @@ typedef struct metac_lexer_state_t
     M(tok_assign) \
     M(tok_equalsEquals) \
     M(tok_notEqual) \
+    \
     M(tok_lessThan) \
     M(tok_lessEqual) \
+    \
+    M(tok_lsh) \
+    M(tok_lsh_ass) \
+    \
     M(tok_greaterThan) \
     M(tok_greaterEqual) \
+    \
+    M(tok_rsh) \
+    M(tok_rsh_ass) \
+    \
     M(tok_spaceship) \
     \
     M(tok_first_keyword) \

@@ -29,9 +29,6 @@ static metac_token_enum_t MetaCLexFixedLengthToken(const char _chrs[7])
     case '$':
             return tok_dollar;
 
-    case '&':
-        return tok_addr;
-
     case '(':
         return tok_lParen;
 
@@ -43,29 +40,35 @@ static metac_token_enum_t MetaCLexFixedLengthToken(const char _chrs[7])
         {
         default:
             return tok_star;
+        case '=':
+            return tok_mul_ass;
         case '/':
             return tok_comment_end;
-        }
-
-    case '+':
-        switch (_chrs[1])
-        {
-        default:
-            return tok_plus;
-        case '+':
-            return tok_plusplus;
         }
 
     case ',':
         return tok_comma;
 
-    case '-':
-        switch (_chrs[1])
+    case '+':
+        switch(_chrs[1])
         {
-        default:
+        default :
+            return tok_plus;
+        case '+' :
+            return tok_plusplus;
+        case '=' :
+            return tok_add_ass;
+        }
+
+    case '-':
+        switch(_chrs[1])
+        {
+        default :
             return tok_minus;
-        case '-':
+        case '-' :
             return tok_minusminus;
+        case '=' :
+            return tok_sub_ass;
         case '>':
             return tok_arrow;
         }
@@ -80,14 +83,16 @@ static metac_token_enum_t MetaCLexFixedLengthToken(const char _chrs[7])
         }
 
     case '/':
-        switch (_chrs[1])
+        switch(_chrs[1])
         {
-        default:
+        default :
             return tok_div;
         case '/':
             return tok_comment_single;
         case '*':
             return tok_comment_begin;
+        case '=' :
+            return tok_div_ass;
         }
 
     case ':':
@@ -101,6 +106,14 @@ static metac_token_enum_t MetaCLexFixedLengthToken(const char _chrs[7])
         {
         default:
             return tok_lessThan;
+        case '<':
+            switch (_chrs[2])
+            {
+                default:
+                    return tok_lsh;
+                case '=':
+                    return tok_lsh_ass;
+            }
         case '=':
             switch (_chrs[2])
             {
@@ -109,6 +122,37 @@ static metac_token_enum_t MetaCLexFixedLengthToken(const char _chrs[7])
             case '>':
                 return tok_spaceship;
             }
+        }
+
+    case '^':
+        switch (_chrs[1])
+        {
+        default:
+            return tok_xor;
+        case '=':
+            return tok_xor_ass;
+        }
+
+    case '|':
+        switch (_chrs[1])
+        {
+        default:
+            return tok_or;
+        case '|':
+            return tok_oror;
+        case '=':
+            return tok_or_ass;
+        }
+
+    case '&':
+        switch (_chrs[1])
+        {
+        default:
+            return tok_and;
+        case '&':
+            return tok_andand;
+        case '=':
+            return tok_and_ass;
         }
 
     case '=':
@@ -125,6 +169,15 @@ static metac_token_enum_t MetaCLexFixedLengthToken(const char _chrs[7])
         {
         default:
             return tok_greaterThan;
+        case '>':
+            switch (_chrs[2])
+            {
+                default:
+                    return tok_rsh;
+                case '=':
+                    return tok_rsh_ass;
+            }
+
         case '=':
             return tok_greaterEqual;
         }
@@ -392,11 +445,31 @@ static uint32_t StaticMetaCTokenLength(metac_token_enum_t t)
 {
     switch(t) {
         default :  return 1;
+
+        case tok_add_ass : return 2; // +=
+        case tok_sub_ass : return 2; // -=
+        case tok_mul_ass : return 2; // *=
+        case tok_div_ass : return 2; // /=
+
+        case tok_xor_ass : return 2; // ^=
+        case tok_and_ass : return 2; // &=
+        case tok_or_ass  : return 2; // |=
+
         case tok_plusplus : return 2; // ++
         case tok_minusminus : return 2; // --
-        case tok_comment_end : return 2; // */
+        case tok_andand  : return 2; // &&
+        case tok_oror  : return 2; // ||
+
+        case tok_lsh : return 2; // <<
+        case tok_rsh  : return 2; // >>
+
+        case tok_lsh_ass  : return 3; // <<=
+        case tok_rsh_ass  : return 3; // >>=
+
         case tok_arrow : return 2; // ->
         case tok_dotdot : return 2; // ..
+
+        case tok_comment_end : return 2; // */
         case tok_comment_begin : return 2; // /* */
         case tok_comment_single : return 2; // //
         case tok_lessEqual : return 2;// <=
@@ -735,11 +808,7 @@ void test_lexer()
 
         "//",
 
-        "++",
-        "--",
-
         "!",
-        "&",
         ";",
         ":",
         "$",
@@ -751,20 +820,50 @@ void test_lexer()
         ".",
         "..",
 
-        "-",
         "+",
+        "++",
+        "+=",
+
+        "-",
+        "--",
+        "-=",
+
         "/",
+        "/=",
+
+        "^",
+        "^=",
+
+        "|",
+        "||",
+        "|=",
+
+        "&",
+        "&&",
+        "&=",
+
         "*",
+        "*=",
 
         "~",
         "~=",
+
         "=",
         "==",
         "!=",
+
         "<",
         "<=",
+
+        "<<",
+        "<<=",
+
         ">",
         ">=",
+
+        ">>",
+        ">>=",
+
         "<=>",
 
         "first_keyword",
