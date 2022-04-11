@@ -325,6 +325,11 @@ const char* MetalExpType_toChars(metal_expression_type_t type)
 #undef CASE_MACRO
 }
 
+bool IsBinaryExp(metal_expression_type_t type)
+{
+    return (type > exp_bin_invalid && type < exp_bin_max);
+}
+
 const char* PrintExpression(metal_expression_t* exp)
 {
     char scratchpad[512];
@@ -332,13 +337,15 @@ const char* PrintExpression(metal_expression_t* exp)
 
     if (exp->Type == exp_paren)
     {
-        scratchpad[expStringLength++] = '(';
+        if (!IsBinaryExp(exp->E1->Type))
+            scratchpad[expStringLength++] = '(';
         const char* e1  = PrintExpression(exp->E1);
         uint32_t e1_length = strlen(e1);
         memcpy(scratchpad + expStringLength, e1, e1_length);
         expStringLength += e1_length;
         free(e1);
-        scratchpad[expStringLength++] = ')';
+        if (!IsBinaryExp(exp->E1->Type))
+            scratchpad[expStringLength++] = ')';
     }
     else if (exp->Type == exp_identifier)
     {
