@@ -54,7 +54,13 @@ static metal_token_enum_t MetalLexFixedLengthToken(const char _chrs[7])
         return tok_comma;
 
     case '-':
-        return tok_minus;
+        switch (_chrs[1])
+        {
+        default:
+            return tok_minus;
+        case '>':
+            return tok_arrow;
+        }
 
     case '.':
         switch (_chrs[1])
@@ -93,7 +99,7 @@ static metal_token_enum_t MetalLexFixedLengthToken(const char _chrs[7])
             default:
                 return tok_lessEqual;
             case '>':
-                return tok_spaceShip;
+                return tok_spaceship;
             }
         }
 
@@ -362,12 +368,13 @@ static uint32_t StaticMetalTokenLength(metal_token_enum_t t)
     switch(t) {
         default :  return 1;
         case tok_comment_end : return 2; // */
+        case tok_arrow : return 2; // ->
         case tok_dotdot : return 2; // ..
         case tok_comment_begin : return 2; // /* */
         case tok_comment_single : return 2; // //
         case tok_lessEqual : return 2;// <=
         case tok_greaterEqual : return 2;// >=
-        case tok_spaceShip : return 3;// <=>
+        case tok_spaceship : return 3;// <=>
         case tok_equalsEquals : return 2; // ==
         case tok_notEqual : return 2; // !=
         case tok_full_slice : return 2; // []
@@ -461,7 +468,7 @@ metal_lexer_state_t MetalLexerStateFromBuffer(uint32_t sourceId, const char* buf
 
 static inline bool IsIdentifierChar(char c)
 {
-    char upper_c = (c & ~32);
+    const char upper_c = (c & ~32);
     return (upper_c >= 'A' && upper_c <= 'Z') || c == '_';
 }
 
@@ -683,8 +690,9 @@ void test_lexer()
         "$",
         "[]",
 
-
+        "first_binary",
         ",",
+        "->",
         ".",
         "..",
 
@@ -704,6 +712,7 @@ void test_lexer()
         ">=",
         "<=>",
 
+        "first_keyword",
         "struct",
         "union",
         "type",
@@ -712,6 +721,7 @@ void test_lexer()
         "eject",
         "assert",
         "typedef",
+
         "\0"
     };
 
@@ -722,6 +732,10 @@ void test_lexer()
         (*(int*)&tok)++)
     {
         const char* word = test[idx++];
+        if (!memcmp(word, "first_", sizeof("first_") - 1))
+        {
+            continue;
+        }
         metal_token_enum_t lexed = MetalLexFixedLengthToken(word);
         assert(lexed == tok);
         assert(strlen(word) == StaticMetalTokenLength(tok));

@@ -1,8 +1,9 @@
 #include "metal_lexer.h"
+#include "assert.h"
 
 const char* MetalTokenEnum_toChars(metal_token_enum_t tok)
 {
-    const char* result;
+    const char* result = 0;
 
     if (tok == tok_invalid)
         result = "invalid";
@@ -31,6 +32,8 @@ const char* MetalTokenEnum_toChars(metal_token_enum_t tok)
 
     if (tok == tok_comma)
         result = ",";
+    if (tok == tok_arrow)
+        result = "->";
     if (tok == tok_dot)
         result = ".";
     if (tok == tok_dotdot)
@@ -83,7 +86,7 @@ const char* MetalTokenEnum_toChars(metal_token_enum_t tok)
     if (tok == tok_greaterEqual)
         result = ">=";
 
-    if (tok == tok_spaceShip)
+    if (tok == tok_spaceship)
         result = "<=>";
 
     if (tok == tok_kw_struct)
@@ -107,7 +110,9 @@ const char* MetalTokenEnum_toChars(metal_token_enum_t tok)
         result = "EOF";
 
     if (tok == tok_max)
-      result = "max";
+        result = "max";
+
+    assert(result != 0);
 
     return result;
 }

@@ -19,69 +19,79 @@ typedef struct metal_lexer_state_t
 
 } metal_lexer_state_t;
 
-typedef enum metal_token_enum_t {
-    tok_invalid, // "invalid"
+#define FOREACH_TOKEN(M) \
+    M(tok_invalid) \
+    \
+    M(tok_identifier) \
+    M(tok_unsignedNumber) \
+    M(tok_stringLiteral) \
+    \
+    M(tok_first_static) \
+    \
+    M(tok_lParen) \
+    M(tok_rParen) \
+    M(tok_lBrace) \
+    M(tok_rBrace) \
+    M(tok_lBracket) \
+    M(tok_rBracket) \
+    \
+    M(tok_comment_begin) \
+    M(tok_comment_end) \
+    M(tok_comment_single) \
+    M(tok_bang) \
+    M(tok_addr) \
+    M(tok_semicolon) \
+    M(tok_colon) \
+    M(tok_dollar) \
+    M(tok_full_slice) \
+    \
+    M(tok_first_binary) \
+    \
+    M(tok_comma) \
+    M(tok_arrow) \
+    M(tok_dot) \
+    M(tok_dotdot) \
+    \
+    M(tok_minus) \
+    M(tok_plus) \
+    M(tok_div) \
+    M(tok_star) \
+    \
+    M(tok_cat) \
+    M(tok_cat_ass) \
+    \
+    M(tok_assign) \
+    M(tok_equalsEquals) \
+    M(tok_notEqual) \
+    M(tok_lessThan) \
+    M(tok_lessEqual) \
+    M(tok_greaterThan) \
+    M(tok_greaterEqual) \
+    M(tok_spaceship) \
+    \
+    M(tok_first_keyword) \
+    \
+    M(tok_kw_struct) \
+    M(tok_kw_union) \
+    M(tok_kw_type) \
+    M(tok_kw_enum) \
+    M(tok_kw_inject) \
+    M(tok_kw_eject) \
+    M(tok_kw_assert) \
+    M(tok_kw_typedef) \
+    \
+    M(tok_eof) \
+    M(tok_max)
 
-    tok_identifier, // "identifier"
-    tok_unsignedNumber, // "unsigned number"
-    // tok_signedNumber, // "signed number"
-    tok_stringLiteral, // string_Literal
+#define WITH_COMMA(TOK) \
+    TOK,
 
-    tok_lParen, // "("
-    tok_rParen, // ")"
-    tok_lBrace, // "{"
-    tok_rBrace, // "}"
-    tok_lBracket, // "["
-    tok_rBracket, // "]"
-
-    tok_comment_begin, // "/*"
-    tok_comment_end, // "*/"
-    tok_comment_single, // "//"
-    tok_bang, // "!"
-    tok_addr, // "&"
-    tok_semicolon,// ";"
-    tok_colon, // ":"
-    tok_dollar, // "$"
-    tok_full_slice, // "[]"
-    
-    tok_first_binary,
-    // binary ops
-    tok_comma = tok_first_binary, // ","
-    tok_dot, // "."
-    tok_dotdot, // ".."
-    
-    tok_minus, // "-",
-    tok_plus, // "+"
-    tok_div, // "/"
-    tok_star,// "*"
-    
-    tok_cat, // "~"
-    tok_cat_ass, // "~="
-
-    tok_assign, // "="
-    tok_equalsEquals, // "=="
-    tok_notEqual, // "!="
-    tok_lessThan, //  "<"
-    tok_lessEqual, // "<="
-    
-    tok_greaterThan, // ">"
-    tok_greaterEqual, // ">="
-
-    tok_spaceShip, // "<=>"
-    // end binary ops
-
-    tok_kw_struct, // "struct"
-    tok_kw_union, // "union"
-    tok_kw_type,  // "type"
-    tok_kw_enum, // "enum"
-    tok_kw_inject, // "inject"
-    tok_kw_eject,// "eject"
-    tok_kw_assert, // "assert"
-    tok_kw_typedef, // "typedef"
-
-    tok_eof, // "EOF"
-    tok_max
+typedef enum metal_token_enum_t
+{
+    FOREACH_TOKEN(WITH_COMMA)
 } metal_token_enum_t;
+
+#undef WITH_COMMA
 
 typedef struct metal_token_t {
     metal_token_enum_t TokenType;
@@ -159,7 +169,7 @@ eject array_helpers_and_methods(meta_var ptr)
 eject array_methods(meta_var ptr, meta_var size, meta_var capacity)
 {
     assert(size.name.length == ptr.name.length + "_size".length);
-    assert(capacity.name.length == capacity.name.length + "_capacity".length);
+    assert(capacity.name.length == ptr.name.length + "_capacity".length);
     assert(size.name[0 .. ptr.length] == ptr.name);
     assert(capacity.name[0 .. ptr.length] == ptr.name);
 

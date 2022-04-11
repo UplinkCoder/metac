@@ -4,8 +4,10 @@
 #include "../metal_parser.h"
 #include "../3rd_party/linenoise/linenoise.c"
 #include "../int_to_str.c"
+#include <stdio.h>
 
 const char* MetalTokenEnum_toChars(metal_token_enum_t tok);
+const char* PrintExpression(metal_expression_t*);
 
 int main(int argc, const char* argv[])
 {
@@ -17,8 +19,8 @@ int main(int argc, const char* argv[])
     metal_parser_t parser;
     MetalParserInitFromLexer(&parser, &lexer);
     bool parsingExpression = false;
-    const char* promt_ = "REPL>"; 
-LinputLoop:    
+    const char* promt_ = "REPL>";
+LinputLoop:
     while ((line = linenoise(promt_)))
     {
         linenoiseHistoryAdd(line);
@@ -40,13 +42,16 @@ LinputLoop:
             if (parsingExpression)
             {
                 metal_expression_t* exp =
-                    parseExpressionFromString(line);
+                    ParseExpressionFromString(line);
                 //
+
+                const char* str = PrintExpression(exp);
+                printf("result = %s\n", str);
                 parsingExpression = false;
                 promt_ = "REPL>";
                 goto LinputLoop;
             }
-            
+
             metal_token_t token =
                 *MetalLexerLexNextToken(&lexer, &repl_state, line, line_length);
 
@@ -70,7 +75,7 @@ LinputLoop:
                 printf("    \"%.*s\"\n", token.Length, token.String);
             }
 #endif
-            
+
             line_length -= eaten_chars;
             line += eaten_chars;
 
