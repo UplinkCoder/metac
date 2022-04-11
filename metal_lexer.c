@@ -425,6 +425,7 @@ uint32_t MetalTokenLength(metal_token_t token)
     }
 
     assert(0);
+    return 0;
 }
 
 void InitMetalLexer(metal_lexer_t* self)
@@ -445,15 +446,15 @@ metal_lexer_state_t MetalLexerStateFromBuffer(uint32_t sourceId, const char* buf
 {
     assert(buffer[bufferLength] == '\0');
 
-    metal_lexer_state_t result = {
-        .Text = buffer,
-        .Column = 1,
-        .Line = 1,
-        .Position = 0,
-        .Size = bufferLength,
-        .OuterBlock = cast(block_idx_t) 0,
-        .SourceId = sourceId
-    };
+    metal_lexer_state_t result;
+
+    result.Text = buffer;
+    result.Column = 1;
+    result.Line = 1;
+    result.Position = 0;
+    result.Size = bufferLength;
+    result.OuterBlock = cast(block_idx_t) 0;
+    result.SourceId = sourceId;
 
     return result;
 }
@@ -521,9 +522,8 @@ metal_token_t* MetalLexerLexNextToken(metal_lexer_t* self,
     assert(text[len] == '\0');
     metal_token_t* result = 0;
 
-    metal_token_t token = {0};
-    token.TokenType = 0;
-    token.SourceId = state ->SourceId;
+    metal_token_t token = {(metal_token_enum_t)0};
+    token.SourceId = state->SourceId;
 
     assert(self->tokens_capacity > self->tokens_size);
     uint32_t eaten_chars = 0;
@@ -658,7 +658,7 @@ metal_token_t* MetalLexerLexNextToken(metal_lexer_t* self,
     }
     else
     {
-        static metal_token_t stop_token = {0};
+        static metal_token_t stop_token = {tok_eof};
         result = &stop_token;
     }
     state->Position += eaten_chars;
