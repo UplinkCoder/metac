@@ -411,15 +411,40 @@ static uint32_t StaticMetaCTokenLength(metac_token_enum_t t)
 
 static inline uint32_t fastLog10(uint32_t val)
 {
-    return (val < 10) ? 0
-         : (val < 100) ? 1
-         : (val < 1000) ? 2
-         : (val < 10000) ? 3
-         : (val < 100000) ? 4
-         : (val < 1000000) ? 5
-         : (val < 10000000) ? 6
-         : (val < 100000000) ? 7
-         : (val < 1000000000) ? 8 : 9;
+  uint32_t result;
+
+  result = 0;
+  if ( val >= 10 )
+  {
+    result = 1;
+    if ( val >= 100 )
+    {
+      result = 2;
+      if ( val >= 1000 )
+      {
+        result = 3;
+        if ( val >= 10000 )
+        {
+          result = 4;
+          if ( val >= 100000 )
+          {
+            result = 5;
+            if ( val >= 1000000 )
+            {
+              result = 6;
+              if ( val >= 10000000 )
+              {
+                result = 7;
+                if ( val >= 100000000 )
+                  result = 9 - (val < 1000000000);
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+  return result;
 }
 
 uint32_t MetaCTokenLength(metac_token_t token)
