@@ -560,7 +560,7 @@ metal_token_t* MetalLexerLexNextToken(metal_lexer_t* self,
                 uint32_t length = 0;
                 token.Identifier = text;
 
-                while (IsIdentifierChar(*text++))
+                while ((c = *text++) && (IsIdentifierChar(c) || IsNumericChar(c)))
                 {
                     length++;
                     eaten_chars++;
