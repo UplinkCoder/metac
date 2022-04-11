@@ -53,7 +53,7 @@ void MetalParserMatch(metal_parser_t* self, metal_token_enum_t type)
     metal_token_enum_t got = token->TokenType;
     if (got != type)
     {
-        printf("Expected: %s -- Got: %s\n", 
+        printf("Expected: %s -- Got: %s\n",
             MetalTokenEnum_toChars(type), MetalTokenEnum_toChars(got));
     }
 }
@@ -272,10 +272,11 @@ metal_expression_t* ParseExpression(metal_parser_t* self, metal_expression_t* pr
     metal_token_t* peekNext = MetalParserPeekToken(self, 1);
     if (peekNext && IsBinaryOperator(peekNext->TokenType))
     {
-        MetalParserMatch(self, peekNext->TokenType);
+        metal_token_enum_t op = peekNext->TokenType;
+        MetalParserMatch(self, op);
 //        printf("It's an operator\n");
-        
-        metal_expression_type_t exp_type = BinExpTypeFromTokenType(tokenType);
+
+        metal_expression_type_t exp_type = BinExpTypeFromTokenType(op);
 
         metal_expression_t* E1 = result;
         metal_expression_t* E2 = ParseExpression(self, 0);
@@ -306,15 +307,22 @@ metal_expression_t* ParseExpressionFromString(const char* exp)
 
 #include <stdio.h>
 
-#define CASE_MACRO(EXP_TYPE, ...) \
-    case EXP_TYPE : return #EXP_TYPE;
 
 const char* MetalExpType_toChars(metal_expression_type_t type)
 {
+    const char* result = 0;
+
+#define CASE_MACRO(EXP_TYPE, ...) \
+    case EXP_TYPE : {result = #EXP_TYPE;} break;
+
     switch(type)
     {
         FOREACH_EXP(CASE_MACRO)
     }
+
+    return result;
+
+#undef CASE_MACRO
 }
 
 const char* PrintExpression(metal_expression_t* exp)
@@ -393,7 +401,7 @@ uint32_t OpToPrecedence(metal_expression_type_t exp)
     }
     else
     {
-        
+
     }
     return 0;
 }

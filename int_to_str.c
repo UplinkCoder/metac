@@ -20,7 +20,7 @@ static inline char* u64tostr(uint64_t v, char buffer[21])
 
 static inline char* i64tostr(int64_t v, char buffer[22])
 {
-    int wasNegative = (v & (1L << 63L)) != 0;
+    int wasNegative = (v & (1LL << 63LL)) != 0;
 
     if (wasNegative) v = ~v + 1;
 

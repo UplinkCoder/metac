@@ -127,7 +127,7 @@ typedef struct metal_parser_t
 {
     metal_lexer_t* Lexer;
     metal_lexer_state_t* lexer_state;
-    
+
     uint32_t CurrentTokenIndex;
 } metal_parser_t;
 
