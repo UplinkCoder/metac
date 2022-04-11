@@ -1,56 +1,56 @@
 #include "compat.h"
 #include "metac_lexer.h"
 
-#define FOREACH_BINARY_EXP(M, ...) \
-    M(exp_bin_invalid, _VA_ARGS_) \
+#define FOREACH_BINARY_EXP(M) \
+    M(exp_bin_invalid) \
     \
-    M(exp_arrow, _VA_ARGS_) \
-    M(exp_dot, _VA_ARGS_) \
-    M(exp_dotdot, _VA_ARGS_) \
+    M(exp_arrow) \
+    M(exp_dot) \
+    M(exp_dotdot) \
     \
-    M(exp_add, _VA_ARGS_) \
-    M(exp_sub, _VA_ARGS_) \
-    M(exp_mul, _VA_ARGS_) \
-    M(exp_div, _VA_ARGS_) \
-    M(exp_cat, _VA_ARGS_) \
-    M(exp_catass, _VA_ARGS_) \
-    M(exp_assign, _VA_ARGS_) \
+    M(exp_add) \
+    M(exp_sub) \
+    M(exp_mul) \
+    M(exp_div) \
+    M(exp_cat) \
+    M(exp_catass) \
+    M(exp_assign) \
     \
-    M(exp_eq, _VA_ARGS_) \
-    M(exp_neq, _VA_ARGS_) \
-    M(exp_lt, _VA_ARGS_) \
-    M(exp_le, _VA_ARGS_) \
-    M(exp_gt, _VA_ARGS_) \
-    M(exp_ge, _VA_ARGS_) \
-    M(exp_spaceship, _VA_ARGS_) \
+    M(exp_eq) \
+    M(exp_neq) \
+    M(exp_lt) \
+    M(exp_le) \
+    M(exp_gt) \
+    M(exp_ge) \
+    M(exp_spaceship) \
     \
-    M(exp_bin_max, _VA_ARGS_)
+    M(exp_bin_max)
 
-#define FOREACH_EXP(M, ...) \
-    M(exp_invalid, _VA_ARGS_) \
+#define FOREACH_EXP(M) \
+    M(exp_invalid) \
     \
-    M(exp_identifier,  _VA_ARGS_) \
-    M(exp_string,  _VA_ARGS_) \
-    M(exp_signed_integer, _VA_ARGS_) \
-    M(exp_inject, _VA_ARGS_) \
-    M(exp_eject,  _VA_ARGS_) \
-    M(exp_assert, _VA_ARGS_) \
-    M(exp_outer,  _VA_ARGS_) \
-    M(exp_addr,  _VA_ARGS_) \
-    M(exp_ptr,  _VA_ARGS_) \
-    M(exp_paren,  _VA_ARGS_) \
+    M(exp_identifier) \
+    M(exp_string) \
+    M(exp_signed_integer) \
+    M(exp_inject) \
+    M(exp_eject) \
+    M(exp_assert) \
+    M(exp_outer) \
+    M(exp_addr) \
+    M(exp_ptr) \
+    M(exp_paren) \
     \
-    FOREACH_BINARY_EXP(M, _VA_ARGS_) \
+    FOREACH_BINARY_EXP(M) \
     \
-    M(exp_full_slice, _VA_ARGS_) \
-    M(exp_slice, _VA_ARGS_) \
-    M(exp_call, _VA_ARGS_) \
+    M(exp_full_slice) \
+    M(exp_slice) \
+    M(exp_call) \
     \
-    M(exp_ptr_or_mul, _VA_ARGS_) \
-    M(exp_max, _VA_ARGS_)
+    M(exp_ptr_or_mul) \
+    M(exp_max)
 
 
-#define WITH_COMMA(S, ...) \
+#define WITH_COMMA(S) \
     S,
 
 typedef enum metac_expression_type_t

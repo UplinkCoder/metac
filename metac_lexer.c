@@ -50,7 +50,7 @@ static metac_token_enum_t MetaCLexFixedLengthToken(const char _chrs[7])
         return tok_comma;
 
     case '+':
-        switch(_chrs[1])
+        switch (_chrs[1])
         {
         default :
             return tok_plus;
@@ -61,7 +61,7 @@ static metac_token_enum_t MetaCLexFixedLengthToken(const char _chrs[7])
         }
 
     case '-':
-        switch(_chrs[1])
+        switch (_chrs[1])
         {
         default :
             return tok_minus;
@@ -83,7 +83,7 @@ static metac_token_enum_t MetaCLexFixedLengthToken(const char _chrs[7])
         }
 
     case '/':
-        switch(_chrs[1])
+        switch (_chrs[1])
         {
         default :
             return tok_div;
@@ -431,7 +431,7 @@ const char* MetaCTokenEnum_toChars(metac_token_enum_t type)
 #define CASE_MACRO(TOKEN) \
     case TOKEN : {result = #TOKEN;} break;
 
-    switch(type)
+    switch (type)
     {
         FOREACH_TOKEN(CASE_MACRO)
     }
@@ -443,7 +443,7 @@ const char* MetaCTokenEnum_toChars(metac_token_enum_t type)
 
 static uint32_t StaticMetaCTokenLength(metac_token_enum_t t)
 {
-    switch(t) {
+    switch (t) {
         default :  return 1;
 
         case tok_add_ass : return 2; // +=
@@ -625,7 +625,7 @@ static inline metac_token_enum_t classify(char c)
 
 static inline char EscapedChar(char c)
 {
-    switch(c)
+    switch (c)
     {
         case 'n'  : return '\n';
         case 'v'  : return '\v';
