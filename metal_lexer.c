@@ -722,7 +722,9 @@ void test_lexer()
         "assert",
         "typedef",
 
-        "\0"
+        "\0",
+
+        (const char*) 0
     };
 
     int idx = 0;
@@ -732,6 +734,11 @@ void test_lexer()
         (*(int*)&tok)++)
     {
         const char* word = test[idx++];
+        if (!word)
+        {
+            assert(tok == tok_max);
+            continue;
+        }
         if (!memcmp(word, "first_", sizeof("first_") - 1))
         {
             continue;

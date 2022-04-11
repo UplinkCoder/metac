@@ -37,6 +37,7 @@ typedef struct metal_lexer_state_t
     \
     M(tok_comment_begin) \
     M(tok_comment_end) \
+    \
     M(tok_comment_single) \
     M(tok_bang) \
     M(tok_addr) \
