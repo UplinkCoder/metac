@@ -56,7 +56,7 @@ static metac_token_enum_t MetaCLexFixedLengthToken(const char _chrs[7])
             return tok_plus;
         case '+' :
             return tok_plusplus;
-        case '=' :
+        case '=':
             return tok_add_ass;
         }
 
@@ -67,7 +67,7 @@ static metac_token_enum_t MetaCLexFixedLengthToken(const char _chrs[7])
             return tok_minus;
         case '-' :
             return tok_minusminus;
-        case '=' :
+        case '=':
             return tok_sub_ass;
         case '>':
             return tok_arrow;
@@ -91,7 +91,7 @@ static metac_token_enum_t MetaCLexFixedLengthToken(const char _chrs[7])
             return tok_comment_single;
         case '*':
             return tok_comment_begin;
-        case '=' :
+        case '=':
             return tok_div_ass;
         }
 
@@ -633,8 +633,8 @@ static inline char EscapedChar(char c)
         case 'r'  : return '\r';
         case '"'  : return '"';
         case 'a'  : return '\a';
-        case '\'' : return '\'';
-        case '\\' : return '\\';
+        case '\'': return '\'';
+        case '\\': return '\\';
         case '0'  : return '\0';
     }
     return 'E';
