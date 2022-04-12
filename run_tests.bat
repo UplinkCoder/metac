@@ -1,2 +1,2 @@
-cl /TP metal_lexer.c /DTEST_LEXER /Os
-metal_lexer.exe
+cl /TP metac_lexer.c /DTEST_LEXER /Os
+metac_lexer.exe

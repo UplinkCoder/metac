@@ -208,7 +208,7 @@ static metac_token_enum_t MetaCLexFixedLengthToken(const char _chrs[7])
         case '=':
             return tok_cat_ass;
         }
-
+#ifdef LEXER_STATIC_KEYWORDS
         // keywords ------------- we might not want to lex em this way
     case 'a':
         switch (_chrs[1])
@@ -419,8 +419,9 @@ static metac_token_enum_t MetaCLexFixedLengthToken(const char _chrs[7])
                 }
             }
         }
-    }
 
+#endif
+    }
     return tok_invalid;
 }
 
@@ -639,6 +640,10 @@ static inline char EscapedChar(char c)
     }
     return 'E';
 }
+void MetaCLexerMatchKeywordIdentifier(metac_token_t* tok)
+{
+#include "generated/metac_match_keyword.inl"
+}
 
 metac_token_t* MetaCLexerLexNextToken(metac_lexer_t* self,
                                       metac_lexer_state_t* state,
@@ -683,7 +688,7 @@ metac_token_t* MetaCLexerLexNextToken(metac_lexer_t* self,
             if (IsIdentifierChar(c))
             {
                 uint32_t length = 0;
-                token.Identifier = text;
+                char identifierBegin = text;
 
                 while ((c = *text++) && (IsIdentifierChar(c) || IsNumericChar(c)))
                 {
@@ -693,7 +698,17 @@ metac_token_t* MetaCLexerLexNextToken(metac_lexer_t* self,
                 token.TokenType = tok_identifier;
 
                 token.Length = length;
-                token.Crc32CLw16 = (crc32c(~0, token.Identifier, token.Length) & 0xFFFF);
+                token.Crc32CLw16 = (crc32c(~0, identifierBegin, token.Length) & 0xFFFF);
+#ifndef LEXER_STATIC_KEYWORDS
+                MetaCLexerMatchKeywordIdentifier(&token);
+#endif
+#ifdef IDENTIFIER_TABLE
+                if(token.TokenType == tok_identifier)
+                {
+                    token->identifier_idx =
+                        GetOrAddString(lexer->IdentifierTable, token.IdentifierKey, identifierBegin);
+                }
+#endif
             }
             else if (IsNumericChar(c))
             {
@@ -738,7 +753,6 @@ metac_token_t* MetaCLexerLexNextToken(metac_lexer_t* self,
             else if (c == '"')
             {
                 ++text;
-                // eaten_chars++;
                 token.TokenType = tok_stringLiteral;
                 token.String = text;
                 c = *text++;
@@ -795,7 +809,7 @@ metac_token_t* MetaCLexerLexNextToken(metac_lexer_t* self,
 
 void test_lexer()
 {
-    const char *test[] =
+    const char* token_list[] =
     {
         "(",
         ")",
@@ -867,6 +881,7 @@ void test_lexer()
         "<=>",
 
         "first_keyword",
+
         "struct",
         "union",
         "type",
@@ -884,10 +899,10 @@ void test_lexer()
     int idx = 0;
 
     for (metac_token_enum_t tok = tok_lParen;
-        idx < (sizeof(test) / sizeof(test[0]));
+        idx < (sizeof(token_list) / sizeof(token_list[0]));
         (*(int*)&tok)++)
     {
-        const char* word = test[idx++];
+        const char* word = token_list[idx++];
         if (!word)
         {
             assert(tok == tok_max);
@@ -897,7 +912,25 @@ void test_lexer()
         {
             continue;
         }
-        metac_token_enum_t lexed = MetaCLexFixedLengthToken(word);
+        metac_token_enum_t lexed;
+#ifndef LEXER_STATIC_KEYWORDS
+        if ((tok >= FIRST_KEYWORD_TOKEN(TOK_SELF)) | tok <= LAST_KEYWORD_TOKEN(TOK_SELF))
+        {
+            metac_lexer_state_t state = {0};
+            metac_token_t t1 = {tok_invalid};
+            metac_lexer_t lexer;
+
+            lexer.tokens = &t1;
+            lexer.tokens_capacity = 1;
+            lexer.tokens_size = 0;
+
+            lexed = MetaCLexerLexNextToken(&lexer, &state, word, strlen(word))->TokenType;
+        }
+        else
+#endif
+        {
+            lexed = MetaCLexFixedLengthToken(word);
+        }
         assert(lexed == tok);
         assert(strlen(word) == StaticMetaCTokenLength(tok));
     }

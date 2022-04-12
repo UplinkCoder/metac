@@ -250,12 +250,19 @@ typedef struct metac_lexer_t {
 
     metac_token_t inlineTokens[2048];
 
+#ifdef IDENTIFIER_TABLE
+    string_table_t IdentifierTable;
+#endif
+#ifdef STRING_LITERAL_TABLE
+    string_table_t StringLiteralTable;
+#endif
 } metac_lexer_t;
 
 
 void InitMetaCLexer(metac_lexer_t* self);
 metac_lexer_state_t MetaCLexerStateFromString(uint32_t sourceId, const char* str);
 metac_lexer_state_t MetaCLexerStateFromBuffer(uint32_t sourceId, const char* buffer, uint32_t bufferLength);
+void MetaCLexerMatchKeywordIdentifier(metac_token_t*);
 metac_token_t* MetaCLexerLexNextToken(metac_lexer_t* self, metac_lexer_state_t* state,
                                       const char* text, uint32_t len);
 #endif // _METAC_LEXER_H_
