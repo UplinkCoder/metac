@@ -488,6 +488,7 @@ static uint32_t StaticMetaCTokenLength(metac_token_enum_t t)
         case tok_kw_inject : return 6; // inject
         case tok_kw_struct : return 6; // struct
         case tok_kw_type : return 4; // type
+        case tok_kw_typeof : return 6; // typeof
         case tok_kw_typedef : return 7; // typedef
         case tok_kw_union : return 5; // union
     }
@@ -587,12 +588,6 @@ metac_lexer_state_t MetaCLexerStateFromBuffer(uint32_t sourceId, const char* buf
 
 #define WRAP(...)
 
-#define ParseErrorF(STATE, MSG, ...) \
-    fprintf(stderr, "ParseError[%s:%u]: %u"  MSG  "\n", __FILE__, __LINE__, STATE->Position, __VA_ARGS__)
-
-#define ParseError(STATE, MSG) \
-    fprintf(stderr, "ParseError[%s:%u]: %u" MSG "\n", __FILE__, __LINE__, STATE->Position)
-
 static inline bool IsIdentifierChar(char c)
 {
     const char upper_c = (c & ~32);
@@ -688,7 +683,7 @@ metac_token_t* MetaCLexerLexNextToken(metac_lexer_t* self,
             if (IsIdentifierChar(c))
             {
                 uint32_t length = 0;
-                char identifierBegin = text;
+                const char* identifierBegin = text;
 
                 while ((c = *text++) && (IsIdentifierChar(c) || IsNumericChar(c)))
                 {
@@ -699,15 +694,18 @@ metac_token_t* MetaCLexerLexNextToken(metac_lexer_t* self,
 
                 token.Length = length;
                 token.Crc32CLw16 = (crc32c(~0, identifierBegin, token.Length) & 0xFFFF);
-#ifndef LEXER_STATIC_KEYWORDS
-                MetaCLexerMatchKeywordIdentifier(&token);
-#endif
 #ifdef IDENTIFIER_TABLE
                 if(token.TokenType == tok_identifier)
                 {
                     token->identifier_idx =
                         GetOrAddString(lexer->IdentifierTable, token.IdentifierKey, identifierBegin);
                 }
+#endif
+#ifndef IDENTIFIER_TABLE
+                token.Identifier = identifierBegin;
+#endif
+#ifndef LEXER_STATIC_KEYWORDS
+                MetaCLexerMatchKeywordIdentifier(&token);
 #endif
             }
             else if (IsNumericChar(c))
@@ -822,6 +820,10 @@ void test_lexer()
 
         "//",
 
+        "++",
+        "--",
+
+        
         "!",
         ";",
         ":",
@@ -835,49 +837,43 @@ void test_lexer()
         "..",
 
         "+",
-        "++",
-        "+=",
-
         "-",
-        "--",
-        "-=",
-
+        "*",
         "/",
-        "/=",
 
         "^",
-        "^=",
-
         "|",
-        "||",
-        "|=",
-
         "&",
-        "&&",
-        "&=",
-
-        "*",
-        "*=",
-
         "~",
-        "~=",
+
+        "<<",
+        ">>",
+
+        "||",
+        "&&",
 
         "=",
+
+        "+=",
+        "-=",
+        "*=",
+        "/=",
+
+        "^=",
+        "|=",
+        "&=",
+        "~=",
+
+        "<<=",
+        ">>=",
+
         "==",
         "!=",
 
         "<",
         "<=",
-
-        "<<",
-        "<<=",
-
         ">",
         ">=",
-
-        ">>",
-        ">>=",
-
         "<=>",
 
         "first_keyword",
@@ -885,6 +881,7 @@ void test_lexer()
         "struct",
         "union",
         "type",
+        "typeof",
         "enum",
         "inject",
         "eject",

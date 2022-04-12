@@ -1,9 +1,17 @@
 #include "compat.h"
 #include "metac_lexer.h"
 
+/*    M(exp_bin_invalid) \*/
+
+#define FIRST_BINARY_EXP(M) \
+    M(exp_comma)
+
+#define LAST_BINARY_EXP(M) \
+    M(exp_spaceship)
+
 #define FOREACH_BINARY_EXP(M) \
-    M(exp_bin_invalid) \
     \
+    FIRST_BINARY_EXP(M) \
     M(exp_arrow) \
     M(exp_dot) \
     M(exp_dotdot) \
@@ -12,9 +20,28 @@
     M(exp_sub) \
     M(exp_mul) \
     M(exp_div) \
+    M(exp_xor) \
+    M(exp_or) \
+    M(exp_and) \
     M(exp_cat) \
-    M(exp_catass) \
+    M(exp_lsh) \
+    M(exp_rsh) \
+    \
+    M(exp_oror) \
+    M(exp_andand) \
+    \
     M(exp_assign) \
+    \
+    M(exp_add_ass) \
+    M(exp_sub_ass) \
+    M(exp_mul_ass) \
+    M(exp_div_ass) \
+    M(exp_xor_ass) \
+    M(exp_or_ass) \
+    M(exp_and_ass) \
+    M(exp_cat_ass) \
+    M(exp_lsh_ass) \
+    M(exp_rsh_ass) \
     \
     M(exp_eq) \
     M(exp_neq) \
@@ -22,9 +49,7 @@
     M(exp_le) \
     M(exp_gt) \
     M(exp_ge) \
-    M(exp_spaceship) \
-    \
-    M(exp_bin_max)
+    LAST_BINARY_EXP(M)
 
 #define FOREACH_EXP(M) \
     M(exp_invalid) \
@@ -32,6 +57,7 @@
     M(exp_identifier) \
     M(exp_string) \
     M(exp_signed_integer) \
+    M(exp_typeof) \
     M(exp_inject) \
     M(exp_eject) \
     M(exp_assert) \
@@ -48,6 +74,7 @@
     \
     M(exp_addr_or_and) \
     M(exp_ptr_or_mul) \
+    \
     M(exp_max)
 
 
@@ -123,6 +150,14 @@ typedef enum metac_statement_type_t
     stmt_max
 } metac_statement_type_t;
 
+typedef struct metac_parser_reorder_state_t
+{
+    metac_expression_t* operandStack[1024];
+    metac_expression_type_t operatorStack[1024];
+    uint32_t nOperands;
+    uint32_t nOperators;
+    uint32_t Depth;
+} metac_parser_reorder_state_t;
 
 typedef struct metac_parser_t
 {
@@ -130,6 +165,8 @@ typedef struct metac_parser_t
     metac_lexer_state_t* lexer_state;
 
     uint32_t CurrentTokenIndex;
+    metac_parser_reorder_state_t* ExpressionReorderState;
+
 } metac_parser_t;
 
 void MetaCParserInitFromLexer(metac_parser_t* self, metac_lexer_t* lexer);

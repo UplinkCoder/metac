@@ -41,48 +41,38 @@ typedef struct metac_lexer_state_t
     M(tok_dotdot) \
     \
     M(tok_plus) \
-    M(tok_plusplus) \
-    M(tok_add_ass) \
-    \
     M(tok_minus) \
-    M(tok_minusminus) \
-    M(tok_sub_ass) \
-    \
-    M(tok_div) \
-    M(tok_div_ass) \
-    \
-    M(tok_xor) \
-    M(tok_xor_ass) \
-    \
-    M(tok_or) \
-    M(tok_oror) \
-    M(tok_or_ass) \
-    \
-    M(tok_and) \
-    M(tok_andand) \
-    M(tok_and_ass) \
-    \
     M(tok_star) \
-    M(tok_mul_ass) \
-    \
+    M(tok_div) \
+    M(tok_xor) \
+    M(tok_or) \
+    M(tok_and) \
     M(tok_cat) \
-    M(tok_cat_ass) \
+    M(tok_lsh) \
+    M(tok_rsh) \
+    \
+    M(tok_oror) \
+    M(tok_andand) \
     \
     M(tok_assign) \
+    \
+    M(tok_add_ass) \
+    M(tok_sub_ass) \
+    M(tok_mul_ass) \
+    M(tok_div_ass) \
+    M(tok_xor_ass) \
+    M(tok_or_ass) \
+    M(tok_and_ass) \
+    M(tok_cat_ass) \
+    M(tok_lsh_ass) \
+    M(tok_rsh_ass) \
+    \
     M(tok_equalsEquals) \
     M(tok_notEqual) \
-    \
     M(tok_lessThan) \
     M(tok_lessEqual) \
-    \
-    M(tok_lsh) \
-    M(tok_lsh_ass) \
-    \
     M(tok_greaterThan) \
     M(tok_greaterEqual) \
-    \
-    M(tok_rsh) \
-    M(tok_rsh_ass) \
     \
     LAST_BINARY_TOKEN(M)
 
@@ -90,6 +80,7 @@ typedef struct metac_lexer_state_t
     FIRST_KEYWORD_TOKEN(M) \
     M(tok_kw_union) \
     M(tok_kw_type) \
+    M(tok_kw_typeof) \
     M(tok_kw_enum) \
     M(tok_kw_inject) \
     M(tok_kw_eject) \
@@ -116,7 +107,11 @@ typedef struct metac_lexer_state_t
     M(tok_comment_end) \
     \
     M(tok_comment_single) \
+    \
+    M(tok_plusplus) \
+    M(tok_minusminus) \
     M(tok_bang) \
+    \
     M(tok_semicolon) \
     M(tok_colon) \
     M(tok_dollar) \
@@ -257,6 +252,14 @@ typedef struct metac_lexer_t {
     string_table_t StringLiteralTable;
 #endif
 } metac_lexer_t;
+
+#include <stdio.h>
+
+#define ParseErrorF(STATE, MSG, ...) \
+    fprintf(stderr, "ParseError[%s:%u]: %u"  MSG  "\n", __FILE__, __LINE__, STATE->Position, __VA_ARGS__)
+
+#define ParseError(STATE, MSG) \
+    fprintf(stderr, "ParseError[%s:%u]: %u" MSG "\n", __FILE__, __LINE__, (STATE ? STATE->Position : 0))
 
 
 void InitMetaCLexer(metac_lexer_t* self);
