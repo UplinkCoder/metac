@@ -146,9 +146,9 @@ metac_expression_type_t ExpTypeFromTokenType(metac_token_enum_t tokenType)
     {
         return exp_outer;
     }
-    else if (tokenType == tok_addr)
+    else if (tokenType == tok_and)
     {
-        return exp_addr;
+        return exp_addr_or_and;
     }
     else if (tokenType == tok_star)
     {

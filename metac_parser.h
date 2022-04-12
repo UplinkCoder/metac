@@ -46,6 +46,7 @@
     M(exp_slice) \
     M(exp_call) \
     \
+    M(exp_addr_or_and) \
     M(exp_ptr_or_mul) \
     M(exp_max)
 

@@ -19,35 +19,23 @@ typedef struct metac_lexer_state_t
 
 } metac_lexer_state_t;
 
-#define FOREACH_TOKEN(M) \
-    M(tok_invalid) \
-    \
-    M(tok_identifier) \
-    M(tok_unsignedNumber) \
-    M(tok_stringLiteral) \
-    \
-    M(tok_first_static) \
-    \
-    M(tok_lParen) \
-    M(tok_rParen) \
-    M(tok_lBrace) \
-    M(tok_rBrace) \
-    M(tok_lBracket) \
-    M(tok_rBracket) \
-    \
-    M(tok_comment_begin) \
-    M(tok_comment_end) \
-    \
-    M(tok_comment_single) \
-    M(tok_bang) \
-    M(tok_semicolon) \
-    M(tok_colon) \
-    M(tok_dollar) \
-    M(tok_full_slice) \
-    \
-    M(tok_first_binary) \
-    \
-    M(tok_comma) \
+#define TOK_SELF(TOK) \
+    TOK
+
+#define FIRST_KEYWORD_TOKEN(M) \
+    M(tok_kw_struct)
+
+#define LAST_KEYWORD_TOKEN(M) \
+    M(tok_kw_typedef)
+
+#define FIRST_BINARY_TOKEN(M) \
+    M(tok_comma)
+
+#define LAST_BINARY_TOKEN(M) \
+    M(tok_spaceship)
+
+#define FOREACH_BINARY_TOKEN(M) \
+    FIRST_BINARY_TOKEN(M) \
     M(tok_arrow) \
     M(tok_dot) \
     M(tok_dotdot) \
@@ -96,18 +84,51 @@ typedef struct metac_lexer_state_t
     M(tok_rsh) \
     M(tok_rsh_ass) \
     \
-    M(tok_spaceship) \
-    \
-    M(tok_first_keyword) \
-    \
-    M(tok_kw_struct) \
+    LAST_BINARY_TOKEN(M)
+
+#define FOREACH_KEYWORD_TOKEN(M) \
+    FIRST_KEYWORD_TOKEN(M) \
     M(tok_kw_union) \
     M(tok_kw_type) \
     M(tok_kw_enum) \
     M(tok_kw_inject) \
     M(tok_kw_eject) \
     M(tok_kw_assert) \
-    M(tok_kw_typedef) \
+    LAST_KEYWORD_TOKEN(M)
+
+#define FOREACH_TOKEN(M) \
+    M(tok_invalid) \
+    \
+    M(tok_identifier) \
+    M(tok_unsignedNumber) \
+    M(tok_stringLiteral) \
+    \
+    M(tok_first_static) \
+    \
+    M(tok_lParen) \
+    M(tok_rParen) \
+    M(tok_lBrace) \
+    M(tok_rBrace) \
+    M(tok_lBracket) \
+    M(tok_rBracket) \
+    \
+    M(tok_comment_begin) \
+    M(tok_comment_end) \
+    \
+    M(tok_comment_single) \
+    M(tok_bang) \
+    M(tok_semicolon) \
+    M(tok_colon) \
+    M(tok_dollar) \
+    M(tok_full_slice) \
+    \
+    M(tok_first_binary) \
+    \
+    FOREACH_BINARY_TOKEN(M) \
+    \
+    M(tok_first_keyword) \
+    \
+    FOREACH_KEYWORD_TOKEN(M) \
     \
     M(tok_eof) \
     M(tok_max)
