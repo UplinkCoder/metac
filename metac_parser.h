@@ -12,9 +12,7 @@
 #define FOREACH_BINARY_EXP(M) \
     \
     FIRST_BINARY_EXP(M) \
-    M(exp_arrow) \
     M(exp_dot) \
-    M(exp_dotdot) \
     \
     M(exp_add) \
     M(exp_sub) \
@@ -29,6 +27,9 @@
     \
     M(exp_oror) \
     M(exp_andand) \
+    \
+    M(exp_arrow) \
+    M(exp_dotdot) \
     \
     M(exp_assign) \
     \

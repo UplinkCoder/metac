@@ -36,9 +36,7 @@ typedef struct metac_lexer_state_t
 
 #define FOREACH_BINARY_TOKEN(M) \
     FIRST_BINARY_TOKEN(M) \
-    M(tok_arrow) \
     M(tok_dot) \
-    M(tok_dotdot) \
     \
     M(tok_plus) \
     M(tok_minus) \
@@ -53,6 +51,9 @@ typedef struct metac_lexer_state_t
     \
     M(tok_oror) \
     M(tok_andand) \
+    \
+    M(tok_arrow) \
+    M(tok_dotdot) \
     \
     M(tok_assign) \
     \
@@ -136,22 +137,21 @@ typedef struct metac_lexer_state_t
     M(tok_lBracket) \
     M(tok_rBracket) \
     \
-    M(tok_comment_begin) \
-    M(tok_comment_end) \
-    \
-    M(tok_comment_single) \
-    \
-    M(tok_plusplus) \
-    M(tok_minusminus) \
-    \
     M(tok_semicolon) \
     M(tok_colon) \
     M(tok_dollar) \
-    M(tok_full_slice) \
     \
     FOREACH_BINARY_TOKEN(M) \
     \
     FOREACH_KEYWORD_TOKEN(M) \
+    \
+    M(tok_comment_begin) \
+    M(tok_comment_end) \
+    M(tok_comment_single) \
+    \
+    M(tok_plusplus) \
+    M(tok_minusminus) \
+    M(tok_full_slice) \
     \
     LAST_STATIC_TOKEN(M)
 
@@ -287,14 +287,14 @@ typedef struct metac_lexer_t {
 #define IDENTIFIER_KEY(HASH, LENGTH) \
     ( ((uint32_t)(HASH & 0xFFFFF)) | (((uint32_t)(LENGTH)) << 20) )
 
-#define LENGTH_FROM_IDENTIFIER_KEY(IDENTIFIER_KEY) \
-    ( (IDENTIFIER_KEY) >> 20 )
+#define LENGTH_FROM_IDENTIFIER_KEY(KEY) \
+    ( (KEY) >> 20 )
 
 #define STRING_KEY(HASH, LENGTH) \
     ( (uint32_t)((HASH) & 0xFFF) | (((uint32_t)(LENGTH)) << 12) )
 
-#define LENGTH_FROM_STRING_KEY(STRING_KEY) \
-    ( (STRING_KEY) >> 12 )
+#define LENGTH_FROM_STRING_KEY(KEY) \
+    ( (KEY) >> 12 )
 
 
 #include <stdio.h>
