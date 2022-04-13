@@ -285,6 +285,20 @@ static uint32_t StaticMetaCTokenLength(metac_token_enum_t t)
         case tok_kw_continue : return 8;
         case tok_kw_until    : return 5;
 
+        case tok_kw_auto     : return 4;
+        case tok_kw_double   : return 6;
+        case tok_kw_float    : return 5;
+        case tok_kw_long     : return 4;
+        case tok_kw_int      : return 3;
+        case tok_kw_short    : return 5;
+        case tok_kw_char     : return 4;
+        case tok_kw_void     : return 4;
+        case tok_kw_unsigned : return 8;
+        case tok_kw_volatile : return 8;
+        case tok_kw_extern   : return 6;
+        case tok_kw_for      : return 3;
+        case tok_kw_sizeof   : return 6;
+        case tok_kw_goto     : return 4;
     }
 }
 
@@ -682,20 +696,20 @@ void test_lexer()
         "double",
         "float",
         "long",
-        "short",
         "int",
+        "short",
         "char",
         "void",
         "type",
 
-        "unsigned"
+        "unsigned",
         "const",
         "volatile",
         "extern",
 
         "for",
         "sizeof",
-        "return"
+        "return",
         "switch",
         "while",
 
@@ -709,7 +723,6 @@ void test_lexer()
         "do",
         "static",
         "inline",
-        "return",
         "if",
         "else",
         "break",
