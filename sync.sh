@@ -16,7 +16,8 @@ if [ -d $DST ]; then
     cp cache/cached_tree.c cache/cached_tree.h cache/crc32.c cache/serialize_tree.c $DST/cache
 
     mkdir -p $DST/utils
-    cp utils/gen_metac_match_keyword.c $DST/utils
+    cp utils/gen_metac_match_keyword.c utils/metac_count_token_length.c \
+       $DST/utils
 
     mkdir -p $DST/repl
     cp repl/repl.c repl/build.sh $DST/repl
