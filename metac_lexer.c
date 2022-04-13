@@ -738,7 +738,6 @@ void test_lexer()
             continue;
         }
         metac_token_enum_t lexed;
-#ifndef LEXER_STATIC_KEYWORDS
         if ((tok >= FIRST_KEYWORD_TOKEN(TOK_SELF)) & tok <= LAST_KEYWORD_TOKEN(TOK_SELF))
         {
             metac_lexer_state_t state = {0};
@@ -752,7 +751,6 @@ void test_lexer()
             lexed = MetaCLexerLexNextToken(&lexer, &state, word, strlen(word))->TokenType;
         }
         else
-#endif
         {
             lexed = MetaCLexFixedLengthToken(word);
         }

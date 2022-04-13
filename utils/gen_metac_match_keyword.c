@@ -5,7 +5,9 @@
 #include <stdio.h>
 void WriteMatchFunction(void)
 {
-    printf("#ifndef _MSC_VER\n");
+    printf("#if defined(__TINYC__)\n");
+    printf("#elif defined(_MSC_VER)\n");
+    printf("#else\n");
     printf("#  define memcmp __builtin_memcmp\n");
     printf("#endif\n");
 
