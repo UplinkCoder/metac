@@ -105,7 +105,7 @@ static metac_token_enum_t MetaCLexFixedLengthToken(const char _chrs[3])
         switch (_chrs[1])
         {
         default:
-            return tok_lessThan;
+            return tok_lt;
         case '<':
             switch (_chrs[2])
             {
@@ -118,7 +118,7 @@ static metac_token_enum_t MetaCLexFixedLengthToken(const char _chrs[3])
             switch (_chrs[2])
             {
             default:
-                return tok_lessEqual;
+                return tok_le;
             case '>':
                 return tok_spaceship;
             }
@@ -168,7 +168,7 @@ static metac_token_enum_t MetaCLexFixedLengthToken(const char _chrs[3])
         switch (_chrs[1])
         {
         default:
-            return tok_greaterThan;
+            return tok_gt;
         case '>':
             switch (_chrs[2])
             {
@@ -179,7 +179,7 @@ static metac_token_enum_t MetaCLexFixedLengthToken(const char _chrs[3])
             }
 
         case '=':
-            return tok_greaterEqual;
+            return tok_ge;
         }
 
     case '[':
@@ -232,65 +232,60 @@ const char* MetaCTokenEnum_toChars(metac_token_enum_t type)
 static uint32_t StaticMetaCTokenLength(metac_token_enum_t t)
 {
     switch (t) {
-        default :  return 1;
+        default              : return 2;
 
-        case tok_add_ass : return 2; // +=
-        case tok_sub_ass : return 2; // -=
-        case tok_mul_ass : return 2; // *=
-        case tok_div_ass : return 2; // /=
+        case tok_bang        : return 1;
+        case tok_lParen      : return 1;
+        case tok_rParen      : return 1;
+        case tok_lBrace      : return 1;
+        case tok_rBrace      : return 1;
+        case tok_lBracket    : return 1;
+        case tok_rBracket    : return 1;
+        case tok_semicolon   : return 1;
+        case tok_colon       : return 1;
+        case tok_dollar      : return 1;
+        case tok_comma       : return 1;
+        case tok_dot         : return 1;
+        case tok_plus        : return 1;
+        case tok_minus       : return 1;
+        case tok_star        : return 1;
+        case tok_div         : return 1;
+        case tok_xor         : return 1;
+        case tok_or          : return 1;
+        case tok_and         : return 1;
+        case tok_cat         : return 1;
+        case tok_assign      : return 1;
+        case tok_lt          : return 1;
+        case tok_gt          : return 1;
 
-        case tok_xor_ass : return 2; // ^=
-        case tok_and_ass : return 2; // &=
-        case tok_or_ass  : return 2; // |=
+        case tok_lsh_ass     : return 3; // <<=
+        case tok_rsh_ass     : return 3; // >>=
 
-        case tok_plusplus : return 2; // ++
-        case tok_minusminus : return 2; // --
-        case tok_andand  : return 2; // &&
-        case tok_oror  : return 2; // ||
+        case tok_spaceship   : return 3;// <=>
+        case tok_eof         : return 0;
 
-        case tok_lsh : return 2; // <<
-        case tok_rsh  : return 2; // >>
-
-        case tok_lsh_ass  : return 3; // <<=
-        case tok_rsh_ass  : return 3; // >>=
-
-        case tok_arrow : return 2; // ->
-        case tok_dotdot : return 2; // ..
-
-        case tok_comment_end : return 2; // */
-        case tok_comment_begin : return 2; // /* */
-        case tok_comment_single : return 2; // //
-        case tok_lessEqual : return 2;// <=
-        case tok_greaterEqual : return 2;// >=
-        case tok_spaceship : return 3;// <=>
-        case tok_equalsEquals : return 2; // ==
-        case tok_notEqual : return 2; // !=
-        case tok_full_slice : return 2; // []
-        case tok_cat_ass : return 2; // ~=
-        case tok_eof : return 0;
-
-        case tok_kw_assert : return 6; // assert
-        case tok_kw_eject : return 5; // eject
-        case tok_kw_enum : return 4; // enum
-        case tok_kw_inject : return 6; // inject
-        case tok_kw_struct : return 6; // struct
-        case tok_kw_type : return 4; // type
-        case tok_kw_typeof : return 6; // typeof
-        case tok_kw_typedef : return 7; // typedef
-        case tok_kw_union : return 5; // union
-        case tok_kw_switch : return 6;
-        case tok_kw_case : return 4;
-        case tok_kw_while : return 5;
-        case tok_kw_do: return 2;
-        case tok_kw_static: return 6;
-        case tok_kw_inline: return 6;
-        case tok_kw_return: return 6;
-        case tok_kw_if: return 2;
-        case tok_kw_else: return 4;
-        case tok_kw_const: return 5;
-        case tok_kw_break: return 5;
-        case tok_kw_continue: return 8;
-        case tok_kw_until: return 5;
+        case tok_kw_assert   : return 6; // assert
+        case tok_kw_eject    : return 5; // eject
+        case tok_kw_enum     : return 4; // enum
+        case tok_kw_inject   : return 6; // inject
+        case tok_kw_struct   : return 6; // struct
+        case tok_kw_type     : return 4; // type
+        case tok_kw_typeof   : return 6; // typeof
+        case tok_kw_typedef  : return 7; // typedef
+        case tok_kw_union    : return 5; // union
+        case tok_kw_switch   : return 6;
+        case tok_kw_case     : return 4;
+        case tok_kw_while    : return 5;
+        case tok_kw_do       : return 2;
+        case tok_kw_static   : return 6;
+        case tok_kw_inline   : return 6;
+        case tok_kw_return   : return 6;
+        case tok_kw_if       : return 2;
+        case tok_kw_else     : return 4;
+        case tok_kw_const    : return 5;
+        case tok_kw_break    : return 5;
+        case tok_kw_continue : return 8;
+        case tok_kw_until    : return 5;
     }
 }
 

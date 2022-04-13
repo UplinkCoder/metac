@@ -69,10 +69,10 @@ typedef struct metac_lexer_state_t
     \
     M(tok_equalsEquals) \
     M(tok_notEqual) \
-    M(tok_lessThan) \
-    M(tok_lessEqual) \
-    M(tok_greaterThan) \
-    M(tok_greaterEqual) \
+    M(tok_lt) \
+    M(tok_le) \
+    M(tok_gt) \
+    M(tok_ge) \
     \
     LAST_BINARY_TOKEN(M)
 
