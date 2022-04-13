@@ -233,6 +233,7 @@ static uint32_t StaticMetaCTokenLength(metac_token_enum_t t)
 {
     switch (t) {
         default              : return 2;
+        case tok_eof         : return 0;
 
         case tok_bang        : return 1;
         case tok_lParen      : return 1;
@@ -262,30 +263,28 @@ static uint32_t StaticMetaCTokenLength(metac_token_enum_t t)
         case tok_rsh_ass     : return 3; // >>=
 
         case tok_spaceship   : return 3;// <=>
-        case tok_eof         : return 0;
 
-        case tok_kw_assert   : return 6; // assert
-        case tok_kw_eject    : return 5; // eject
-        case tok_kw_enum     : return 4; // enum
-        case tok_kw_inject   : return 6; // inject
-        case tok_kw_struct   : return 6; // struct
-        case tok_kw_type     : return 4; // type
-        case tok_kw_typeof   : return 6; // typeof
-        case tok_kw_typedef  : return 7; // typedef
-        case tok_kw_union    : return 5; // union
+        case tok_kw_struct   : return 6;
+        case tok_kw_union    : return 5;
+        case tok_kw_enum     : return 4;
+        case tok_kw_type     : return 4;
+        case tok_kw_const    : return 5;
+        case tok_kw_return   : return 6;
         case tok_kw_switch   : return 6;
-        case tok_kw_case     : return 4;
         case tok_kw_while    : return 5;
-        case tok_kw_do       : return 2;
+        case tok_kw_typeof   : return 6;
+        case tok_kw_inject   : return 6;
+        case tok_kw_eject    : return 5;
+        case tok_kw_assert   : return 6;
+        case tok_kw_typedef  : return 7;
+        case tok_kw_case     : return 4;
         case tok_kw_static   : return 6;
         case tok_kw_inline   : return 6;
-        case tok_kw_return   : return 6;
-        case tok_kw_if       : return 2;
         case tok_kw_else     : return 4;
-        case tok_kw_const    : return 5;
         case tok_kw_break    : return 5;
         case tok_kw_continue : return 8;
         case tok_kw_until    : return 5;
+
     }
 }
 
@@ -677,23 +676,42 @@ void test_lexer()
 
         "struct",
         "union",
-        "type",
-        "typeof",
         "enum",
+
+        "auto",
+        "double",
+        "float",
+        "long",
+        "short",
+        "int",
+        "char",
+        "void",
+        "type",
+
+        "unsigned"
+        "const",
+        "volatile",
+        "extern",
+
+        "for",
+        "sizeof",
+        "return"
+        "switch",
+        "while",
+
+        "typeof",
         "inject",
         "eject",
         "assert",
         "typedef",
-        "switch",
         "case",
-        "while",
+        "goto",
         "do",
         "static",
         "inline",
         "return",
         "if",
         "else",
-        "const",
         "break",
         "continue",
         "until",

@@ -80,23 +80,41 @@ typedef struct metac_lexer_state_t
     FIRST_KEYWORD_TOKEN(M) \
     \
     M(tok_kw_union) \
-    M(tok_kw_type) \
-    M(tok_kw_typeof) \
     M(tok_kw_enum) \
+    \
+    M(tok_kw_auto) \
+    M(tok_kw_double) \
+    M(tok_kw_float) \
+    M(tok_kw_long) \
+    M(tok_kw_int) \
+    M(tok_kw_short) \
+    M(tok_kw_char) \
+    M(tok_kw_void) \
+    M(tok_kw_type) \
+    \
+    M(tok_kw_unsigned) \
+    M(tok_kw_const) \
+    M(tok_kw_volatile) \
+    M(tok_kw_extern) \
+    \
+    M(tok_kw_for) \
+    M(tok_kw_sizeof) \
+    M(tok_kw_return) \
+    M(tok_kw_switch) \
+    M(tok_kw_while) \
+    \
+    M(tok_kw_typeof) \
     M(tok_kw_inject) \
     M(tok_kw_eject) \
     M(tok_kw_assert) \
     M(tok_kw_typedef) \
-    M(tok_kw_switch) \
     M(tok_kw_case) \
-    M(tok_kw_while) \
+    M(tok_kw_goto) \
     M(tok_kw_do) \
     M(tok_kw_static) \
     M(tok_kw_inline) \
-    M(tok_kw_return) \
     M(tok_kw_if) \
     M(tok_kw_else) \
-    M(tok_kw_const) \
     M(tok_kw_break) \
     M(tok_kw_continue) \
     \
