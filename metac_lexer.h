@@ -26,7 +26,7 @@ typedef struct metac_lexer_state_t
     M(tok_kw_struct)
 
 #define LAST_KEYWORD_TOKEN(M) \
-    M(tok_kw_typedef)
+    M(tok_kw_until)
 
 #define FIRST_BINARY_TOKEN(M) \
     M(tok_comma)
@@ -78,6 +78,7 @@ typedef struct metac_lexer_state_t
 
 #define FOREACH_KEYWORD_TOKEN(M) \
     FIRST_KEYWORD_TOKEN(M) \
+    \
     M(tok_kw_union) \
     M(tok_kw_type) \
     M(tok_kw_typeof) \
@@ -85,6 +86,20 @@ typedef struct metac_lexer_state_t
     M(tok_kw_inject) \
     M(tok_kw_eject) \
     M(tok_kw_assert) \
+    M(tok_kw_typedef) \
+    M(tok_kw_switch) \
+    M(tok_kw_case) \
+    M(tok_kw_while) \
+    M(tok_kw_do) \
+    M(tok_kw_static) \
+    M(tok_kw_inline) \
+    M(tok_kw_return) \
+    M(tok_kw_if) \
+    M(tok_kw_else) \
+    M(tok_kw_const) \
+    M(tok_kw_break) \
+    M(tok_kw_continue) \
+    \
     LAST_KEYWORD_TOKEN(M)
 
 #define FOREACH_TOKEN(M) \

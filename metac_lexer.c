@@ -7,7 +7,7 @@
 
 #include "cache/crc32.c"
 
-static metac_token_enum_t MetaCLexFixedLengthToken(const char _chrs[7])
+static metac_token_enum_t MetaCLexFixedLengthToken(const char _chrs[3])
 {
     switch (_chrs[0])
     {
@@ -208,219 +208,6 @@ static metac_token_enum_t MetaCLexFixedLengthToken(const char _chrs[7])
         case '=':
             return tok_cat_ass;
         }
-#ifdef LEXER_STATIC_KEYWORDS
-        // keywords ------------- we might not want to lex em this way
-    case 'a':
-        switch (_chrs[1])
-        {
-        default:
-            return tok_invalid;
-        case 's':
-            switch (_chrs[2])
-            {
-            default:
-                return tok_invalid;
-            case 's':
-                switch (_chrs[3])
-                {
-                default:
-                    return tok_invalid;
-                case 'e':
-                    switch (_chrs[4])
-                    {
-                    default:
-                        return tok_invalid;
-                    case 'r':
-                        switch (_chrs[5])
-                        {
-                        default:
-                            return tok_invalid;
-                        case 't':
-                            return tok_kw_assert;
-                        }
-                    }
-                }
-            }
-        }
-
-    case 'e':
-        {
-            switch (_chrs[1])
-            {
-            default:
-                return tok_invalid;
-            case 'n':
-                {
-                    switch (_chrs[2])
-                    {
-                    default:
-                        return tok_invalid;
-                    case 'u':
-                        switch (_chrs[3])
-                        {
-                        default:
-                            return tok_invalid;
-                        case 'm':
-                            return tok_kw_enum;
-                        }
-                    }
-                }
-            case 'j':
-                switch (_chrs[2])
-                {
-                default:
-                    return tok_invalid;
-                case 'e':
-                    switch (_chrs[3])
-                    {
-                    default:
-                        return tok_invalid;
-                    case 'c':
-                        switch (_chrs[4])
-                        {
-                        default:
-                            return tok_invalid;
-                        case 't':
-                            return tok_kw_eject;
-                        }
-                    }
-                }
-            }
-        }
-
-    case 'i':
-        switch (_chrs[1])
-        {
-        default:
-            return tok_invalid;
-        case 'n':
-            switch (_chrs[2])
-            {
-            default:
-                return tok_invalid;
-            case 'j':
-                switch (_chrs[3])
-                {
-                default:
-                    return tok_invalid;
-                case 'e':
-                    switch (_chrs[4])
-                    {
-                    default:
-                        return tok_invalid;
-                    case 'c':
-                        switch (_chrs[5])
-                        {
-                        default:
-                            return tok_invalid;
-                        case 't':
-                            return tok_kw_inject;
-                        }
-                    }
-                }
-            }
-        }
-
-    case 's':
-        switch (_chrs[1])
-        {
-        default:
-            return tok_invalid;
-        case 't':
-            switch (_chrs[2])
-            {
-            default:
-                return tok_invalid;
-            case 'r':
-                switch (_chrs[3])
-                {
-                default:
-                    return tok_invalid;
-                case 'u':
-                    switch (_chrs[4])
-                    {
-                    default:
-                        return tok_invalid;
-                    case 'c':
-                        switch (_chrs[5])
-                        {
-                        default:
-                            return tok_invalid;
-                        case 't':
-                            return tok_kw_struct;
-                        }
-                    }
-                }
-            }
-        }
-
-    case 't':
-        {
-            switch (_chrs[1])
-            {
-            case 'y':
-                switch (_chrs[2])
-                {
-                case 'p':
-                    switch (_chrs[3])
-                    {
-                    case 'e':
-                        switch (_chrs[4])
-                        {
-                        case ' ':
-                        case '\t':
-                        case '\0':
-                            return tok_kw_type;
-                        default:
-                            return tok_invalid;
-                        case 'd':
-                            switch (_chrs[5])
-                            {
-                            default:
-                                return tok_invalid;
-                            case 'e':
-                                switch (_chrs[6])
-                                {
-                                default:
-                                    return tok_invalid;
-                                case 'f':
-                                    return tok_kw_typedef;
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
-    case 'u':
-            switch (_chrs[1])
-            {
-            default:
-                return tok_invalid;
-            case 'n':
-                switch (_chrs[2])
-                {
-                default:
-                    return tok_invalid;
-                case 'i':
-                    switch (_chrs[3])
-                    {
-                    default:
-                        return tok_invalid;
-                    case 'o':
-                        switch (_chrs[4])
-                        {
-                        default:
-                            return tok_invalid;
-                        case 'n':
-                            return tok_kw_union;
-                        }
-                    }
-                }
-            }
-        }
-
-#endif
     }
     return tok_invalid;
 }
@@ -491,6 +278,19 @@ static uint32_t StaticMetaCTokenLength(metac_token_enum_t t)
         case tok_kw_typeof : return 6; // typeof
         case tok_kw_typedef : return 7; // typedef
         case tok_kw_union : return 5; // union
+        case tok_kw_switch : return 6;
+        case tok_kw_case : return 4;
+        case tok_kw_while : return 5;
+        case tok_kw_do: return 2;
+        case tok_kw_static: return 6;
+        case tok_kw_inline: return 6;
+        case tok_kw_return: return 6;
+        case tok_kw_if: return 2;
+        case tok_kw_else: return 4;
+        case tok_kw_const: return 5;
+        case tok_kw_break: return 5;
+        case tok_kw_continue: return 8;
+        case tok_kw_until: return 5;
     }
 }
 
@@ -710,9 +510,7 @@ metac_token_t* MetaCLexerLexNextToken(metac_lexer_t* self,
 #ifndef IDENTIFIER_TABLE
                 token.Identifier = identifierBegin;
 #endif
-#ifndef LEXER_STATIC_KEYWORDS
                 MetaCLexerMatchKeywordIdentifier(&token);
-#endif
             }
             else if (IsNumericChar(c))
             {
@@ -894,6 +692,19 @@ void test_lexer()
         "eject",
         "assert",
         "typedef",
+        "switch",
+        "case",
+        "while",
+        "do",
+        "static",
+        "inline",
+        "return",
+        "if",
+        "else",
+        "const",
+        "break",
+        "continue",
+        "until",
 
         "\0",
 
