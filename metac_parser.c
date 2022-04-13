@@ -283,7 +283,7 @@ metac_expression_t* ParseExpression(metac_parser_t* self, metac_expression_t* pr
 
         result = AllocNewExpression(exp_string);
         result->String = currentToken->String;
-        result->Length = currentToken->Length;
+        result->Length = LENGTH_FROM_STRING_KEY(currentToken->StringKey);
         result->Hash = currentToken->StringKey;
         PushOperand(result);
     }
@@ -291,7 +291,7 @@ metac_expression_t* ParseExpression(metac_parser_t* self, metac_expression_t* pr
     {
         result = AllocNewExpression(exp_identifier);
         result->Identifier = currentToken->Identifier;
-        result->Length = currentToken->Length;
+        result->Length = LENGTH_FROM_IDENTIFIER_KEY(currentToken->IdentifierKey);
         result->Hash = currentToken->IdentifierKey;
         PushOperand(result);
     }
@@ -461,8 +461,8 @@ const char* PrintExpression(metac_expression_t* exp)
         const char* e1  = PrintExpression(exp->E1);
         uint32_t e1_length = strlen(e1);
         memcpy(scratchpad + expStringLength, e1, e1_length);
+        free((void*)e1);
         expStringLength += e1_length;
-        free(e1);
         if (!IsBinaryExp(exp->E1->Type))
             scratchpad[expStringLength++] = ')';
     }
@@ -487,8 +487,8 @@ const char* PrintExpression(metac_expression_t* exp)
         const char* e1  = PrintExpression(exp->E1);
         uint32_t e1_length = strlen(e1);
         memcpy(scratchpad + expStringLength, e1, e1_length);
+        free((void*)e1);
         expStringLength += e1_length;
-        free(e1);
 
         const char* op = BinExpTypeToChars(exp->Type);
         uint32_t op_length = strlen(op);
@@ -499,23 +499,24 @@ const char* PrintExpression(metac_expression_t* exp)
         const char* e2  = PrintExpression(exp->E2);
         uint32_t e2_length = strlen(e2);
         memcpy(scratchpad + expStringLength, e2, e2_length);
+        free((void*)e2);
         expStringLength += e2_length;
         scratchpad[expStringLength++] = ')';
-        free(e2);
     }
     else if (exp->Type == exp_call)
     {
         const char* e1  = PrintExpression(exp->E1);
         uint32_t e1_length = strlen(e1);
         memcpy(scratchpad + expStringLength, e1, e1_length);
+        free((void*)e1);
         expStringLength += e1_length;
-        free(e1);
         *(scratchpad + expStringLength++) = ' ';
         *(scratchpad + expStringLength++) = '(';
 
         const char* e2  = PrintExpression(exp->E2);
         uint32_t e2_length = strlen(e2);
         memcpy(scratchpad + expStringLength, e2, e2_length);
+        free((void*)e2);
         expStringLength += e2_length;
 
         scratchpad[expStringLength++] = ')';
@@ -540,8 +541,8 @@ const char* PrintExpression(metac_expression_t* exp)
         const char* e1  = PrintExpression(exp->E1);
         uint32_t e1_length = strlen(e1);
         memcpy(scratchpad + expStringLength, e1, e1_length);
+        free((void*)e1);
         expStringLength += e1_length;
-        free(e1);
         if (!IsBinaryExp(exp->E1->Type))
             scratchpad[expStringLength++] = ')';
     }
@@ -564,11 +565,11 @@ const char* PrintExpression(metac_expression_t* exp)
         if (!IsBinaryExp(exp->E1->Type))
             scratchpad[expStringLength++] = '(';
 
-       const char* e1  = PrintExpression(exp->E1);
+        const char* e1  = PrintExpression(exp->E1);
         uint32_t e1_length = strlen(e1);
         memcpy(scratchpad + expStringLength, e1, e1_length);
+        free((void*)e1);
         expStringLength += e1_length;
-        free(e1);
 
         if (!IsBinaryExp(exp->E1->Type))
             scratchpad[expStringLength++] = ')';
@@ -578,7 +579,7 @@ const char* PrintExpression(metac_expression_t* exp)
         printf("don't know how to print %s\n", (MetaCExpressionType_toChars(exp->Type)));
     }
 
-    char* result = (const char*) malloc(expStringLength + 1);
+    char* result = (char*) malloc(expStringLength + 1);
     memcpy(result, scratchpad, expStringLength);
     result[expStringLength] = '\0';
 

@@ -63,7 +63,7 @@ LinputLoop:
 
             if (token.TokenType == tok_identifier)
             {
-                printf("    %.*s\n", token.Length, token.Identifier);
+                printf("    %.*s\n", LENGTH_FROM_IDENTIFIER_KEY(token.Key), token.Identifier);
             }
             else if (token.TokenType == tok_unsignedNumber)
             {
@@ -72,7 +72,7 @@ LinputLoop:
             }
             else if (token.TokenType == tok_stringLiteral)
             {
-                printf("    \"%.*s\"\n", token.Length, token.String);
+                printf("    \"%.*s\"\n", LENGTH_FROM_STRING_KEY(token.Key), token.String);
             }
 #endif
 
