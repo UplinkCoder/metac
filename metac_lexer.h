@@ -144,28 +144,15 @@ typedef struct metac_token_t {
     uint32_t Position;
     uint32_t SourceId;
     union { // switch(TokenType)
+        uint32_t Key;
         // case tok_identfier :
         struct {
-            union
-            {
-                struct {
-                    crc32c_lower16_t Crc32CLw16;
-                    uint16_t Length;
-                } ;
-                uint32_t IdentifierKey;
-            };
+            uint32_t IdentifierKey;
             const char* Identifier;
         };
         // case tok_string :
         struct {
-            union
-            {
-                struct {
-                    crc32c_lower16_t Crc32CLw16_;
-                    uint16_t Length_;
-                } ;
-                uint32_t StringKey;
-            };
+            uint32_t StringKey;
             const char* String;
         };
 
@@ -253,7 +240,22 @@ typedef struct metac_lexer_t {
 #endif
 } metac_lexer_t;
 
+#define IDENTIFIER_KEY(HASH, LENGTH) \
+    ( ((uint32_t)(HASH & 0xFFFFF)) | (((uint32_t)(LENGTH)) << 20) )
+
+#define LENGTH_FROM_IDENTIFIER_KEY(IDENTIFIER_KEY) \
+    ( (IDENTIFIER_KEY) >> 20 )
+
+#define STRING_KEY(HASH, LENGTH) \
+    ( (uint32_t)((HASH) & 0xFFF) | (((uint32_t)(LENGTH)) << 12) )
+
+#define LENGTH_FROM_STRING_KEY(STRING_KEY) \
+    ( (STRING_KEY) >> 12 )
+
+
 #include <stdio.h>
+
+const char* MetaCTokenEnum_toChars(metac_token_enum_t tok);
 
 #define ParseErrorF(STATE, MSG, ...) \
     fprintf(stderr, "ParseError[%s:%u]: %u"  MSG  "\n", __FILE__, __LINE__, STATE->Position, __VA_ARGS__)

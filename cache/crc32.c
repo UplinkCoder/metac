@@ -187,13 +187,10 @@ static inline uint32_t intrinsic_crc32c(uint32_t crc, const void* s, uint32_t le
     {
       case 3:
         crc = __crc32cb(crc, *p++);
-        len--;
       case 2:
         crc = __crc32cb(crc, *p++);
-        len--;
       case 1:
         crc = __crc32cb(crc, *p++);
-        len--;
       case 0: break ;
       default : assert(0);
     }
@@ -217,6 +214,16 @@ static inline uint32_t crc32c(uint32_t crc, const void* s, const uint32_t len_p)
 #endif
     return crc;
 }
+
+static inline uint32_t crc32c_byte(uint32_t crc, uint8_t byte)
+{
+#ifdef ARM_NEON_CRC32C
+    return __crc32cb(crc, byte);
+#else
+    return crc32Table[(crc ^ byte) & 0xFF] ^ (crc >> 8);
+#endif
+}
+
 
 #define CRC32C_S(STRING) \
     (crc32c(~(uint32_t)0, STRING, sizeof(STRING) - 1))

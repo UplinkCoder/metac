@@ -505,7 +505,6 @@ const char* PrintExpression(metac_expression_t* exp)
     }
     else if (exp->Type == exp_call)
     {
-        scratchpad[expStringLength++] = '(';
         const char* e1  = PrintExpression(exp->E1);
         uint32_t e1_length = strlen(e1);
         memcpy(scratchpad + expStringLength, e1, e1_length);

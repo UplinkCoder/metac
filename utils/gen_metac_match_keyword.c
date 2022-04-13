@@ -29,7 +29,7 @@ void WriteMatchFunction(void)
     ( crc32c(~0, #KW + KW_PREFIX_LEN, KW_LEN(KW)) )
 
 #define KW_KEY(KW) \
-    ((uint32_t)( (KW_LEN(KW) << 16) | (KW_CRC32C(KW) & 0xFFFF) ))
+    ( IDENTIFIER_KEY(KW_CRC32C(KW), KW_LEN(KW)) )
 
 #define KW_WRITE_CMP(KW) \
     printf("    case 0x%x :\n", KW_KEY(KW)); \
@@ -41,12 +41,11 @@ void WriteMatchFunction(void)
 
     FOREACH_KEYWORD_TOKEN(KW_WRITE_CMP)
 
-#undef KW_WRITE_HASH
+#undef KW_WRITE_CMP
     printf("    }\n");
     printf("}\n");
 
 }
-
 
 int main(int argc, char* argv[])
 {

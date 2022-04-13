@@ -545,9 +545,13 @@ uint32_t MetaCTokenLength(metac_token_t token)
             uint64_t v = token.ValueU64;
             return (uint32_t)(fastLog10(v) + 1);
         }
-        else if (token.TokenType == tok_identifier || token.TokenType == tok_stringLiteral)
+        else if (token.TokenType == tok_identifier)
         {
-            return token.Length;
+            return LENGTH_FROM_IDENTIFIER_KEY(token.Key);
+        }
+        else if (token.TokenType == tok_stringLiteral)
+        {
+            return LENGTH_FROM_STRING_KEY(token.Key);
         }
     }
 
@@ -656,7 +660,6 @@ metac_token_t* MetaCLexerLexNextToken(metac_lexer_t* self,
 
     while (c && (c == ' ' || c == '\t' || c == '\n' || c == '\r'))
     {
-        c = *text++;
         if (c == '\n')
         {
             state->Line++;
@@ -668,13 +671,14 @@ metac_token_t* MetaCLexerLexNextToken(metac_lexer_t* self,
         }
         state->Column++;
         eaten_chars++;
+        c = *text++;
     }
     if (c)
     {
         text -= 1;
     }
 
-    token.Position = state->Position + eaten_chars;
+    token.Position += eaten_chars;
     if ((token.TokenType = MetaCLexFixedLengthToken(text)) == tok_invalid)
     {
         // const char* begin = text;
@@ -682,23 +686,25 @@ metac_token_t* MetaCLexerLexNextToken(metac_lexer_t* self,
         {
             if (IsIdentifierChar(c))
             {
-                uint32_t length = 0;
+                uint32_t identifier_length = 0;
+                uint32_t identifier_hash = ~0;
                 const char* identifierBegin = text;
 
                 while ((c = *text++) && (IsIdentifierChar(c) || IsNumericChar(c)))
                 {
-                    length++;
+                    identifier_hash = crc32c_byte(identifier_hash, c);
+                    identifier_length++;
                     eaten_chars++;
                 }
                 token.TokenType = tok_identifier;
-
-                token.Length = length;
-                token.Crc32CLw16 = (crc32c(~0, identifierBegin, token.Length) & 0xFFFF);
+                assert(identifier_length < 0xFFF);
+                token.IdentifierKey =
+                    IDENTIFIER_KEY(identifier_hash, identifier_length);
 #ifdef IDENTIFIER_TABLE
                 if(token.TokenType == tok_identifier)
                 {
                     token->identifier_idx =
-                        GetOrAddString(lexer->IdentifierTable, token.IdentifierKey, identifierBegin);
+                        GetOrAddIdentfier(lexer->IdentifierTable, token.IdentifierKey, identifierBegin);
                 }
 #endif
 #ifndef IDENTIFIER_TABLE
@@ -756,6 +762,7 @@ metac_token_t* MetaCLexerLexNextToken(metac_lexer_t* self,
                 c = *text++;
                 // printf("c: %c\n", c);
                 uint32_t string_length = 0;
+                uint32_t string_hash = ~0;
                 eaten_chars++;
                 while(c && c != '"')
                 {
@@ -769,6 +776,7 @@ metac_token_t* MetaCLexerLexNextToken(metac_lexer_t* self,
                             ParseError(state, "Invalid escape seqeunce");
                         }
                     }
+                    string_hash = crc32c_byte(string_hash, c);
                     c = *text++;
                     eaten_chars++;
                 }
@@ -778,8 +786,8 @@ metac_token_t* MetaCLexerLexNextToken(metac_lexer_t* self,
                 }
                 eaten_chars++;
                 c = *text++;
-                token.Length = string_length;
-                token.Crc32CLw16 = (crc32c(~0, token.String, token.Length) & 0xFFFF);
+                assert(string_length < 0xFFFFF);
+                token.Key = STRING_KEY(string_hash, string_length);
             }
         }
     }
@@ -823,7 +831,6 @@ void test_lexer()
         "++",
         "--",
 
-        
         "!",
         ";",
         ":",
@@ -911,7 +918,7 @@ void test_lexer()
         }
         metac_token_enum_t lexed;
 #ifndef LEXER_STATIC_KEYWORDS
-        if ((tok >= FIRST_KEYWORD_TOKEN(TOK_SELF)) | tok <= LAST_KEYWORD_TOKEN(TOK_SELF))
+        if ((tok >= FIRST_KEYWORD_TOKEN(TOK_SELF)) & tok <= LAST_KEYWORD_TOKEN(TOK_SELF))
         {
             metac_lexer_state_t state = {0};
             metac_token_t t1 = {tok_invalid};
