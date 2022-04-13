@@ -102,14 +102,14 @@ typedef struct metac_lexer_state_t
     \
     LAST_KEYWORD_TOKEN(M)
 
-#define FOREACH_TOKEN(M) \
-    M(tok_invalid) \
-    \
-    M(tok_identifier) \
-    M(tok_unsignedNumber) \
-    M(tok_stringLiteral) \
-    \
-    M(tok_first_static) \
+#define FIRST_STATIC_TOKEN(M) \
+    M(tok_bang)
+
+#define LAST_STATIC_TOKEN(M) \
+    M(tok_eof)
+
+#define FOREACH_STATIC_TOKEN(M) \
+    FIRST_STATIC_TOKEN(M) \
     \
     M(tok_lParen) \
     M(tok_rParen) \
@@ -125,23 +125,34 @@ typedef struct metac_lexer_state_t
     \
     M(tok_plusplus) \
     M(tok_minusminus) \
-    M(tok_bang) \
     \
     M(tok_semicolon) \
     M(tok_colon) \
     M(tok_dollar) \
     M(tok_full_slice) \
     \
-    M(tok_first_binary) \
-    \
     FOREACH_BINARY_TOKEN(M) \
-    \
-    M(tok_first_keyword) \
     \
     FOREACH_KEYWORD_TOKEN(M) \
     \
-    M(tok_eof) \
+    LAST_STATIC_TOKEN(M)
+
+#define FIRST_TOKEN(M) \
+    M(tok_invalid)
+
+#define LAST_TOKEN(M) \
     M(tok_max)
+
+#define FOREACH_TOKEN(M) \
+    FIRST_TOKEN(M) \
+    \
+    M(tok_identifier) \
+    M(tok_unsignedNumber) \
+    M(tok_stringLiteral) \
+    \
+    FOREACH_STATIC_TOKEN(M) \
+    \
+    LAST_TOKEN(M)
 
 #define WITH_COMMA(TOK) \
     TOK,

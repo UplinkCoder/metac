@@ -334,7 +334,7 @@ static inline uint32_t fastLog10(uint32_t val)
 
 uint32_t MetaCTokenLength(metac_token_t token)
 {
-    if (token.TokenType >= tok_lParen)
+    if (token.TokenType >= FIRST_STATIC_TOKEN(TOK_SELF))
     {
         return StaticMetaCTokenLength(token.TokenType);
     }
@@ -615,6 +615,8 @@ void test_lexer()
 {
     const char* token_list[] =
     {
+        "!",
+
         "(",
         ")",
         "{",
@@ -629,13 +631,11 @@ void test_lexer()
         "++",
         "--",
 
-        "!",
         ";",
         ":",
         "$",
         "[]",
 
-        "first_binary",
         ",",
         "->",
         ".",
@@ -681,8 +681,6 @@ void test_lexer()
         ">=",
         "<=>",
 
-        "first_keyword",
-
         "struct",
         "union",
         "type",
@@ -713,7 +711,7 @@ void test_lexer()
 
     int idx = 0;
 
-    for (metac_token_enum_t tok = tok_lParen;
+    for (metac_token_enum_t tok = FIRST_STATIC_TOKEN(TOK_SELF);
         idx < (sizeof(token_list) / sizeof(token_list[0]));
         (*(int*)&tok)++)
     {
