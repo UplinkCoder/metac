@@ -578,7 +578,6 @@ metac_token_t* MetaCLexerLexNextToken(metac_lexer_t* self,
                     ParseError(state, "Unterminted string literal");
                 }
                 eaten_chars++;
-                c = *text++;
                 assert(string_length < 0xFFFFF);
                 token.Key = STRING_KEY(string_hash, string_length);
             }
