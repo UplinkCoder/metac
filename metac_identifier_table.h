@@ -16,12 +16,12 @@ typedef struct metac_identifier_table_slot_t
 
 typedef struct metac_identifier_table_t
 {
+    metac_identifier_table_slot_t* Slots;
     char*    StringMemory;
+
     uint32_t StringMemorySize;
     uint32_t StringMemoryCapacity;
-
     uint32_t SlotCount_Log2;
-    metac_identifier_table_slot_t* Slots;
 
     metac_identifier_table_slot_t inlineSlots[256];
 } metac_identifier_table_t;

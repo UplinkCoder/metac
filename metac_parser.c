@@ -406,6 +406,21 @@ metac_expression_t* MetaCParserParseExpression(metac_parser_t* self, metac_expre
         assert(parenExp->Kind == exp_paren);
         result->E1 = parenExp->E1;
     }
+    else if (tokenType == tok_kw_assert)
+    {
+        result = AllocNewExpression(exp_assert);
+        PushOperator(exp_assert);
+        metac_token_t* nextToken = MetaCParserPeekToken(self, 1);
+        if (!nextToken || nextToken->TokenType != tok_lParen)
+        {
+            ParseError(self->LexerState, "Expected assert to be followed by '('");
+        }
+
+        metac_expression_t* parenExp = MetaCParserParseExpression(self, 0);
+        PopOperator(exp_assert);
+        assert(parenExp->Kind == exp_paren);
+        result->E1 = parenExp->E1;
+    }
     else if (tokenType == tok_and)
     {
         result = AllocNewExpression(exp_addr);
@@ -482,9 +497,12 @@ metac_expression_t* MetaCParserParseExpression(metac_parser_t* self, metac_expre
 #undef PushOperator
 #undef PopOperator
 #undef PopOperand
+
 static metac_statement_t* MetaCParserParseBlockStatement(metac_parser_t* self, metac_statement_t* parent);
+
 #define ErrorStatement() \
     (metac_statement_t*)0
+
 static metac_statement_t* MetaCParserParseStatement(metac_parser_t* self, metac_statement_t* parent)
 {
     metac_statement_t* result = 0;
@@ -633,7 +651,7 @@ static metac_statement_t* MetaCParserParseBlockStatement(metac_parser_t* self, m
 
 /// static lexer for using in the g_lineParser
 static metac_lexer_t g_lineLexer = {
-    &g_lineLexer.inlineTokens,
+    g_lineLexer.inlineTokens,
     0,
     (sizeof(g_lineLexer.inlineTokens) / sizeof(g_lineLexer.inlineTokens[0]))
 };

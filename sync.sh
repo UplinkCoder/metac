@@ -21,7 +21,7 @@ if [ -d $DST ]; then
        utils/read_file.c $DST/utils
 
     mkdir -p $DST/repl
-    cp repl/repl.c repl/build.sh $DST/repl
+    cp repl/repl.c repl/parser_obj.c repl/build.sh $DST/repl
 
     mkdir -p $DST/package_serializer
     cp package_serializer/build.sh package_serializer/build.bat \

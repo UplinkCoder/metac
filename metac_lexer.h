@@ -112,15 +112,16 @@ typedef struct metac_lexer_state_t
     M(tok_kw_return) \
     M(tok_kw_switch) \
     M(tok_kw_while) \
+    M(tok_kw_do) \
     \
     M(tok_kw_typeof) \
     M(tok_kw_inject) \
     M(tok_kw_eject) \
     M(tok_kw_assert) \
+    \
     M(tok_kw_typedef) \
     M(tok_kw_case) \
     M(tok_kw_goto) \
-    M(tok_kw_do) \
     M(tok_kw_static) \
     M(tok_kw_inline) \
     M(tok_kw_if) \
@@ -289,7 +290,7 @@ typedef struct metac_lexer_t {
     uint32_t tokens_size;
     uint32_t tokens_capacity;
 
-    metac_token_t inlineTokens[2048];
+    metac_token_t inlineTokens[256];
 
 #ifdef IDENTIFIER_TABLE
     metac_identifier_table_t IdentifierTable;
