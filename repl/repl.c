@@ -18,32 +18,41 @@ int main(int argc, const char* argv[])
     InitMetaCLexer(&lexer);
     metac_parser_t parser;
     MetaCParserInitFromLexer(&parser, &lexer);
+
     bool parsingExpression = false;
+    bool parsingStatement  = false;
+
     const char* promt_ = "REPL>";
 LinputLoop:
     while ((line = linenoise(promt_)))
     {
         linenoiseHistoryAdd(line);
         uint32_t line_length = strlen(line);
-        if (*line == ':' && (*(line + 1) == 'q'))
-            return 0;
-
-        if (*line == ':' && (*(line + 1) == 'e'))
+        if (*line == ':')
         {
-            assert(parsingExpression == false);
-            parsingExpression = true;
-            promt_ = "Exp>";
-            goto LinputLoop;
+            switch(*(line + 1))
+            {
+            case 'q':
+                return 0;
+            case 'e' :
+                    parsingExpression = true;
+                    promt_ = "Exp>";
+                    goto LinputLoop;
+            case 's' :
+                    parsingStatement = true;
+                    promt_ = "Stmt>";
+                    goto LinputLoop;
+            }
         }
-
         while (line_length > 0)
         {
+            metac_parser_t lineParser;
+
             uint32_t initalPosition = repl_state.Position;
             if (parsingExpression)
             {
                 metac_expression_t* exp =
-                    ParseExpressionFromString(line);
-                //
+                    MetaCParserParseExpressionFromString(line);
 
                 const char* str = PrintExpression(exp);
                 printf("result = %s\n", str);
@@ -51,7 +60,17 @@ LinputLoop:
                 promt_ = "REPL>";
                 goto LinputLoop;
             }
+ #if 1
+            else if (parsingStatement)
+            {
+                metac_statement_t* stmt
+                    = MetaCParserParseStatementFromString(line);
 
+                parsingStatement = false;
+                promt_ = "REPL>";
+                goto LinputLoop;
+            }
+#endif
             metac_token_t token =
                 *MetaCLexerLexNextToken(&lexer, &repl_state, line, line_length);
 

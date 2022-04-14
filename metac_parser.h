@@ -10,8 +10,12 @@
     M(exp_spaceship)
 
 #define FOREACH_BINARY_EXP(M) \
-    \
     FIRST_BINARY_EXP(M) \
+    FOREACH_BINARY_EXP_(M) \
+    LAST_BINARY_EXP(M)
+
+
+#define FOREACH_BINARY_EXP_(M) \
     M(exp_dot) \
     \
     M(exp_add) \
@@ -50,7 +54,6 @@
     M(exp_le) \
     M(exp_gt) \
     M(exp_ge) \
-    LAST_BINARY_EXP(M)
 
 #define FOREACH_EXP(M) \
     M(exp_invalid) \
@@ -79,24 +82,57 @@
     M(exp_max)
 
 
-#define WITH_COMMA(S) \
-    S,
+#define FOREACH_STMT_KIND(M) \
+    M(stmt_min) \
+    \
+    FOREACH_STMT_KIND_(M) \
+    \
+    M(stmt_max)
 
-typedef enum metac_expression_type_t
+#define FOREACH_STMT_KIND_(M) \
+    M(stmt_block) \
+    \
+    M(stmt_exp) \
+    \
+    M(stmt_if)
+
+
+
+
+#define FOREACH_NDOE_KIND(M) \
+    FOREACH_EXP(M) \
+    FOREACH_STMT_KIND(M) \
+    FOREACH_DECL_KIND(M) \
+    M(node_max)
+
+#define DEFINE_MEMBERS(MEMBER) \
+    MEMBER,
+
+typedef enum metac_expression_kind_t
 {
-    FOREACH_EXP(WITH_COMMA)
-} metac_expression_type_t;
+    FOREACH_EXP(DEFINE_MEMBERS)
+} metac_expression_kind_t;
 
-#undef WITH_COMMA
+
+#define BIN_MEMBERS(MEMB) \
+    bin_ ## MEMB,
+
+
+typedef enum metac_binary_expression_kind_t
+{
+    bin_exp_min = (FIRST_BINARY_EXP(TOK_SELF) - 1),
+
+    FOREACH_BINARY_EXP(BIN_MEMBERS)
+} metac_binary_expression_kind_t;
 
 typedef struct metac_expression_t
 {
-    metac_expression_type_t Type;
+    metac_expression_kind_t Kind;
     uint32_t LocationIdx;
 
     uint32_t Hash;
 
-    union // switch(type)
+    union // switch(Kind)
     {
         // invalid case exp_max, exp_invalid :
 
@@ -142,19 +178,41 @@ typedef struct metac_expression_t
     };
 } metac_expression_t;
 
-typedef enum metac_statement_type_t
+typedef enum metac_statement_kind_t
 {
-    stmt_invalid = exp_max + 1,
+    stmt_min = exp_max + 1,
 
-    stmt_expression,
+    FOREACH_STMT_KIND_(DEFINE_MEMBERS)
 
     stmt_max
-} metac_statement_type_t;
+} metac_statement_kind_t;
+
+typedef struct metac_statement_t
+{
+    metac_statement_kind_t Kind;
+    uint32_t LocationIdx;
+    uint32_t Hash;
+    struct metac_statement_t* Next;
+
+    union // switch(Kind)
+    {
+        // invalid case stmt_max, stmt_invalid :
+        // case stmt_if :
+        struct {
+            metac_expression_t* IfCond;
+            struct metac_statement* IfBody;
+            struct metac_statement* ElseBody;
+        };
+        // case stmt_exp :
+        metac_expression_t* Expression;
+        // case stmt_block :
+    };
+} metac_statement_t;
 
 typedef struct metac_parser_reorder_state_t
 {
     metac_expression_t* operandStack[1024];
-    metac_expression_type_t operatorStack[1024];
+    metac_expression_kind_t operatorStack[1024];
     uint32_t nOperands;
     uint32_t nOperators;
     uint32_t Depth;
@@ -171,5 +229,6 @@ typedef struct metac_parser_t
 } metac_parser_t;
 
 void MetaCParserInitFromLexer(metac_parser_t* self, metac_lexer_t* lexer);
-metac_expression_t* ParseExpression(metac_parser_t* self, metac_expression_t* prev);
-metac_expression_t* ParseExpressionFromString(const char* exp);
+metac_expression_t* MetaCParserParseExpression(metac_parser_t* self, metac_expression_t* prev);
+metac_expression_t* MetaCParserParseExpressionFromString(const char* exp);
+#undef DEFINE_MEMBERS

@@ -3,8 +3,8 @@
 #include <stdlib.h>
 #include <assert.h>
 #include "cache/crc32.c"
-const char* MetaCExpressionType_toChars(metac_expression_type_t type);
 
+const char* MetaCExpressionKind_toChars(metac_expression_kind_t type);
 
 void MetaCParserInitFromLexer(metac_parser_t* self, metac_lexer_t* lexer)
 {
@@ -62,23 +62,28 @@ uint32_t _newExp_size = 0;
 uint32_t _newExp_capacity = 0;
 metac_expression_t* _newExp_mem = 0;
 
+uint32_t _newStmt_size = 0;
+uint32_t _newStmt_capacity = 0;
+metac_statement_t* _newStmt_mem = 0;
+
+
 #ifndef ALIGN4
 #  define ALIGN4(N) \
       (((N) + 3) & ~3)
 #endif
 
-metac_expression_type_t BinExpTypeFromTokenType(metac_token_enum_t tokenType)
+metac_expression_kind_t BinExpTypeFromTokenType(metac_token_enum_t tokenType)
 {
-    metac_expression_type_t result = exp_invalid;
-    if (tokenType >= FIRST_BINARY_TOKEN(TOK_SELF) | tokenType <= LAST_BINARY_TOKEN(TOK_SELF))
+    metac_expression_kind_t result = exp_invalid;
+    if ((tokenType >= FIRST_BINARY_TOKEN(TOK_SELF) | tokenType <= LAST_BINARY_TOKEN(TOK_SELF)))
     {
-        return cast(metac_expression_type_t)(cast(int)tokenType -
+        return cast(metac_expression_kind_t)(cast(int)tokenType -
                 (cast(int)FIRST_BINARY_TOKEN(TOK_SELF) -
                  cast(int)FIRST_BINARY_EXP(TOK_SELF)));
     }
 }
 
-const char* BinExpTypeToChars(metac_expression_type_t t)
+const char* BinExpTypeToChars(metac_binary_expression_kind_t t)
 {
     switch(t)
     {
@@ -101,7 +106,7 @@ const char* BinExpTypeToChars(metac_expression_type_t t)
         case exp_oror      : return "||";
         case exp_andand    : return "&&";
 
-        case exp_assign    : return "=";
+        case exp_assign    : return "==";
 
         case exp_add_ass   : return "+=";
         case exp_sub_ass   : return "-=";
@@ -122,9 +127,12 @@ const char* BinExpTypeToChars(metac_expression_type_t t)
         case exp_ge        : return ">=";
         case exp_spaceship : return "<=>";
     }
+
+    assert(0);
+    return 0;
 }
 
-metac_expression_type_t ExpTypeFromTokenType(metac_token_enum_t tokenType)
+metac_expression_kind_t ExpTypeFromTokenType(metac_token_enum_t tokenType)
 {
     if (tokenType == tok_unsignedNumber)
     {
@@ -167,29 +175,62 @@ metac_expression_type_t ExpTypeFromTokenType(metac_token_enum_t tokenType)
 
 }
 
-metac_expression_t* AllocNewExpression(metac_expression_type_t t)
+void _newMemRealloc(void** memP, uint32_t* capacity, const uint32_t elementSize)
+{
+    if (!*memP)
+    {
+        (*capacity) = 4095 / 1.6f;
+    }
+
+    {
+        *capacity = ALIGN4(cast(uint32_t) ((*capacity) * 1.6f));
+        *memP = realloc(*memP, ((*capacity) * elementSize));
+    }
+}
+
+metac_expression_t* AllocNewExpression(metac_expression_kind_t kind)
 {
     metac_expression_t* result = 0;
 
-    if(!_newExp_mem)
+    if (_newExp_capacity <= _newExp_size)
     {
-        _newExp_mem = cast(metac_expression_t*) malloc(sizeof(metac_expression_t) * 4096);
-        _newExp_capacity = 4096;
+        _newMemRealloc(
+            (void**)&_newExp_mem,
+            &_newExp_capacity,
+            sizeof(metac_expression_t)
+        );
     }
 
-    if (_newExp_capacity < _newExp_size)
-    {
-        _newExp_capacity = ALIGN4(cast(uint32_t) (_newExp_capacity * 1.6f));
-        _newExp_mem = cast(metac_expression_t*) realloc(_newExp_mem, _newExp_capacity);
-    }
-    else
     {
         result = _newExp_mem + _newExp_size++;
-        result->Type = t;
+        result->Kind = kind;
     }
 
     return result;
 }
+
+metac_statement_t* AllocNewStatement(metac_statement_kind_t kind)
+{
+    metac_statement_t* result = 0;
+
+    if (_newStmt_capacity <= _newStmt_size)
+    {
+        _newMemRealloc(
+            (void**)&_newStmt_mem,
+            &_newStmt_capacity,
+            sizeof(metac_statement_t)
+        );
+    }
+
+    {
+        result = _newStmt_mem + _newStmt_size++;
+        result->Kind = kind;
+        result->Next = 0;
+    }
+
+    return result;
+}
+
 
 static inline void LexString(metac_lexer_t* lexer, const char* line)
 {
@@ -210,6 +251,26 @@ static inline void LexString(metac_lexer_t* lexer, const char* line)
     }
 }
 
+bool MetaCParserPeekMatch(metac_parser_t* self, metac_token_enum_t expectedType, bool optional)
+{
+    metac_token_t* peekToken =
+        MetaCParserPeekToken(self, 1);
+    bool result = true;
+
+    if (!peekToken || peekToken->TokenType != expectedType)
+    {
+        result = false;
+        if (!optional)
+        {
+            ParseErrorF(self->lexer_state, "expected %s but got %s",
+                MetaCTokenEnum_toChars(expectedType),
+                MetaCTokenEnum_toChars(peekToken ? peekToken->TokenType : tok_eof)
+            );
+        }
+    }
+    return result;
+}
+
 bool IsBinaryOperator(metac_token_enum_t t)
 {
     return (t >= FIRST_BINARY_TOKEN(TOK_SELF) && t <= LAST_BINARY_TOKEN(TOK_SELF));
@@ -217,11 +278,12 @@ bool IsBinaryOperator(metac_token_enum_t t)
 
 uint32_t Mix(uint32_t a, uint32_t b)
 {
-    return a ^ b;
+  return a ^ b + 0x9e3779b9 + (a << 6) + (a >> 2);
+
 }
 bool g_reorder_expression = true;
 
-metac_expression_t* ParseExpression(metac_parser_t* self, metac_expression_t* prev)
+metac_expression_t* MetaCParserParseExpression(metac_parser_t* self, metac_expression_t* prev)
 {
     metac_expression_t* result = 0;
     if (g_reorder_expression)
@@ -253,7 +315,7 @@ metac_expression_t* ParseExpression(metac_parser_t* self, metac_expression_t* pr
 
 #define PopOperator(CHECK) \
     { \
-    metac_expression_type_t check = \
+    metac_expression_kind_t check = \
         self->ExpressionReorderState->operatorStack[ \
             --self->ExpressionReorderState->nOperators \
         ]; \
@@ -264,7 +326,7 @@ metac_expression_t* ParseExpression(metac_parser_t* self, metac_expression_t* pr
     {
         result = AllocNewExpression(exp_paren);
         PushOperator(exp_paren);
-        result->E1 = ParseExpression(self, 0);
+        result->E1 = MetaCParserParseExpression(self, 0);
         result->Hash = Mix(crc32c(~0, "()", 2), result->E1->Hash);
         PushOperand(result);
         MetaCParserMatch(self, tok_rParen);
@@ -299,7 +361,7 @@ metac_expression_t* ParseExpression(metac_parser_t* self, metac_expression_t* pr
     {
         result = AllocNewExpression(exp_eject);
         PushOperator(exp_eject);
-        result->E1 = ParseExpression(self, 0);
+        result->E1 = MetaCParserParseExpression(self, 0);
         result->Hash = Mix(
             crc32c(~0, "eject", sizeof("eject") - 1),
             result->E1->Hash
@@ -311,7 +373,7 @@ metac_expression_t* ParseExpression(metac_parser_t* self, metac_expression_t* pr
     {
         result = AllocNewExpression(exp_inject);
         PushOperator(exp_inject);
-        result->E1 = ParseExpression(self, 0);
+        result->E1 = MetaCParserParseExpression(self, 0);
         result->Hash = Mix(
             crc32c(~0, "inject", sizeof("inject") - 1),
             result->E1->Hash
@@ -329,16 +391,16 @@ metac_expression_t* ParseExpression(metac_parser_t* self, metac_expression_t* pr
             ParseError(self->lexer_state, "Expected typeof to be followed by '('");
         }
 
-        metac_expression_t* parenExp = ParseExpression(self, 0);
+        metac_expression_t* parenExp = MetaCParserParseExpression(self, 0);
         PopOperator(exp_typeof);
-        assert(parenExp->Type == exp_paren);
+        assert(parenExp->Kind == exp_paren);
         result->E1 = parenExp->E1;
     }
     else if (tokenType == tok_and)
     {
         result = AllocNewExpression(exp_addr);
         PushOperator(exp_addr);
-        result->E1 = ParseExpression(self, 0);
+        result->E1 = MetaCParserParseExpression(self, 0);
         result->Hash = Mix(
             crc32c(~0, "&", sizeof("&") - 1),
             result->E1->Hash
@@ -350,7 +412,7 @@ metac_expression_t* ParseExpression(metac_parser_t* self, metac_expression_t* pr
     {
         result = AllocNewExpression(exp_ptr);
         PushOperator(exp_ptr);
-        result->E1 = ParseExpression(self, 0);
+        result->E1 = MetaCParserParseExpression(self, 0);
         result->Hash = Mix(
             crc32c(~0, "*", sizeof("*") - 1),
             result->E1->Hash
@@ -376,11 +438,11 @@ metac_expression_t* ParseExpression(metac_parser_t* self, metac_expression_t* pr
 
     //        printf("It's an operator\n");
 
-            metac_expression_type_t exp_type = BinExpTypeFromTokenType(op);
+            metac_expression_kind_t exp_type = BinExpTypeFromTokenType(op);
             PushOperator(exp_type);
 
             metac_expression_t* E1 = result;
-            metac_expression_t* E2 = ParseExpression(self, 0);
+            metac_expression_t* E2 = MetaCParserParseExpression(self, 0);
 
             result = AllocNewExpression(exp_type);
             result->E1 = E1;
@@ -391,9 +453,12 @@ metac_expression_t* ParseExpression(metac_parser_t* self, metac_expression_t* pr
         else if (peekNext->TokenType == tok_lParen)
         {
             PushOperator(exp_call);
-
+            metac_token_t* peek2 = MetaCParserPeekToken(self, 2);
             metac_expression_t* E1 = result;
-            metac_expression_t* E2 = ParseExpression(self, 0);
+            assert(peek2);
+            metac_expression_t* E2 = 0;
+            if (peek2->TokenType != tok_rParen)
+                E2 = MetaCParserParseExpression(self, 0);
             result = AllocNewExpression(exp_call);
             result->E1 = E1;
             result->E2 = E2;
@@ -407,27 +472,134 @@ metac_expression_t* ParseExpression(metac_parser_t* self, metac_expression_t* pr
 #undef PushOperator
 #undef PopOperator
 #undef PopOperand
+static metac_statement_t* MetaCParserParseBlockStatement(metac_parser_t* self, metac_statement_t* parent);
 
-metac_expression_t* ParseExpressionFromString(const char* exp)
+static metac_statement_t* MetaCParserParseStatement(metac_parser_t* self, metac_statement_t* parent)
 {
-    metac_lexer_t lexer;
-    metac_parser_t parser;
-    metac_lexer_state_t lexer_state =
-        MetaCLexerStateFromString(0, exp);
+    metac_statement_t* result = 0;
 
-    InitMetaCLexer(&lexer);
-    LexString(&lexer, exp);
+    metac_token_t* currentToken = MetaCParserPeekToken(self, 1);
+    metac_token_enum_t tokenType =
+        (currentToken ? currentToken->TokenType : tok_invalid);
 
-    MetaCParserInitFromLexer(&parser, &lexer);
+    if (tokenType == tok_invalid)
+    {
 
-    metac_expression_t* result = ParseExpression(&parser, 0);
+    }
+    else if (tokenType == tok_kw_if)
+    {
+        result = AllocNewStatement(stmt_if);
+        MetaCParserMatch(self, tok_kw_if);
+        MetaCParserPeekMatch(self, tok_lParen, 0);
+        metac_expression_t* condExpP =
+            MetaCParserParseExpression(self, 0);
+        assert(condExpP->Kind == exp_paren);
+        result->IfCond = condExpP;
+        result->IfBody = MetaCParserParseBlockStatement(self, result);
+        if (MetaCParserPeekMatch(self, tok_kw_else, 1))
+        {
+            result->ElseBody = MetaCParserParseBlockStatement(self, result);
+        }
+    }
+    else if (tokenType == tok_lBrace)
+    {
+        result = MetaCParserParseBlockStatement(self, parent);
+    }
+
     return result;
 }
+
+
+static metac_statement_t* MetaCParserParseBlockStatement(metac_parser_t* self, metac_statement_t* parent)
+{
+    metac_statement_t* result = 0;
+
+    MetaCParserMatch(self, tok_lBrace);
+
+    metac_statement_t* firstStatement = 0;
+    metac_statement_t* nextStatement = 0;
+    result = AllocNewStatement(stmt_block);
+
+    for (;;)
+    {
+        metac_token_t* peekToken = MetaCParserPeekToken(self, 1);
+
+        if (peekToken && peekToken->TokenType == tok_rBrace)
+        {
+            if (!firstStatement)
+            {
+                // maybe put an empty statement?
+            }
+            break;
+        }
+
+        if (!firstStatement)
+        {
+            firstStatement = MetaCParserParseStatement(self, result);
+            nextStatement = firstStatement;
+            result->Hash = Mix(result->Hash, nextStatement->Hash);
+        }
+        else
+        {
+            nextStatement->Next = MetaCParserParseStatement(self, result);
+            result->Hash = Mix(result->Hash, nextStatement->Hash);
+            if (nextStatement->Next)
+            {
+                nextStatement = nextStatement->Next;
+            }
+        }
+    }
+
+    result->Next = firstStatement;
+
+    MetaCParserMatch(self, tok_rBrace);
+
+    return result;
+}
+
+
+/// static lexer for using in the g_lineParser
+static metac_lexer_t g_lineLexer = {
+    &g_lineLexer.inlineTokens,
+    0,
+    (sizeof(g_lineLexer.inlineTokens) / sizeof(g_lineLexer.inlineTokens[0]))
+};
+/// There can only be one LineParser as it uses static storage
+static metac_parser_t g_lineParser = { &g_lineLexer };
+
+#define ARRAY_SIZE(A) \
+    ((unsigned int)(sizeof((A)) / sizeof((A)[0])))
+
+metac_expression_t* MetaCParserParseExpressionFromString(const char* exp)
+{
+    assert(g_lineLexer.tokens_capacity == ARRAY_SIZE(g_lineLexer.inlineTokens));
+    g_lineParser.CurrentTokenIndex = 0;
+    g_lineLexer.tokens_size = 0;
+
+    LexString(&g_lineLexer, exp);
+
+    metac_expression_t* result = MetaCParserParseExpression(&g_lineParser, 0);
+    return result;
+}
+
+metac_statement_t* MetaCParserParseStatementFromString(const char* exp)
+{
+    assert(g_lineLexer.tokens_capacity == ARRAY_SIZE(g_lineLexer.inlineTokens));
+    g_lineParser.CurrentTokenIndex = 0;
+    g_lineLexer.tokens_size = 0;
+
+    LexString(&g_lineLexer, exp);
+
+    metac_expression_t* result = MetaCParserParseStatement(&g_lineParser, 0);
+
+    return result;
+}
+
 
 #include <stdio.h>
 
 
-const char* MetaCExpressionType_toChars(metac_expression_type_t type)
+const char* MetaCExpressionKind_toChars(metac_expression_kind_t type)
 {
     const char* result = 0;
 
@@ -444,7 +616,7 @@ const char* MetaCExpressionType_toChars(metac_expression_type_t type)
 #undef CASE_MACRO
 }
 
-bool IsBinaryExp(metac_expression_type_t type)
+bool IsBinaryExp(metac_expression_kind_t type)
 {
     return (type >= FIRST_BINARY_EXP(TOK_SELF) && type <= LAST_BINARY_EXP(TOK_SELF));
 }
@@ -454,34 +626,34 @@ const char* PrintExpression(metac_expression_t* exp)
     char scratchpad[512];
     uint32_t expStringLength = 0;
 
-    if (exp->Type == exp_paren)
+    if (exp->Kind == exp_paren)
     {
-        if (!IsBinaryExp(exp->E1->Type))
+        if (!IsBinaryExp(exp->E1->Kind))
             scratchpad[expStringLength++] = '(';
         const char* e1  = PrintExpression(exp->E1);
         uint32_t e1_length = strlen(e1);
         memcpy(scratchpad + expStringLength, e1, e1_length);
         free((void*)e1);
         expStringLength += e1_length;
-        if (!IsBinaryExp(exp->E1->Type))
+        if (!IsBinaryExp(exp->E1->Kind))
             scratchpad[expStringLength++] = ')';
     }
-    else if (exp->Type == exp_identifier)
+    else if (exp->Kind == exp_identifier)
     {
         expStringLength += sprintf(scratchpad + expStringLength, "%.*s ",
             exp->Length, exp->Identifier);
     }
-    else if (exp->Type == exp_string)
+    else if (exp->Kind == exp_string)
     {
         expStringLength += sprintf(scratchpad + expStringLength, "\"%.*s\" ",
             exp->Length, exp->String);
     }
-    else if (exp->Type == exp_signed_integer)
+    else if (exp->Kind == exp_signed_integer)
     {
         expStringLength += sprintf(scratchpad + expStringLength, "%d ",
             (int)exp->ValueI64);
     }
-    else if (IsBinaryExp(exp->Type))
+    else if (IsBinaryExp(exp->Kind))
     {
         scratchpad[expStringLength++] = '(';
         const char* e1  = PrintExpression(exp->E1);
@@ -490,7 +662,7 @@ const char* PrintExpression(metac_expression_t* exp)
         free((void*)e1);
         expStringLength += e1_length;
 
-        const char* op = BinExpTypeToChars(exp->Type);
+        const char* op = BinExpTypeToChars(exp->Kind);
         uint32_t op_length = strlen(op);
         memcpy(scratchpad + expStringLength, op, op_length);
         expStringLength += op_length;
@@ -503,7 +675,7 @@ const char* PrintExpression(metac_expression_t* exp)
         expStringLength += e2_length;
         scratchpad[expStringLength++] = ')';
     }
-    else if (exp->Type == exp_call)
+    else if (exp->Kind == exp_call)
     {
         const char* e1  = PrintExpression(exp->E1);
         uint32_t e1_length = strlen(e1);
@@ -513,21 +685,23 @@ const char* PrintExpression(metac_expression_t* exp)
         *(scratchpad + expStringLength++) = ' ';
         *(scratchpad + expStringLength++) = '(';
 
-        const char* e2  = PrintExpression(exp->E2);
-        uint32_t e2_length = strlen(e2);
-        memcpy(scratchpad + expStringLength, e2, e2_length);
-        free((void*)e2);
-        expStringLength += e2_length;
-
+        if (exp->E2)
+        {
+            const char* e2  = PrintExpression(exp->E2);
+            uint32_t e2_length = strlen(e2);
+            memcpy(scratchpad + expStringLength, e2, e2_length);
+            free((void*)e2);
+            expStringLength += e2_length;
+        }
         scratchpad[expStringLength++] = ')';
     }
-    else if (exp->Type == exp_addr || exp->Type == exp_ptr)
+    else if (exp->Kind == exp_addr || exp->Kind == exp_ptr)
     {
         {
             const char* op = 0;
-            if (exp->Type == exp_addr)
+            if (exp->Kind == exp_addr)
                 op = "&";
-            else if (exp->Type == exp_ptr)
+            else if (exp->Kind == exp_ptr)
                 op = "*";
 
             assert(op);
@@ -535,7 +709,7 @@ const char* PrintExpression(metac_expression_t* exp)
             expStringLength += sprintf(scratchpad + expStringLength, "%s ", op);
         }
 
-        if (!IsBinaryExp(exp->E1->Type))
+        if (!IsBinaryExp(exp->E1->Kind))
             scratchpad[expStringLength++] = '(';
 
         const char* e1  = PrintExpression(exp->E1);
@@ -543,18 +717,18 @@ const char* PrintExpression(metac_expression_t* exp)
         memcpy(scratchpad + expStringLength, e1, e1_length);
         free((void*)e1);
         expStringLength += e1_length;
-        if (!IsBinaryExp(exp->E1->Type))
+        if (!IsBinaryExp(exp->E1->Kind))
             scratchpad[expStringLength++] = ')';
     }
-    else if (exp->Type == exp_inject || exp->Type == exp_eject || exp->Type == exp_typeof)
+    else if (exp->Kind == exp_inject || exp->Kind == exp_eject || exp->Kind == exp_typeof)
     {
         {
             const char* op = 0;
-            if (exp->Type == exp_inject)
+            if (exp->Kind == exp_inject)
                 op = "inject";
-            else if (exp->Type == exp_eject)
+            else if (exp->Kind == exp_eject)
                 op = "eject";
-            else if (exp->Type == exp_typeof)
+            else if (exp->Kind == exp_typeof)
                 op = "typeof";
 
             assert(op);
@@ -562,7 +736,7 @@ const char* PrintExpression(metac_expression_t* exp)
             expStringLength += sprintf(scratchpad + expStringLength, "%s ", op);
         }
 
-        if (!IsBinaryExp(exp->E1->Type))
+        if (!IsBinaryExp(exp->E1->Kind))
             scratchpad[expStringLength++] = '(';
 
         const char* e1  = PrintExpression(exp->E1);
@@ -571,12 +745,12 @@ const char* PrintExpression(metac_expression_t* exp)
         free((void*)e1);
         expStringLength += e1_length;
 
-        if (!IsBinaryExp(exp->E1->Type))
+        if (!IsBinaryExp(exp->E1->Kind))
             scratchpad[expStringLength++] = ')';
     }
     else
     {
-        printf("don't know how to print %s\n", (MetaCExpressionType_toChars(exp->Type)));
+        printf("don't know how to print %s\n", (MetaCExpressionKind_toChars(exp->Kind)));
     }
 
     char* result = (char*) malloc(expStringLength + 1);
@@ -586,7 +760,7 @@ const char* PrintExpression(metac_expression_t* exp)
     return result;
 }
 
-uint32_t OpToPrecedence(metac_expression_type_t exp)
+uint32_t OpToPrecedence(metac_expression_kind_t exp)
 {
     if (exp == exp_paren)
     {
@@ -605,13 +779,13 @@ uint32_t OpToPrecedence(metac_expression_type_t exp)
 
 void ReorderExpression(metac_expression_t* exp)
 {
-    uint32_t prec = OpToPrecedence(exp->Type);
+    uint32_t prec = OpToPrecedence(exp->Kind);
 }
 
 #ifdef TEST_PARSER
 void TestParseExprssion(void)
 {
-    metac_expression_t* expr = ParseExpression("12 - 16 - 99");
+    metac_expression_t* expr = MetaCParserParseExpression("12 - 16 - 99");
     assert(!strcmp(PrintExpression("(12 - (16 - 99 ))")));
     ReorderExpression(exp);
     assert(!strcmp(PrintExpression("((12 - 16 ) - 99 )")));

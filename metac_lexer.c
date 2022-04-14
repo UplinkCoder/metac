@@ -375,13 +375,16 @@ void InitMetaCLexer(metac_lexer_t* self)
     self->tokens = self->inlineTokens;
 }
 
-metac_lexer_state_t MetaCLexerStateFromString(uint32_t sourceId, const char* str)
+metac_lexer_state_t MetaCLexerStateFromString(uint32_t sourceId,
+                                              const char* str)
 {
     uint32_t length = strlen(str);
     return MetaCLexerStateFromBuffer(sourceId, str, length);
 }
 
-metac_lexer_state_t MetaCLexerStateFromBuffer(uint32_t sourceId, const char* buffer, uint32_t bufferLength)
+metac_lexer_state_t MetaCLexerStateFromBuffer(uint32_t sourceId,
+                                              const char* buffer,
+                                              uint32_t bufferLength)
 {
     assert(buffer[bufferLength] == '\0');
 
