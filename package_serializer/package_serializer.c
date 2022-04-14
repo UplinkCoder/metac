@@ -20,7 +20,7 @@ int main(int argc, const char* argv[])
         const char* arg = argv[arg_idx];
         metac_lexer_t lexer;
         metac_lexer_state_t lexerState;
-        InitMetaCLexer(&lexer);
+        MetaCLexerInit(&lexer);
         read_result_t readResult = ReadFileAndZeroTerminate(arg);
 //        metac_source_t sourceId =
         LexFile(&lexer, arg, basename(arg),

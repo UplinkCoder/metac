@@ -8,6 +8,7 @@ if [ -d $DST ]; then
        sync.sh sync_from.sh \
        gen_code.bat gen_code.sh run_tests.sh run_tests.bat \
        metac_lexer.c metac_lexer.h metac_parser.c metac_parser.h \
+       metac_parser_obj.c \
        metac.fpg \
        $DST
 
@@ -21,7 +22,7 @@ if [ -d $DST ]; then
        utils/read_file.c $DST/utils
 
     mkdir -p $DST/repl
-    cp repl/repl.c repl/parser_obj.c repl/build.sh $DST/repl
+    cp repl/repl.c repl/build.sh $DST/repl
 
     mkdir -p $DST/package_serializer
     cp package_serializer/build.sh package_serializer/build.bat \
