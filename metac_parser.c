@@ -656,7 +656,7 @@ static metac_lexer_t g_lineLexer = {
     (sizeof(g_lineLexer.inlineTokens) / sizeof(g_lineLexer.inlineTokens[0]))
 };
 /// There can only be one LineParser as it uses static storage
-extern metac_parser_t g_lineParser = { &g_lineLexer };
+metac_parser_t g_lineParser = { &g_lineLexer };
 
 #define ARRAY_SIZE(A) \
     ((unsigned int)(sizeof((A)) / sizeof((A)[0])))
