@@ -39,7 +39,7 @@ static metac_token_enum_t MetaCLexFixedLengthToken(const char _chrs[3])
         }
 
     case '$':
-            return tok_dollar;
+         return tok_dollar;
 
     case '(':
         return tok_lParen;

@@ -57,7 +57,7 @@ metac_token_t* MetaCParserPeekToken(metac_parser_t* self, int32_t p)
 void MetaCParserMatch(metac_parser_t* self, metac_token_enum_t type)
 {
     metac_token_t* token = MetaCParserNextToken(self);
-    metac_token_enum_t got = token->TokenType;
+    metac_token_enum_t got = (token ? token->TokenType : tok_eof);
     if (got != type)
     {
         printf("Expected: %s -- Got: %s\n",
@@ -268,7 +268,7 @@ bool MetaCParserPeekMatch(metac_parser_t* self, metac_token_enum_t expectedType,
         result = false;
         if (!optional)
         {
-            ParseErrorF(self->lexer_state, "expected %s but got %s",
+            ParseErrorF(self->LexerState, "expected %s but got %s",
                 MetaCTokenEnum_toChars(expectedType),
                 MetaCTokenEnum_toChars(peekToken ? peekToken->TokenType : tok_eof)
             );
@@ -398,7 +398,7 @@ metac_expression_t* MetaCParserParseExpression(metac_parser_t* self, metac_expre
         metac_token_t* nextToken = MetaCParserPeekToken(self, 1);
         if (!nextToken || nextToken->TokenType != tok_lParen)
         {
-            ParseError(self->lexer_state, "Expected typeof to be followed by '('");
+            ParseError(self->LexerState, "Expected typeof to be followed by '('");
         }
 
         metac_expression_t* parenExp = MetaCParserParseExpression(self, 0);
@@ -483,7 +483,8 @@ metac_expression_t* MetaCParserParseExpression(metac_parser_t* self, metac_expre
 #undef PopOperator
 #undef PopOperand
 static metac_statement_t* MetaCParserParseBlockStatement(metac_parser_t* self, metac_statement_t* parent);
-
+#define ErrorStatement() \ 
+    (metac_statement_t*)0
 static metac_statement_t* MetaCParserParseStatement(metac_parser_t* self, metac_statement_t* parent)
 {
     metac_statement_t* result = 0;
@@ -523,6 +524,12 @@ static metac_statement_t* MetaCParserParseStatement(metac_parser_t* self, metac_
             MetaCParserParseExpression(self, 0);
         switchHash = Mix(switchHash, cond->Hash);
         MetaCParserMatch(self, tok_rParen);
+        if (!MetaCParserPeekMatch(self, tok_lBrace, 0))
+        {
+            ParseError(self->LexerState, "parsing switch failed\n");
+            return ErrorStatement();
+        }
+        
         metac_statement_t* caseBlock =
             MetaCParserParseBlockStatement(self, result);
         switchHash = Mix(switchHash, caseBlock->Hash);
@@ -596,7 +603,14 @@ static metac_statement_t* MetaCParserParseBlockStatement(metac_parser_t* self, m
         {
             firstStatement = MetaCParserParseStatement(self, result);
             nextStatement = firstStatement;
-            result->Hash = Mix(result->Hash, nextStatement->Hash);
+            if (nextStatement)
+            {
+                result->Hash = Mix(result->Hash, nextStatement->Hash);
+            }
+            else
+            {
+                ParseError(self->LexerState, "Statement expected");
+            }
         }
         else
         {

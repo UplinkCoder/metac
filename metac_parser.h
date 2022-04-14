@@ -235,7 +235,7 @@ typedef struct metac_parser_reorder_state_t
 typedef struct metac_parser_t
 {
     metac_lexer_t* Lexer;
-    metac_lexer_state_t* lexer_state;
+    metac_lexer_state_t* LexerState;
 
     uint32_t CurrentTokenIndex;
     metac_parser_reorder_state_t* ExpressionReorderState;

@@ -21,7 +21,7 @@ int main(int argc, const char* argv[])
     bool parsingStatement  = false;
 
     const char* promt_ = "REPL>";
-LinputLoop:
+
     while ((line = linenoise(promt_)))
     {
         linenoiseHistoryAdd(line);
@@ -35,11 +35,17 @@ LinputLoop:
             case 'e' :
                     parsingExpression = true;
                     promt_ = "Exp>";
-                    goto LinputLoop;
+                    continue;
             case 's' :
                     parsingStatement = true;
                     promt_ = "Stmt>";
-                    goto LinputLoop;
+                    continue;
+            default : printf("Command :%c unknown type :h for help\n", *(line + 1));
+            case 'h' :
+                printf("Press :e for expression mode\n"
+                       "      :s for statement mode\n"
+                       "      :q to quit\n");
+                continue;
             }
         }
         while (line_length > 0)
@@ -53,10 +59,10 @@ LinputLoop:
                     MetaCParserParseExpressionFromString(line);
 
                 const char* str = PrintExpression(&g_lineParser, exp);
-                printf("result = %s\n", str);
+                printf("expr = %s\n", str);
                 parsingExpression = false;
                 promt_ = "REPL>";
-                goto LinputLoop;
+                continue;
             }
 #if 1
             else if (parsingStatement)
@@ -66,7 +72,7 @@ LinputLoop:
 
                 parsingStatement = false;
                 promt_ = "REPL>";
-                goto LinputLoop;
+                continue;
             }
 #endif
             metac_token_t token =
