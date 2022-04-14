@@ -483,7 +483,7 @@ metac_expression_t* MetaCParserParseExpression(metac_parser_t* self, metac_expre
 #undef PopOperator
 #undef PopOperand
 static metac_statement_t* MetaCParserParseBlockStatement(metac_parser_t* self, metac_statement_t* parent);
-#define ErrorStatement() \ 
+#define ErrorStatement() \
     (metac_statement_t*)0
 static metac_statement_t* MetaCParserParseStatement(metac_parser_t* self, metac_statement_t* parent)
 {
@@ -638,7 +638,7 @@ static metac_lexer_t g_lineLexer = {
     (sizeof(g_lineLexer.inlineTokens) / sizeof(g_lineLexer.inlineTokens[0]))
 };
 /// There can only be one LineParser as it uses static storage
-static metac_parser_t g_lineParser = { &g_lineLexer };
+extern metac_parser_t g_lineParser = { &g_lineLexer };
 
 #define ARRAY_SIZE(A) \
     ((unsigned int)(sizeof((A)) / sizeof((A)[0])))

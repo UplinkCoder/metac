@@ -247,4 +247,6 @@ void MetaCParserInitFromLexer(metac_parser_t* self, metac_lexer_t* lexer);
 metac_expression_t* MetaCParserParseExpression(metac_parser_t* self, metac_expression_t* prev);
 metac_expression_t* MetaCParserParseExpressionFromString(const char* exp);
 const char* PrintExpression(metac_parser_t* self, metac_expression_t* exp);
+extern metac_parser_t g_lineParser;
+
 #undef DEFINE_MEMBERS

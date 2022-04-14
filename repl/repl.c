@@ -1,7 +1,7 @@
 #include "../compat.h"
 #define IDENTIFIER_TABLE
 #include "../metac_lexer.h"
-#include "../metac_parser.c"
+#include "../metac_parser.h"
 #include "../3rd_party/linenoise/linenoise.c"
 #include "../int_to_str.c"
 #include <stdio.h>
@@ -33,14 +33,16 @@ int main(int argc, const char* argv[])
             case 'q':
                 return 0;
             case 'e' :
-                    parsingExpression = true;
-                    promt_ = "Exp>";
-                    continue;
+                parsingExpression = true;
+                promt_ = "Exp>";
+                continue;
             case 's' :
-                    parsingStatement = true;
-                    promt_ = "Stmt>";
-                    continue;
-            default : printf("Command :%c unknown type :h for help\n", *(line + 1));
+                parsingStatement = true;
+                promt_ = "Stmt>";
+                continue;
+            default :
+                printf("Command :%c unknown type :h for help\n", *(line + 1));
+                continue;
             case 'h' :
                 printf("Press :e for expression mode\n"
                        "      :s for statement mode\n"

@@ -4,5 +4,5 @@ fi
 pushd ..
 ./gen_code.sh
 popd
-$CC repl.c -I.. \
+$CC repl.c parser_obj.c -I.. \
     -g2 -Os -lm -march=native -mtune=native -o repl

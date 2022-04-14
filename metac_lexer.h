@@ -1,7 +1,15 @@
 #ifndef _METAC_LEXER_H_
 #define _METAC_LEXER_H_
 #include "compat.h"
-#include "metac_identifier_table.h"
+
+#ifdef IDENTIFIER_TABLE
+#  include "metac_identifier_table.h"
+#  define IDENTIFIER_PTR(TABLE, TOKEN) \
+    IdentifierPtrToCharPtr(TABLE, (TOKEN).IdentifierPtr)
+#else
+#  define IDENTIFIER_PTR(TABLE, TOKEN) \
+        (TOKEN).Identifier
+#endif
 
 typedef uint32_t block_idx_t;
 typedef uint16_t crc32c_lower16_t;
