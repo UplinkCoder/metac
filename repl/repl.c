@@ -21,7 +21,7 @@ int main(int argc, const char* argv[])
     bool parsingStatement  = false;
 
     const char* promt_ = "REPL>";
-
+LnextLine:
     while ((line = linenoise(promt_)))
     {
         linenoiseHistoryAdd(line);
@@ -64,7 +64,7 @@ int main(int argc, const char* argv[])
                 printf("expr = %s\n", str);
                 parsingExpression = false;
                 promt_ = "REPL>";
-                continue;
+                goto LnextLine;
             }
 #if 1
             else if (parsingStatement)
@@ -74,7 +74,7 @@ int main(int argc, const char* argv[])
 
                 parsingStatement = false;
                 promt_ = "REPL>";
-                continue;
+                goto LnextLine;
             }
 #endif
             metac_token_t token =

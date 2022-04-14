@@ -414,7 +414,7 @@ metac_lexer_state_t MetaCLexerStateFromBuffer(uint32_t sourceId,
 static inline bool IsIdentifierChar(char c)
 {
     const char upper_c = (c & ~32);
-    return ((upper_c >= 'A' & upper_c <= 'Z') | c == '_');
+    return (((upper_c >= 'A') & (upper_c <= 'Z')) | c == '_');
 }
 
 static inline bool IsNumericChar(char c)

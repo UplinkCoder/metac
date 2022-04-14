@@ -81,7 +81,7 @@ metac_statement_t* _newStmt_mem = 0;
 metac_expression_kind_t BinExpTypeFromTokenType(metac_token_enum_t tokenType)
 {
     metac_expression_kind_t result = exp_invalid;
-    if ((tokenType >= FIRST_BINARY_TOKEN(TOK_SELF) | tokenType <= LAST_BINARY_TOKEN(TOK_SELF)))
+    if (((tokenType >= FIRST_BINARY_TOKEN(TOK_SELF)) | (tokenType <= LAST_BINARY_TOKEN(TOK_SELF))))
     {
         return cast(metac_expression_kind_t)(cast(int)tokenType -
                 (cast(int)FIRST_BINARY_TOKEN(TOK_SELF) -
@@ -351,19 +351,21 @@ metac_expression_t* MetaCParserParseExpression(metac_parser_t* self, metac_expre
 
         result = AllocNewExpression(exp_string);
         result->String = currentToken->String;
-        result->Length = LENGTH_FROM_STRING_KEY(currentToken->StringKey);
+        result->StringKey = currentToken->StringKey;
         result->Hash = currentToken->StringKey;
         PushOperand(result);
     }
     else if (tokenType == tok_identifier)
     {
         result = AllocNewExpression(exp_identifier);
-#ifndef IDENTIFIER_TABLE
-        result->Identifier = currentToken->Identifier;
-#else
-        result->IdentifierPtr = currentToken->IdentifierPtr;
-#endif
-        result->Length = LENGTH_FROM_IDENTIFIER_KEY(currentToken->IdentifierKey);
+        const char* ident =
+            IdentifierPtrToCharPtr(
+                &self->Lexer->IdentifierTable,
+                currentToken->IdentifierPtr
+            );
+        result->IdentifierPtr = GetOrAddIdentifier(&self->IdentifierTable,
+                                                   ident, currentToken->IdentifierKey);
+        result->IdentifierKey = currentToken->IdentifierKey;
         result->Hash = currentToken->IdentifierKey;
         PushOperand(result);
     }
@@ -415,7 +417,6 @@ metac_expression_t* MetaCParserParseExpression(metac_parser_t* self, metac_expre
         {
             ParseError(self->LexerState, "Expected assert to be followed by '('");
         }
-
         metac_expression_t* parenExp = MetaCParserParseExpression(self, 0);
         PopOperator(exp_assert);
         assert(parenExp->Kind == exp_paren);
@@ -741,12 +742,12 @@ const char* PrintExpression(metac_parser_t* self, metac_expression_t* exp)
     }
     else if (exp->Kind == exp_identifier)
     {
-        expStringLength += sprintf(scratchpad + expStringLength, "%.*s ",
-            LENGTH_FROM_IDENTIFIER_KEY(exp->IdentifierKey),
-            IdentifierPtrToCharPtr(
-                &self->Lexer->IdentifierTable,
+        const char* ident = IdentifierPtrToCharPtr(
+                &self->IdentifierTable,
                 exp->IdentifierPtr
-            )
+            );
+        expStringLength += sprintf(scratchpad + expStringLength, "%s ",
+            ident
         );
     }
     else if (exp->Kind == exp_string)
@@ -826,7 +827,7 @@ const char* PrintExpression(metac_parser_t* self, metac_expression_t* exp)
         if (!IsBinaryExp(exp->E1->Kind))
             scratchpad[expStringLength++] = ')';
     }
-    else if (exp->Kind == exp_inject || exp->Kind == exp_eject || exp->Kind == exp_typeof)
+    else if (exp->Kind == exp_inject || exp->Kind == exp_eject || exp->Kind == exp_typeof || exp_assert)
     {
         {
             const char* op = 0;
@@ -836,6 +837,8 @@ const char* PrintExpression(metac_parser_t* self, metac_expression_t* exp)
                 op = "eject";
             else if (exp->Kind == exp_typeof)
                 op = "typeof";
+            else if (exp->Kind == exp_assert)
+                op = "assert";
 
             assert(op);
 

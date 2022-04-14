@@ -155,26 +155,12 @@ typedef struct metac_expression_t
         };
         // case identifier_exp :
         struct {
-            union
-            {
-                struct {
-                    crc32c_lower16_t Crc32CLw16_;
-                    uint16_t Length_;
-                } ;
-                uint32_t IdentifierKey;
-            };
+            uint32_t IdentifierKey;
             metac_identifier_ptr_t IdentifierPtr;
         };
         // case exp_string :
         struct {
-            union
-            {
-                struct {
-                    crc32c_lower16_t Crc32CLw16;
-                    uint16_t Length;
-                } ;
-                uint32_t StringKey;
-            };
+            uint32_t StringKey;
             const char* String;
         };
 
