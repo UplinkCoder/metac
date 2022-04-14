@@ -26,7 +26,7 @@ typedef struct metac_identifier_table_t
     metac_identifier_table_slot_t inlineSlots[256];
 } metac_identifier_table_t;
 
-void InitIdentifierTable(metac_identifier_table_t* table);
+void IdentifierTableInit(metac_identifier_table_t* table);
 
 metac_identifier_ptr_t GetOrAddIdentifier(metac_identifier_table_t* table,
                                           const char* identifier,

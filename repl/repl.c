@@ -15,9 +15,7 @@ int main(int argc, const char* argv[])
 
     metac_lexer_state_t repl_state = {0, 0, 0, 0};
     metac_lexer_t lexer;
-    InitMetaCLexer(&lexer);
-    metac_parser_t parser;
-    MetaCParserInitFromLexer(&parser, &lexer);
+    MetaCLexerInit(&lexer);
 
     bool parsingExpression = false;
     bool parsingStatement  = false;

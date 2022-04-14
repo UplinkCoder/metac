@@ -315,7 +315,7 @@ const char* MetaCTokenEnum_toChars(metac_token_enum_t tok);
     fprintf(stderr, "ParseError[%s:%u]: %u" MSG "\n", __FILE__, __LINE__, (STATE ? STATE->Position : 0))
 
 
-void InitMetaCLexer(metac_lexer_t* self);
+void MetaCLexerInit(metac_lexer_t* self);
 metac_lexer_state_t MetaCLexerStateFromString(uint32_t sourceId, const char* str);
 metac_lexer_state_t MetaCLexerStateFromBuffer(uint32_t sourceId, const char* buffer, uint32_t bufferLength);
 metac_token_t* MetaCLexerLexNextToken(metac_lexer_t* self, metac_lexer_state_t* state,

@@ -16,7 +16,7 @@ void MetaCParserInitFromLexer(metac_parser_t* self, metac_lexer_t* lexer)
 {
     self->Lexer = lexer;
     self->CurrentTokenIndex = 0;
-    InitIdentifierTable(&self->IdentifierTable);
+    IdentifierTableInit(&self->IdentifierTable);
 }
 
 metac_token_t* MetaCParserNextToken(metac_parser_t* self)
@@ -634,10 +634,10 @@ metac_expression_t* MetaCParserParseExpressionFromString(const char* exp)
     assert(g_lineLexer.tokens_capacity == ARRAY_SIZE(g_lineLexer.inlineTokens));
     g_lineParser.CurrentTokenIndex = 0;
     g_lineLexer.tokens_size = 0;
-    InitIdentifierTable(&g_lineLexer.IdentifierTable);
+    IdentifierTableInit(&g_lineLexer.IdentifierTable);
     if (!g_lineParser.IdentifierTable.Slots)
     {
-        InitIdentifierTable(&g_lineParser.IdentifierTable);
+        IdentifierTableInit(&g_lineParser.IdentifierTable);
     }
 
     LexString(&g_lineLexer, exp);
@@ -651,10 +651,10 @@ metac_statement_t* MetaCParserParseStatementFromString(const char* exp)
     assert(g_lineLexer.tokens_capacity == ARRAY_SIZE(g_lineLexer.inlineTokens));
     g_lineParser.CurrentTokenIndex = 0;
     g_lineLexer.tokens_size = 0;
-    InitIdentifierTable(&g_lineLexer.IdentifierTable);
+    IdentifierTableInit(&g_lineLexer.IdentifierTable);
     if (!g_lineParser.IdentifierTable.Slots)
     {
-        InitIdentifierTable(&g_lineParser.IdentifierTable);
+        IdentifierTableInit(&g_lineParser.IdentifierTable);
     }
 
     LexString(&g_lineLexer, exp);

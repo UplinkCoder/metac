@@ -380,12 +380,15 @@ uint32_t MetaCTokenLength(metac_token_t token)
     return 0;
 }
 
-void InitMetaCLexer(metac_lexer_t* self)
+void MetaCLexerInit(metac_lexer_t* self)
 {
     self->tokens_size = 0;
     self->tokens_capacity =
         (sizeof(self->inlineTokens) / sizeof(self->inlineTokens[0]));
     self->tokens = self->inlineTokens;
+#ifdef IDENTIFIER_TABLE
+    IdentifierTableInit(&self->IdentifierTable);
+#endif
 }
 
 metac_lexer_state_t MetaCLexerStateFromString(uint32_t sourceId,

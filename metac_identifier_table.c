@@ -19,13 +19,17 @@ const char* IdentifierPtrToCharPtr(metac_identifier_table_t* table,
     return table->StringMemory + (ptr.v - 4);
 }
 
-void InitIdentifierTable(metac_identifier_table_t* table)
+void IdentifierTableInit(metac_identifier_table_t* table)
 {
     table->SlotCount_Log2 = 8;
     table->Slots = table->inlineSlots;
     table->StringMemory = (char*)malloc(16384);
     table->StringMemoryCapacity = 16384;
     table->StringMemorySize = 0;
+    for(int slotIdx = 0; slotIdx < 256; slotIdx++)
+    {
+        table->Slots[slotIdx].HashKey = 0;
+    }
 }
 
 #define ALIGN4(N) (((N) + 3) & ~3)
@@ -62,12 +66,14 @@ metac_identifier_ptr_t GetOrAddIdentifier(metac_identifier_table_t* table,
                 // Compare xchange here
                 expected = table->StringMemorySize;
                 newValue = (result.v - 4) + ALIGN4(length + 1);
+#ifndef ATOMIC
                 table->StringMemorySize = newValue;
             } while (false);
-            //while(!__atomic_compare_exchange(&table->StringMemorySize, &expected, &newValue,
-            //    false, __ATOMIC_ACQUIRE, __ATOMIC_ACQUIRE));
+#else
+            } while(!__atomic_compare_exchange(&table->StringMemorySize, &expected, &newValue,
+                false, __ATOMIC_ACQUIRE, __ATOMIC_ACQUIRE));
             // atomic compare exchange has been done.
-
+#endif
             char* tableMem = (table->StringMemory + (result.v - 4));
             __builtin_memcpy(tableMem, identifier, length);
             tableMem[length] = '\0';
@@ -76,6 +82,7 @@ metac_identifier_ptr_t GetOrAddIdentifier(metac_identifier_table_t* table,
             slot->Ptr = result;
             break;
         }
+        continue;
     }
 
     return result;
