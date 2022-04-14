@@ -199,6 +199,10 @@ typedef struct metac_token_t {
 
     uint32_t Position;
     uint32_t SourceId;
+    /// 0 means file scope
+    /// otherwise it's the token_idx of the enclosing block
+    uint32_t outer_scope;
+
     union { // switch(TokenType)
         uint32_t Key;
         // case tok_identfier :
@@ -223,10 +227,6 @@ typedef struct metac_token_t {
         float ValueF23;
         double ValueF52;
     };
-
-    /// 0 means file scope
-    /// otherwise it's the token_idx of the enclosing block
-    uint32_t outer_scope;
 } metac_token_t;
 
 
