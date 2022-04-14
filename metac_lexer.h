@@ -1,6 +1,7 @@
 #ifndef _METAC_LEXER_H_
 #define _METAC_LEXER_H_
 #include "compat.h"
+#include "metac_identifier_table.h"
 
 typedef uint32_t block_idx_t;
 typedef uint16_t crc32c_lower16_t;
@@ -130,6 +131,8 @@ typedef struct metac_lexer_state_t
 #define FOREACH_STATIC_TOKEN(M) \
     FIRST_STATIC_TOKEN(M) \
     \
+    M(tok_hash) \
+    \
     M(tok_lParen) \
     M(tok_rParen) \
     M(tok_lBrace) \
@@ -192,7 +195,11 @@ typedef struct metac_token_t {
         // case tok_identfier :
         struct {
             uint32_t IdentifierKey;
+#ifdef IDENTIFIER_TABLE
+            metac_identifier_ptr_t IdentifierPtr;
+#else
             const char* Identifier;
+#endif
         };
         // case tok_string :
         struct {
@@ -277,7 +284,7 @@ typedef struct metac_lexer_t {
     metac_token_t inlineTokens[2048];
 
 #ifdef IDENTIFIER_TABLE
-    string_table_t IdentifierTable;
+    metac_identifier_table_t IdentifierTable;
 #endif
 #ifdef STRING_LITERAL_TABLE
     string_table_t StringLiteralTable;
@@ -311,7 +318,6 @@ const char* MetaCTokenEnum_toChars(metac_token_enum_t tok);
 void InitMetaCLexer(metac_lexer_t* self);
 metac_lexer_state_t MetaCLexerStateFromString(uint32_t sourceId, const char* str);
 metac_lexer_state_t MetaCLexerStateFromBuffer(uint32_t sourceId, const char* buffer, uint32_t bufferLength);
-void MetaCLexerMatchKeywordIdentifier(metac_token_t*);
 metac_token_t* MetaCLexerLexNextToken(metac_lexer_t* self, metac_lexer_state_t* state,
                                       const char* text, uint32_t len);
 #endif // _METAC_LEXER_H_

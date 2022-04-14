@@ -1,5 +1,6 @@
 #include "compat.h"
 #include "metac_lexer.h"
+#include "metac_identifier_table.h"
 
 /*    M(exp_bin_invalid) \*/
 
@@ -91,10 +92,16 @@
 
 #define FOREACH_STMT_KIND_(M) \
     M(stmt_block) \
+    M(stmt_if) \
+    M(stmt_switch) \
+    M(stmt_while) \
+    M(stmt_label) \
+    M(stmt_case) \
+    M(stmt_break) \
+    M(stmt_continue) \
+    M(stmt_goto) \
     \
-    M(stmt_exp) \
-    \
-    M(stmt_if)
+    M(stmt_exp)
 
 
 
@@ -156,7 +163,7 @@ typedef struct metac_expression_t
                 } ;
                 uint32_t IdentifierKey;
             };
-            const char* Identifier;
+            metac_identifier_ptr_t IdentifierPtr;
         };
         // case exp_string :
         struct {
@@ -187,6 +194,11 @@ typedef enum metac_statement_kind_t
     stmt_max
 } metac_statement_kind_t;
 
+typedef struct metac_parser_name_ptr
+{
+    uint32_t v;
+} metac_parser_name_ptr;
+
 typedef struct metac_statement_t
 {
     metac_statement_kind_t Kind;
@@ -200,12 +212,14 @@ typedef struct metac_statement_t
         // case stmt_if :
         struct {
             metac_expression_t* IfCond;
-            struct metac_statement* IfBody;
-            struct metac_statement* ElseBody;
+            struct metac_statement_t* IfBody;
+            struct metac_statement_t* ElseBody;
         };
         // case stmt_exp :
         metac_expression_t* Expression;
         // case stmt_block :
+        // case stmt_label :
+        metac_identifier_ptr_t Label;
     };
 } metac_statement_t;
 
@@ -226,9 +240,11 @@ typedef struct metac_parser_t
     uint32_t CurrentTokenIndex;
     metac_parser_reorder_state_t* ExpressionReorderState;
 
+    metac_identifier_table_t IdentifierTable;
 } metac_parser_t;
 
 void MetaCParserInitFromLexer(metac_parser_t* self, metac_lexer_t* lexer);
 metac_expression_t* MetaCParserParseExpression(metac_parser_t* self, metac_expression_t* prev);
 metac_expression_t* MetaCParserParseExpressionFromString(const char* exp);
+const char* PrintExpression(metac_parser_t* self, metac_expression_t* exp);
 #undef DEFINE_MEMBERS

@@ -55,8 +55,9 @@ void CountTokenLengths()
     printf("{\n");
     printf("    default : return %u;\n\n", currentMaxLenCanidate);
 
+//    if (TOK_LENGTH(TOK) != currentMaxLenCanidate) \
+
 #define SWITCH_PRINT(TOK) \
-    if (TOK_LENGTH(TOK) != currentMaxLenCanidate) \
     printf("    case %s : return %u;\n", #TOK, TOK_LENGTH(TOK));
 
     FOREACH_STATIC_TOKEN(SWITCH_PRINT)

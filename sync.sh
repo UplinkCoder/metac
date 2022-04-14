@@ -3,6 +3,7 @@ DST="$1"
 LINENOISE_DIR="3rd_party/linenoise"
 if [ -d $DST ]; then
     cp README.md LICENSE \
+       metac_identifier_table.c metac_identifier_table.h \
        endian.h stdint_msvc.h compat.h int_to_str.c \
        sync.sh sync_from.sh \
        gen_code.bat gen_code.sh run_tests.sh run_tests.bat \
@@ -17,10 +18,15 @@ if [ -d $DST ]; then
 
     mkdir -p $DST/utils
     cp utils/gen_metac_match_keyword.c utils/metac_count_token_length.c \
-       $DST/utils
+       utils/read_file.c $DST/utils
 
     mkdir -p $DST/repl
     cp repl/repl.c repl/build.sh $DST/repl
+
+    mkdir -p $DST/package_serializer
+    cp package_serializer/build.sh package_serializer/build.bat \
+       package_serializer/package_serializer.c \
+       $DST/package_serializer
 
     chmod +x $DST/repl/build.sh
 

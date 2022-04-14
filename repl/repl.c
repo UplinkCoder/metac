@@ -1,13 +1,13 @@
 #include "../compat.h"
-
+#define IDENTIFIER_TABLE
 #include "../metac_lexer.h"
-#include "../metac_parser.h"
+#include "../metac_parser.c"
 #include "../3rd_party/linenoise/linenoise.c"
 #include "../int_to_str.c"
 #include <stdio.h>
 
+metac_statement_t* MetaCParserParseStatementFromString(const char* str);
 const char* MetaCTokenEnum_toChars(metac_token_enum_t tok);
-const char* PrintExpression(metac_expression_t*);
 
 int main(int argc, const char* argv[])
 {
@@ -54,13 +54,13 @@ LinputLoop:
                 metac_expression_t* exp =
                     MetaCParserParseExpressionFromString(line);
 
-                const char* str = PrintExpression(exp);
+                const char* str = PrintExpression(&g_lineParser, exp);
                 printf("result = %s\n", str);
                 parsingExpression = false;
                 promt_ = "REPL>";
                 goto LinputLoop;
             }
- #if 1
+#if 1
             else if (parsingStatement)
             {
                 metac_statement_t* stmt
@@ -82,7 +82,7 @@ LinputLoop:
 
             if (token.TokenType == tok_identifier)
             {
-                printf("    %.*s\n", LENGTH_FROM_IDENTIFIER_KEY(token.Key), token.Identifier);
+                printf("    %.*s\n", LENGTH_FROM_IDENTIFIER_KEY(token.Key), IDENTIFIER_PTR(&lexer.IdentifierTable, token));
             }
             else if (token.TokenType == tok_unsignedNumber)
             {

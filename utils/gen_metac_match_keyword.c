@@ -11,7 +11,7 @@ void WriteMatchFunction(void)
     printf("#  define memcmp __builtin_memcmp\n");
     printf("#endif\n");
 
-    printf("// void MetaCLexerMatchKeywordIdentifier(metac_token_t* tok)\n");
+    printf("// void MetaCLexerMatchKeywordIdentifier(metac_token_t* tok, const char* identifier)\n");
     printf("{\n");
     printf("    assert(tok->TokenType == tok_identifier);\n\n");
 
@@ -35,7 +35,7 @@ void WriteMatchFunction(void)
 
 #define KW_WRITE_CMP(KW) \
     printf("    case 0x%x :\n", KW_KEY(KW)); \
-    printf("        if (!memcmp(tok->Identifier, \"%s\", %u))\n", \
+    printf("        if (!memcmp(identifier, \"%s\", %u))\n", \
         #KW + KW_PREFIX_LEN, KW_LEN(KW)); \
     printf("            tok->TokenType = %s;\n", #KW); \
     printf("    break;\n");

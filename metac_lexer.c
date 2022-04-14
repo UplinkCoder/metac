@@ -1,3 +1,12 @@
+#ifdef IDENTIFIER_TABLE
+#  include "metac_identifier_table.c"
+#  define IDENTIFIER_PTR(TABLE, TOKEN) \
+    IdentifierPtrToCharPtr(TABLE, (TOKEN).IdentifierPtr)
+#else
+#  define IDENTIFIER_PTR(TABLE, TOKEN) \
+        (TOKEN).Identifier
+#endif
+
 #include "metac_lexer.h"
 #include "compat.h"
 
@@ -16,6 +25,9 @@ static metac_token_enum_t MetaCLexFixedLengthToken(const char _chrs[3])
 
     case '\0':
         return tok_eof;
+
+    case '#':
+        return tok_hash;
 
     case '!':
         switch (_chrs[1])
@@ -236,6 +248,7 @@ static uint32_t StaticMetaCTokenLength(metac_token_enum_t t)
         case tok_eof         : return 0;
 
         case tok_bang        : return 1;
+        case tok_hash        : return 1;
         case tok_lParen      : return 1;
         case tok_rParen      : return 1;
         case tok_lBrace      : return 1;
@@ -401,8 +414,6 @@ metac_lexer_state_t MetaCLexerStateFromBuffer(uint32_t sourceId,
     return result;
 }
 
-#define WRAP(...)
-
 static inline bool IsIdentifierChar(char c)
 {
     const char upper_c = (c & ~32);
@@ -450,7 +461,8 @@ static inline char EscapedChar(char c)
     }
     return 'E';
 }
-void MetaCLexerMatchKeywordIdentifier(metac_token_t* tok)
+static void MetaCLexerMatchKeywordIdentifier(metac_token_t* tok,
+                                             const char* identifier)
 {
 #include "generated/metac_match_keyword.inl"
 }
@@ -511,17 +523,16 @@ metac_token_t* MetaCLexerLexNextToken(metac_lexer_t* self,
                 assert(identifier_length < 0xFFF);
                 token.IdentifierKey =
                     IDENTIFIER_KEY(identifier_hash, identifier_length);
-#ifdef IDENTIFIER_TABLE
+                MetaCLexerMatchKeywordIdentifier(&token, identifierBegin);
                 if(token.TokenType == tok_identifier)
                 {
-                    token->identifier_idx =
-                        GetOrAddIdentfier(lexer->IdentifierTable, token.IdentifierKey, identifierBegin);
-                }
-#endif
-#ifndef IDENTIFIER_TABLE
+#ifdef IDENTIFIER_TABLE
+                    token.IdentifierPtr =
+                        GetOrAddIdentifier(&self->IdentifierTable, identifierBegin, token.IdentifierKey);
+#else
                 token.Identifier = identifierBegin;
 #endif
-                MetaCLexerMatchKeywordIdentifier(&token);
+                }
             }
             else if (IsNumericChar(c))
             {
@@ -626,6 +637,8 @@ void test_lexer()
     const char* token_list[] =
     {
         "!",
+
+        "#",
 
         "(",
         ")",
