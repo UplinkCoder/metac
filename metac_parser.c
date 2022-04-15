@@ -24,6 +24,21 @@ void MetaCParserInitFromLexer(metac_parser_t* self, metac_lexer_t* lexer)
 #define HandlePreprocessor(...)
 #define IsMacro(...) false
 
+// define
+bool IsDefine(metac_token_t token){
+    return (token->identifierHash == 0x6a491b);
+}
+
+// ifdef
+bool IsIfdef(metac_token_t token){
+    return (token->identifierHash == 0x581ce0);
+}
+
+// endif
+bool IsEndif(metac_token_t *token){
+    return (token->identifierHash == 0x506843);
+}
+
 metac_token_t* MetaCParserNextToken(metac_parser_t* self)
 {
     metac_token_t* result = 0;
@@ -32,13 +47,27 @@ metac_token_t* MetaCParserNextToken(metac_parser_t* self)
     if (self->CurrentTokenIndex < self->Lexer->tokens_size)
     {
         result = self->Lexer->tokens + self->CurrentTokenIndex++;
-        if (result && IsMacro(self, result))
+        if (IsMacro(self, result))
         {
             HandleMacro(self, result);
         }
-        else if(result && result->TokenType == tok_hash)
+        else if(result && result->TokenTyp+e == tok_hash)
         {
-            HandlePreprocessor(self);
+            ++result;
+            if (result->TokenType == tok_identifier)
+            {
+                if(IsDefine(result))
+                {
+                    ++result;
+                    uint32_t define_idx = self->CurrentTokenIndex++;
+                    bool isMacro = (result->TokenType == tok_lParen);
+                    if(isMacro)
+                    {
+                        uint32_t nParameters = 1;
+                        MetaCParserPeekMatch(self, tok_identifier)
+                    }
+                }
+            }
         }
     }
     else

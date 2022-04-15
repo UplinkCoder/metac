@@ -35,7 +35,7 @@ typedef struct metac_lexer_state_t
     M(tok_kw_struct)
 
 #define LAST_KEYWORD_TOKEN(M) \
-    M(tok_kw_until)
+    M(tok_kw_yield)
 
 #define FIRST_BINARY_TOKEN(M) \
     M(tok_comma)
@@ -128,7 +128,9 @@ typedef struct metac_lexer_state_t
     M(tok_kw_else) \
     M(tok_kw_break) \
     M(tok_kw_continue) \
+    M(tok_kw_until) \
     \
+    M(tok_kw_scope) \
     LAST_KEYWORD_TOKEN(M)
 
 #define FIRST_STATIC_TOKEN(M) \

@@ -718,8 +718,8 @@ void test_lexer()
         "return",
         "switch",
         "while",
-
         "do",
+
         "typeof",
         "inject",
         "eject",
@@ -734,6 +734,8 @@ void test_lexer()
         "break",
         "continue",
         "until",
+        "scope",
+        "yield",
 
          "/*",
         "*/",

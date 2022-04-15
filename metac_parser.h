@@ -291,6 +291,16 @@ typedef struct metac_parser_reorder_state_t
     uint32_t Depth;
 } metac_parser_reorder_state_t;
 
+typedef struct metac_define_t
+{
+    metac_identifier_ptr_t IdentifierPtr;
+
+    /// at which tokden positon the define is
+    uint32_t TokenPosition;
+    ///UINT32_MAX means variadic
+    uint32_t NumberOfParameters
+} metac_define_t;
+
 typedef struct metac_parser_t
 {
     metac_lexer_t* Lexer;
@@ -300,6 +310,12 @@ typedef struct metac_parser_t
     metac_parser_reorder_state_t* ExpressionReorderState;
 
     metac_identifier_table_t IdentifierTable;
+
+    metac_define_t* Defines;
+    uint32_t DefineCount;
+    uint32_t DefineCapacity;
+
+    metac_define_t inlineDefines[8];
 } metac_parser_t;
 
 extern metac_parser_t g_lineParser;
