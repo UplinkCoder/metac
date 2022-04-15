@@ -6,7 +6,11 @@
 #include <stdlib.h>
 #include "metac_lexer.h"
 #include "metac_identifier_table.h"
+#include <string.h>
 
+#ifdef _MSC_VER
+#  define __builtin_memcpy memcpy
+#endif
 static inline bool IsFilled(metac_identifier_table_slot_t slot)
 {
     return slot.HashKey != 0;
@@ -21,14 +25,16 @@ const char* IdentifierPtrToCharPtr(metac_identifier_table_t* table,
 
 void IdentifierTableInit(metac_identifier_table_t* table)
 {
-    table->SlotCount_Log2 = 8;
+    table->SlotCount_Log2 = 9;
     table->Slots = table->inlineSlots;
-    table->StringMemory = (char*)malloc(4096);
-    table->StringMemoryCapacity = 4096;
+    table->StringMemory = (char*)malloc(8192);
+    table->StringMemoryCapacity = 8192;
     table->StringMemorySize = 0;
     table->SlotsUsed = 0;
 
-    for(int slotIdx = 0; slotIdx < 256; slotIdx++)
+    table->Slots = (metac_identifier_table_slot_t*)
+		calloc(512, sizeof(metac_identifier_table_slot_t));
+    for(int slotIdx = 0; slotIdx < 512; slotIdx++)
     {
         table->Slots[slotIdx].HashKey = 0;
     }
@@ -40,11 +46,11 @@ metac_identifier_ptr_t GetOrAddIdentifier(metac_identifier_table_t* table,
 {
     const uint32_t length = LENGTH_FROM_IDENTIFIER_KEY(identifierKey);
     metac_identifier_ptr_t result = {0};
-    const uint32_t initialSlotIndex =
-        (identifierKey & ((1 << table->SlotCount_Log2) - 1));
+    const uint32_t slotIndexMask = ((1 << table->SlotCount_Log2) - 1);
+    const uint32_t initialSlotIndex = (identifierKey & slotIndexMask);
     for(
         uint32_t slotIndex = initialSlotIndex;
-        ++slotIndex != initialSlotIndex;
+        (++slotIndex & slotIndexMask) != initialSlotIndex;
     )
     {
         metac_identifier_table_slot_t *slot = &table->Slots[slotIndex - 1];

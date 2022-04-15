@@ -14,7 +14,7 @@ void _newMemRealloc(void** memP, uint32_t* capacity, const uint32_t elementSize)
 const char* MetaCExpressionKind_toChars(metac_expression_kind_t type);
 
 #define ARRAY_SIZE(A) \
-    ((unsigned int)(sizeof((A)) / sizeof((A)[0])))
+     ((unsigned int)(sizeof((A)) / sizeof((A)[0])))
 
 void MetaCParserInit(metac_parser_t* self)
 {
@@ -70,7 +70,7 @@ void AddDefine(metac_parser_t* self, metac_token_t* token, uint32_t nParameters)
         bool wasInline = (self->Defines == self->inlineDefines);
         if (wasInline)
         {
-            self->Defines = malloc(32 * sizeof(metac_define_t));
+            self->Defines = (metac_define_t*)malloc(32 * sizeof(metac_define_t));
             self->DefineCapacity = 32;
             memcpy(self->Defines, self->inlineDefines,
                 sizeof(metac_define_t) * ARRAY_SIZE(self->inlineDefines));
@@ -290,6 +290,7 @@ const char* BinExpTypeToChars(metac_binary_expression_kind_t t)
         case exp_sub       : return "-";
         case exp_mul       : return "*";
         case exp_div       : return "/";
+        case exp_rem       : return "%";
         case exp_xor       : return "^";
         case exp_or        : return "|";
         case exp_and       : return "&";
@@ -306,6 +307,7 @@ const char* BinExpTypeToChars(metac_binary_expression_kind_t t)
         case exp_sub_ass   : return "-=";
         case exp_mul_ass   : return "*=";
         case exp_div_ass   : return "/=";
+        case exp_rem_ass   : return "%=";
         case exp_xor_ass   : return "^=";
         case exp_or_ass    : return "|=";
         case exp_and_ass   : return "&=";
@@ -369,17 +371,24 @@ metac_expression_kind_t ExpTypeFromTokenType(metac_token_enum_t tokenType)
 
 }
 
-void _newMemRealloc(void** memP, uint32_t* capacity, const uint32_t elementSize)
+void _newMemRealloc(void** memP, uint32_t* capacityP, const uint32_t elementSize)
 {
+    uint32_t capacity;
     if (!*memP)
     {
-        (*capacity) = 1024 / 1.6f;
+        capacity = 1024 / 1.6f;
+    }
+    else
+    {
+        capacity = *capacityP;
     }
 
     {
-        *capacity = ALIGN4(cast(uint32_t) ((*capacity) * 1.6f));
-        *memP = realloc(*memP, ((*capacity) * elementSize));
+        capacity = ALIGN4(cast(uint32_t) ((capacity - 1) * 1.6f));
+        *memP = realloc(*memP, ((capacity) * elementSize));
     }
+
+    *capacityP = capacity;
 }
 
 metac_expression_t* AllocNewExpression(metac_expression_kind_t kind)
@@ -427,7 +436,6 @@ metac_statement_t* AllocNewStatement_(metac_statement_kind_t kind, size_t nodeSi
 
     return result;
 }
-
 
 static inline void LexString(metac_lexer_t* lexer, const char* line)
 {
@@ -479,11 +487,14 @@ uint32_t Mix(uint32_t a, uint32_t b)
 
 }
 
-metac_expression_t* MetaCParserParseDeclaration(metac_parser_t* self, metac_declaration_t* parent)
+metac_declaration_t* MetaCParserParseDeclaration(metac_parser_t* self, metac_declaration_t* parent)
 {
     metac_token_t* currentToken = MetaCParserNextToken(self);
     metac_token_enum_t tokenType =
         (currentToken ? currentToken->TokenType : tok_invalid);
+
+	metac_declaration_t* result = 0;
+
     if (tokenType == tok_kw_struct)
     {
     }
@@ -496,6 +507,8 @@ metac_expression_t* MetaCParserParseDeclaration(metac_parser_t* self, metac_decl
     else if (tokenType == tok_identifier)
     {
     }
+
+	return result;
 }
 
 bool g_reorder_expression = true;
@@ -700,7 +713,7 @@ metac_expression_t* MetaCParserParseExpression(metac_parser_t* self, metac_expre
         {
             metac_expression_t* E1 = result;
             result = AllocNewExpression(exp_post_increment);
-            result->E1;
+            result->E1 = E1;
         }
     }
     return result;
@@ -736,10 +749,10 @@ static metac_statement_t* MetaCParserParseStatement(metac_parser_t* self, metac_
             MetaCParserParseExpression(self, 0);
         assert(condExpP->Kind == exp_paren);
         result->IfCond = condExpP;
-        result->IfBody = MetaCParserParseBlockStatement(self, result);
+        result->IfBody = (metac_statement_t*)MetaCParserParseBlockStatement(self, (metac_statement_t*)result);
         if (MetaCParserPeekMatch(self, tok_kw_else, 1))
         {
-            result->ElseBody = MetaCParserParseBlockStatement(self, result);
+            result->ElseBody = (metac_statement_t*)MetaCParserParseBlockStatement(self, (metac_statement_t*)result);
         }
     }
     else if (tokenType == tok_kw_switch)
@@ -761,7 +774,7 @@ static metac_statement_t* MetaCParserParseStatement(metac_parser_t* self, metac_
         }
 
         metac_statement_t* caseBlock =
-            MetaCParserParseBlockStatement(self, result);
+            (metac_statement_t*)MetaCParserParseBlockStatement(self, (metac_statement_t*)result);
         switchHash = Mix(switchHash, caseBlock->Hash);
     }
     else if (tokenType == tok_identifier)
@@ -994,7 +1007,7 @@ const char* PrintExpression(metac_parser_t* self, metac_expression_t* exp)
         free((void*)e1);
         expStringLength += e1_length;
 
-        const char* op = BinExpTypeToChars(exp->Kind);
+        const char* op = BinExpTypeToChars((metac_binary_expression_kind_t)exp->Kind);
         uint32_t op_length = strlen(op);
         memcpy(scratchpad + expStringLength, op, op_length);
         expStringLength += op_length;

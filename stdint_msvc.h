@@ -244,5 +244,7 @@ typedef uint64_t  uintmax_t;
 
 #endif // __STDC_CONSTANT_MACROS ]
 
-#endif // (_MSC_VER > 1600)
+#else // (_MSC_VER > 1600)
+#  include <stdint.h>
+#endif // (_MSC_VER > 1600) ]
 #endif // _MSC_STDINT_H_ ]

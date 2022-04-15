@@ -2,14 +2,9 @@
 #define _METAC_LEXER_H_
 #include "compat.h"
 
-#ifdef IDENTIFIER_TABLE
-#  include "metac_identifier_table.h"
-#  define IDENTIFIER_PTR(TABLE, TOKEN) \
+#include "metac_identifier_table.h"
+#define IDENTIFIER_PTR(TABLE, TOKEN) \
     IdentifierPtrToCharPtr(TABLE, (TOKEN).IdentifierPtr)
-#else
-#  define IDENTIFIER_PTR(TABLE, TOKEN) \
-        (TOKEN).Identifier
-#endif
 
 typedef uint32_t block_idx_t;
 typedef uint16_t crc32c_lower16_t;
@@ -25,7 +20,6 @@ typedef struct metac_lexer_state_t
 
     block_idx_t OuterBlock;
     uint16_t SourceId;
-
 } metac_lexer_state_t;
 
 #define TOK_SELF(TOK) \
@@ -51,6 +45,7 @@ typedef struct metac_lexer_state_t
     M(tok_minus) \
     M(tok_star) \
     M(tok_div) \
+    M(tok_rem) \
     M(tok_xor) \
     M(tok_or) \
     M(tok_and) \
@@ -70,6 +65,7 @@ typedef struct metac_lexer_state_t
     M(tok_sub_ass) \
     M(tok_mul_ass) \
     M(tok_div_ass) \
+    M(tok_rem_ass) \
     M(tok_xor_ass) \
     M(tok_or_ass) \
     M(tok_and_ass) \
@@ -142,6 +138,8 @@ typedef struct metac_lexer_state_t
 #define FOREACH_STATIC_TOKEN(M) \
     FIRST_STATIC_TOKEN(M) \
     \
+    M(tok_question) \
+    \
     M(tok_hash) \
     \
     M(tok_lParen) \
@@ -183,6 +181,7 @@ typedef struct metac_lexer_state_t
     M(tok_identifier) \
     M(tok_unsignedNumber) \
     M(tok_stringLiteral) \
+    M(tok_charLiteral) \
     \
     FOREACH_STATIC_TOKEN(M) \
     \
@@ -218,11 +217,18 @@ typedef struct metac_token_t {
             const char* Identifier;
 #endif
         };
-        // case tok_string :
+        // case tok_stringLiteral :
         struct {
             uint32_t StringKey;
             const char* String;
         };
+        // case tok_comment_begin, tok_comment_single :
+        struct {
+            uint32_t CommentLength;
+            const char* CommentBegin;
+        };
+        // case tok_charLiteral :
+        char Char;
 
         uint64_t ValueU64;
         int64_t ValueI64;
@@ -296,12 +302,7 @@ typedef struct metac_lexer_t {
 
     metac_token_t inlineTokens[256];
 
-#ifdef IDENTIFIER_TABLE
     metac_identifier_table_t IdentifierTable;
-#endif
-#ifdef STRING_LITERAL_TABLE
-    string_table_t StringLiteralTable;
-#endif
 } metac_lexer_t;
 
 #define IDENTIFIER_KEY(HASH, LENGTH) \

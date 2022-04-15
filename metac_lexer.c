@@ -1,7 +1,4 @@
-#ifdef IDENTIFIER_TABLE
-#  include "metac_identifier_table.c"
-#endif
-
+#include "metac_identifier_table.c"
 #include "metac_lexer.h"
 #include "compat.h"
 #include <assert.h>
@@ -19,6 +16,9 @@ static metac_token_enum_t MetaCLexFixedLengthToken(const char _chrs[3])
 
     case '\0':
         return tok_eof;
+
+    case '?':
+        return tok_question;
 
     case '#':
         return tok_hash;
@@ -107,6 +107,18 @@ static metac_token_enum_t MetaCLexFixedLengthToken(const char _chrs[3])
         case '=':
             return tok_div_ass;
         }
+
+    case '%':
+    {
+        switch(_chrs[1])
+        {
+        default :
+            return tok_rem;
+        case '=':
+            return tok_rem_ass;
+        }
+    }
+
 
     case ':':
         return tok_colon;
@@ -249,6 +261,7 @@ static uint32_t StaticMetaCTokenLength(metac_token_enum_t t)
         case tok_eof         : return 0;
 
         case tok_bang        : return 1;
+        case tok_question    : return 1;
         case tok_hash        : return 1;
         case tok_lParen      : return 1;
         case tok_rParen      : return 1;
@@ -264,6 +277,7 @@ static uint32_t StaticMetaCTokenLength(metac_token_enum_t t)
         case tok_plus        : return 1;
         case tok_minus       : return 1;
         case tok_star        : return 1;
+        case tok_rem         : return 1;
         case tok_div         : return 1;
         case tok_xor         : return 1;
         case tok_or          : return 1;
@@ -396,7 +410,6 @@ void MetaCLexerInit(metac_lexer_t* self)
     IdentifierTableInit(&self->IdentifierTable);
 #endif
 }
-
 metac_lexer_state_t MetaCLexerStateFromString(uint32_t sourceId,
                                               const char* str)
 {
@@ -432,6 +445,11 @@ static inline bool IsIdentifierChar(char c)
 static inline bool IsNumericChar(char c)
 {
     return (((cast(unsigned) c) - '0') <= 9);
+}
+
+static inline bool IsHexLiteralChar(char c)
+{
+    return (IsNumericChar(c) | (((cast(unsigned) (c | 32)) - 'a') <= 6));
 }
 
 static inline metac_token_enum_t classify(char c)
@@ -487,10 +505,10 @@ metac_token_t* MetaCLexerLexNextToken(metac_lexer_t* self,
     token.SourceId = state->SourceId;
 
     assert(self->tokens_capacity > self->tokens_size);
-    uint32_t eaten_chars = 0;
+    uint32_t eatenChars = 0;
     char c = *text++;
-
-    while (c && (c == ' ' || c == '\t' || c == '\n' || c == '\r'))
+LcontinueLexnig:
+    while (c && c <= 32)
     {
         if (c == '\n')
         {
@@ -502,7 +520,7 @@ metac_token_t* MetaCLexerLexNextToken(metac_lexer_t* self,
             state->Column = 0;
         }
         state->Column++;
-        eaten_chars++;
+        eatenChars++;
         c = *text++;
     }
     if (c)
@@ -510,7 +528,7 @@ metac_token_t* MetaCLexerLexNextToken(metac_lexer_t* self,
         text -= 1;
     }
 
-    token.Position += eaten_chars;
+    token.Position += eatenChars;
     if ((token.TokenType = MetaCLexFixedLengthToken(text)) == tok_invalid)
     {
         // const char* begin = text;
@@ -526,7 +544,7 @@ metac_token_t* MetaCLexerLexNextToken(metac_lexer_t* self,
                 {
                     identifier_hash = crc32c_byte(identifier_hash, c);
                     identifier_length++;
-                    eaten_chars++;
+                    eatenChars++;
                 }
                 token.TokenType = tok_identifier;
                 assert(identifier_length < 0xFFF);
@@ -556,12 +574,31 @@ metac_token_t* MetaCLexerLexNextToken(metac_lexer_t* self,
                 {
                     ++text;
                     c = *(text++);
-                    eaten_chars++;
+                    eatenChars++;
 
                     if (c == 'x')
                     {
                         isHex = true;
-                        assert(0); // TODO Implement hex literal parsing.
+                        c = *(text++);
+                        eatenChars++;
+                        while(IsHexLiteralChar(c))
+                        {
+                            value *= 16;
+                            if (IsNumericChar(c))
+                            {
+                                value += (c - '0');
+                            }
+                            else if (((c | 32) >= 'a') && ((c | 32) <= 'f'))
+                            {
+                                value += ((c - 'a') + 10);
+                            } else
+                            {
+                                assert(0); // "This can't happen")
+                            }
+                            c = *(text++);
+                            eatenChars++;
+                        }
+                        goto LParseNumberDone;
                     }
                     else if (!IsNumericChar(c))
                     {
@@ -576,12 +613,32 @@ metac_token_t* MetaCLexerLexNextToken(metac_lexer_t* self,
 
                 while (c && IsNumericChar((c = *text++)))
                 {
-                    eaten_chars++;
+                    eatenChars++;
                     value *= 10;
                     value += c - '0';
                 }
             LParseNumberDone:
                 token.ValueU64 = value;
+                while ((c | 32) == 'u' || (c | 32) == 'l')
+                    c = *text++;
+            }
+            else if (c == '\'')
+            {
+                text++;
+                token.TokenType = tok_charLiteral;
+                c = *text++;
+                eatenChars++;
+                if (c == '\\')
+                {
+                    c = EscapedChar(*text++);
+                    eatenChars++;
+                }
+                token.Char = c;
+                eatenChars++;
+                if (*text++ != '\'')
+                {
+                    assert("Unterminated char literal");
+                }
             }
             else if (c == '"')
             {
@@ -592,13 +649,13 @@ metac_token_t* MetaCLexerLexNextToken(metac_lexer_t* self,
                 // printf("c: %c\n", c);
                 uint32_t string_length = 0;
                 uint32_t string_hash = ~0;
-                eaten_chars++;
+                eatenChars++;
                 while(c && c != '"')
                 {
                     string_length++;
                     if (c == '\\')
                     {
-                        eaten_chars++;
+                        eatenChars++;
                         c = EscapedChar(*text++);
                         if (c == 'E')
                         {
@@ -607,21 +664,66 @@ metac_token_t* MetaCLexerLexNextToken(metac_lexer_t* self,
                     }
                     string_hash = crc32c_byte(string_hash, c);
                     c = *text++;
-                    eaten_chars++;
+                    eatenChars++;
                 }
                 if (c != '"')
                 {
                     ParseError(state, "Unterminted string literal");
                 }
-                eaten_chars++;
+                eatenChars++;
                 assert(string_length < 0xFFFFF);
                 token.Key = STRING_KEY(string_hash, string_length);
             }
+            else if (c == '\\')
+            {
+                ++text;
+
+                eatenChars++;
+                c = *text++;
+                goto LcontinueLexnig;
+            }
         }
     }
+    else if (token.TokenType == tok_comment_single)
+    {
+        eatenChars += 2;
+        char* newlinePtr = memchr(text, '\n', len - eatenChars);
+        uint32_t commentLength = text - newlinePtr;
+        if (!newlinePtr)
+        {
+            commentLength = len - eatenChars;
+            c = '\0';
+        }
+        else
+        {
+        }
+        eatenChars += commentLength;
+        token.CommentLength = commentLength;
+        token.CommentBegin = text + 2;
+        printf("CommentBegin: %s\n", token.CommentBegin);
+
+    }
+#if 0
+    else if (token.TokenType == tok_comment_begin)
+    {
+        uint32_t offset = 0;
+        uint32_t col = 0;
+        char* newline_ptr = memchr(text + offset, '\n', length - eatenChars);
+        char* star_ptr = memchr(text + offset, '*', length - eatenChars);
+        while (newline_ptr < star_ptr)
+        {
+            line++;
+            newline_ptr = memchr(text + )
+        }
+        if (!star_ptr) assert(0);
+        offset += (star_ptr - text);
+        if (text[++offset] == '/')
+            text +=
+    }
+#endif
     else
     {
-        eaten_chars += StaticMetaCTokenLength(token.TokenType);
+        eatenChars += StaticMetaCTokenLength(token.TokenType);
     }
 
     if (token.TokenType)
@@ -634,7 +736,7 @@ metac_token_t* MetaCLexerLexNextToken(metac_lexer_t* self,
         static metac_token_t stop_token = {tok_eof};
         result = &stop_token;
     }
-    state->Position += eaten_chars;
+    state->Position += eatenChars;
     return result;
 }
 
@@ -646,7 +748,7 @@ void test_lexer()
     const char* token_list[] =
     {
         "!",
-
+        "?",
         "#",
 
         "(",
@@ -667,6 +769,7 @@ void test_lexer()
         "-",
         "*",
         "/",
+        "%",
 
         "^",
         "|",
@@ -688,6 +791,7 @@ void test_lexer()
         "-=",
         "*=",
         "/=",
+        "%=",
 
         "^=",
         "|=",

@@ -29,6 +29,7 @@
     M(exp_sub) \
     M(exp_mul) \
     M(exp_div) \
+    M(exp_rem) \
     M(exp_xor) \
     M(exp_or) \
     M(exp_and) \
@@ -48,6 +49,7 @@
     M(exp_sub_ass) \
     M(exp_mul_ass) \
     M(exp_div_ass) \
+    M(exp_rem_ass) \
     M(exp_xor_ass) \
     M(exp_or_ass) \
     M(exp_and_ass) \
