@@ -277,6 +277,7 @@ static uint32_t StaticMetaCTokenLength(metac_token_enum_t t)
         case tok_rsh_ass     : return 3; // >>=
 
         case tok_spaceship   : return 3;// <=>
+        case tok_dotdotdot   : return 3;
 
         case tok_kw_struct   : return 6;
         case tok_kw_union    : return 5;
@@ -314,8 +315,8 @@ static uint32_t StaticMetaCTokenLength(metac_token_enum_t t)
         case tok_kw_sizeof   : return 6;
         case tok_kw_goto     : return 4;
 
-        case tok_kw_scope : return 5;
-        case tok_kw_yield : return 5;
+        case tok_kw_scope    : return 5;
+        case tok_kw_yield    : return 5;
 
     }
 }
@@ -704,6 +705,8 @@ void test_lexer()
         ">",
         ">=",
         "<=>",
+
+        "...",
 
         "struct",
         "union",
