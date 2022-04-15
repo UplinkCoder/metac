@@ -10,11 +10,17 @@
 #define LAST_BINARY_EXP(M) \
     M(exp_spaceship)
 
+#define FOREACH_DECL_KIND(M) \
+    M(decl_variable) \
+    M(decl_struct) \
+    M(decl_enum) \
+    M(decl_function) \
+    M(decl_typedef)
+
 #define FOREACH_BINARY_EXP(M) \
     FIRST_BINARY_EXP(M) \
     FOREACH_BINARY_EXP_(M) \
     LAST_BINARY_EXP(M)
-
 
 #define FOREACH_BINARY_EXP_(M) \
     M(exp_dot) \
@@ -54,7 +60,7 @@
     M(exp_lt) \
     M(exp_le) \
     M(exp_gt) \
-    M(exp_ge) \
+    M(exp_ge)
 
 #define FOREACH_EXP(M) \
     M(exp_invalid) \
@@ -62,6 +68,10 @@
     M(exp_identifier) \
     M(exp_string) \
     M(exp_signed_integer) \
+    M(exp_increment) \
+    M(exp_decrement) \
+    M(exp_post_increment) \
+    M(exp_post_decrement) \
     M(exp_typeof) \
     M(exp_inject) \
     M(exp_eject) \
@@ -98,12 +108,13 @@
     M(stmt_label) \
     M(stmt_case) \
     M(stmt_break) \
+    M(stmt_yield) \
+    M(stmt_scope) \
     M(stmt_continue) \
     M(stmt_goto) \
     \
-    M(stmt_exp)
-
-
+    M(stmt_exp) \
+    M(stmt_decl)
 
 
 #define FOREACH_NDOE_KIND(M) \
@@ -115,6 +126,11 @@
 #define DEFINE_MEMBERS(MEMBER) \
     MEMBER,
 
+typedef enum metac_declaration_kind_t
+{
+    FOREACH_DECL_KIND(DEFINE_MEMBERS)
+} metac_declaration_kind_t;
+
 typedef enum metac_expression_kind_t
 {
     FOREACH_EXP(DEFINE_MEMBERS)
@@ -123,7 +139,6 @@ typedef enum metac_expression_kind_t
 
 #define BIN_MEMBERS(MEMB) \
     bin_ ## MEMB,
-
 
 typedef enum metac_binary_expression_kind_t
 {
@@ -136,7 +151,6 @@ typedef struct metac_expression_t
 {
     metac_expression_kind_t Kind;
     uint32_t LocationIdx;
-
     uint32_t Hash;
 
     union // switch(Kind)
@@ -180,34 +194,93 @@ typedef enum metac_statement_kind_t
     stmt_max
 } metac_statement_kind_t;
 
-typedef struct metac_parser_name_ptr
+#define STATEMENT_HEADER \
+    metac_statement_kind_t Kind; \
+    uint32_t LocationIdx; \
+    uint32_t Hash; \
+    struct metac_statement_t* Next;
+
+typedef struct stmt_block_t
 {
-    uint32_t v;
-} metac_parser_name_ptr;
+    STATEMENT_HEADER
+} stmt_block_t;
+
+typedef struct stmt_case_t
+{
+    STATEMENT_HEADER
+
+    metac_expression_t* E1;
+} stmt_case_t;
+
+typedef struct stmt_goto_t
+{
+    STATEMENT_HEADER
+
+    metac_identifier_ptr_t Label;
+} stmt_goto_t;
+
+typedef struct stmt_exp_t
+{
+    STATEMENT_HEADER
+
+    metac_expression_t* Expression;
+} stmt_exp_t;
+
+typedef struct stmt_if_t
+{
+    STATEMENT_HEADER
+
+    metac_expression_t* IfCond;
+    struct metac_statement_t* IfBody;
+    struct metac_statement_t* ElseBody;
+} stmt_if_t;
+
+typedef struct stmt_label_t
+{
+    STATEMENT_HEADER
+
+    metac_identifier_ptr_t Label;
+} stmt_label_t;
+
+typedef struct stmt_switch_t
+{
+    STATEMENT_HEADER
+
+    metac_identifier_ptr_t Label;
+} stmt_switch_t;
 
 typedef struct metac_statement_t
 {
-    metac_statement_kind_t Kind;
-    uint32_t LocationIdx;
-    uint32_t Hash;
-    struct metac_statement_t* Next;
+    STATEMENT_HEADER
 
     union // switch(Kind)
     {
         // invalid case stmt_max, stmt_invalid :
         // case stmt_if :
-        struct {
-            metac_expression_t* IfCond;
-            struct metac_statement_t* IfBody;
-            struct metac_statement_t* ElseBody;
-        };
+        stmt_if_t stmt_if;
         // case stmt_exp :
-        metac_expression_t* Expression;
+        stmt_exp_t stmt_exp;
         // case stmt_block :
+        stmt_block_t stmt_block;
         // case stmt_label :
-        metac_identifier_ptr_t Label;
+        stmt_label_t stmt_label;
+        // case stmt_goto :
+        stmt_goto_t stmt_goto;
+        // case stmt_yield :
     };
 } metac_statement_t;
+
+#define DECLARATION_HEADER \
+    metac_declaration_kind_t Kind; \
+    uint32_t LocationIdx; \
+    uint32_t Hash;
+
+typedef struct metac_declaration_t
+{
+    DECLARATION_HEADER
+
+
+} metac_declaration_t;
 
 typedef struct metac_parser_reorder_state_t
 {

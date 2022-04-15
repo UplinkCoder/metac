@@ -18,6 +18,11 @@ void MetaCParserInitFromLexer(metac_parser_t* self, metac_lexer_t* lexer)
     self->CurrentTokenIndex = 0;
     IdentifierTableInit(&self->IdentifierTable);
 }
+//TODO Implement IsMacro
+//    and Handle Macro
+#define HandleMacro(...)
+#define HandlePreprocessor(...)
+#define IsMacro(...) false
 
 metac_token_t* MetaCParserNextToken(metac_parser_t* self)
 {
@@ -27,6 +32,14 @@ metac_token_t* MetaCParserNextToken(metac_parser_t* self)
     if (self->CurrentTokenIndex < self->Lexer->tokens_size)
     {
         result = self->Lexer->tokens + self->CurrentTokenIndex++;
+        if (result && IsMacro(self, result))
+        {
+            HandleMacro(self, result);
+        }
+        else if(result && result->TokenType == tok_hash)
+        {
+            HandlePreprocessor(self);
+        }
     }
     else
     {
@@ -44,6 +57,14 @@ metac_token_t* MetaCParserPeekToken(metac_parser_t* self, int32_t p)
     if (cast(uint32_t)(self->CurrentTokenIndex + (p - 1)) < self->Lexer->tokens_size)
     {
         result = self->Lexer->tokens + self->CurrentTokenIndex + (p - 1);
+        if (IsMacro(self, result))
+        {
+            HandleMacro(self, result);
+        }
+        else if(result && result->TokenType == tok_hash)
+        {
+            HandlePreprocessor(self);
+        }
     }
     else
     {
@@ -54,7 +75,7 @@ metac_token_t* MetaCParserPeekToken(metac_parser_t* self, int32_t p)
 }
 
 
-void MetaCParserMatch(metac_parser_t* self, metac_token_enum_t type)
+metac_token_t* MetaCParserMatch(metac_parser_t* self, metac_token_enum_t type)
 {
     metac_token_t* token = MetaCParserNextToken(self);
     metac_token_enum_t got = (token ? token->TokenType : tok_eof);
@@ -63,6 +84,7 @@ void MetaCParserMatch(metac_parser_t* self, metac_token_enum_t type)
         printf("Expected: %s -- Got: %s\n",
             MetaCTokenEnum_toChars(type), MetaCTokenEnum_toChars(got));
     }
+    return token;
 }
 
 uint32_t _newExp_size = 0;
@@ -215,7 +237,10 @@ metac_expression_t* AllocNewExpression(metac_expression_kind_t kind)
     return result;
 }
 
-metac_statement_t* AllocNewStatement(metac_statement_kind_t kind)
+#define AllocNewStatement(KIND, RESULT_PTR) \
+    (KIND ## _t*) AllocNewStatement_(KIND, sizeof(KIND ##_t), ((void**)(RESULT_PTR)))
+
+metac_statement_t* AllocNewStatement_(metac_statement_kind_t kind, size_t nodeSize, void** result_ptr)
 {
     metac_statement_t* result = 0;
 
@@ -229,7 +254,7 @@ metac_statement_t* AllocNewStatement(metac_statement_kind_t kind)
     }
 
     {
-        result = _newStmt_mem + _newStmt_size++;
+        (*result_ptr) = result = _newStmt_mem + _newStmt_size++;
         result->Kind = kind;
         result->Next = 0;
     }
@@ -287,8 +312,27 @@ uint32_t Mix(uint32_t a, uint32_t b)
   return a ^ b + 0x9e3779b9 + (a << 6) + (a >> 2);
 
 }
-bool g_reorder_expression = true;
 
+metac_expression_t* MetaCParserParseDeclaration(metac_parser_t* self, metac_declaration_t* parent)
+{
+    metac_token_t* currentToken = MetaCParserNextToken(self);
+    metac_token_enum_t tokenType =
+        (currentToken ? currentToken->TokenType : tok_invalid);
+    if (tokenType == tok_kw_struct)
+    {
+    }
+    else if (tokenType == tok_kw_enum)
+    {
+    }
+    else if (tokenType == tok_kw_typedef)
+    {
+    }
+    else if (tokenType == tok_identifier)
+    {
+    }
+}
+
+bool g_reorder_expression = true;
 metac_expression_t* MetaCParserParseExpression(metac_parser_t* self, metac_expression_t* prev)
 {
     metac_expression_t* result = 0;
@@ -491,6 +535,12 @@ metac_expression_t* MetaCParserParseExpression(metac_parser_t* self, metac_expre
 
             PopOperator(exp_call);
         }
+        else if (peekNext->TokenType == tok_plusplus)
+        {
+            metac_expression_t* E1 = result;
+            result = AllocNewExpression(exp_post_increment);
+            result->E1;
+        }
     }
     return result;
 }
@@ -499,7 +549,7 @@ metac_expression_t* MetaCParserParseExpression(metac_parser_t* self, metac_expre
 #undef PopOperator
 #undef PopOperand
 
-static metac_statement_t* MetaCParserParseBlockStatement(metac_parser_t* self, metac_statement_t* parent);
+static stmt_block_t* MetaCParserParseBlockStatement(metac_parser_t* self, metac_statement_t* parent);
 
 #define ErrorStatement() \
     (metac_statement_t*)0
@@ -518,7 +568,7 @@ static metac_statement_t* MetaCParserParseStatement(metac_parser_t* self, metac_
     }
     else if (tokenType == tok_kw_if)
     {
-        result = AllocNewStatement(stmt_if);
+        stmt_if_t* result = AllocNewStatement(stmt_if, &result);
         MetaCParserMatch(self, tok_kw_if);
         MetaCParserPeekMatch(self, tok_lParen, 0);
         metac_expression_t* condExpP =
@@ -535,7 +585,7 @@ static metac_statement_t* MetaCParserParseStatement(metac_parser_t* self, metac_
     {
         uint32_t switchHash =
             crc32c(~0, "switch", sizeof("switch") - 1);
-        result = AllocNewStatement(stmt_switch);
+        stmt_switch_t* result = AllocNewStatement(stmt_switch, &result);
 
         MetaCParserMatch(self, tok_kw_switch);
         MetaCParserMatch(self, tok_lParen);
@@ -548,7 +598,7 @@ static metac_statement_t* MetaCParserParseStatement(metac_parser_t* self, metac_
             ParseError(self->LexerState, "parsing switch failed\n");
             return ErrorStatement();
         }
-        
+
         metac_statement_t* caseBlock =
             MetaCParserParseBlockStatement(self, result);
         switchHash = Mix(switchHash, caseBlock->Hash);
@@ -561,17 +611,29 @@ static metac_statement_t* MetaCParserParseStatement(metac_parser_t* self, metac_
             MetaCParserMatch(self, tok_identifier);
             MetaCParserMatch(self, tok_colon);
 
-            result = AllocNewStatement(stmt_label);
+            stmt_label_t* result = AllocNewStatement(stmt_label, &result);
             result->Label = GetOrAddIdentifier(&self->IdentifierTable,
                                                IDENTIFIER_PTR(&self->Lexer->IdentifierTable, *currentToken),
                                                currentToken->IdentifierKey);
         }
     }
+    else if (tokenType == tok_kw_goto)
+    {
+        stmt_goto_t* result = AllocNewStatement(stmt_goto, &result);
+        uint32_t gotoHash = crc32c(~0, "goto", sizeof("goto") - 1);
+
+        MetaCParserMatch(self, tok_kw_goto);
+        metac_token_t* label = MetaCParserMatch(self, tok_identifier);
+        result->Label = GetOrAddIdentifier(&self->IdentifierTable,
+                                           IDENTIFIER_PTR(&self->Lexer->IdentifierTable, *label),
+                                           label->IdentifierKey);
+        result->Hash = Mix(gotoHash, label->IdentifierKey);
+    }
     else if (tokenType == tok_kw_case)
     {
         uint32_t caseHash =
             crc32c(~0, "case", sizeof("case") - 1);
-        result = AllocNewStatement(stmt_case);
+        stmt_case_t* result = AllocNewStatement(stmt_case, &result);
 
         MetaCParserMatch(self, tok_kw_case);
         metac_expression_t* caseExp =
@@ -580,30 +642,31 @@ static metac_statement_t* MetaCParserParseStatement(metac_parser_t* self, metac_
 
         caseHash = Mix(caseHash, caseExp->Hash);
         MetaCParserMatch(self, tok_rParen);
-        metac_statement_t* caseBlock =
-            MetaCParserParseBlockStatement(self, result);
-        caseHash = Mix(caseHash, caseBlock->Hash);
+        result->Next =
+            MetaCParserParseStatement(self, (metac_statement_t*)result);
+        if (result->Next)
+        {
+            caseHash = Mix(caseHash, result->Next->Hash);
+        }
         result->Hash = caseHash;
-
     }
     else if (tokenType == tok_lBrace)
     {
-        result = MetaCParserParseBlockStatement(self, parent);
+        result = (metac_statement_t*)MetaCParserParseBlockStatement(self, parent);
     }
-
+    if(tokenType != tok_lBrace)
+        MetaCParserMatch(self, tok_semicolon);
     return result;
 }
 
 
-static metac_statement_t* MetaCParserParseBlockStatement(metac_parser_t* self, metac_statement_t* parent)
+static stmt_block_t* MetaCParserParseBlockStatement(metac_parser_t* self, metac_statement_t* parent)
 {
-    metac_statement_t* result = 0;
-
     MetaCParserMatch(self, tok_lBrace);
 
     metac_statement_t* firstStatement = 0;
     metac_statement_t* nextStatement = 0;
-    result = AllocNewStatement(stmt_block);
+    stmt_block_t* result = AllocNewStatement(stmt_block, &result);
 
     for (;;)
     {
@@ -620,7 +683,7 @@ static metac_statement_t* MetaCParserParseBlockStatement(metac_parser_t* self, m
 
         if (!firstStatement)
         {
-            firstStatement = MetaCParserParseStatement(self, result);
+            firstStatement = MetaCParserParseStatement(self, (metac_statement_t*)result);
             nextStatement = firstStatement;
             if (nextStatement)
             {
@@ -633,7 +696,7 @@ static metac_statement_t* MetaCParserParseBlockStatement(metac_parser_t* self, m
         }
         else
         {
-            nextStatement->Next = MetaCParserParseStatement(self, result);
+            nextStatement->Next = MetaCParserParseStatement(self, (metac_statement_t*)result);
             result->Hash = Mix(result->Hash, nextStatement->Hash);
             if (nextStatement->Next)
             {
@@ -856,6 +919,16 @@ const char* PrintExpression(metac_parser_t* self, metac_expression_t* exp)
 
         if (!IsBinaryExp(exp->E1->Kind))
             scratchpad[expStringLength++] = ')';
+    }
+    else if (exp->Kind == exp_post_increment)
+    {
+        const char* e1  = PrintExpression(self, exp->E1);
+        uint32_t e1_length = strlen(e1);
+        memcpy(scratchpad + expStringLength, e1, e1_length);
+        free((void*)e1);
+        expStringLength += e1_length;
+        scratchpad[expStringLength++] = '+';
+        scratchpad[expStringLength++] = '+';
     }
     else
     {

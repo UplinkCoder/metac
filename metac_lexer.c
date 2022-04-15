@@ -719,6 +719,7 @@ void test_lexer()
         "switch",
         "while",
 
+        "do",
         "typeof",
         "inject",
         "eject",
@@ -726,7 +727,6 @@ void test_lexer()
         "typedef",
         "case",
         "goto",
-        "do",
         "static",
         "inline",
         "if",

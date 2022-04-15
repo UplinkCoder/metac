@@ -50,6 +50,7 @@ LnextLine:
                 continue;
             }
         }
+
         while (line_length > 0)
         {
             metac_parser_t lineParser;
@@ -66,7 +67,6 @@ LnextLine:
                 promt_ = "REPL>";
                 goto LnextLine;
             }
-#if 1
             else if (parsingStatement)
             {
                 metac_statement_t* stmt
@@ -76,7 +76,6 @@ LnextLine:
                 promt_ = "REPL>";
                 goto LnextLine;
             }
-#endif
             metac_token_t token =
                 *MetaCLexerLexNextToken(&lexer, &repl_state, line, line_length);
 
