@@ -157,6 +157,8 @@ typedef struct metac_lexer_state_t
     \
     FOREACH_BINARY_TOKEN(M) \
     \
+    M(tok_dotdotdot) \
+    \
     FOREACH_KEYWORD_TOKEN(M) \
     \
     M(tok_comment_begin) \

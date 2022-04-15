@@ -12,11 +12,23 @@
 
 const char* MetaCExpressionKind_toChars(metac_expression_kind_t type);
 
+#define ARRAY_SIZE(A) \
+    ((unsigned int)(sizeof((A)) / sizeof((A)[0])))
+
+void MetaCParserInit(metac_parser_t* self)
+{
+    self->CurrentTokenIndex = 0;
+    IdentifierTableInit(&self->IdentifierTable);
+
+    self->Defines = self->inlineDefines;
+    self->DefineCount = 0;
+    self->DefineCapacity = ARRAY_SIZE(self->inlineDefines);
+}
+
 void MetaCParserInitFromLexer(metac_parser_t* self, metac_lexer_t* lexer)
 {
     self->Lexer = lexer;
-    self->CurrentTokenIndex = 0;
-    IdentifierTableInit(&self->IdentifierTable);
+    MetaCParserInit(self);
 }
 //TODO Implement IsMacro
 //    and Handle Macro
@@ -24,48 +36,172 @@ void MetaCParserInitFromLexer(metac_parser_t* self, metac_lexer_t* lexer)
 #define HandlePreprocessor(...)
 #define IsMacro(...) false
 
-// define
-bool IsDefine(metac_token_t token){
-    return (token->identifierHash == 0x6a491b);
-}
+metac_identifier_ptr_t RegisterIdentifier(metac_parser_t* self,
+                                          metac_token_t* token)
+{
+    const char* identifierString =
+        IdentifierPtrToCharPtr(
+            &self->Lexer->IdentifierTable,
+            token->IdentifierPtr
+        );
 
-// ifdef
-bool IsIfdef(metac_token_t token){
-    return (token->identifierHash == 0x581ce0);
+    return GetOrAddIdentifier(&self->IdentifierTable,
+                              identifierString,
+                              token->IdentifierKey);
 }
+void AddDefine(metac_parser_t* self, metac_token_t* token, uint32_t nParameters)
+{
+    metac_define_t define;
 
-// endif
-bool IsEndif(metac_token_t *token){
-    return (token->identifierHash == 0x506843);
+    assert(token->TokenType == tok_identifier);
+
+    define.NumberOfParameters = nParameters;
+    define.IdentifierPtr = RegisterIdentifier(self, token);
+    define.TokenPosition = token->Position;
+    define.SourceId = token->SourceId;
+    define.IdentifierKey = token->IdentifierKey;
+
+    assert(self->DefineCount < self->DefineCapacity);
+    self->Defines[self->DefineCount++] = define;
+
+    if (self->DefineCapacity >= self->DefineCount)
+    {
+        bool wasInline = (self->Defines == self->inlineDefines);
+        if (wasInline)
+        {
+            self->Defines = malloc(32 * sizeof(metac_define_t));
+            self->DefineCapacity = 32;
+            memcpy(self->Defines, self->inlineDefines,
+                sizeof(metac_define_t) * ARRAY_SIZE(self->inlineDefines));
+            return ;
+        }
+        _newMemRealloc(&self->Defines, &self->DefineCapacity, sizeof(metac_define_t));
+
+    }
 }
 
 metac_token_t* MetaCParserNextToken(metac_parser_t* self)
 {
+#define define_key 0x6a491b
+#define ifdef_key 0x581ce0
+#define endif_key 0x506843
+
+#define NextToken() \
+    ((self->CurrentTokenIndex < self->Lexer->tokens_size) ? \
+    self->Lexer->tokens + self->CurrentTokenIndex++ : 0)
+
+#define PeekMatch(TOKEN_TYPE) \
+    ( ((result = NextToken()), (result && result->TokenType == TOKEN_TYPE)) ? \
+    ( result ) : ( self->CurrentTokenIndex--, 0) )
+
     metac_token_t* result = 0;
     assert(self->Lexer->tokens_size);
 
-    if (self->CurrentTokenIndex < self->Lexer->tokens_size)
+    result = NextToken();
+    if(result)
     {
-        result = self->Lexer->tokens + self->CurrentTokenIndex++;
+        if (result->TokenType == tok_identifier)
+        {
+            metac_define_t* matchingDefine = 0;
+
+            const uint32_t idKey = result->IdentifierKey;
+            for(int defineIdx = 0;
+                defineIdx < self->DefineCount;
+                defineIdx++)
+            {
+                metac_define_t* define = self->Defines + defineIdx;
+
+                if (define->IdentifierKey == idKey)
+                {
+                    const char* defineString =
+                        IDENTIFIER_PTR(&self->IdentifierTable, *define);
+
+                    const char* IdString =
+                        IDENTIFIER_PTR(&self->Lexer->IdentifierTable,
+                            *result);
+
+                    if (!memcmp(IdString, defineString,
+                        LENGTH_FROM_IDENTIFIER_KEY(idKey)))
+                    {
+                        matchingDefine = define;
+                        break;
+                    }
+                }
+            }
+
+            if (matchingDefine)
+            {
+                const char* defineName =
+                        IDENTIFIER_PTR(&self->IdentifierTable, *matchingDefine);
+                // result = tok_plus;
+                printf("Define %s matched we should do something\n", defineName);
+            }
+        }
         if (IsMacro(self, result))
         {
             HandleMacro(self, result);
         }
-        else if(result && result->TokenTyp+e == tok_hash)
+        else if(result && result->TokenType == tok_hash)
         {
-            ++result;
+            result = NextToken();
+            if (!result || result->TokenType != tok_identifier)
+            {
+LexpectedIdent:
+                ParseError(self->LexerState, "Expected Identifier after #");
+                return result;
+            }
             if (result->TokenType == tok_identifier)
             {
-                if(IsDefine(result))
+                switch(result->IdentifierKey)
                 {
-                    ++result;
-                    uint32_t define_idx = self->CurrentTokenIndex++;
-                    bool isMacro = (result->TokenType == tok_lParen);
-                    if(isMacro)
+                case define_key :
+                    result = NextToken();
+
+                    if(result->TokenType == tok_identifier)
                     {
-                        uint32_t nParameters = 1;
-                        MetaCParserPeekMatch(self, tok_identifier)
+                        metac_token_t* define_name = result;
+                        uint32_t define_idx = self->CurrentTokenIndex;
+                        result = NextToken();
+                        int nParameters = 0;
+                        const bool isMacro = (result->TokenType == tok_lParen);
+                        if (isMacro)
+                        {
+                            PeekMatch(tok_lParen);
+                            for (;;)
+                            {
+                                if (PeekMatch(tok_dotdotdot))
+                                {
+                                    nParameters |= (1 << 31);
+                                    if (!PeekMatch(tok_rParen))
+                                    {
+                                        ParseError(self->LexerState, "')' expected after ...");
+                                        return result;
+                                    }
+                                    break;
+                                }
+                                if (PeekMatch(tok_rParen))
+                                    break;
+
+                                if (!PeekMatch(tok_identifier))
+                                    goto LexpectedIdent;
+                                if (!PeekMatch(tok_comma))
+                                {
+                                    ParseErrorF(self->LexerState,
+                                        "Expected ',' after define parameter %s",
+                                        IDENTIFIER_PTR(&self->IdentifierTable,
+                                                       *result));
+                                    return result;
+                                }
+                                nParameters++;
+                            }
+                        }
+                        AddDefine(self, define_name, nParameters);
+                        result = NextToken();
                     }
+                    break;
+                default:
+                    ParseErrorF(self->LexerState, "Expected define ifdef endif or got: %s",
+                        IDENTIFIER_PTR(&self->IdentifierTable, *result));
                 }
             }
         }
@@ -236,7 +372,7 @@ void _newMemRealloc(void** memP, uint32_t* capacity, const uint32_t elementSize)
 {
     if (!*memP)
     {
-        (*capacity) = 4095 / 1.6f;
+        (*capacity) = 1024 / 1.6f;
     }
 
     {
@@ -431,13 +567,8 @@ metac_expression_t* MetaCParserParseExpression(metac_parser_t* self, metac_expre
     else if (tokenType == tok_identifier)
     {
         result = AllocNewExpression(exp_identifier);
-        const char* ident =
-            IdentifierPtrToCharPtr(
-                &self->Lexer->IdentifierTable,
-                currentToken->IdentifierPtr
-            );
-        result->IdentifierPtr = GetOrAddIdentifier(&self->IdentifierTable,
-                                                   ident, currentToken->IdentifierKey);
+
+        result->IdentifierPtr = RegisterIdentifier(self, currentToken);
         result->IdentifierKey = currentToken->IdentifierKey;
         result->Hash = currentToken->IdentifierKey;
         PushOperand(result);
@@ -751,9 +882,6 @@ static metac_lexer_t g_lineLexer = {
 /// There can only be one LineParser as it uses static storage
 metac_parser_t g_lineParser = { &g_lineLexer };
 
-#define ARRAY_SIZE(A) \
-    ((unsigned int)(sizeof((A)) / sizeof((A)[0])))
-
 metac_expression_t* MetaCParserParseExpressionFromString(const char* exp)
 {
     assert(g_lineLexer.tokens_capacity == ARRAY_SIZE(g_lineLexer.inlineTokens));
@@ -764,7 +892,11 @@ metac_expression_t* MetaCParserParseExpressionFromString(const char* exp)
     {
         IdentifierTableInit(&g_lineParser.IdentifierTable);
     }
-
+    if (!g_lineParser.Defines)
+    {
+        g_lineParser.Defines = g_lineParser.inlineDefines;
+        g_lineParser.DefineCapacity = ARRAY_SIZE(g_lineParser.inlineDefines);
+    }
     LexString(&g_lineLexer, exp);
 
     metac_expression_t* result = MetaCParserParseExpression(&g_lineParser, 0);

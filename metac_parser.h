@@ -293,10 +293,12 @@ typedef struct metac_parser_reorder_state_t
 
 typedef struct metac_define_t
 {
+    uint32_t IdentifierKey;
     metac_identifier_ptr_t IdentifierPtr;
 
     /// at which tokden positon the define is
     uint32_t TokenPosition;
+    uint32_t SourceId;
     ///UINT32_MAX means variadic
     uint32_t NumberOfParameters
 } metac_define_t;

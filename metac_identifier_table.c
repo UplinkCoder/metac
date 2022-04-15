@@ -23,9 +23,11 @@ void IdentifierTableInit(metac_identifier_table_t* table)
 {
     table->SlotCount_Log2 = 8;
     table->Slots = table->inlineSlots;
-    table->StringMemory = (char*)malloc(16384);
-    table->StringMemoryCapacity = 16384;
+    table->StringMemory = (char*)malloc(4096);
+    table->StringMemoryCapacity = 4096;
     table->StringMemorySize = 0;
+    table->SlotsUsed = 0;
+
     for(int slotIdx = 0; slotIdx < 256; slotIdx++)
     {
         table->Slots[slotIdx].HashKey = 0;
@@ -69,10 +71,12 @@ metac_identifier_ptr_t GetOrAddIdentifier(metac_identifier_table_t* table,
 #ifndef ATOMIC
                 table->StringMemorySize = newValue;
             } while (false);
+            ++table->SlotsUsed;
 #else
             } while(!__atomic_compare_exchange(&table->StringMemorySize, &expected, &newValue,
                 false, __ATOMIC_ACQUIRE, __ATOMIC_ACQUIRE));
             // atomic compare exchange has been done.
+            __atomic_add_fetch(&table->SlotsUsed, 1, __ATOMIC_ACQUIRE)
 #endif
             char* tableMem = (table->StringMemory + (result.v - 4));
             __builtin_memcpy(tableMem, identifier, length);

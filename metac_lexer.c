@@ -85,7 +85,14 @@ static metac_token_enum_t MetaCLexFixedLengthToken(const char _chrs[3])
         default:
             return tok_dot;
         case '.':
-            return tok_dotdot;
+            switch(_chrs[2])
+            {
+            default:
+                return tok_dotdot;
+            case '.':
+                return tok_dotdotdot;
+            }
+
         }
 
     case '/':
@@ -306,6 +313,10 @@ static uint32_t StaticMetaCTokenLength(metac_token_enum_t t)
         case tok_kw_for      : return 3;
         case tok_kw_sizeof   : return 6;
         case tok_kw_goto     : return 4;
+
+        case tok_kw_scope : return 5;
+        case tok_kw_yield : return 5;
+
     }
 }
 
