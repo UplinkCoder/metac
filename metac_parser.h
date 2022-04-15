@@ -105,6 +105,7 @@
     M(stmt_if) \
     M(stmt_switch) \
     M(stmt_while) \
+    M(stmt_do_while) \
     M(stmt_label) \
     M(stmt_case) \
     M(stmt_break) \
@@ -125,6 +126,11 @@
 
 #define DEFINE_MEMBERS(MEMBER) \
     MEMBER,
+
+typedef enum scope_kind_t
+{
+    scope_exit
+} scope_kind_t;
 
 typedef enum metac_declaration_kind_t
 {
@@ -200,10 +206,54 @@ typedef enum metac_statement_kind_t
     uint32_t Hash; \
     struct metac_statement_t* Next;
 
+typedef struct statement_header_t
+{
+    STATEMENT_HEADER
+} statement_header_t;
+
 typedef struct stmt_block_t
 {
     STATEMENT_HEADER
 } stmt_block_t;
+
+typedef struct stmt_break_t
+{
+    STATEMENT_HEADER
+} stmt_break_t;
+
+typedef struct stmt_continue_t
+{
+    STATEMENT_HEADER
+} stmt_continue_t;
+
+typedef struct stmt_yield_t
+{
+    STATEMENT_HEADER
+
+    metac_expression_t* E1;
+} stmt_yield_t;
+
+typedef struct stmt_scope_t
+{
+    STATEMENT_HEADER
+
+    scope_kind_t ScopeKind;
+    struct metac_statement_t* Stmt;
+} stmt_scope_t;
+
+typedef struct stmt_defer_t
+{
+    STATEMENT_HEADER
+
+    struct metac_statement_t* Stmt;
+} stmt_defer_t;
+
+typedef struct stmt_while_t
+{
+    STATEMENT_HEADER
+
+    metac_expression_t* E1;
+} stmt_while_t;
 
 typedef struct stmt_case_t
 {
@@ -225,6 +275,13 @@ typedef struct stmt_exp_t
 
     metac_expression_t* Expression;
 } stmt_exp_t;
+
+typedef struct stmt_decl_t
+{
+    STATEMENT_HEADER
+
+    struct metac_declaration_t* Declaration;
+} stmt_decl_t;
 
 typedef struct stmt_if_t
 {
@@ -249,12 +306,21 @@ typedef struct stmt_switch_t
     metac_identifier_ptr_t Label;
 } stmt_switch_t;
 
-typedef struct metac_statement_t
+typedef struct stmt_do_while_t
 {
     STATEMENT_HEADER
 
+    metac_expression_t* E1;
+} stmt_do_while_t;
+
+typedef struct metac_statement_t
+{
     union // switch(Kind)
     {
+        struct {
+            STATEMENT_HEADER
+        };
+
         // invalid case stmt_max, stmt_invalid :
         // case stmt_if :
         stmt_if_t stmt_if;
@@ -267,6 +333,7 @@ typedef struct metac_statement_t
         // case stmt_goto :
         stmt_goto_t stmt_goto;
         // case stmt_yield :
+        stmt_yield_t stmt_yield;
     };
 } metac_statement_t;
 
@@ -300,7 +367,7 @@ typedef struct metac_define_t
     uint32_t TokenPosition;
     uint32_t SourceId;
     ///UINT32_MAX means variadic
-    uint32_t NumberOfParameters
+    uint32_t NumberOfParameters;
 } metac_define_t;
 
 typedef struct metac_parser_t

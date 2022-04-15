@@ -10,6 +10,7 @@
 #include <stdlib.h>
 #include <assert.h>
 
+void _newMemRealloc(void** memP, uint32_t* capacity, const uint32_t elementSize);
 const char* MetaCExpressionKind_toChars(metac_expression_kind_t type);
 
 #define ARRAY_SIZE(A) \
@@ -75,7 +76,7 @@ void AddDefine(metac_parser_t* self, metac_token_t* token, uint32_t nParameters)
                 sizeof(metac_define_t) * ARRAY_SIZE(self->inlineDefines));
             return ;
         }
-        _newMemRealloc(&self->Defines, &self->DefineCapacity, sizeof(metac_define_t));
+        _newMemRealloc((void**)&self->Defines, &self->DefineCapacity, sizeof(metac_define_t));
 
     }
 }
@@ -92,7 +93,7 @@ metac_token_t* MetaCParserNextToken(metac_parser_t* self)
 
 #define PeekMatch(TOKEN_TYPE) \
     ( ((result = NextToken()), (result && result->TokenType == TOKEN_TYPE)) ? \
-    ( result ) : ( self->CurrentTokenIndex--, 0) )
+    ( result ) : ( self->CurrentTokenIndex--, (metac_token_t*)0) )
 
     metac_token_t* result = 0;
     assert(self->Lexer->tokens_size);
