@@ -6,4 +6,4 @@ pushd ..
 popd
 
 $CC package_serializer.c ../metac_parser_obj.c -I.. \
-    -g2 -O0 -lm -o package_serializer $@
+    -g2 -O0 -march=native -mtune=native -lm -o package_serializer $@

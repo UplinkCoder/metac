@@ -159,9 +159,9 @@ typedef struct metac_lexer_state_t
     \
     FOREACH_KEYWORD_TOKEN(M) \
     \
-    M(tok_comment_begin) \
-    M(tok_comment_end) \
-    M(tok_comment_single) \
+    M(tok_comment_begin_multi) \
+    M(tok_comment_end_multi) \
+    M(tok_comment_begin_single) \
     \
     M(tok_plusplus) \
     M(tok_minusminus) \
@@ -182,6 +182,8 @@ typedef struct metac_lexer_state_t
     M(tok_unsignedNumber) \
     M(tok_stringLiteral) \
     M(tok_charLiteral) \
+    M(tok_comment_single) \
+    M(tok_comment_multi) \
     \
     FOREACH_STATIC_TOKEN(M) \
     \
@@ -201,10 +203,7 @@ typedef struct metac_token_t {
     metac_token_enum_t TokenType;
 
     uint32_t Position;
-    uint32_t SourceId;
-    /// 0 means file scope
-    /// otherwise it's the token_idx of the enclosing block
-    uint32_t outer_scope;
+    uint32_t LocationId;
 
     union { // switch(TokenType)
         uint32_t Key;
@@ -222,7 +221,7 @@ typedef struct metac_token_t {
             uint32_t StringKey;
             const char* String;
         };
-        // case tok_comment_begin, tok_comment_single :
+        // case tok_comment_begin, tok_comment_begin_single :
         struct {
             uint32_t CommentLength;
             const char* CommentBegin;

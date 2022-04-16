@@ -19,19 +19,27 @@ static inline void LexFile(metac_lexer_t* lexer,
 {
     if (length)
     {
-        // Source source = { path, text, };
         uint32_t estimated =  EstimateNumberOfTokens( length );
         printf ("Estimated number of tokens: %d\n",
                estimated);
+        if (estimated > 96 && estimated < 768)
+            estimated = 1024;
 
         uint32_t fileHash = ~0;
-        // TODO register source file
 
         metac_lexer_state_t lexer_state =
             MetaCLexerStateFromBuffer(1, text, length);
-
-        lexer->tokens = (metac_token_t*) malloc(estimated * sizeof(metac_token_t));
-        lexer->tokens_capacity = estimated;
+        if (estimated > 96)
+        {
+            lexer->tokens = (metac_token_t*) malloc(estimated * sizeof(metac_token_t));
+            lexer->tokens_capacity = estimated;
+        }
+        else
+        {
+            lexer->tokens = lexer->inlineTokens;
+            lexer->tokens_capacity =
+                sizeof(lexer->inlineTokens) / sizeof(lexer->tokens[0]);
+        }
 
         while(length > 0)
         {
@@ -39,12 +47,9 @@ static inline void LexFile(metac_lexer_t* lexer,
 
             metac_token_t token =
                 *MetaCLexerLexNextToken(lexer, &lexer_state, text, length);
-//            printf("Lexed: %s\n", MetaCTokenEnum_toChars(token.TokenType));
-            if(token.TokenType == tok_eof)
-            {
-                int k = 12;
-            }
+            // printf("TokenType: %s\n", MetaCTokenEnum_toChars(token.TokenType));
             uint32_t eaten_chars = lexer_state.Position - initialPosition;
+            // printf("Consumed: '%.*s' .. textLength remaning %d\n", (int) eaten_chars, text, (int) length);
             fileHash = crc32c(fileHash, text, eaten_chars);
 
             text += eaten_chars;
@@ -53,21 +58,15 @@ static inline void LexFile(metac_lexer_t* lexer,
 
 
         printf("Lexed %d tokens\n", (int) lexer->tokens_size);
-        // RegisterSource
     }
 }
 
 int main(int argc, const char* argv[])
 {
-//    char* arg_storage = (char*)malloc(1024);
-//    uint32_t arg_storage_used = 0;
-
     for(int arg_idx = 1;
         arg_idx < argc;
         arg_idx++)
     {
-//        const char* arg =
-//			(const char*)strcpy(arg_storage + arg_storage_used, argv[arg_idx]);
         const char* arg = argv[arg_idx];
         printf("arg: %s\n", arg);
         metac_lexer_t lexer;
@@ -77,8 +76,8 @@ int main(int argc, const char* argv[])
         LexFile(&lexer, arg,
             readResult.FileContent0, readResult.FileLength
         );
-//        metac_parser_t parser;
-//        MetaCParserInitFromLexer(&parser, &lexer);
+        metac_parser_t parser;
+        MetaCParserInitFromLexer(&parser, &lexer);
     }
 
 }

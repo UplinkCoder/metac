@@ -59,7 +59,7 @@ void AddDefine(metac_parser_t* self, metac_token_t* token, uint32_t nParameters)
     define.NumberOfParameters = nParameters;
     define.IdentifierPtr = RegisterIdentifier(self, token);
     define.TokenPosition = token->Position;
-    define.SourceId = token->SourceId;
+    define.SourceId = self->LexerState->SourceId;
     define.IdentifierKey = token->IdentifierKey;
 
     assert(self->DefineCount < self->DefineCapacity);

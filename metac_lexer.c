@@ -49,7 +49,7 @@ static metac_token_enum_t MetaCLexFixedLengthToken(const char _chrs[3])
         case '=':
             return tok_mul_ass;
         case '/':
-            return tok_comment_end;
+            return tok_comment_end_multi;
         }
 
     case ',':
@@ -101,9 +101,9 @@ static metac_token_enum_t MetaCLexFixedLengthToken(const char _chrs[3])
         default :
             return tok_div;
         case '/':
-            return tok_comment_single;
+            return tok_comment_begin_single;
         case '*':
-            return tok_comment_begin;
+            return tok_comment_begin_multi;
         case '=':
             return tok_div_ass;
         }
@@ -394,6 +394,14 @@ uint32_t MetaCTokenLength(metac_token_t token)
         {
             return LENGTH_FROM_STRING_KEY(token.Key);
         }
+        else if (token.TokenType == tok_comment_single)
+        {
+            return token.CommentLength + 3;
+        }
+        else if (token.TokenType == tok_comment_multi)
+        {
+            return token.CommentLength + 4;
+        }
     }
 
     assert(0);
@@ -464,7 +472,7 @@ static inline metac_token_enum_t classify(char c)
     {
         result = tok_unsignedNumber;
     }
-    else if (c == '"')
+    else if (c == '\"')
     {
         result = tok_stringLiteral;
     }
@@ -497,31 +505,35 @@ static void MetaCLexerMatchKeywordIdentifier(metac_token_t* tok,
 metac_token_t* MetaCLexerLexNextToken(metac_lexer_t* self,
                                       metac_lexer_state_t* state,
                                       const char* text, uint32_t len)
+
 {
     assert(text[len] == '\0');
     metac_token_t* result = 0;
-
     metac_token_t token = {(metac_token_enum_t)0};
-    token.SourceId = state->SourceId;
 
     assert(self->tokens_capacity > self->tokens_size);
     uint32_t eatenChars = 0;
     char c = *text++;
 LcontinueLexnig:
-    while (c && c <= 32)
     {
-        if (c == '\n')
+        uint32_t column = state->Column;
+
+        while (c && c <= 32)
         {
-            state->Line++;
-            state->Column = 0;
+            if (c == '\n')
+            {
+                state->Line++;
+                column = 0;
+            }
+            if (c == '\r')
+            {
+                column = 0;
+            }
+            column++;
+            eatenChars++;
+            c = *text++;
         }
-        if (c == '\r')
-        {
-            state->Column = 0;
-        }
-        state->Column++;
-        eatenChars++;
-        c = *text++;
+        state->Column = column;
     }
     if (c)
     {
@@ -640,9 +652,10 @@ LcontinueLexnig:
                     assert("Unterminated char literal");
                 }
             }
-            else if (c == '"')
+            else if (c == '\"' || c == '`')
             {
                 ++text;
+                char matchTo = c;
                 token.TokenType = tok_stringLiteral;
                 token.String = text;
                 c = *text++;
@@ -650,7 +663,7 @@ LcontinueLexnig:
                 uint32_t string_length = 0;
                 uint32_t string_hash = ~0;
                 eatenChars++;
-                while(c && c != '"')
+                while(c && c != matchTo)
                 {
                     string_length++;
                     if (c == '\\')
@@ -666,7 +679,7 @@ LcontinueLexnig:
                     c = *text++;
                     eatenChars++;
                 }
-                if (c != '"')
+                if (c != matchTo)
                 {
                     ParseError(state, "Unterminted string literal");
                 }
@@ -674,6 +687,7 @@ LcontinueLexnig:
                 assert(string_length < 0xFFFFF);
                 token.Key = STRING_KEY(string_hash, string_length);
             }
+            //TODO special hack as long as we don't do proper preprocessing
             else if (c == '\\')
             {
                 ++text;
@@ -684,46 +698,72 @@ LcontinueLexnig:
             }
         }
     }
-    else if (token.TokenType == tok_comment_single)
+    else if (token.TokenType == tok_comment_begin_single)
     {
+        token.TokenType = tok_comment_single;
         eatenChars += 2;
+        text += 2;
         char* newlinePtr = memchr(text, '\n', len - eatenChars);
-        uint32_t commentLength = text - newlinePtr;
+        uint32_t commentLength = (newlinePtr - text);
         if (!newlinePtr)
         {
-            commentLength = len - eatenChars;
+            commentLength = len - eatenChars - 1;
             c = '\0';
         }
         else
         {
         }
-        eatenChars += commentLength;
+        eatenChars += commentLength + 1;
         token.CommentLength = commentLength;
         token.CommentBegin = text + 2;
-        printf("CommentBegin: %s\n", token.CommentBegin);
-
     }
-#if 0
-    else if (token.TokenType == tok_comment_begin)
+    else if (token.TokenType == tok_comment_begin_multi)
     {
+        token.TokenType = tok_comment_multi;
+        printf("Comment starts at line: %u:%u\n", state->Line, state->Column);
         uint32_t offset = 0;
-        uint32_t col = 0;
-        char* newline_ptr = memchr(text + offset, '\n', length - eatenChars);
-        char* star_ptr = memchr(text + offset, '*', length - eatenChars);
-        while (newline_ptr < star_ptr)
+        char* endPtr;
+        char* lastNewline = 0;
+        char* newlinePtr = memchr(text + 2, '\n', len - 2);
+        char* slashPtr = memchr(text + 2, '/', len - 2);
+        for(;;)
         {
-            line++;
-            newline_ptr = memchr(text + )
+            while (newlinePtr && newlinePtr < slashPtr)
+            {
+                lastNewline = newlinePtr;
+                offset = (newlinePtr - text);
+                state->Line++;
+                newlinePtr = memchr(lastNewline + 1, '\n', len - (lastNewline - text));
+            }
+            if (!slashPtr) assert(0);
+            offset = (slashPtr - text);
+            if ((*(slashPtr - 1)) == '*')
+            {
+                endPtr = slashPtr + 1;
+                break;
+            }
+            newlinePtr = memchr(slashPtr, '\n', len - 2 - offset);
+            slashPtr = memchr(slashPtr + 1, '/', len - 2 - offset);
         }
-        if (!star_ptr) assert(0);
-        offset += (star_ptr - text);
-        if (text[++offset] == '/')
-            text +=
+        eatenChars = endPtr - text;
+
+        if (lastNewline && lastNewline < endPtr)
+        {
+            state->Column = endPtr - lastNewline;
+        }
+        else
+        {
+            state->Column += eatenChars;
+        }
+        token.CommentLength = eatenChars - 4;
+        token.CommentBegin = text + 2;
+        printf("Comment ends at line: %u:%u\n", state->Line, state->Column);
     }
-#endif
     else
     {
-        eatenChars += StaticMetaCTokenLength(token.TokenType);
+        const uint32_t tokLen = StaticMetaCTokenLength(token.TokenType);
+        eatenChars += tokLen;
+        state->Column += tokLen;
     }
 
     if (token.TokenType)
@@ -735,6 +775,10 @@ LcontinueLexnig:
     {
         static metac_token_t stop_token = {tok_eof};
         result = &stop_token;
+    }
+    if (eatenChars + state->Position >= state->Size)
+    {
+        int k = 12;
     }
     state->Position += eatenChars;
     return result;
