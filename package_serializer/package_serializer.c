@@ -9,7 +9,7 @@
 uint32_t EstimateNumberOfTokens(uint32_t length)
 {
     uint32_t aligned_length = (length + 16) & ~15;
-    float token_estimate = ( aligned_length / 5.3f );
+    float token_estimate = ( aligned_length / 5.0f );
     return (((uint32_t) token_estimate) + 128) & ~127;
 }
 

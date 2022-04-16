@@ -25,16 +25,16 @@ const char* IdentifierPtrToCharPtr(metac_identifier_table_t* table,
 
 void IdentifierTableInit(metac_identifier_table_t* table)
 {
-    table->SlotCount_Log2 = 9;
+    table->SlotCount_Log2 = 11;
     table->Slots = table->inlineSlots;
-    table->StringMemory = (char*)malloc(8192);
-    table->StringMemoryCapacity = 8192;
+    table->StringMemory = (char*)malloc(64392);
+    table->StringMemoryCapacity = 64392;
     table->StringMemorySize = 0;
     table->SlotsUsed = 0;
 
     table->Slots = (metac_identifier_table_slot_t*)
-		calloc(512, sizeof(metac_identifier_table_slot_t));
-    for(int slotIdx = 0; slotIdx < 512; slotIdx++)
+		calloc(2048, sizeof(metac_identifier_table_slot_t));
+    for(int slotIdx = 0; slotIdx < 2048; slotIdx++)
     {
         table->Slots[slotIdx].HashKey = 0;
     }

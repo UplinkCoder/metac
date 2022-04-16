@@ -672,7 +672,7 @@ LcontinueLexnig:
                         c = EscapedChar(*text++);
                         if (c == 'E')
                         {
-                            ParseError(state, "Invalid escape seqeunce");
+                            ParseErrorF(state, "Invalid escape seqeunce '%s'", (text - 1));
                         }
                     }
                     string_hash = crc32c_byte(string_hash, c);
@@ -720,7 +720,7 @@ LcontinueLexnig:
     else if (token.TokenType == tok_comment_begin_multi)
     {
         token.TokenType = tok_comment_multi;
-        printf("Comment starts at line: %u:%u\n", state->Line, state->Column);
+        // printf("Comment starts at line: %u:%u\n", state->Line, state->Column);
         uint32_t offset = 0;
         char* endPtr;
         char* lastNewline = 0;
@@ -757,7 +757,49 @@ LcontinueLexnig:
         }
         token.CommentLength = eatenChars - 4;
         token.CommentBegin = text + 2;
-        printf("Comment ends at line: %u:%u\n", state->Line, state->Column);
+        //printf("Comment ends at line: %u:%u\n", state->Line, state->Column);
+        //printf("Comment was: \"%.*s\"\n", eatenChars - 4,  text + 2);
+    }
+    else if (token.TokenType == tok_hash)
+    {
+        uint32_t lines = 0;
+        const char* newlinePtr = text;
+        uint32_t offset = 0;
+        if(text[1] == 'd' && text[2] == 'e' && text[3] == 'f')
+                goto SkipToNewline;
+#if 0
+        else if(text[1] == 'i' && text[2] == 'f')
+        {
+            for(;;)
+            {
+                char s = text[offset++];
+                if(s == '\n') state->Line++;
+                if (s == '#' && text[offset + 1] == 'n')
+                {
+                    eatenChars = offset + 5;
+                    goto LcontinueLexnig;
+                }
+            }
+        }
+#endif
+SkipToNewline:
+        for(;;)
+        {
+            newlinePtr = memchr(newlinePtr + 1, '\n', len - offset);
+            offset = (newlinePtr - text);
+            //printf("offset: %u\n", offset);
+            lines++;
+            if (!newlinePtr || ((*(newlinePtr - 1)) != '\\'))
+                break;
+        }
+        ++offset;
+        //printf("skipping %u chars\n", offset);
+        //printf("Just Skipped '%.*s'\n", offset,  text);
+        //printf("NextChars 8: '%.*s'\n", 8,  text + offset);
+        eatenChars = offset + 1;
+        state->Line += lines;
+        state->Column = 1;
+        goto LcontinueLexnig;
     }
     else
     {
