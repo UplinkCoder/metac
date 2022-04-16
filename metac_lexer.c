@@ -1,4 +1,11 @@
-#include "metac_identifier_table.c"
+#ifdef IDENTIFIER_TABLE
+#  include "metac_identifier_table.c"
+#endif
+
+#ifdef IDENTIFIER_TREE
+#  include "metac_identifier_tree.c"
+#endif
+
 #include "metac_lexer.h"
 #include "compat.h"
 #include <assert.h>
@@ -417,6 +424,9 @@ void MetaCLexerInit(metac_lexer_t* self)
 #ifdef IDENTIFIER_TABLE
     IdentifierTableInit(&self->IdentifierTable);
 #endif
+#ifdef IDENTIFIER_TREE
+    IdentifierTreeInit(&self->IdentifierTree);
+#endif
 }
 metac_lexer_state_t MetaCLexerStateFromString(uint32_t sourceId,
                                               const char* str)
@@ -507,9 +517,14 @@ metac_token_t* MetaCLexerLexNextToken(metac_lexer_t* self,
                                       const char* text, uint32_t len)
 
 {
-    assert(text[len] == '\0');
-    metac_token_t* result = 0;
     metac_token_t token = {(metac_token_enum_t)0};
+    
+    if (text[len] != '\0')
+    {
+        return &token;
+    }
+    metac_token_t* result = 0;
+    
 
     assert(self->tokens_capacity > self->tokens_size);
     uint32_t eatenChars = 0;
@@ -568,6 +583,11 @@ LcontinueLexnig:
 #ifdef IDENTIFIER_TABLE
                     token.IdentifierPtr =
                         GetOrAddIdentifier(&self->IdentifierTable, identifierBegin, token.IdentifierKey);
+#endif
+#ifdef IDENTIFIER_TREE
+                    token.IdentifierPtr =
+                        GetOrAddIdentifier(&self->IdentifierTree, identifierBegin, token.IdentifierKey);
+
 #else
                 token.Identifier = identifierBegin;
 #endif
@@ -703,7 +723,7 @@ LcontinueLexnig:
         token.TokenType = tok_comment_single;
         eatenChars += 2;
         text += 2;
-        char* newlinePtr = memchr(text, '\n', len - eatenChars);
+        char* newlinePtr = (char*)memchr(text, '\n', len - eatenChars);
         uint32_t commentLength = (newlinePtr - text);
         if (!newlinePtr)
         {
@@ -724,8 +744,8 @@ LcontinueLexnig:
         uint32_t offset = 0;
         char* endPtr;
         char* lastNewline = 0;
-        char* newlinePtr = memchr(text + 2, '\n', len - 2);
-        char* slashPtr = memchr(text + 2, '/', len - 2);
+        char* newlinePtr = (char*)memchr(text + 2, '\n', len - 2);
+        char* slashPtr = (char*)memchr(text + 2, '/', len - 2);
         for(;;)
         {
             while (newlinePtr && newlinePtr < slashPtr)
@@ -733,7 +753,7 @@ LcontinueLexnig:
                 lastNewline = newlinePtr;
                 offset = (newlinePtr - text);
                 state->Line++;
-                newlinePtr = memchr(lastNewline + 1, '\n', len - (lastNewline - text));
+                newlinePtr = (char*)memchr(lastNewline + 1, '\n', len - (lastNewline - text));
             }
             if (!slashPtr) assert(0);
             offset = (slashPtr - text);
@@ -742,8 +762,8 @@ LcontinueLexnig:
                 endPtr = slashPtr + 1;
                 break;
             }
-            newlinePtr = memchr(slashPtr, '\n', len - 2 - offset);
-            slashPtr = memchr(slashPtr + 1, '/', len - 2 - offset);
+            newlinePtr = (char*)memchr(slashPtr, '\n', len - 2 - offset);
+            slashPtr = (char*)memchr(slashPtr + 1, '/', len - 2 - offset);
         }
         eatenChars = endPtr - text;
 
@@ -785,7 +805,7 @@ LcontinueLexnig:
 SkipToNewline:
         for(;;)
         {
-            newlinePtr = memchr(newlinePtr + 1, '\n', len - offset);
+            newlinePtr = (char*)memchr(newlinePtr + 1, '\n', len - offset);
             offset = (newlinePtr - text);
             //printf("offset: %u\n", offset);
             lines++;

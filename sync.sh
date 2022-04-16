@@ -1,6 +1,7 @@
 #!/bin/sh
 DST="$1"
 LINENOISE_DIR="3rd_party/linenoise"
+TRACY_DIR="3rd_party/tracy"
 if [ -d $DST ]; then
     cp README.md LICENSE \
        metac_identifier_table.c metac_identifier_table.h \
@@ -14,8 +15,22 @@ if [ -d $DST ]; then
 
     chmod +x $DST/gen_code.sh $DST/sync_from.sh $DST/sync.sh $DST/run_tests.sh
 
+    mkdir -p $DST/$TRACY_DIR
+    cp $TRACY_DIR/TracyC.h \
+       $DST/$TRACY_DIR
+
+    mkdir -p $DST/$TRACY_DIR/common
+    cp $TRACY_DIR/common/TracyApi.h \
+       $DST/$TRACY_DIR/common
+
+    mkdir -p $DST/$TRACY_DIR/client
+    cp $TRACY_DIR/client/TracyCallstack.h \
+       $DST/$TRACY_DIR/client
+
     mkdir -p $DST/cache
-    cp cache/cached_tree.c cache/cached_tree.h cache/crc32.c cache/serialize_tree.c $DST/cache
+    cp cache/cached_tree.c cache/cached_tree.h \
+       cache/crc32.c cache/serialize_tree.c \
+       $DST/cache
 
     mkdir -p $DST/utils
     cp utils/gen_metac_match_keyword.c utils/metac_count_token_length.c \

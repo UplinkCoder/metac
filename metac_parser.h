@@ -1,7 +1,12 @@
 #include "compat.h"
 #include "metac_lexer.h"
-#include "metac_identifier_table.h"
+#ifdef IDENTIFIER_TABLE
+#  include "metac_identifier_table.h"
+#endif
 
+#ifdef IDENTIFIER_TREE
+#  include "metac_identifier_tree.h"
+#endif
 /*    M(exp_bin_invalid) \*/
 
 #define FIRST_BINARY_EXP(M) \
@@ -379,9 +384,12 @@ typedef struct metac_parser_t
 
     uint32_t CurrentTokenIndex;
     metac_parser_reorder_state_t* ExpressionReorderState;
-
+#ifdef IDENTIFIER_TABLE
     metac_identifier_table_t IdentifierTable;
-
+#endif
+#ifdef IDENTIFIER_TREE
+    metac_identifier_tree_t IdentifierTree;
+#endif
     metac_define_t* Defines;
     uint32_t DefineCount;
     uint32_t DefineCapacity;

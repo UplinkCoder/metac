@@ -1,14 +1,31 @@
 #ifndef IDENTIFIER_TABLE
-#  error "You must compile the parser with IDENTIFIER_TABLE set"
+#  ifndef IDENTIFIER_TREE
+#    error "You must compile the parser IDENTIFIER_TABLE or IDENTITIFIER_TREE set"
+# endif
 #endif
 
-#include "metac_identifier_table.c"
+#ifdef IDENTIFIER_TABLE
+#  include "metac_identifier_table.c"
+#  define MEMBER_SUFFIX(X) X ## Table
+#  define MEMBER_INFIX(P, S) P ## Table # S
+#  define MEMBER_INIT(X) IdentifierTreeInit(## X ## ->IdentifierTree);
+#endif
+
+#ifdef IDENTIFIER_TREE
+#  include "metac_identifier_tree.c"
+#  define MEMBER_SUFFIX(X) X ## Tree
+#  define MEMBER_INFIX(P, S) P ## Tree # S
+#  define MEMBER_INIT(X) IdentifierTableInit(## X ## ->IdentifierTable);
+#endif
+
 #include "metac_lexer.c"
 #include "metac_parser.h"
 
 #include <string.h>
 #include <stdlib.h>
 #include <assert.h>
+
+#include "3rd_party/tracy/TracyC.h"
 
 void _newMemRealloc(void** memP, uint32_t* capacity, const uint32_t elementSize);
 const char* MetaCExpressionKind_toChars(metac_expression_kind_t type);
@@ -19,8 +36,12 @@ const char* MetaCExpressionKind_toChars(metac_expression_kind_t type);
 void MetaCParserInit(metac_parser_t* self)
 {
     self->CurrentTokenIndex = 0;
+#ifdef IDENTIFIER_TABLE
     IdentifierTableInit(&self->IdentifierTable);
-
+#endif
+#ifdef IDENTIFIER_TREE
+    IdentifierTreeInit(&self->IdentifierTree);
+#endif
     self->Defines = self->inlineDefines;
     self->DefineCount = 0;
     self->DefineCapacity = ARRAY_SIZE(self->inlineDefines);
@@ -42,13 +63,13 @@ metac_identifier_ptr_t RegisterIdentifier(metac_parser_t* self,
 {
     const char* identifierString =
         IdentifierPtrToCharPtr(
-            &self->Lexer->IdentifierTable,
+            MEMBER_SUFFIX(&self->Lexer->Identifier),
             token->IdentifierPtr
         );
-
-    return GetOrAddIdentifier(&self->IdentifierTable,
-                              identifierString,
-                              token->IdentifierKey);
+        
+        return GetOrAddIdentifier(MEMBER_SUFFIX(&self->Identifier),
+                                  identifierString,
+                                  token->IdentifierKey);
 }
 void AddDefine(metac_parser_t* self, metac_token_t* token, uint32_t nParameters)
 {
@@ -115,11 +136,9 @@ metac_token_t* MetaCParserNextToken(metac_parser_t* self)
                 if (define->IdentifierKey == idKey)
                 {
                     const char* defineString =
-                        IDENTIFIER_PTR(&self->IdentifierTable, *define);
-
+                        IDENTIFIER_PTR(MEMBER_SUFFIX(&self->Identifier), *define);
                     const char* IdString =
-                        IDENTIFIER_PTR(&self->Lexer->IdentifierTable,
-                            *result);
+                        IDENTIFIER_PTR(MEMBER_SUFFIX(&self->Lexer->Identifier), *result);
 
                     if (!memcmp(IdString, defineString,
                         LENGTH_FROM_IDENTIFIER_KEY(idKey)))
@@ -133,7 +152,7 @@ metac_token_t* MetaCParserNextToken(metac_parser_t* self)
             if (matchingDefine)
             {
                 const char* defineName =
-                        IDENTIFIER_PTR(&self->IdentifierTable, *matchingDefine);
+                        IDENTIFIER_PTR(MEMBER_SUFFIX(&self->Identifier), *matchingDefine);
                 // result = tok_plus;
                 printf("Define %s matched we should do something\n", defineName);
             }
@@ -189,7 +208,7 @@ LexpectedIdent:
                                 {
                                     ParseErrorF(self->LexerState,
                                         "Expected ',' after define parameter %s",
-                                        IDENTIFIER_PTR(&self->IdentifierTable,
+                                        IDENTIFIER_PTR(MEMBER_SUFFIX(&self->Identifier),
                                                        *result));
                                     return result;
                                 }
@@ -202,7 +221,7 @@ LexpectedIdent:
                     break;
                 default:
                     ParseErrorF(self->LexerState, "Expected define ifdef endif or got: %s",
-                        IDENTIFIER_PTR(&self->IdentifierTable, *result));
+                        IDENTIFIER_PTR(MEMBER_SUFFIX(&self->Identifier), *result));
                 }
             }
         }
@@ -786,8 +805,8 @@ static metac_statement_t* MetaCParserParseStatement(metac_parser_t* self, metac_
             MetaCParserMatch(self, tok_colon);
 
             stmt_label_t* result = AllocNewStatement(stmt_label, &result);
-            result->Label = GetOrAddIdentifier(&self->IdentifierTable,
-                                               IDENTIFIER_PTR(&self->Lexer->IdentifierTable, *currentToken),
+            result->Label = GetOrAddIdentifier(&self->IdentifierTree,
+                                               IDENTIFIER_PTR(MEMBER_SUFFIX(&self->Lexer->Identifier), *currentToken),
                                                currentToken->IdentifierKey);
         }
     }
@@ -798,8 +817,15 @@ static metac_statement_t* MetaCParserParseStatement(metac_parser_t* self, metac_
 
         MetaCParserMatch(self, tok_kw_goto);
         metac_token_t* label = MetaCParserMatch(self, tok_identifier);
+#ifdef IDENTIFIER_TABLE
         result->Label = GetOrAddIdentifier(&self->IdentifierTable,
                                            IDENTIFIER_PTR(&self->Lexer->IdentifierTable, *label),
+#endif
+#ifdef IDENTIFIER_TREE
+        result->Label = GetOrAddIdentifier(&self->IdentifierTree,
+                                           IDENTIFIER_PTR(&self->Lexer->IdentifierTree, *label),
+#endif
+
                                            label->IdentifierKey);
         result->Hash = Mix(gotoHash, label->IdentifierKey);
     }
@@ -901,11 +927,26 @@ metac_expression_t* MetaCParserParseExpressionFromString(const char* exp)
     assert(g_lineLexer.tokens_capacity == ARRAY_SIZE(g_lineLexer.inlineTokens));
     g_lineParser.CurrentTokenIndex = 0;
     g_lineLexer.tokens_size = 0;
+#ifdef IDENTIFIER_TABLE
     IdentifierTableInit(&g_lineLexer.IdentifierTable);
+#endif
+#ifdef IDENTIFIER_TREE
+    IdentifierTreeInit(&g_lineLexer.IdentifierTree);
+#endif
+
+#ifdef IDENTIFIER_TABLE
     if (!g_lineParser.IdentifierTable.Slots)
     {
         IdentifierTableInit(&g_lineParser.IdentifierTable);
     }
+#endif
+#ifdef IDENTIFIER_TREE
+    if (!g_lineParser.IdentifierTree.Root)
+    {
+        IdentifierTreeInit(&g_lineParser.IdentifierTree);
+    }
+#endif
+    
     if (!g_lineParser.Defines)
     {
         g_lineParser.Defines = g_lineParser.inlineDefines;
@@ -922,12 +963,20 @@ metac_statement_t* MetaCParserParseStatementFromString(const char* exp)
     assert(g_lineLexer.tokens_capacity == ARRAY_SIZE(g_lineLexer.inlineTokens));
     g_lineParser.CurrentTokenIndex = 0;
     g_lineLexer.tokens_size = 0;
+#ifdef IDENTIFIER_TABLE
     IdentifierTableInit(&g_lineLexer.IdentifierTable);
     if (!g_lineParser.IdentifierTable.Slots)
     {
         IdentifierTableInit(&g_lineParser.IdentifierTable);
     }
-
+#endif
+#ifdef IDENTIFIER_TREE
+    IdentifierTreeInit(&g_lineLexer.IdentifierTree);
+    if (!g_lineParser.IdentifierTree.Root)
+    {
+        IdentifierTreeInit(&g_lineParser.IdentifierTree);
+    }
+#endif
     LexString(&g_lineLexer, exp);
 
     metac_statement_t* result = MetaCParserParseStatement(&g_lineParser, 0);
@@ -981,7 +1030,12 @@ const char* PrintExpression(metac_parser_t* self, metac_expression_t* exp)
     else if (exp->Kind == exp_identifier)
     {
         const char* ident = IdentifierPtrToCharPtr(
+#ifdef IDENTIFIER_TABLE
                 &self->IdentifierTable,
+#endif
+#ifdef IDENTIFIER_TREE
+                &self->IdentifierTree,
+#endif
                 exp->IdentifierPtr
             );
         expStringLength += sprintf(scratchpad + expStringLength, "%s ",

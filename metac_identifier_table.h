@@ -23,6 +23,7 @@ typedef struct metac_identifier_table_t
     uint32_t StringMemoryCapacity;
     uint32_t SlotCount_Log2;
     uint32_t SlotsUsed;
+    uint32_t MaxDisplacement;
 
     metac_identifier_table_slot_t inlineSlots[256];
 } metac_identifier_table_t;

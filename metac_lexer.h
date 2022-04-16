@@ -2,7 +2,14 @@
 #define _METAC_LEXER_H_
 #include "compat.h"
 
-#include "metac_identifier_table.h"
+#ifdef IDENTIFIER_TABLE
+#  include "metac_identifier_table.h"
+#endif
+
+#ifdef IDENTIFIER_TREE
+#  include "metac_identifier_tree.h"
+#endif
+
 #define IDENTIFIER_PTR(TABLE, TOKEN) \
     IdentifierPtrToCharPtr(TABLE, (TOKEN).IdentifierPtr)
 
@@ -212,6 +219,9 @@ typedef struct metac_token_t {
             uint32_t IdentifierKey;
 #ifdef IDENTIFIER_TABLE
             metac_identifier_ptr_t IdentifierPtr;
+#endif
+#ifdef IDENTIFIER_TREE
+            metac_identifier_ptr_t IdentifierPtr;
 #else
             const char* Identifier;
 #endif
@@ -300,8 +310,12 @@ typedef struct metac_lexer_t {
     uint32_t tokens_capacity;
 
     metac_token_t inlineTokens[256];
-
+#ifdef IDENTIFIER_TABLE
     metac_identifier_table_t IdentifierTable;
+#endif
+#ifdef IDENTIFIER_TREE
+    metac_identifier_tree_t IdentifierTree;
+#endif
 } metac_lexer_t;
 
 #define IDENTIFIER_KEY(HASH, LENGTH) \
