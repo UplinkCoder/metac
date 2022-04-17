@@ -30,9 +30,7 @@ void WriteMatchFunction(void)
     FOREACH_KEYWORD_TOKEN(KW_WRITE_DEFINE)
 
     printf("\n\n");
-    printf("#if defined(__TINYC__)\n");
-    printf("#elif defined(_MSC_VER)\n");
-    printf("#else\n");
+    printf("#if !defined(__TINYC__) && !defined(_MSC_VER)\n");
     printf("#  define memcmp __builtin_memcmp\n");
     printf("#endif\n");
 

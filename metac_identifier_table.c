@@ -16,8 +16,10 @@
 #  define TRACY_COUNTER(COUNTER)
 #endif
 
-#ifdef _MSC_VER
-#  define __builtin_memcpy memcpy
+#if defined(_MSC_VER) || defined (__TINYC__)
+#else
+#  define memcpy __builtin_memcpy
+#  define memcmp __builtin_memcmp
 #endif
 static inline bool IsFilled(metac_identifier_table_slot_t slot)
 {
@@ -67,7 +69,7 @@ metac_identifier_ptr_t GetOrAddIdentifier(metac_identifier_table_t* table,
         if (slot->HashKey == identifierKey)
         {
             stringEntry = IdentifierPtrToCharPtr(table, slot->Ptr);
-            if (__builtin_memcmp(identifier, stringEntry, length) == 0)
+            if (memcmp(identifier, stringEntry, length) == 0)
             {
                 TRACY_COUNTER(Hits);
 
@@ -116,7 +118,7 @@ metac_identifier_ptr_t GetOrAddIdentifier(metac_identifier_table_t* table,
             __atomic_add_fetch(&table->SlotsUsed, 1, __ATOMIC_ACQUIRE)
 #endif
             char* tableMem = (table->StringMemory + (result.v - 4));
-            __builtin_memcpy(tableMem, identifier, length);
+            memcpy(tableMem, identifier, length);
             tableMem[length] = '\0';
             static uint32_t misses = 0;
             TracyCPlot("Misses", misses++);

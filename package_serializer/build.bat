@@ -1,2 +1,4 @@
-#call ..\gen_code.bat
-cl /TP /I.. package_serializer.c /Os /I.  /DIDENTIFIER_TABLE=1
+pushd ..
+call gen_code.bat
+popd
+cl /TP /I.. /DACCEL=ACCEL_TABLE package_serializer.c /Os /I.  

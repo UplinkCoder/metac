@@ -1,8 +1,9 @@
 #ifndef __TRACYC_HPP__
 #define __TRACYC_HPP__
 
+#include "compat.h"
+
 #include <stddef.h>
-#include <stdint.h>
 
 #include "client/TracyCallstack.h"
 #include "common/TracyApi.h"
