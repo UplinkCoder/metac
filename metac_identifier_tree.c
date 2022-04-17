@@ -17,7 +17,7 @@
 
 void IdentifierTreeInit(metac_identifier_tree_t* tree)
 {
-    const uint32_t maxNodes = (1 << 14);
+    const uint32_t maxNodes = (1 << 16);
     tree->Root = (metac_identfier_tree_node_t*) calloc(maxNodes, sizeof(metac_identfier_tree_node_t));
     tree->NodesSize = 1;
     tree->NodesCapacity = maxNodes;
@@ -53,10 +53,10 @@ metac_identifier_ptr_t GetOrAddIdentifier(metac_identifier_tree_t* tree, const c
             if ((cmp_result = memcmp(name, cached_name, length)) == 0)
             {
                 static uint32_t hits = 0;
-                
+
                 TracyCPlot("Hits", hits++);
-                TracyCZoneEnd(ctx);
-                return currentBranch->Ptr;
+                result = currentBranch->Ptr;
+                break;
             }
         }
         // when we end up here we need to branch
@@ -99,13 +99,17 @@ metac_identifier_ptr_t GetOrAddIdentifier(metac_identifier_tree_t* tree, const c
                 nextBranch->IdentifierKey = identifierKey;
                 nextBranch->Left = 0;
                 nextBranch->Right = 0;
-                nextBranch->Ptr = Ptr;
-                TracyCZoneEnd(ctx);
-                return nextBranch->Ptr;
+                result = nextBranch->Ptr = Ptr;
+                static uint32_t insertions = 0;
+                TracyCPlot("Insertions", insertions++)
+                break;
             }
         }
     }
 
-    assert(0);
+    TracyCZoneEnd(ctx);
+    assert(result.v != 0);
+
+    return result;
 }
 #endif
