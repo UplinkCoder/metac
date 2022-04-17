@@ -13,14 +13,14 @@
 #  define MEMBER_SUFFIX(X) X ## Table
 #  define MEMBER_INFIX(P, S) P ## Table # S
 #  define ACCELERATOR "Table"
-#  define INIT_ACCEL(A) IdentifierTableInit(A)
+#  define ACCEL_INIT(A) IdentifierTableInit(&((A).IdentifierTable))
 # elif ACCEL == ACCEL_TREE
 #  include "metac_identifier_tree.h"
 #  define IDENTIFIER_TREE
 #  define MEMBER_SUFFIX(X) X ## Tree
 #  define MEMBER_INFIX(P, S) P ## Tree # S
 #  define ACCELERATOR "Tree"
-#  define INIT_ACCEL(A) IdentifierTreeInit(A)
+#  define ACCEL_INIT(A) IdentifierTreeInit(&((A).IdentifierTree))
 # else
 #  error "Unknown ACCEL value"
 # endif

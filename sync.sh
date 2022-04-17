@@ -5,6 +5,7 @@ TRACY_DIR="3rd_party/tracy"
 if [ -d $DST ]; then
     cp README.md LICENSE \
        metac_identifier_table.c metac_identifier_table.h \
+       metac_identifier_tree.c metac_identifier_tree.h \
        endian.h stdint_msvc.h compat.h int_to_str.c \
        sync.sh sync_from.sh \
        gen_code.bat gen_code.sh run_tests.sh run_tests.bat \

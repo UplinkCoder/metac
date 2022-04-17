@@ -10,7 +10,7 @@
 #  elif ACCEL == ACCEL_TREE
 #    include "metac_identifier_tree.c"
 #  else
-#    error "Unknow ACCEL value " #ACCEL
+#    error "Unknow ACCEL value "
 #    define DO_NOT_COMPILE
 #  endif
 #endif
@@ -1150,25 +1150,12 @@ metac_expression_t* MetaCParserParseExpressionFromString(const char* exp)
     assert(g_lineLexer.tokens_capacity == ARRAY_SIZE(g_lineLexer.inlineTokens));
     g_lineParser.CurrentTokenIndex = 0;
     g_lineLexer.tokens_size = 0;
-#ifdef IDENTIFIER_TABLE
-    IdentifierTableInit(&g_lineLexer.IdentifierTable);
-#endif
-#ifdef IDENTIFIER_TREE
-    IdentifierTreeInit(&g_lineLexer.IdentifierTree);
-#endif
+    ACCEL_INIT(g_lineLexer);
 
-#ifdef IDENTIFIER_TABLE
     if (!g_lineParser.IdentifierTable.Slots)
     {
-        IdentifierTableInit(&g_lineParser.IdentifierTable);
+        ACCEL_INIT(g_lineParser);
     }
-#endif
-#ifdef IDENTIFIER_TREE
-    if (!g_lineParser.IdentifierTree.Root)
-    {
-        IdentifierTreeInit(&g_lineParser.IdentifierTree);
-    }
-#endif
 
     if (!g_lineParser.Defines)
     {
@@ -1186,20 +1173,6 @@ metac_statement_t* MetaCParserParseStatementFromString(const char* exp)
     assert(g_lineLexer.tokens_capacity == ARRAY_SIZE(g_lineLexer.inlineTokens));
     g_lineParser.CurrentTokenIndex = 0;
     g_lineLexer.tokens_size = 0;
-#ifdef IDENTIFIER_TABLE
-    IdentifierTableInit(&g_lineLexer.IdentifierTable);
-    if (!g_lineParser.IdentifierTable.Slots)
-    {
-        IdentifierTableInit(&g_lineParser.IdentifierTable);
-    }
-#endif
-#ifdef IDENTIFIER_TREE
-    IdentifierTreeInit(&g_lineLexer.IdentifierTree);
-    if (!g_lineParser.IdentifierTree.Root)
-    {
-        IdentifierTreeInit(&g_lineParser.IdentifierTree);
-    }
-#endif
     LexString(&g_lineLexer, exp);
 
     metac_statement_t* result = MetaCParserParseStatement(&g_lineParser, 0);
@@ -1212,20 +1185,7 @@ metac_declaration_t* MetaCParserParseDeclarationFromString(const char* exp)
     assert(g_lineLexer.tokens_capacity == ARRAY_SIZE(g_lineLexer.inlineTokens));
     g_lineParser.CurrentTokenIndex = 0;
     g_lineLexer.tokens_size = 0;
-#ifdef IDENTIFIER_TABLE
-    IdentifierTableInit(&g_lineLexer.IdentifierTable);
-    if (!g_lineParser.IdentifierTable.Slots)
-    {
-        IdentifierTableInit(&g_lineParser.IdentifierTable);
-    }
-#endif
-#ifdef IDENTIFIER_TREE
-    IdentifierTreeInit(&g_lineLexer.IdentifierTree);
-    if (!g_lineParser.IdentifierTree.Root)
-    {
-        IdentifierTreeInit(&g_lineParser.IdentifierTree);
-    }
-#endif
+
     LexString(&g_lineLexer, exp);
 
     metac_declaration_t* result = MetaCParserParseDeclaration(&g_lineParser, 0);

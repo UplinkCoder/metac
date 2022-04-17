@@ -423,6 +423,9 @@ void MetaCLexerInit(metac_lexer_t* self)
     self->tokens_capacity =
         (sizeof(self->inlineTokens) / sizeof(self->inlineTokens[0]));
     self->tokens = self->inlineTokens;
+#ifdef ACCEL
+    ACCEL_INIT(*self);
+#endif
 }
 metac_lexer_state_t MetaCLexerStateFromString(uint32_t sourceId,
                                               const char* str)
