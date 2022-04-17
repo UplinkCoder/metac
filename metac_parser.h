@@ -1,3 +1,18 @@
+#ifndef _METAC_PARSER_H_
+#define _METAC_PARSER_H_
+
+#ifndef ACCEL
+#  error "You must compile the parser with ACCEL set"
+#  error "Known values are ACCEL_TABLE and ACCEL_TREE"
+#else
+#  if ACCEL == ACCEL_TABLE
+#    include "metac_identifier_table.h"
+#  elif ACCEL == ACCEL_TREE
+#    include "metac_identifier_tree.h"
+#  else
+#    error "Unknow ACCEL value " #ACCEL
+#  endif
+
 #include "compat.h"
 #include "metac_lexer.h"
 #ifdef IDENTIFIER_TABLE
@@ -15,15 +30,24 @@
 #define LAST_BINARY_EXP(M) \
     M(exp_spaceship)
 
+#define FIRST_DECL_TYPE(M) \
+    M(decl_type)
+
+#define LAST_DECL_TYPE(M) \
+    M(decl_typedef)
+
 #define FOREACH_DECL_KIND(M) \
     M(decl_variable) \
     M(decl_field) \
-    M(decl_type) \
+    FIRST_DECL_TYPE(M) \
+    \
     M(decl_struct) \
+    M(decl_union) \
     M(decl_enum) \
     M(decl_functiontype) \
-    M(decl_function) \
-    M(decl_typedef)
+    LAST_DECL_TYPE(M) \
+    \
+    M(decl_function)
 
 #define FOREACH_BINARY_EXP(M) \
     FIRST_BINARY_EXP(M) \
@@ -158,7 +182,7 @@ typedef enum metac_expression_kind_t
 
 typedef enum metac_binary_expression_kind_t
 {
-    bin_exp_min = (FIRST_BINARY_EXP(TOK_SELF) - 1),
+    bin_exp_invalid = (FIRST_BINARY_EXP(TOK_SELF) - 1),
 
     FOREACH_BINARY_EXP(BIN_MEMBERS)
 } metac_binary_expression_kind_t;
@@ -215,7 +239,7 @@ typedef enum metac_statement_kind_t
 } metac_statement_kind_t;
 
 #define STATEMENT_HEADER \
-    metac_statement_kind_t Kind; \
+    metac_statement_kind_t StmtKind; \
     uint32_t LocationIdx; \
     uint32_t Hash; \
     struct metac_statement_t* Next;
@@ -352,9 +376,9 @@ typedef struct metac_statement_t
 } metac_statement_t;
 
 #define DECLARATION_HEADER \
-    metac_declaration_kind_t Kind; \
+    metac_declaration_kind_t DeclKind; \
     uint32_t LocationIdx; \
-    uint32_t Hash; \
+    uint32_t Hash;
 
 typedef enum metac_type_kind_t
 {
@@ -448,7 +472,7 @@ typedef struct decl_typedef_t
 
 typedef struct metac_declaration_t
 {
-    union{
+    union {
         struct {
             DECLARATION_HEADER
         };
@@ -456,9 +480,7 @@ typedef struct metac_declaration_t
         decl_typedef_t decl_typedef;
         decl_type_t decl_type;
         decl_struct_t decl_struct;
-    }
-
-
+    };
 
 } metac_declaration_t;
 
@@ -468,6 +490,7 @@ typedef struct metac_parser_reorder_state_t
 {
     metac_expression_t* operandStack[1024];
     metac_expression_kind_t operatorStack[1024];
+
     uint32_t nOperands;
     uint32_t nOperators;
     uint32_t Depth;
@@ -515,3 +538,5 @@ metac_declaration_t* MetaCParserParseDeclaration(metac_parser_t* self, metac_dec
 
 const char* PrintExpression(metac_parser_t* self, metac_expression_t* exp);
 #undef DEFINE_MEMBERS
+#endif
+#endif // ifndef ACCEL

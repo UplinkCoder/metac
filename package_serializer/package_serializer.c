@@ -2,6 +2,7 @@
 #include "../utils/read_file.c"
 #include "../cache/crc32.c"
 #include "../metac_parser.h"
+#include "../metac_parser_obj.c"
 
 #include <string.h>
 #include <stdlib.h>

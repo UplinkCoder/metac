@@ -1,5 +1,5 @@
+#ifdef ACCEL
 #include "../compat.h"
-//#define IDENTIFIER_TABLE
 #include "../metac_lexer.h"
 #include "../metac_parser.h"
 #include "../3rd_party/linenoise/linenoise.c"
@@ -8,6 +8,8 @@
 
 metac_statement_t* MetaCParserParseStatementFromString(const char* str);
 metac_declaration_t* MetaCParserParseDeclarationFromString(const char* str);
+void PrintDeclaration(metac_parser_t* self, metac_declaration_t* decl,
+					  uint32_t indent, uint32_t level);
 
 const char* MetaCTokenEnum_toChars(metac_token_enum_t tok);
 
@@ -41,11 +43,12 @@ int main(int argc, const char* argv[])
     MetaCLexerInit(&lexer);
 
     PrintHelp();
-
+    linenoiseHistoryLoad(".repl_history");
     const char* promt_;
 LswitchMode:
     switch (parseMode)
     {
+    case parse_mode_max: break;
     case parse_mode_token:
         promt_ = "Token>";
         break;
@@ -59,6 +62,7 @@ LswitchMode:
         promt_ = "Stmt>";
         break;
     }
+    
 LnextLine:
     while ((line = linenoise(promt_)))
     {
@@ -69,6 +73,7 @@ LnextLine:
             switch(*(line + 1))
             {
             case 'q':
+                linenoiseHistorySave(".repl_history");
                 return 0;
             case 't' :
                 parseMode = parse_mode_token;
@@ -83,7 +88,9 @@ LnextLine:
                 parseMode = parse_mode_stmt;
                 goto LswitchMode;
             case 'i' :
+#ifdef ACCEL
                 printf("Accelerator: %s\n", ACCELERATOR);
+#endif
                 continue;
             default :
                 printf("Command :%c unknown type :h for help\n", *(line + 1));
@@ -102,12 +109,11 @@ LnextLine:
             metac_statement_t* stmt;
             metac_declaration_t* decl;
 
-            metac_parser_t lineParser;
-
             uint32_t initalPosition = repl_state.Position;
             switch(parseMode)
 
             {
+            case parse_mode_max: break;
             case parse_mode_expr:
                  exp =
                     MetaCParserParseExpressionFromString(line);
@@ -122,7 +128,7 @@ LnextLine:
             case parse_mode_decl :
                     decl = MetaCParserParseDeclarationFromString(line);
                     if (decl)
-                        PrintDeclaration(&g_lineParser, decl, 1);
+                        PrintDeclaration(&g_lineParser, decl, 0, 0);
                 goto LnextLine;
 
             case parse_mode_token :
@@ -130,16 +136,15 @@ LnextLine:
 
                 uint32_t eaten_chars = repl_state.Position - initalPosition;
                 const uint32_t token_length = MetaCTokenLength(token);
-    #if 1
+#if 1
                 printf("read tokenType: %s {length: %d}\n",
                         MetaCTokenEnum_toChars(token.TokenType), token_length);
 
                 if (token.TokenType == tok_identifier)
                 {
-#ifdef IDENTIFIER_TABLE
-                    printf("    %.*s\n", LENGTH_FROM_IDENTIFIER_KEY(token.Key), IDENTIFIER_PTR(&lexer.IdentifierTable, token));
-#endif
-#ifdef IDENTIFIER_TREE
+#if ACCEL == ACCEL_TABLE
+                    printf("    %.*s\n", LENGTH_FROM_IDENTIFIER_KEY(token.Key), IDENTIFIER_PTR(&lexer.MEMBER_SUFFIX(Identifier), token));
+#elif ACCEL == ACCEL_TREE
                     printf("    %.*s\n", LENGTH_FROM_IDENTIFIER_KEY(token.Key), IDENTIFIER_PTR(&lexer.IdentifierTree, token));
 #endif
                 }
@@ -152,7 +157,7 @@ LnextLine:
                 {
                     printf("    \"%.*s\"\n", LENGTH_FROM_STRING_KEY(token.Key), token.String);
                 }
-    #endif
+#endif
 
                 line_length -= eaten_chars;
                 line += eaten_chars;
@@ -163,3 +168,4 @@ LnextLine:
         }
     }
 }
+#endif

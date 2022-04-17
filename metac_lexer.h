@@ -2,25 +2,28 @@
 #define _METAC_LEXER_H_
 #include "compat.h"
 
-#ifdef IDENTIFIER_TABLE
+#define ACCEL_TABLE 1
+#define ACCEL_TREE  2
+
+#ifndef ACCEL
+#else
+# if ACCEL == ACCEL_TABLE
 #  include "metac_identifier_table.h"
-#endif
-
-#ifdef IDENTIFIER_TREE
-#  include "metac_identifier_tree.h"
-#endif
-
-
-#ifdef IDENTIFIER_TABLE
+#  define IDENTIFIER_TABLE
 #  define MEMBER_SUFFIX(X) X ## Table
 #  define MEMBER_INFIX(P, S) P ## Table # S
 #  define ACCELERATOR "Table"
-#endif
-
-#ifdef IDENTIFIER_TREE
+#  define INIT_ACCEL(A) IdentifierTableInit(A)
+# elif ACCEL == ACCEL_TREE
+#  include "metac_identifier_tree.h"
+#  define IDENTIFIER_TREE
 #  define MEMBER_SUFFIX(X) X ## Tree
 #  define MEMBER_INFIX(P, S) P ## Tree # S
 #  define ACCELERATOR "Tree"
+#  define INIT_ACCEL(A) IdentifierTreeInit(A)
+# else
+#  error "Unknown ACCEL value"
+# endif
 #endif
 
 //#  define MEMBER_INIT(X) IdentifierTreeInit(## X ## ->IdentifierTree)
@@ -197,7 +200,7 @@ typedef struct metac_lexer_state_t
     M(tok_invalid)
 
 #define LAST_TOKEN(M) \
-    M(tok_max)
+    M(tok_error)
 
 #define FOREACH_TOKEN(M) \
     FIRST_TOKEN(M) \
@@ -234,7 +237,7 @@ typedef struct metac_token_t {
         // case tok_identfier :
         struct {
             uint32_t IdentifierKey;
-#if defined (IDENTIFIER_TABLE) || defined (IDENTIFIER_TREE)
+#if defined (ACCEL)
             metac_identifier_ptr_t IdentifierPtr;
 #else
             const char* Identifier;
@@ -324,10 +327,9 @@ typedef struct metac_lexer_t {
     uint32_t tokens_capacity;
 
     metac_token_t inlineTokens[256];
-#ifdef IDENTIFIER_TABLE
+#if ACCEL == ACCEL_TABLE
     metac_identifier_table_t IdentifierTable;
-#endif
-#ifdef IDENTIFIER_TREE
+#elif ACCEL == ACCEL_TREE
     metac_identifier_tree_t IdentifierTree;
 #endif
 } metac_lexer_t;

@@ -1,16 +1,21 @@
-#ifndef IDENTIFIER_TABLE
-#  ifndef IDENTIFIER_TREE
-#    error "You must compile the parser IDENTIFIER_TABLE or IDENTITIFIER_TREE set"
-# endif
+#ifndef _METAC_PARSER_C_
+#define _METAC_PARSER_C_
+
+#ifndef ACCEL
+#  error "You must compile the parser with ACCEL set"
+#  error "Known values are ACCEL_TABLE and ACCEL_TREE"
+#else
+#  if ACCEL == ACCEL_TABLE
+#    include "metac_identifier_table.c"
+#  elif ACCEL == ACCEL_TREE
+#    include "metac_identifier_tree.c"
+#  else
+#    error "Unknow ACCEL value " #ACCEL
+#    define DO_NOT_COMPILE
+#  endif
 #endif
 
-#ifdef IDENTIFIER_TABLE
-#  include "metac_identifier_table.c"
-#endif
-
-#ifdef IDENTIFIER_TREE
-#  include "metac_identifier_tree.c"
-#endif
+#ifndef DO_NOT_COMPILE
 
 #include "metac_lexer.c"
 #include "metac_parser.h"
@@ -23,7 +28,7 @@
 
 void _newMemRealloc(void** memP, uint32_t* capacity, const uint32_t elementSize);
 const char* MetaCExpressionKind_toChars(metac_expression_kind_t type);
-
+const metac_identifier_ptr_t empty_identifier = {~0u};
 #define ARRAY_SIZE(A) \
      ((unsigned int)(sizeof((A)) / sizeof((A)[0])))
 
@@ -292,6 +297,8 @@ metac_expression_kind_t BinExpTypeFromTokenType(metac_token_enum_t tokenType)
                 (cast(int)FIRST_BINARY_TOKEN(TOK_SELF) -
                  cast(int)FIRST_BINARY_EXP(TOK_SELF)));
     }
+
+    return exp_invalid;
 }
 
 const char* BinExpTypeToChars(metac_binary_expression_kind_t t)
@@ -447,7 +454,7 @@ metac_declaration_t* AllocNewDeclaration_(metac_declaration_kind_t kind, size_t 
 
     {
         (*result_ptr) = result = _newDecl_mem + _newDecl_size++;
-        result->Kind = kind;
+        result->DeclKind = kind;
     }
 
     return result;
@@ -471,7 +478,7 @@ metac_statement_t* AllocNewStatement_(metac_statement_kind_t kind, size_t nodeSi
 
     {
         (*result_ptr) = result = _newStmt_mem + _newStmt_size++;
-        result->Kind = kind;
+        result->StmtKind = kind;
     }
 
     return result;
@@ -540,14 +547,30 @@ static inline bool IsTypeToken(metac_token_enum_t tokenType)
     return result;
 }
 
+static inline bool IsDeclType(metac_declaration_t* decl)
+{
+    metac_declaration_kind_t kind = decl->DeclKind;
+    return (kind == decl_type
+         || kind == decl_struct
+         || kind == decl_enum
+         || kind == decl_union);
+}
+
+#define ErrorDeclaration() \
+    (metac_declaration_t*)0
+
+#define U32(VAR) \
+	(*(uint32_t*)(&VAR))
 metac_declaration_t* MetaCParserParseTypeDeclaration(metac_parser_t* self, metac_declaration_t* parent, metac_declaration_t* prev)
 {
     metac_declaration_t* result = 0;
 
     decl_type_t* type = AllocNewDeclaration(decl_type, &result);
-    metac_type_modifiers typeModifies = 0;
+    metac_type_modifiers typeModifiers = typemod_none;
+    metac_token_t* currentToken = 0;
 
-    metac_token_t* currentToken = MetaCParserNextToken(self);
+LnextToken:
+    currentToken = MetaCParserNextToken(self);
     metac_token_enum_t tokenType =
         (currentToken ? currentToken->TokenType : tok_invalid);
 
@@ -557,20 +580,24 @@ metac_declaration_t* MetaCParserParseTypeDeclaration(metac_parser_t* self, metac
         {
             type->TypeKind = type_identifier;
             type->Identifier = RegisterIdentifier(self, currentToken);
+            U32(type->TypeModifiers) |= typeModifiers;
             break;
         }
         if (tokenType == tok_kw_const)
         {
-            typeModifies |= typemod_const;
+            U32(typeModifiers) |= typemod_const;
+            goto LnextToken;
         }
         else if (tokenType >= tok_kw_auto && tokenType <= tok_kw_double)
         {
-            type->TypeKind = type_auto + (tokenType - tok_kw_auto);
+            type->TypeKind = (metac_type_kind_t)(type_auto + (tokenType - tok_kw_auto));
+            U32(type->TypeModifiers) |= typeModifiers;
             break;
         }
         else if (tokenType == tok_kw_unsigned)
         {
-            typeModifies |= typemod_unsigned;
+            U32(typeModifiers) |= typemod_unsigned;
+            goto LnextToken;
         }
         else if (tokenType == tok_kw_struct)
         {
@@ -578,18 +605,19 @@ metac_declaration_t* MetaCParserParseTypeDeclaration(metac_parser_t* self, metac
             bool isPredeclated = true;
 
             decl_struct_t* struct_ = AllocNewDeclaration(decl_struct, &result);
-            type = struct_;
+            type = (decl_type_t*)struct_;
             struct_->TypeKind = type_struct;
 
-            metac_token_t* structName = MetaCParserMatch(self, tok_identifier);
-            if (!structName || structName->TokenType != tok_identifier)
+            if (MetaCParserPeekMatch(self, tok_identifier, 1))
             {
-                printf("We expected a struct name to be there but there was not\n");
-                return result;
+                metac_token_t* structName = MetaCParserNextToken(self);
+                struct_->Identifier = RegisterIdentifier(self, structName);
             }
-            struct_->Identifier = RegisterIdentifier(self, structName);
+            else
+            {
+                struct_->Identifier = empty_identifier;
+            }
 
-            printf("struct Name is: %s\n",  IDENTIFIER_PTR(MEMBER_SUFFIX(&self->Lexer->Identifier), *structName));
 
             if (MetaCParserPeekMatch(self, tok_lBrace, 1))
             {
@@ -602,14 +630,14 @@ metac_declaration_t* MetaCParserParseTypeDeclaration(metac_parser_t* self, metac
                     decl_field_t* field =
                         AllocNewDeclaration(decl_field, (metac_declaration_t**)nextMemberPtr);
                     field->Next = 0;
-                    field->Type = MetaCParserParseTypeDeclaration(self, result, 0);
+                    field->Type = (decl_type_t*)MetaCParserParseTypeDeclaration(self, result, 0);
+					assert(IsDeclType((metac_declaration_t*)field->Type));
+
                     metac_token_t* memberName = MetaCParserMatch(self, tok_identifier);
                     if (!field->Type || !memberName || memberName->TokenType != tok_identifier)
-                        return result;
+                        return ErrorDeclaration();
 
                     field->Identifier = RegisterIdentifier(self, memberName);
-                    printf("field name is: %s\n",
-                        IDENTIFIER_PTR(MEMBER_SUFFIX(&self->Lexer->Identifier), *memberName));
 
                     MetaCParserMatch(self, tok_semicolon);
                     nextMemberPtr = &field->Next;
@@ -626,12 +654,12 @@ metac_declaration_t* MetaCParserParseTypeDeclaration(metac_parser_t* self, metac
         else if (tokenType == tok_kw_enum)
         {
         }
+
+
     }
 
     return result;
 }
-#define ErrorDeclaration() \
-    (metac_declaration_t*)0
 
 
 metac_declaration_t* MetaCParserParseDeclaration(metac_parser_t* self, metac_declaration_t* parent)
@@ -643,9 +671,11 @@ metac_declaration_t* MetaCParserParseDeclaration(metac_parser_t* self, metac_dec
 	metac_declaration_t* result = 0;
     if (tokenType == tok_kw_struct)
     {
+        return MetaCParserParseTypeDeclaration(self, parent, 0);
     }
     else if (tokenType == tok_kw_enum)
     {
+        return MetaCParserParseTypeDeclaration(self, parent, 0);
     }
     else if (tokenType == tok_kw_typedef)
     {
@@ -675,14 +705,27 @@ metac_declaration_t* MetaCParserParseDeclaration(metac_parser_t* self, metac_dec
             return ErrorDeclaration();
         }
         typdef->Identifier = RegisterIdentifier(self, name);
-        result = typdef;
     }
-    else if (tokenType <= tok_kw_char && tokenType >= tok_kw_long)
+    else if (tokenType <= tok_kw_auto && tokenType >= tok_kw_double)
     {
-        result = MetaCParserParseTypeDeclaration(self, parent, 0);
+        // Peek until the next identifer and see if there is a lParen after to
+        metac_token_t* peekId = 0;
+        uint32_t peekCount = 2;
+        do {
+            (peekId = MetaCParserPeekToken(self, peekCount++));
+        } while(!peekId || peekId->TokenType == tok_identifier);
+        if (peekId)
+        {
+            RegisterIdentifier(self, peekId);
+        }
+
+        decl_variable_t* var = AllocNewDeclaration(decl_variable, &result);
+        metac_declaration_t* type = MetaCParserParseTypeDeclaration(self, parent, 0);
+
     }
     else if (tokenType == tok_identifier)
     {
+
     }
 
 	return result;
@@ -1185,7 +1228,7 @@ metac_declaration_t* MetaCParserParseDeclarationFromString(const char* exp)
 #endif
     LexString(&g_lineLexer, exp);
 
-    metac_statement_t* result = MetaCParserParseDeclaration(&g_lineParser, 0);
+    metac_declaration_t* result = MetaCParserParseDeclaration(&g_lineParser, 0);
 
     return result;
 }
@@ -1210,74 +1253,155 @@ const char* MetaCExpressionKind_toChars(metac_expression_kind_t type)
 
 #undef CASE_MACRO
 }
+void PrintSpace(metac_parser_t* self)
+{
+    printf(" ");
+}
+
+void PrintNewline(metac_parser_t* self)
+{
+    printf("\n");
+}
 
 bool IsBinaryExp(metac_expression_kind_t type)
 {
     return (type >= FIRST_BINARY_EXP(TOK_SELF) && type <= LAST_BINARY_EXP(TOK_SELF));
 }
 
-void static inline PrintIndent(uint32_t indent)
+void static inline PrintIndent(metac_parser_t* self, uint32_t indent)
 {
     for (int i = 0; i < indent; i++)
         printf("    ");
 }
-const char* PrintIdentifier(metac_parser_t* self,
-                            metac_identifier_ptr_t idPtr)
+
+void PrintString(metac_parser_t* self, const char* string)
 {
+    printf("%s", string);
+}
+
+void PrintIdentifier(metac_parser_t* self,
+                     metac_identifier_ptr_t idPtr)
+{
+    if (idPtr.v == empty_identifier.v)
+        assert(0); // One is not supposed to print the empty identifier
     printf("%s", IdentifierPtrToCharPtr(MEMBER_SUFFIX(&self->Identifier),
                                         idPtr));
 }
-const char* PrintDeclaration(metac_parser_t* self,
-                             metac_declaration_t* decl, uint32_t indent)
-{
-    PrintIndent(indent);
 
-    switch (decl->Kind)
+void PrintKeyword(metac_parser_t* self,
+                  metac_token_enum_t keyword)
+{
+    printf("%s", MetaCTokenEnum_toChars(keyword) + sizeof("tok_kw"));
+}
+
+void PrintToken(metac_parser_t* self,
+                  metac_token_enum_t tokenType)
+{
+#define CASE_(KW) \
+    case KW :
+
+    switch(tokenType)
+    {
+        FOREACH_KEYWORD_TOKEN(CASE_)
+            assert(0);
+
+        case tok_lBrace :
+            PrintString(self, "{");
+        break;
+        case tok_rBrace :
+            PrintString(self, "}");
+        break;
+    }
+}
+
+
+void PrintDeclaration(metac_parser_t* self, metac_declaration_t* decl,
+					  uint32_t indent, uint32_t level)
+{
+    PrintIndent(self, indent);
+
+    switch (decl->DeclKind)
     {
         case decl_typedef:
         {
             decl_typedef_t* typdef = (decl_typedef_t*) decl;
             printf("typedef ");
-            PrintDeclaration(self, typdef->Type, indent);
+            level++;
+            PrintDeclaration(self, (metac_declaration_t*)typdef->Type, indent, level);
             PrintIdentifier(self, typdef->Identifier);
-            printf("\n");
+            level--;
         } break;
         case decl_type:
         {
             decl_type_t* type = (decl_type_t*) decl;
-            printf("TypeKind: %d\n", (int) type->Kind);
-            if (type->Kind >= type_auto && type->Kind <= type_double)
+            // printf("TypeKind: %d\n", (int) type->Kind);
+            if (type->TypeModifiers)
             {
-                printf("%s ", MetaCTokenEnum_toChars(
-                    (type->TypeKind - type_type) + tok_kw_type) + sizeof("tok_kw"));
+                uint32_t modifiers = type->TypeModifiers;
+                if (modifiers & typemod_const)
+                {
+                    PrintString(self, "const ");
+                }
+                if (modifiers & typemod_unsigned)
+                {
+                    PrintString(self, "unsigned ");
+                }
+
             }
-            else if (type->Kind == type_identifier)
+            if (type->TypeKind >= type_auto && type->TypeKind <= type_double)
             {
-                //printf("%s ", IDENTIFIER_PTR(MEMBER_SUFFIX(&self->Identifier), );
-                printf("type_identifier: %d\n", type->Identifier.v);
+				metac_token_enum_t tok = (metac_token_enum_t)
+					((type->TypeKind - type_type) + tok_kw_type);
+                PrintKeyword(self, tok);
+            }
+            else if (type->TypeKind == type_identifier)
+            {
+                PrintIdentifier(self, type->Identifier);
+
+                //printf("type_identifier: %d\n", type->Identifier.v);
             }
         }  break;
         case decl_struct :
         {
             decl_struct_t* struct_ = (decl_struct_t*) decl;
-            printf("struct %s {\n",
-                IdentifierPtrToCharPtr(&self->IdentifierTable,
-                                       struct_->Identifier));
+            PrintKeyword(self, tok_kw_struct);
+            if (struct_->Identifier.v != empty_identifier.v)
+            {
+                PrintSpace(self);
+                PrintIdentifier(self, struct_->Identifier);
+            }
+            PrintSpace(self);
+            PrintToken(self, tok_lBrace);
+            PrintNewline(self);
+            ++level;
             ++indent;
             decl_field_t* f = struct_->Fields;
             for(int memberIndex = 0;
                 memberIndex < struct_->FieldCount;
                 memberIndex++)
             {
-                PrintDeclaration(self, f->Type, indent);
+                PrintDeclaration(self, (metac_declaration_t*)f, indent, level);
                 printf("\n");
                 f = f->Next;
             }
             --indent;
-            PrintIndent(indent);
-            printf("}\n");
+            --level;
+            PrintIndent(self, indent);
+            PrintToken(self, tok_rBrace);
+            if (indent)
+                printf("\n");
+            else
+                printf(" ");
+        } break;
+        case decl_field :
+        {
+            decl_field_t* field = (decl_field_t*) decl;
+            PrintDeclaration(self, (metac_declaration_t*)field->Type, indent, level);
+            PrintSpace(self);
+            PrintIdentifier(self, field->Identifier);
         } break;
     }
+    if (!indent) printf(";\n");
 }
 
 const char* PrintExpression(metac_parser_t* self, metac_expression_t* exp)
@@ -1477,7 +1601,7 @@ void ReorderExpression(metac_expression_t* exp)
     uint32_t prec = OpToPrecedence(exp->Kind);
 }
 
-#ifdef TEST_PARSER
+#  ifdef TEST_PARSER
 void TestParseExprssion(void)
 {
     metac_expression_t* expr = MetaCParserParseExpression("12 - 16 - 99");
@@ -1485,4 +1609,7 @@ void TestParseExprssion(void)
     ReorderExpression(exp);
     assert(!strcmp(PrintExpression(self, "((12 - 16 ) - 99 )")));
 }
-#endif
+#  endif
+
+#endif // ifndef DO_NOT_COMPILE
+#endif // _METAC_PARSER_C_

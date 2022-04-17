@@ -415,18 +415,14 @@ uint32_t MetaCTokenLength(metac_token_t token)
     return 0;
 }
 
+
+
 void MetaCLexerInit(metac_lexer_t* self)
 {
     self->tokens_size = 0;
     self->tokens_capacity =
         (sizeof(self->inlineTokens) / sizeof(self->inlineTokens[0]));
     self->tokens = self->inlineTokens;
-#ifdef IDENTIFIER_TABLE
-    IdentifierTableInit(&self->IdentifierTable);
-#endif
-#ifdef IDENTIFIER_TREE
-    IdentifierTreeInit(&self->IdentifierTree);
-#endif
 }
 metac_lexer_state_t MetaCLexerStateFromString(uint32_t sourceId,
                                               const char* str)
@@ -517,14 +513,14 @@ metac_token_t* MetaCLexerLexNextToken(metac_lexer_t* self,
                                       const char* text, uint32_t len)
 
 {
-    metac_token_t token = {(metac_token_enum_t)0};
-    
+    static metac_token_t token = {tok_error};
+
     if (text[len] != '\0')
     {
         return &token;
     }
     metac_token_t* result = 0;
-    
+
 
     assert(self->tokens_capacity > self->tokens_size);
     uint32_t eatenChars = 0;
@@ -580,15 +576,16 @@ LcontinueLexnig:
                 MetaCLexerMatchKeywordIdentifier(&token, identifierBegin);
                 if(token.TokenType == tok_identifier)
                 {
-#if defined(IDENTIFIER_TABLE)
+#ifndef ACCEL
+                token.Identifier = identifierBegin;
+#elif ACCEL == ACCEL_TABLE
                     token.IdentifierPtr =
                         GetOrAddIdentifier(&self->IdentifierTable, identifierBegin, token.IdentifierKey);
-#elif (IDENTIFIER_TREE)
+#elif ACCEL == ACCEL_TREE
                     token.IdentifierPtr =
                         GetOrAddIdentifier(&self->IdentifierTree, identifierBegin, token.IdentifierKey);
-
 #else
-                token.Identifier = identifierBegin;
+#   error ("Unkown ACCELERATOR")
 #endif
                 }
             }
@@ -984,7 +981,7 @@ void test_lexer()
         const char* word = token_list[idx++];
         if (!word)
         {
-            assert(tok == tok_max);
+            assert(tok == tok_error);
             continue;
         }
         if (!memcmp(word, "first_", sizeof("first_") - 1))

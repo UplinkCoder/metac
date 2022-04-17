@@ -1,2 +1,2 @@
 #call ..\gen_code.bat
-cl /TP /I.. package_serializer.c /Os /I.
+cl /TP /I.. package_serializer.c /Os /I.  /DIDENTIFIER_TABLE=1
