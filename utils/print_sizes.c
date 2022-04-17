@@ -8,7 +8,9 @@ void main()
     printf("%d expression types are defined\n", (int)exp_max);
     printf("\n\n");
     printf("sizeof(metac_lexer_t): %d\n", (int) sizeof(metac_lexer_t));
+#if defined(IDENTIFIER_TABLE)
     printf("sizeof(metac_identifier_table_t): %d\n", (int) sizeof(metac_identifier_table_t));
+#endif
     printf("sizeof(metac_token_t): %d\n", (int) sizeof(metac_token_t));
 
     printf("sizeof(metac_expression_t): %d\n", (int) sizeof(metac_expression_t));

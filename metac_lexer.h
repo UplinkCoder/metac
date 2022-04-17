@@ -10,6 +10,22 @@
 #  include "metac_identifier_tree.h"
 #endif
 
+
+#ifdef IDENTIFIER_TABLE
+#  define MEMBER_SUFFIX(X) X ## Table
+#  define MEMBER_INFIX(P, S) P ## Table # S
+#  define ACCELERATOR "Table"
+#endif
+
+#ifdef IDENTIFIER_TREE
+#  define MEMBER_SUFFIX(X) X ## Tree
+#  define MEMBER_INFIX(P, S) P ## Tree # S
+#  define ACCELERATOR "Tree"
+#endif
+
+//#  define MEMBER_INIT(X) IdentifierTreeInit(## X ## ->IdentifierTree)
+
+
 #define IDENTIFIER_PTR(TABLE, TOKEN) \
     IdentifierPtrToCharPtr(TABLE, (TOKEN).IdentifierPtr)
 
@@ -96,14 +112,15 @@ typedef struct metac_lexer_state_t
     M(tok_kw_enum) \
     \
     M(tok_kw_auto) \
-    M(tok_kw_double) \
-    M(tok_kw_float) \
-    M(tok_kw_long) \
-    M(tok_kw_int) \
-    M(tok_kw_short) \
-    M(tok_kw_char) \
-    M(tok_kw_void) \
     M(tok_kw_type) \
+    M(tok_kw_void) \
+    \
+    M(tok_kw_char) \
+    M(tok_kw_short) \
+    M(tok_kw_int) \
+    M(tok_kw_long) \
+    M(tok_kw_float) \
+    M(tok_kw_double) \
     \
     M(tok_kw_unsigned) \
     M(tok_kw_const) \
@@ -217,10 +234,7 @@ typedef struct metac_token_t {
         // case tok_identfier :
         struct {
             uint32_t IdentifierKey;
-#ifdef IDENTIFIER_TABLE
-            metac_identifier_ptr_t IdentifierPtr;
-#endif
-#ifdef IDENTIFIER_TREE
+#if defined (IDENTIFIER_TABLE) || defined (IDENTIFIER_TREE)
             metac_identifier_ptr_t IdentifierPtr;
 #else
             const char* Identifier;

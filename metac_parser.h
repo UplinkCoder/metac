@@ -17,8 +17,11 @@
 
 #define FOREACH_DECL_KIND(M) \
     M(decl_variable) \
+    M(decl_field) \
+    M(decl_type) \
     M(decl_struct) \
     M(decl_enum) \
+    M(decl_functiontype) \
     M(decl_function) \
     M(decl_typedef)
 
@@ -183,7 +186,11 @@ typedef struct metac_expression_t
         // case identifier_exp :
         struct {
             uint32_t IdentifierKey;
+#if defined (IDENTIFIER_TABLE) || defined (IDENTIFIER_TREE)
             metac_identifier_ptr_t IdentifierPtr;
+#else
+            const char* Identifier;
+#endif
         };
         // case exp_string :
         struct {
@@ -347,14 +354,115 @@ typedef struct metac_statement_t
 #define DECLARATION_HEADER \
     metac_declaration_kind_t Kind; \
     uint32_t LocationIdx; \
-    uint32_t Hash;
+    uint32_t Hash; \
 
-typedef struct metac_declaration_t
+typedef enum metac_type_kind_t
+{
+    type_invalid,
+
+    type_struct,
+    type_union,
+    type_enum,
+
+    type_auto,
+    type_type,
+    type_void,
+
+    type_char,
+    type_short,
+    type_int,
+    type_long,
+
+    type_float,
+    type_double,
+
+    type_identifier,
+    type_max
+} metac_type_kind_t;
+
+typedef enum metac_type_modifiers
+{
+    typemod_none,
+
+    typemod_const = (1 << 0),
+    typemod_unsigned = (1 << 1),
+
+} metac_type_modifiers;
+
+#define TYPE_HEADER \
+    metac_type_kind_t TypeKind; \
+    metac_type_modifiers TypeModifiers;
+
+
+typedef struct decl_type_t
 {
     DECLARATION_HEADER
 
+    TYPE_HEADER
+
+    metac_identifier_ptr_t Identifier;
+} decl_type_t;
+
+typedef struct decl_field_t
+{
+    DECLARATION_HEADER
+
+    decl_type_t* Type;
+
+    metac_identifier_ptr_t Identifier;
+
+    struct decl_field_t* Next;
+} decl_field_t;
+
+typedef struct decl_variable_t
+{
+    DECLARATION_HEADER
+
+    decl_type_t* Type;
+
+    metac_identifier_ptr_t Identifier;
+
+} decl_variable_t;
+
+typedef struct decl_struct_t
+{
+    DECLARATION_HEADER
+
+    TYPE_HEADER
+
+    metac_identifier_ptr_t Identifier;
+
+    struct decl_field_t* Fields;
+
+    uint32_t FieldCount;
+} decl_struct_t;
+
+typedef struct decl_typedef_t
+{
+    DECLARATION_HEADER
+
+    struct metac_declaration_t* Type;
+
+    metac_identifier_ptr_t Identifier;
+} decl_typedef_t;
+
+typedef struct metac_declaration_t
+{
+    union{
+        struct {
+            DECLARATION_HEADER
+        };
+
+        decl_typedef_t decl_typedef;
+        decl_type_t decl_type;
+        decl_struct_t decl_struct;
+    }
+
+
 
 } metac_declaration_t;
+
+
 
 typedef struct metac_parser_reorder_state_t
 {
@@ -402,5 +510,8 @@ extern metac_parser_t g_lineParser;
 void MetaCParserInitFromLexer(metac_parser_t* self, metac_lexer_t* lexer);
 metac_expression_t* MetaCParserParseExpression(metac_parser_t* self, metac_expression_t* prev);
 metac_expression_t* MetaCParserParseExpressionFromString(const char* exp);
+
+metac_declaration_t* MetaCParserParseDeclaration(metac_parser_t* self, metac_declaration_t* parent);
+
 const char* PrintExpression(metac_parser_t* self, metac_expression_t* exp);
 #undef DEFINE_MEMBERS

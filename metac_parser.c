@@ -6,16 +6,10 @@
 
 #ifdef IDENTIFIER_TABLE
 #  include "metac_identifier_table.c"
-#  define MEMBER_SUFFIX(X) X ## Table
-#  define MEMBER_INFIX(P, S) P ## Table # S
-#  define MEMBER_INIT(X) IdentifierTreeInit(## X ## ->IdentifierTree);
 #endif
 
 #ifdef IDENTIFIER_TREE
 #  include "metac_identifier_tree.c"
-#  define MEMBER_SUFFIX(X) X ## Tree
-#  define MEMBER_INFIX(P, S) P ## Tree # S
-#  define MEMBER_INIT(X) IdentifierTableInit(## X ## ->IdentifierTable);
 #endif
 
 #include "metac_lexer.c"
@@ -66,7 +60,7 @@ metac_identifier_ptr_t RegisterIdentifier(metac_parser_t* self,
             MEMBER_SUFFIX(&self->Lexer->Identifier),
             token->IdentifierPtr
         );
-        
+
         return GetOrAddIdentifier(MEMBER_SUFFIX(&self->Identifier),
                                   identifierString,
                                   token->IdentifierKey);
@@ -280,6 +274,10 @@ uint32_t _newStmt_size = 0;
 uint32_t _newStmt_capacity = 0;
 metac_statement_t* _newStmt_mem = 0;
 
+uint32_t _newDecl_size = 0;
+uint32_t _newDecl_capacity = 0;
+metac_declaration_t* _newDecl_mem = 0;
+
 #ifndef ALIGN4
 #  define ALIGN4(N) \
       (((N) + 3) & ~3)
@@ -431,6 +429,30 @@ metac_expression_t* AllocNewExpression(metac_expression_kind_t kind)
     return result;
 }
 
+#define AllocNewDeclaration(KIND, RESULT_PTR) \
+    (KIND ## _t*) AllocNewDeclaration_(KIND, sizeof(KIND ##_t), ((void**)(RESULT_PTR)))
+
+metac_declaration_t* AllocNewDeclaration_(metac_declaration_kind_t kind, size_t nodeSize, void** result_ptr)
+{
+    metac_declaration_t* result = 0;
+
+    if (_newDecl_capacity <= _newDecl_size)
+    {
+        _newMemRealloc(
+            (void**)&_newDecl_mem,
+            &_newDecl_capacity,
+            sizeof(metac_declaration_t)
+        );
+    }
+
+    {
+        (*result_ptr) = result = _newDecl_mem + _newDecl_size++;
+        result->Kind = kind;
+    }
+
+    return result;
+}
+
 #define AllocNewStatement(KIND, RESULT_PTR) \
     (KIND ## _t*) AllocNewStatement_(KIND, sizeof(KIND ##_t), ((void**)(RESULT_PTR)))
 
@@ -450,7 +472,6 @@ metac_statement_t* AllocNewStatement_(metac_statement_kind_t kind, size_t nodeSi
     {
         (*result_ptr) = result = _newStmt_mem + _newStmt_size++;
         result->Kind = kind;
-        result->Next = 0;
     }
 
     return result;
@@ -492,6 +513,7 @@ bool MetaCParserPeekMatch(metac_parser_t* self, metac_token_enum_t expectedType,
             );
         }
     }
+
     return result;
 }
 
@@ -506,14 +528,119 @@ uint32_t Mix(uint32_t a, uint32_t b)
 
 }
 
-metac_declaration_t* MetaCParserParseDeclaration(metac_parser_t* self, metac_declaration_t* parent)
+static inline bool IsTypeToken(metac_token_enum_t tokenType)
 {
+    bool  result =
+           (   tokenType == tok_kw_const
+            || (tokenType >= tok_kw_auto && tokenType <= tok_kw_double)
+            || tokenType == tok_kw_unsigned
+            || tokenType == tok_kw_struct
+            || tokenType == tok_kw_enum
+            || tokenType == tok_identifier );
+    return result;
+}
+
+metac_declaration_t* MetaCParserParseTypeDeclaration(metac_parser_t* self, metac_declaration_t* parent, metac_declaration_t* prev)
+{
+    metac_declaration_t* result = 0;
+
+    decl_type_t* type = AllocNewDeclaration(decl_type, &result);
+    metac_type_modifiers typeModifies = 0;
+
     metac_token_t* currentToken = MetaCParserNextToken(self);
     metac_token_enum_t tokenType =
         (currentToken ? currentToken->TokenType : tok_invalid);
 
-	metac_declaration_t* result = 0;
+    while(IsTypeToken(tokenType))
+    {
+        if (tokenType == tok_identifier)
+        {
+            type->TypeKind = type_identifier;
+            type->Identifier = RegisterIdentifier(self, currentToken);
+            break;
+        }
+        if (tokenType == tok_kw_const)
+        {
+            typeModifies |= typemod_const;
+        }
+        else if (tokenType >= tok_kw_auto && tokenType <= tok_kw_double)
+        {
+            type->TypeKind = type_auto + (tokenType - tok_kw_auto);
+            break;
+        }
+        else if (tokenType == tok_kw_unsigned)
+        {
+            typeModifies |= typemod_unsigned;
+        }
+        else if (tokenType == tok_kw_struct)
+        {
+            uint32_t memberCount = 0;
+            bool isPredeclated = true;
 
+            decl_struct_t* struct_ = AllocNewDeclaration(decl_struct, &result);
+            type = struct_;
+            struct_->TypeKind = type_struct;
+
+            metac_token_t* structName = MetaCParserMatch(self, tok_identifier);
+            if (!structName || structName->TokenType != tok_identifier)
+            {
+                printf("We expected a struct name to be there but there was not\n");
+                return result;
+            }
+            struct_->Identifier = RegisterIdentifier(self, structName);
+
+            printf("struct Name is: %s\n",  IDENTIFIER_PTR(MEMBER_SUFFIX(&self->Lexer->Identifier), *structName));
+
+            if (MetaCParserPeekMatch(self, tok_lBrace, 1))
+            {
+                MetaCParserMatch(self, tok_lBrace);
+                decl_field_t **nextMemberPtr = &struct_->Fields;
+
+                isPredeclated = false;
+                while(!MetaCParserPeekMatch(self, tok_rBrace, 1))
+                {
+                    decl_field_t* field =
+                        AllocNewDeclaration(decl_field, (metac_declaration_t**)nextMemberPtr);
+                    field->Next = 0;
+                    field->Type = MetaCParserParseTypeDeclaration(self, result, 0);
+                    metac_token_t* memberName = MetaCParserMatch(self, tok_identifier);
+                    if (!field->Type || !memberName || memberName->TokenType != tok_identifier)
+                        return result;
+
+                    field->Identifier = RegisterIdentifier(self, memberName);
+                    printf("field name is: %s\n",
+                        IDENTIFIER_PTR(MEMBER_SUFFIX(&self->Lexer->Identifier), *memberName));
+
+                    MetaCParserMatch(self, tok_semicolon);
+                    nextMemberPtr = &field->Next;
+                    struct_->FieldCount++;
+                }
+                MetaCParserMatch(self, tok_rBrace);
+            }
+            else
+            {
+                printf("We just have a decl\n");
+            }
+            break;
+        }
+        else if (tokenType == tok_kw_enum)
+        {
+        }
+    }
+
+    return result;
+}
+#define ErrorDeclaration() \
+    (metac_declaration_t*)0
+
+
+metac_declaration_t* MetaCParserParseDeclaration(metac_parser_t* self, metac_declaration_t* parent)
+{
+    metac_token_t* currentToken = MetaCParserPeekToken(self, 1);
+    metac_token_enum_t tokenType =
+        (currentToken ? currentToken->TokenType : tok_invalid);
+
+	metac_declaration_t* result = 0;
     if (tokenType == tok_kw_struct)
     {
     }
@@ -522,6 +649,37 @@ metac_declaration_t* MetaCParserParseDeclaration(metac_parser_t* self, metac_dec
     }
     else if (tokenType == tok_kw_typedef)
     {
+/*
+        typedef struct metac_identifier_table_slot_t
+        {
+            uint32_t HashKey;
+            metac_identifier_ptr_t Ptr;
+        } metac_identifier_table_slot_t;
+*/
+
+        MetaCParserMatch(self, tok_kw_typedef);
+        currentToken = MetaCParserPeekToken(self, 1);
+            tokenType =
+        (currentToken ? currentToken->TokenType : tok_invalid);
+        decl_typedef_t* typdef = AllocNewDeclaration(decl_typedef, &result);
+
+        if (tokenType == tok_kw_struct)
+        {
+            printf("struct defined in typdef\n");
+        }
+        typdef->Type = MetaCParserParseTypeDeclaration(self, (metac_declaration_t*) typdef, 0);
+        metac_token_t* name = MetaCParserMatch(self, tok_identifier);
+        if (!name || name->TokenType != tok_identifier)
+        {
+            printf("Expecting an identifier to follow the type definition of a typedef\n");
+            return ErrorDeclaration();
+        }
+        typdef->Identifier = RegisterIdentifier(self, name);
+        result = typdef;
+    }
+    else if (tokenType <= tok_kw_char && tokenType >= tok_kw_long)
+    {
+        result = MetaCParserParseTypeDeclaration(self, parent, 0);
     }
     else if (tokenType == tok_identifier)
     {
@@ -574,7 +732,8 @@ metac_expression_t* MetaCParserParseExpression(metac_parser_t* self, metac_expre
     {
         result = AllocNewExpression(exp_paren);
         PushOperator(exp_paren);
-        result->E1 = MetaCParserParseExpression(self, 0);
+        if (!MetaCParserPeekMatch(self, tok_rParen, 1));
+            result->E1 = MetaCParserParseExpression(self, 0);
         result->Hash = Mix(crc32c(~0, "()", 2), result->E1->Hash);
         PushOperand(result);
         MetaCParserMatch(self, tok_rParen);
@@ -731,8 +890,29 @@ metac_expression_t* MetaCParserParseExpression(metac_parser_t* self, metac_expre
         else if (peekNext->TokenType == tok_plusplus)
         {
             metac_expression_t* E1 = result;
+            PushOperator(exp_post_increment);
             result = AllocNewExpression(exp_post_increment);
             result->E1 = E1;
+            PopOperator(exp_post_increment);
+        }
+        else if (peekNext->TokenType == tok_minusminus)
+        {
+            metac_expression_t* E1 = result;
+            PushOperator(exp_post_decrement);
+            result = AllocNewExpression(exp_post_decrement);
+            result->E1 = E1;
+            PopOperator(exp_post_decrement);
+        }
+        else if (peekNext->TokenType == tok_lBracket)
+        {
+            MetaCParserMatch(self, tok_lBracket);
+            metac_expression_t* E1 = result;
+            // PushOperator(exp_index);
+            result = AllocNewExpression(exp_dotdot);
+            result->E1 = E1;
+            result->E2 = MetaCParserParseExpression(self, 0);
+            MetaCParserMatch(self, tok_rBracket);
+            // PopOperator(exp_index);
         }
     }
     return result;
@@ -805,7 +985,7 @@ static metac_statement_t* MetaCParserParseStatement(metac_parser_t* self, metac_
             MetaCParserMatch(self, tok_colon);
 
             stmt_label_t* result = AllocNewStatement(stmt_label, &result);
-            result->Label = GetOrAddIdentifier(&self->IdentifierTree,
+            result->Label = GetOrAddIdentifier(MEMBER_SUFFIX(&self->Identifier),
                                                IDENTIFIER_PTR(MEMBER_SUFFIX(&self->Lexer->Identifier), *currentToken),
                                                currentToken->IdentifierKey);
         }
@@ -946,7 +1126,7 @@ metac_expression_t* MetaCParserParseExpressionFromString(const char* exp)
         IdentifierTreeInit(&g_lineParser.IdentifierTree);
     }
 #endif
-    
+
     if (!g_lineParser.Defines)
     {
         g_lineParser.Defines = g_lineParser.inlineDefines;
@@ -984,6 +1164,32 @@ metac_statement_t* MetaCParserParseStatementFromString(const char* exp)
     return result;
 }
 
+metac_declaration_t* MetaCParserParseDeclarationFromString(const char* exp)
+{
+    assert(g_lineLexer.tokens_capacity == ARRAY_SIZE(g_lineLexer.inlineTokens));
+    g_lineParser.CurrentTokenIndex = 0;
+    g_lineLexer.tokens_size = 0;
+#ifdef IDENTIFIER_TABLE
+    IdentifierTableInit(&g_lineLexer.IdentifierTable);
+    if (!g_lineParser.IdentifierTable.Slots)
+    {
+        IdentifierTableInit(&g_lineParser.IdentifierTable);
+    }
+#endif
+#ifdef IDENTIFIER_TREE
+    IdentifierTreeInit(&g_lineLexer.IdentifierTree);
+    if (!g_lineParser.IdentifierTree.Root)
+    {
+        IdentifierTreeInit(&g_lineParser.IdentifierTree);
+    }
+#endif
+    LexString(&g_lineLexer, exp);
+
+    metac_statement_t* result = MetaCParserParseDeclaration(&g_lineParser, 0);
+
+    return result;
+}
+
 
 #include <stdio.h>
 
@@ -1008,6 +1214,70 @@ const char* MetaCExpressionKind_toChars(metac_expression_kind_t type)
 bool IsBinaryExp(metac_expression_kind_t type)
 {
     return (type >= FIRST_BINARY_EXP(TOK_SELF) && type <= LAST_BINARY_EXP(TOK_SELF));
+}
+
+void static inline PrintIndent(uint32_t indent)
+{
+    for (int i = 0; i < indent; i++)
+        printf("    ");
+}
+const char* PrintIdentifier(metac_parser_t* self,
+                            metac_identifier_ptr_t idPtr)
+{
+    printf("%s", IdentifierPtrToCharPtr(MEMBER_SUFFIX(&self->Identifier),
+                                        idPtr));
+}
+const char* PrintDeclaration(metac_parser_t* self,
+                             metac_declaration_t* decl, uint32_t indent)
+{
+    PrintIndent(indent);
+
+    switch (decl->Kind)
+    {
+        case decl_typedef:
+        {
+            decl_typedef_t* typdef = (decl_typedef_t*) decl;
+            printf("typedef ");
+            PrintDeclaration(self, typdef->Type, indent);
+            PrintIdentifier(self, typdef->Identifier);
+            printf("\n");
+        } break;
+        case decl_type:
+        {
+            decl_type_t* type = (decl_type_t*) decl;
+            printf("TypeKind: %d\n", (int) type->Kind);
+            if (type->Kind >= type_auto && type->Kind <= type_double)
+            {
+                printf("%s ", MetaCTokenEnum_toChars(
+                    (type->TypeKind - type_type) + tok_kw_type) + sizeof("tok_kw"));
+            }
+            else if (type->Kind == type_identifier)
+            {
+                //printf("%s ", IDENTIFIER_PTR(MEMBER_SUFFIX(&self->Identifier), );
+                printf("type_identifier: %d\n", type->Identifier.v);
+            }
+        }  break;
+        case decl_struct :
+        {
+            decl_struct_t* struct_ = (decl_struct_t*) decl;
+            printf("struct %s {\n",
+                IdentifierPtrToCharPtr(&self->IdentifierTable,
+                                       struct_->Identifier));
+            ++indent;
+            decl_field_t* f = struct_->Fields;
+            for(int memberIndex = 0;
+                memberIndex < struct_->FieldCount;
+                memberIndex++)
+            {
+                PrintDeclaration(self, f->Type, indent);
+                printf("\n");
+                f = f->Next;
+            }
+            --indent;
+            PrintIndent(indent);
+            printf("}\n");
+        } break;
+    }
 }
 
 const char* PrintExpression(metac_parser_t* self, metac_expression_t* exp)
@@ -1119,7 +1389,31 @@ const char* PrintExpression(metac_parser_t* self, metac_expression_t* exp)
         if (!IsBinaryExp(exp->E1->Kind))
             scratchpad[expStringLength++] = ')';
     }
-    else if (exp->Kind == exp_inject || exp->Kind == exp_eject || exp->Kind == exp_typeof || exp_assert)
+    else if (exp->Kind == exp_post_increment || exp->Kind == exp_post_decrement)
+    {
+        const char* op = 0;
+        if (exp->Kind == exp_post_increment)
+            op = "++";
+        else if (exp->Kind == exp_post_decrement)
+            op = "--";
+
+        assert(op);
+
+        if (!IsBinaryExp(exp->E1->Kind))
+            scratchpad[expStringLength++] = '(';
+
+        const char* e1  = PrintExpression(self, exp->E1);
+        uint32_t e1_length = strlen(e1);
+        memcpy(scratchpad + expStringLength, e1, e1_length);
+        free((void*)e1);
+        expStringLength += e1_length;
+
+        if (!IsBinaryExp(exp->E1->Kind))
+            scratchpad[expStringLength++] = ')';
+
+        expStringLength += sprintf(scratchpad + expStringLength, "%s ", op);
+    }
+    else if (exp->Kind == exp_inject || exp->Kind == exp_eject || exp->Kind == exp_typeof || exp->Kind == exp_assert)
     {
         {
             const char* op = 0;
@@ -1138,7 +1432,7 @@ const char* PrintExpression(metac_parser_t* self, metac_expression_t* exp)
         }
 
         if (!IsBinaryExp(exp->E1->Kind))
-            scratchpad[expStringLength++] = '(';
+           scratchpad[expStringLength++] = '(';
 
         const char* e1  = PrintExpression(self, exp->E1);
         uint32_t e1_length = strlen(e1);
@@ -1148,16 +1442,6 @@ const char* PrintExpression(metac_parser_t* self, metac_expression_t* exp)
 
         if (!IsBinaryExp(exp->E1->Kind))
             scratchpad[expStringLength++] = ')';
-    }
-    else if (exp->Kind == exp_post_increment)
-    {
-        const char* e1  = PrintExpression(self, exp->E1);
-        uint32_t e1_length = strlen(e1);
-        memcpy(scratchpad + expStringLength, e1, e1_length);
-        free((void*)e1);
-        expStringLength += e1_length;
-        scratchpad[expStringLength++] = '+';
-        scratchpad[expStringLength++] = '+';
     }
     else
     {

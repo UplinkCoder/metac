@@ -580,11 +580,10 @@ LcontinueLexnig:
                 MetaCLexerMatchKeywordIdentifier(&token, identifierBegin);
                 if(token.TokenType == tok_identifier)
                 {
-#ifdef IDENTIFIER_TABLE
+#if defined(IDENTIFIER_TABLE)
                     token.IdentifierPtr =
                         GetOrAddIdentifier(&self->IdentifierTable, identifierBegin, token.IdentifierKey);
-#endif
-#ifdef IDENTIFIER_TREE
+#elif (IDENTIFIER_TREE)
                     token.IdentifierPtr =
                         GetOrAddIdentifier(&self->IdentifierTree, identifierBegin, token.IdentifierKey);
 
@@ -923,14 +922,16 @@ void test_lexer()
         "enum",
 
         "auto",
-        "double",
-        "float",
-        "long",
-        "int",
-        "short",
-        "char",
-        "void",
         "type",
+        "void",
+
+        "char",
+        "short",
+        "int",
+        "long",
+
+        "float",
+        "double",
 
         "unsigned",
         "const",

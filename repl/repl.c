@@ -1,5 +1,5 @@
 #include "../compat.h"
-#define IDENTIFIER_TABLE
+//#define IDENTIFIER_TABLE
 #include "../metac_lexer.h"
 #include "../metac_parser.h"
 #include "../3rd_party/linenoise/linenoise.c"
@@ -7,20 +7,30 @@
 #include <stdio.h>
 
 metac_statement_t* MetaCParserParseStatementFromString(const char* str);
+metac_declaration_t* MetaCParserParseDeclarationFromString(const char* str);
+
 const char* MetaCTokenEnum_toChars(metac_token_enum_t tok);
 
 typedef enum parse_mode_t
 {
     parse_mode_token = 0,
-    
+
     parse_mode_decl,
     parse_mode_stmt,
     parse_mode_expr,
-    
+
     parse_mode_max
 } parse_mode_t;
-void dummyStatement() {}
 
+void PrintHelp(void)
+{
+    printf("Press :e for expression mode\n"
+       "      :d for declaration mode\n"
+       "      :s for statement mode\n"
+       "      :t for token mode\n"
+       "      :p for preprocessor mode\n"
+       "      :q to quit\n");
+}
 int main(int argc, const char* argv[])
 {
     const char* line;
@@ -30,7 +40,25 @@ int main(int argc, const char* argv[])
     metac_lexer_t lexer;
     MetaCLexerInit(&lexer);
 
-    const char* promt_ = "Token>";
+    PrintHelp();
+
+    const char* promt_;
+LswitchMode:
+    switch (parseMode)
+    {
+    case parse_mode_token:
+        promt_ = "Token>";
+        break;
+    case parse_mode_decl:
+        promt_ = "Decl>";
+         break;
+    case parse_mode_expr:
+        promt_ = "Exp>";
+        break;
+    case parse_mode_stmt:
+        promt_ = "Stmt>";
+        break;
+    }
 LnextLine:
     while ((line = linenoise(promt_)))
     {
@@ -44,29 +72,24 @@ LnextLine:
                 return 0;
             case 't' :
                 parseMode = parse_mode_token;
-                continue;
+                goto LswitchMode;
             case 'd' :
                 parseMode = parse_mode_decl;
-                promt_ = "Decl>";
-                continue;
+                goto LswitchMode;
             case 'e' :
                 parseMode = parse_mode_expr;
-                promt_ = "Exp>";
-                continue;
+                goto LswitchMode;
             case 's' :
                 parseMode = parse_mode_stmt;
-                promt_ = "Stmt>";
+                goto LswitchMode;
+            case 'i' :
+                printf("Accelerator: %s\n", ACCELERATOR);
                 continue;
             default :
                 printf("Command :%c unknown type :h for help\n", *(line + 1));
                 continue;
             case 'h' :
-                printf("Press :e for expression mode\n"
-                       "      :d for declaration mode\n"
-                       "      :s for statement mode\n"
-                       "      :t for token mode\n"
-                       "      :p for preprocessor mode\n"
-                       "      :q to quit\n");
+                PrintHelp();
                 continue;
             }
         }
@@ -74,16 +97,16 @@ LnextLine:
         while (line_length > 0)
         {
             metac_token_t token;
-            
+
             metac_expression_t* exp;
             metac_statement_t* stmt;
-            metac_declaration_t decl;
-            
+            metac_declaration_t* decl;
+
             metac_parser_t lineParser;
 
             uint32_t initalPosition = repl_state.Position;
             switch(parseMode)
-            
+
             {
             case parse_mode_expr:
                  exp =
@@ -92,9 +115,14 @@ LnextLine:
                 const char* str = PrintExpression(&g_lineParser, exp);
                 printf("expr = %s\n", str);
                 goto LnextLine;
-                
+
             case parse_mode_stmt :
                    stmt = MetaCParserParseStatementFromString(line);
+                goto LnextLine;
+            case parse_mode_decl :
+                    decl = MetaCParserParseDeclarationFromString(line);
+                    if (decl)
+                        PrintDeclaration(&g_lineParser, decl, 1);
                 goto LnextLine;
 
             case parse_mode_token :

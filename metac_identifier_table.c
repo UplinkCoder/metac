@@ -10,6 +10,11 @@
 
 #include "3rd_party/tracy/TracyC.h"
 
+#ifdef TRACY_ENABLE
+#  define TRACY_COUNTER(COUNTER) static uint32_t COUNTER
+#else
+#  define TRACY_COUNTER(COUNTER)
+#endif
 
 #ifdef _MSC_VER
 #  define __builtin_memcpy memcpy
@@ -42,8 +47,8 @@ void IdentifierTableInit(metac_identifier_table_t* table)
 metac_identifier_ptr_t GetOrAddIdentifier(metac_identifier_table_t* table,
                                           const char* identifier, uint32_t identifierKey)
 {
-    // TracyCZoneCtx ctx;
     TracyCZone(ctx, true);
+
     const uint32_t length = LENGTH_FROM_IDENTIFIER_KEY(identifierKey);
     metac_identifier_ptr_t result = {0};
     metac_identifier_ptr_t insertPtr;
@@ -57,22 +62,29 @@ metac_identifier_ptr_t GetOrAddIdentifier(metac_identifier_table_t* table,
     )
     {
         metac_identifier_table_slot_t *slot = &table->Slots[slotIndex - 1];
+        const char* stringEntry;
+
         if (slot->HashKey == identifierKey)
         {
-            const char* stringEntry = IdentifierPtrToCharPtr(table, slot->Ptr);
+            stringEntry = IdentifierPtrToCharPtr(table, slot->Ptr);
             if (__builtin_memcmp(identifier, stringEntry, length) == 0)
             {
-                static uint32_t Hits = 0;
-                
+                TRACY_COUNTER(Hits);
+
                 TracyCPlot("Hits", ++Hits);
-                
+
                 result = slot->Ptr;
                 break;
             }
             else
             {
-                static uint32_t collisions = 0;
-                
+                TRACY_COUNTER(collisions);
+                static char msgBuffer[256];
+                uint32_t msgLength = 0;
+#ifdef TRACY_ENABLE
+                msgLength = snprintf(msgBuffer, sizeof(msgBuffer), "'%s' collided with '%.*s'", stringEntry, length, identifier);
+#endif
+                TracyCMessage(msgBuffer, msgLength);
                 TracyCPlot("Collisions", ++collisions);
             }
         }
@@ -95,8 +107,8 @@ metac_identifier_ptr_t GetOrAddIdentifier(metac_identifier_table_t* table,
             ++table->SlotsUsed;
             TracyCPlot("LoadFactor", (float)table->SlotsUsed / (float)slotIndexMask);
             TracyCPlot("StringMemorySize", table->StringMemorySize);
-            
-            
+
+
 #else
             } while(!__atomic_compare_exchange(&table->StringMemorySize, &expected, &newValue,
                 false, __ATOMIC_ACQUIRE, __ATOMIC_ACQUIRE));
@@ -116,14 +128,14 @@ metac_identifier_ptr_t GetOrAddIdentifier(metac_identifier_table_t* table,
         else
         {
             const uint32_t TargetSlot = (slot->HashKey & slotIndexMask);
-            int TargetDisplacement = (slotIndex - TargetSlot); 
+            int TargetDisplacement = (slotIndex - TargetSlot);
             if (++displacement > TargetDisplacement)
             {
                 uint32_t nextInsertKey = slot->HashKey;
                 metac_identifier_ptr_t nextInsertPtr = slot->Ptr;
                 slot->HashKey = identifierKey;
                 slot->Ptr = insertPtr;
-                
+
                 insertPtr = nextInsertPtr;
                 identifierKey = nextInsertKey;
             }
