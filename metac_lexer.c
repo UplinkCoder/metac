@@ -409,6 +409,10 @@ uint32_t MetaCTokenLength(metac_token_t token)
         {
             return token.CommentLength + 4;
         }
+        else if (token.TokenType == tok_charLiteral)
+        {
+            return token.CharLiteralLength + 2;
+        }
     }
 
     assert(0);
@@ -499,9 +503,11 @@ static inline char EscapedChar(char c)
         case 'r'  : return '\r';
         case '"'  : return '"';
         case 'a'  : return '\a';
-        case '\'': return '\'';
+        case 'b'  : return '\b';
+        case 'f'  : return '\f';
+        case '\''  : return '\'';
+        case '?'  : return '?';
         case '\\': return '\\';
-        case '0'  : return '\0';
     }
     return 'E';
 }
@@ -638,7 +644,15 @@ LcontinueLexnig:
                     }
                     else
                     {
-                        ParseErrorF(state, "octal literal not supported %s", text - 1);
+                        while(c && (c >= '0' && c <= '7'))
+                        {
+                            eatenChars++;
+                            value *= 8;
+                            value += c - '0';
+                            c = *text++;
+                        }
+                        goto LParseNumberDone;
+                        // ParseErrorF(state, "octal literal not supported %s", text - 1);
                     }
                 }
 
@@ -655,21 +669,45 @@ LcontinueLexnig:
             }
             else if (c == '\'')
             {
+                uint32_t charLiteralLength = 1;
                 text++;
                 token.TokenType = tok_charLiteral;
                 c = *text++;
                 eatenChars++;
                 if (c == '\\')
                 {
-                    c = EscapedChar(*text++);
+                    charLiteralLength++;
                     eatenChars++;
+                    char esc = *text++;
+                    if (esc > '7' || esc < '0')
+                    {
+                        c = EscapedChar(esc);
+                    }
+                    else
+                    {
+                        c = '\0';
+                        while(esc >= '0' && esc <= '7')
+                        {
+                            eatenChars++;
+                            c *= 8;
+                            c += (esc - '0');
+                            esc = *text++;
+                            charLiteralLength++;
+                        }
+                        eatenChars--;
+                        charLiteralLength--;
+                        text--;
+                    }
                 }
                 token.Char = c;
+                token.CharLiteralLength = charLiteralLength;
+                text++;
                 eatenChars++;
                 if (*text++ != '\'')
                 {
                     assert("Unterminated char literal");
                 }
+                eatenChars++;
             }
             else if (c == '\"' || c == '`')
             {
@@ -678,6 +716,7 @@ LcontinueLexnig:
                 token.TokenType = tok_stringLiteral;
                 token.String = text;
                 c = *text++;
+                if (matchTo == '`') { asm ("int $3"); }
                 // printf("c: %c\n", c);
                 uint32_t string_length = 0;
                 uint32_t string_hash = ~0;
@@ -688,7 +727,24 @@ LcontinueLexnig:
                     if (c == '\\')
                     {
                         eatenChars++;
-                        c = EscapedChar(*text++);
+                        char esc = *text++;
+                        if (esc > '7' || esc < '0')
+                        {
+                            c = EscapedChar(esc);
+                        }
+                        else
+                        {
+                            c = '\0';
+                            while(esc >= '0' && esc <= '7')
+                            {
+                                c *= 8;
+                                c += (esc - '0');
+                                esc = *text++;
+                                eatenChars++;
+                            }
+                            text--;
+                            eatenChars--;
+                        }
                         if (c == 'E')
                         {
                             ParseErrorF(state, "Invalid escape seqeunce '%s'", (text - 1));
@@ -836,10 +892,6 @@ SkipToNewline:
     {
         static metac_token_t stop_token = {tok_eof};
         result = &stop_token;
-    }
-    if (eatenChars + state->Position >= state->Size)
-    {
-        int k = 12;
     }
     state->Position += eatenChars;
     return result;

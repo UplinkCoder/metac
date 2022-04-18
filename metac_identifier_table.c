@@ -7,6 +7,7 @@
 #include "metac_lexer.h"
 #include "metac_identifier_table.h"
 #include <string.h>
+#include <stdio.h>
 
 #include "3rd_party/tracy/TracyC.h"
 
@@ -35,7 +36,7 @@ const char* IdentifierPtrToCharPtr(metac_identifier_table_t* table,
 
 void IdentifierTableInit(metac_identifier_table_t* table)
 {
-    table->SlotCount_Log2 = 14;
+    table->SlotCount_Log2 = 16;
     const uint32_t maxSlots = (1 << table->SlotCount_Log2);
     table->Slots = (metac_identifier_table_slot_t*) calloc(maxSlots, sizeof(metac_identifier_table_slot_t));
     table->StringMemory = (char*)malloc(32768 * 8);
@@ -130,8 +131,8 @@ metac_identifier_ptr_t GetOrAddIdentifier(metac_identifier_table_t* table,
         else
         {
             const uint32_t TargetSlot = (slot->HashKey & slotIndexMask);
-            int TargetDisplacement = (slotIndex - TargetSlot);
-            if (++displacement > TargetDisplacement)
+            int targetDisplacement = (slotIndex - TargetSlot);
+            if (++displacement > targetDisplacement)
             {
                 uint32_t nextInsertKey = slot->HashKey;
                 metac_identifier_ptr_t nextInsertPtr = slot->Ptr;
@@ -155,5 +156,25 @@ metac_identifier_ptr_t GetOrAddIdentifier(metac_identifier_table_t* table,
     TracyCZoneEnd(ctx);
 
     return result;
+}
+
+void WriteIdentifiers(metac_identifier_table_t* table, FILE* fd)
+{
+    //char chunk[4192];
+    //uint32_t chunk_used = 0;
+    
+    const uint32_t maxSlots = (1 << table->SlotCount_Log2);
+    for(uint32_t slotIndex = 0;
+        slotIndex < maxSlots;
+        slotIndex++)
+    {
+        metac_identifier_table_slot_t slot = table->Slots[slotIndex];
+        if (slot.HashKey)
+        {
+            fprintf(fd, "%x %s\n", slot.HashKey, IdentifierPtrToCharPtr(table, slot.Ptr));
+        }
+    }
+    
+    fclose(fd);
 }
 #endif

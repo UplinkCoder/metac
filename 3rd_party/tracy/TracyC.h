@@ -1,7 +1,11 @@
 #ifndef __TRACYC_HPP__
 #define __TRACYC_HPP__
 
-#include "compat.h"
+#ifdef _MSC_VER
+#  include "compat.h"
+#else
+#  include <stdint.h>
+#endif
 
 #include <stddef.h>
 

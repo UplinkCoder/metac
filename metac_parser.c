@@ -601,7 +601,6 @@ LnextToken:
         }
         else if (tokenType == tok_kw_struct)
         {
-            uint32_t memberCount = 0;
             bool isPredeclated = true;
 
             decl_struct_t* struct_ = AllocNewDeclaration(decl_struct, &result);
@@ -631,7 +630,7 @@ LnextToken:
                         AllocNewDeclaration(decl_field, (metac_declaration_t**)nextMemberPtr);
                     field->Next = 0;
                     field->Type = (decl_type_t*)MetaCParserParseTypeDeclaration(self, result, 0);
-					assert(IsDeclType((metac_declaration_t*)field->Type));
+                    assert(IsDeclType((metac_declaration_t*)field->Type));
 
                     metac_token_t* memberName = MetaCParserMatch(self, tok_identifier);
                     if (!field->Type || !memberName || memberName->TokenType != tok_identifier)
@@ -1145,23 +1144,25 @@ static metac_lexer_t g_lineLexer = {
 /// There can only be one LineParser as it uses static storage
 metac_parser_t g_lineParser = { &g_lineLexer };
 
-metac_expression_t* MetaCParserParseExpressionFromString(const char* exp)
+void LineLexerInit(void)
 {
-    assert(g_lineLexer.tokens_capacity == ARRAY_SIZE(g_lineLexer.inlineTokens));
     g_lineParser.CurrentTokenIndex = 0;
     g_lineLexer.tokens_size = 0;
     ACCEL_INIT(g_lineLexer);
-
-    if (!g_lineParser.IdentifierTable.Slots)
-    {
-        ACCEL_INIT(g_lineParser);
-    }
+    ACCEL_INIT(g_lineParser);
 
     if (!g_lineParser.Defines)
     {
         g_lineParser.Defines = g_lineParser.inlineDefines;
         g_lineParser.DefineCapacity = ARRAY_SIZE(g_lineParser.inlineDefines);
     }
+}
+
+metac_expression_t* MetaCParserParseExpressionFromString(const char* exp)
+{
+    assert(g_lineLexer.tokens_capacity == ARRAY_SIZE(g_lineLexer.inlineTokens));
+
+    LineLexerInit();
     LexString(&g_lineLexer, exp);
 
     metac_expression_t* result = MetaCParserParseExpression(&g_lineParser, 0);
@@ -1171,8 +1172,7 @@ metac_expression_t* MetaCParserParseExpressionFromString(const char* exp)
 metac_statement_t* MetaCParserParseStatementFromString(const char* exp)
 {
     assert(g_lineLexer.tokens_capacity == ARRAY_SIZE(g_lineLexer.inlineTokens));
-    g_lineParser.CurrentTokenIndex = 0;
-    g_lineLexer.tokens_size = 0;
+    LineLexerInit();
     LexString(&g_lineLexer, exp);
 
     metac_statement_t* result = MetaCParserParseStatement(&g_lineParser, 0);
@@ -1183,9 +1183,7 @@ metac_statement_t* MetaCParserParseStatementFromString(const char* exp)
 metac_declaration_t* MetaCParserParseDeclarationFromString(const char* exp)
 {
     assert(g_lineLexer.tokens_capacity == ARRAY_SIZE(g_lineLexer.inlineTokens));
-    g_lineParser.CurrentTokenIndex = 0;
-    g_lineLexer.tokens_size = 0;
-
+    LineLexerInit();
     LexString(&g_lineLexer, exp);
 
     metac_declaration_t* result = MetaCParserParseDeclaration(&g_lineParser, 0);
@@ -1276,7 +1274,7 @@ void PrintToken(metac_parser_t* self,
 
 
 void PrintDeclaration(metac_parser_t* self, metac_declaration_t* decl,
-					  uint32_t indent, uint32_t level)
+                      uint32_t indent, uint32_t level)
 {
     PrintIndent(self, indent);
 
@@ -1310,8 +1308,8 @@ void PrintDeclaration(metac_parser_t* self, metac_declaration_t* decl,
             }
             if (type->TypeKind >= type_auto && type->TypeKind <= type_double)
             {
-				metac_token_enum_t tok = (metac_token_enum_t)
-					((type->TypeKind - type_type) + tok_kw_type);
+                metac_token_enum_t tok = (metac_token_enum_t)
+                    ((type->TypeKind - type_type) + tok_kw_type);
                 PrintKeyword(self, tok);
             }
             else if (type->TypeKind == type_identifier)

@@ -254,8 +254,10 @@ typedef struct metac_token_t {
             const char* CommentBegin;
         };
         // case tok_charLiteral :
-        char Char;
-
+        struct {
+            char Char;
+            uint32_t CharLiteralLength;
+        };
         uint64_t ValueU64;
         int64_t ValueI64;
         uint32_t ValueU32;
