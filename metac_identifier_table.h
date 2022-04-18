@@ -11,6 +11,10 @@ typedef struct metac_identifier_table_slot_t
 {
     uint32_t HashKey;
     metac_identifier_ptr_t Ptr;
+#ifdef REFCOUNT
+    uint32_t RefCount;
+    uint32_t Displacement;
+#endif
 } metac_identifier_table_slot_t;
 
 

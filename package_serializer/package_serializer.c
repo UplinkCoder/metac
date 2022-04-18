@@ -49,14 +49,6 @@ static inline void LexFile(metac_lexer_t* lexer,
 
             metac_token_t token =
                 *MetaCLexerLexNextToken(lexer, &lexer_state, text, length);
-            if(token.TokenType == tok_identifier && LENGTH_FROM_IDENTIFIER_KEY(token.Key) > 100)
-            {
-                asm ( "int $3") ;
-            }
-            if(token.TokenType == tok_stringLiteral && LENGTH_FROM_STRING_KEY(token.Key) > 1024)
-            {
-                asm ( "int $3") ;
-            }
             uint32_t eaten_chars = lexer_state.Position - initialPosition;
             fileHash = crc32c(fileHash, text, eaten_chars);
 
@@ -72,19 +64,44 @@ static inline void LexFile(metac_lexer_t* lexer,
             length -= eaten_chars;
         }
 
-
         printf("Lexed %d tokens\n", (int) lexer->tokens_size);
     }
 }
-bool didit = false;
+const char** includePaths = 0;
+uint32_t includePathCount = 0;
+uint32_t includePathCapacity = 0;
+
+void AddIncludePath(const char* path)
+{
+    assert(includePathCount < includePathCapacity);
+
+    *(includePaths + includePathCount++) = path;
+}
+
 int main(int argc, const char* argv[])
 {
+    includePathCount = 0;
+    includePathCapacity = 256;
+    includePaths = malloc(sizeof(char**) * includePathCapacity);
     const char* arg = "bigcode.c";
+
     for(int arg_idx = 1;
         arg_idx < argc;
         arg_idx++)
     {
         arg = argv[arg_idx];
+        if (arg[0] == '-')
+        {
+            if (arg[1] == 'I')
+            {
+                AddIncludePath(arg + 2);
+            }
+            else
+            {
+                fprintf(stderr, "Unkown option: %s", arg);
+            }
+            continue;
+        }
         printf("arg: %s\n", arg);
         metac_lexer_t lexer;
         MetaCLexerInit(&lexer);
@@ -94,12 +111,12 @@ int main(int argc, const char* argv[])
         LexFile(&lexer, arg,
             readResult.FileContent0, readResult.FileLength
         );
-
+#if ACCEL == ACCEL_TABLE
         char formatBuffer[512];
         sprintf(formatBuffer, "%s.identifiers", arg);
         FILE* fd = fopen(formatBuffer, "wb");
         WriteIdentifiers(&lexer.IdentifierTable, fd);
-
+#endif
         metac_parser_t parser;
         MetaCParserInitFromLexer(&parser, &lexer);
     }

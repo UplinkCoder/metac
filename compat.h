@@ -21,7 +21,7 @@
 #endif
 
 #ifdef _MSC_VER
-#  if _MSC_VER <= 1500
+#  if _MSC_VER <= 1800
 #    define inline
 #  endif
 #endif

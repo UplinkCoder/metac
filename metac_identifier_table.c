@@ -77,6 +77,9 @@ metac_identifier_ptr_t GetOrAddIdentifier(metac_identifier_table_t* table,
                 TracyCPlot("Hits", ++Hits);
 
                 result = slot->Ptr;
+#ifdef REFCOUNT
+                slot->RefCount++;
+#endif
                 break;
             }
             else
@@ -125,6 +128,9 @@ metac_identifier_ptr_t GetOrAddIdentifier(metac_identifier_table_t* table,
             TracyCPlot("Misses", misses++);
             slot->HashKey = identifierKey;
             slot->Ptr = result;
+#ifdef REFCOUNT
+            slot->RefCount++;
+#endif
             break;
         }
 #if 0
@@ -162,7 +168,7 @@ void WriteIdentifiers(metac_identifier_table_t* table, FILE* fd)
 {
     //char chunk[4192];
     //uint32_t chunk_used = 0;
-    
+
     const uint32_t maxSlots = (1 << table->SlotCount_Log2);
     for(uint32_t slotIndex = 0;
         slotIndex < maxSlots;
@@ -171,10 +177,21 @@ void WriteIdentifiers(metac_identifier_table_t* table, FILE* fd)
         metac_identifier_table_slot_t slot = table->Slots[slotIndex];
         if (slot.HashKey)
         {
-            fprintf(fd, "%x %s\n", slot.HashKey, IdentifierPtrToCharPtr(table, slot.Ptr));
+#ifndef REFCOUNT
+            fprintf(fd, "Hash: %x Id: %s\n",
+                                slot.HashKey,
+                                       IdentifierPtrToCharPtr(table, slot.Ptr));
+
+#else
+            fprintf(fd, "Hash: %x Id: %s RefCount: %u Displacement: %u\n",
+                               slot.HashKey,
+                                      IdentifierPtrToCharPtr(table, slot.Ptr),
+                                                    slot.RefCount,
+                                                                     slot.Displacement);
+#endif
         }
     }
-    
+
     fclose(fd);
 }
 #endif

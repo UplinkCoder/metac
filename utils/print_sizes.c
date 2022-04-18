@@ -1,13 +1,15 @@
 #include <stdio.h>
+
 #include "metac_lexer.h"
 #include "metac_parser.h"
 
 void main()
 {
-    printf("%d token are defined\n", (int)tok_max);
+    printf("%d token are defined\n", (int)tok_error);
     printf("%d expression types are defined\n", (int)exp_max);
     printf("\n\n");
     printf("sizeof(metac_lexer_t): %d\n", (int) sizeof(metac_lexer_t));
+    printf("sizeof(scope_kind_t): %d\n", (int) sizeof(scope_kind_t));
 #if defined(IDENTIFIER_TABLE)
     printf("sizeof(metac_identifier_table_t): %d\n", (int) sizeof(metac_identifier_table_t));
 #endif

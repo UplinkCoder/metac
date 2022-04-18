@@ -517,16 +517,97 @@ static void MetaCLexerMatchKeywordIdentifier(metac_token_t* tok,
 #include "generated/metac_match_keyword.inl"
 }
 
+bool static ParseOctal(const char** textP, uint32_t* eatenCharsP, uint64_t* valueP)
+{
+    bool result = true;
+
+    uint64_t value = 0;
+    const char* text = *textP;
+    uint32_t eatenChars = *eatenCharsP;
+
+    char c = *text++;
+
+    if(c < '0' || c > '7')
+    {
+        result = false;
+        eatenChars++;
+        text++;
+        assert(0);
+    }
+
+    while(c && (c >= '0' && c <= '7'))
+    {
+        eatenChars++;
+        value *= 8;
+        value += c - '0';
+        c = *text++;
+    }
+
+    *eatenCharsP = eatenChars;
+    *textP = text - 1;
+    *valueP = value;
+
+    return result;
+}
+
+
+
+bool static ParseHex(const char** textP, uint32_t* eatenCharsP, uint64_t* valueP)
+{
+    bool result = true;
+
+    uint64_t value = 0;
+    const char* text = *textP;
+    uint32_t eatenChars = *eatenCharsP;
+
+    char c = *text++;
+
+    if(!IsHexLiteralChar(c))
+    {
+        result = false;
+    }
+
+    while(IsHexLiteralChar(c))
+    {
+        eatenChars++;
+        value *= 16;
+        c |= 32;
+        if (c <= '9')
+        {
+            value += (c - '0');
+        }
+        else
+        {
+            value += ((c - 'a') + 10);
+        }
+        c = *text++;
+    }
+
+    *eatenCharsP = eatenChars;
+    *textP = text - 1;
+    *valueP = value;
+    return result;
+}
+
+bool IsValidEscapeChar(char c)
+{
+    return (c == 'n'  || c == '"' || c == 't')
+        || (c == '\'' || c == 'r' || c == '`')
+        || (c == 'a'  || c == 'v' || c == 'b')
+        || (c == 'f'  || c == 'v' || c == 'b')
+        || (c >= '0' && c <= '7');
+}
+
 metac_token_t* MetaCLexerLexNextToken(metac_lexer_t* self,
                                       metac_lexer_state_t* state,
                                       const char* text, uint32_t len)
 
 {
-    static metac_token_t token = {tok_error};
-
+    static metac_token_t err_token = {tok_error};
+    metac_token_t token = {tok_invalid};
     if (text[len] != '\0')
     {
-        return &token;
+        return &err_token;
     }
     metac_token_t* result = 0;
 
@@ -603,37 +684,23 @@ LcontinueLexnig:
                 token.TokenType = tok_unsignedNumber;
                 bool isHex;
                 uint64_t value;
-            LparseDigits:
+             LparseDigits:
                 value = 0;
                 isHex = false;
 
                 if (c == '0')
                 {
                     ++text;
-                    c = *(text++);
+                    c = *text;
                     eatenChars++;
-
                     if (c == 'x')
                     {
-                        isHex = true;
-                        c = *(text++);
+                        text++;
                         eatenChars++;
-                        while(IsHexLiteralChar(c))
+                        if (!ParseHex(&text, &eatenChars, &value))
                         {
-                            value *= 16;
-                            if (IsNumericChar(c))
-                            {
-                                value += (c - '0');
-                            }
-                            else if (((c | 32) >= 'a') && ((c | 32) <= 'f'))
-                            {
-                                value += ((c - 'a') + 10);
-                            } else
-                            {
-                                assert(0); // "This can't happen")
-                            }
-                            c = *(text++);
-                            eatenChars++;
+                            ParseErrorF(state, "invalid hex literal %.*s", 4, text - 1);
+                            return &err_token;
                         }
                         goto LParseNumberDone;
                     }
@@ -644,15 +711,12 @@ LcontinueLexnig:
                     }
                     else
                     {
-                        while(c && (c >= '0' && c <= '7'))
+                        if (!ParseOctal(&text, &eatenChars, &value))
                         {
-                            eatenChars++;
-                            value *= 8;
-                            value += c - '0';
-                            c = *text++;
+                            ParseErrorF(state, "invalid octal literal %.*s", 4, text - 1);
+                            return &err_token;
                         }
                         goto LParseNumberDone;
-                        // ParseErrorF(state, "octal literal not supported %s", text - 1);
                     }
                 }
 
@@ -662,47 +726,44 @@ LcontinueLexnig:
                     value *= 10;
                     value += c - '0';
                 }
+                c |= 32;
+                while (c == 'u' ||  c == 'l')
+                {
+                    eatenChars++;
+                    c = (*text++ | 32);
+                }
             LParseNumberDone:
                 token.ValueU64 = value;
-                while ((c | 32) == 'u' || (c | 32) == 'l')
-                    c = *text++;
             }
             else if (c == '\'')
             {
                 uint32_t charLiteralLength = 1;
                 text++;
                 token.TokenType = tok_charLiteral;
+                uint32_t charHash = ~0u;
                 c = *text++;
                 eatenChars++;
-                if (c == '\\')
+                if (c == '\'')
                 {
-                    charLiteralLength++;
-                    eatenChars++;
-                    char esc = *text++;
-                    if (esc > '7' || esc < '0')
-                    {
-                        c = EscapedChar(esc);
-                    }
-                    else
-                    {
-                        c = '\0';
-                        while(esc >= '0' && esc <= '7')
-                        {
-                            eatenChars++;
-                            c *= 8;
-                            c += (esc - '0');
-                            esc = *text++;
-                            charLiteralLength++;
-                        }
-                        eatenChars--;
-                        charLiteralLength--;
-                        text--;
-                    }
+                    ParseError(state, "Empty character Literal");
+                    return &err_token;
                 }
-                token.Char = c;
-                token.CharLiteralLength = charLiteralLength;
-                text++;
-                eatenChars++;
+                while(c && c != '\'')
+                {
+                    if (c == '\\')
+                    {
+                        c = *text++;
+                        eatenChars++;
+                        if (!IsValidEscapeChar(c))
+                        {
+                            ParseErrorF(state, "Invalid escape seqeunce '%.*s'", 4, (text - 2));
+                        }
+                        if (c == '\n')
+                            state->Line++;
+                    }
+                    c = *text++;
+                    eatenChars++;
+                }
                 if (*text++ != '\'')
                 {
                     assert("Unterminated char literal");
@@ -715,52 +776,72 @@ LcontinueLexnig:
                 char matchTo = c;
                 token.TokenType = tok_stringLiteral;
                 token.String = text;
+                uint32_t stringHash = ~0u;
                 c = *text++;
-                if (matchTo == '`') { asm ("int $3"); }
-                // printf("c: %c\n", c);
-                uint32_t string_length = 0;
-                uint32_t string_hash = ~0;
                 eatenChars++;
                 while(c && c != matchTo)
                 {
-                    string_length++;
+#ifdef INCREMENTAL_HASH
+                    stringHash = crc32c_byte(stringHash, c);
+#endif
+                    eatenChars++;
                     if (c == '\\')
                     {
                         eatenChars++;
-                        char esc = *text++;
-                        if (esc > '7' || esc < '0')
+#ifdef INCREMENTAL_HASH
+                        stringHash = crc32c_byte(stringHash, c);
+#endif
+                        c = *text++;
+                        if (!IsValidEscapeChar(c))
+                        {
+                            ParseErrorF(state, "Invalid escape seqeunce '%.*s'", 4, (text - 2));
+                        }
+                        if (c == '\n')
+                            state->Line++;
+
+                     }
+                     c = *text++;
+                }
+#if 0
+                        if (esc == 'x')
+                        {
+                            text++;
+                            eatenChars++;
+                            if (!ParseHex(&text, &eatenChars, &number))
+                                goto LinvalidEscapeInString;
+                            c = (char) number;
+                        }
+                        else if (esc > '7' || esc < '0')
                         {
                             c = EscapedChar(esc);
+                            eatenChars++;
+                            text++;
                         }
                         else
                         {
-                            c = '\0';
-                            while(esc >= '0' && esc <= '7')
-                            {
-                                c *= 8;
-                                c += (esc - '0');
-                                esc = *text++;
-                                eatenChars++;
-                            }
-                            text--;
-                            eatenChars--;
+                            if (!ParseOctal(&text, &eatenChars, &number))
+                                goto LinvalidEscapeInString;
+                            c = (char) number;
                         }
                         if (c == 'E')
                         {
-                            ParseErrorF(state, "Invalid escape seqeunce '%s'", (text - 1));
+                        LinvalidEscapeInString:
+                            ParseErrorF(state, "Invalid escape seqeunce '%.*s'", 4, (text - 1));
                         }
-                    }
-                    string_hash = crc32c_byte(string_hash, c);
-                    c = *text++;
-                    eatenChars++;
-                }
+#endif
+
                 if (c != matchTo)
                 {
-                    ParseError(state, "Unterminted string literal");
+                    ParseError(state, "Unterminated string literal");
                 }
                 eatenChars++;
-                assert(string_length < 0xFFFFF);
-                token.Key = STRING_KEY(string_hash, string_length);
+                uint32_t stringLength = eatenChars - 2;
+#ifndef INCREMENTAL_HASH
+                stringHash = crc32c(~0, text - (eatenChars - 1), stringLength);
+#endif
+                assert(stringLength < 0xFFFFF);
+
+                token.Key = STRING_KEY(stringHash, eatenChars - 2);
             }
             //TODO special hack as long as we don't do proper preprocessing
             else if (c == '\\')
@@ -893,6 +974,7 @@ SkipToNewline:
         static metac_token_t stop_token = {tok_eof};
         result = &stop_token;
     }
+Lreturn:
     state->Position += eatenChars;
     return result;
 }

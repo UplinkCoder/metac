@@ -35,7 +35,7 @@ if [ -d $DST ]; then
 
     mkdir -p $DST/utils
     cp utils/gen_metac_match_keyword.c utils/metac_count_token_length.c \
-       utils/identifier_hash.c utils/print_sizes.c \
+       utils/identifier_hash.c utils/print_sizes.c utils/rec_bisect.c \
        utils/read_file.c $DST/utils
 
     mkdir -p $DST/repl
