@@ -13,14 +13,16 @@
 #  define MEMBER_SUFFIX(X) X ## Table
 #  define MEMBER_INFIX(P, S) P ## Table # S
 #  define ACCELERATOR "Table"
-#  define ACCEL_INIT(A) IdentifierTableInit(&((A).IdentifierTable))
+#  define ACCEL_SUFFIX Table
+#  define ACCEL_INIT(A, B) IdentifierTableInit(&((A).B ## Table))
 # elif ACCEL == ACCEL_TREE
 #  include "metac_identifier_tree.h"
 #  define IDENTIFIER_TREE
 #  define MEMBER_SUFFIX(X) X ## Tree
 #  define MEMBER_INFIX(P, S) P ## Tree # S
 #  define ACCELERATOR "Tree"
-#  define ACCEL_INIT(A) IdentifierTreeInit(&((A).IdentifierTree))
+#  define ACCEL_SUFFIX Tree
+#  define ACCEL_INIT(A, B) IdentifierTreeInit(&((A).B ## Tree))
 # else
 #  error "Unknown ACCEL value"
 # endif
@@ -31,6 +33,9 @@
 
 #define IDENTIFIER_PTR(TABLE, TOKEN) \
     IdentifierPtrToCharPtr(TABLE, (TOKEN).IdentifierPtr)
+
+#define STRING_PTR(ACCEL_, PTR) \
+    IdentifierPtrToCharPtr(MEMBER_SUFFIX(ACCEL_), (PTR))
 
 typedef uint32_t block_idx_t;
 typedef uint16_t crc32c_lower16_t;
@@ -237,7 +242,7 @@ typedef struct metac_token_t {
         // case tok_identfier :
         struct {
             uint32_t IdentifierKey;
-#if defined (ACCEL)
+#ifdef ACCEL
             metac_identifier_ptr_t IdentifierPtr;
 #else
             const char* Identifier;
@@ -246,7 +251,11 @@ typedef struct metac_token_t {
         // case tok_stringLiteral :
         struct {
             uint32_t StringKey;
+#ifdef ACCEL
+            metac_identifier_ptr_t StringPtr;
+#else
             const char* String;
+#endif
         };
         // case tok_comment_begin, tok_comment_begin_single :
         struct {
@@ -331,8 +340,10 @@ typedef struct metac_lexer_t {
     metac_token_t inlineTokens[256];
 #if ACCEL == ACCEL_TABLE
     metac_identifier_table_t IdentifierTable;
+    metac_identifier_table_t StringTable;
 #elif ACCEL == ACCEL_TREE
     metac_identifier_tree_t IdentifierTree;
+    metac_identifier_tree_t StringTree;
 #endif
 } metac_lexer_t;
 

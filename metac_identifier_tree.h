@@ -31,9 +31,9 @@ typedef struct metac_identifier_tree_t
 
 void IdentifierTreeInit(metac_identifier_tree_t* table);
 
-metac_identifier_ptr_t GetOrAddIdentifier(metac_identifier_tree_t* table,
-                                          const char* identifier,
-                                          uint32_t identifierKey);
+metac_identifier_ptr_t GetOrAddIdentifier(metac_identifier_tree_t* tree,
+                                          uint32_t identifierKey,
+                                          const char* identifier, uint32_t length);
 
 const char* IdentifierPtrToCharPtr(metac_identifier_tree_t* table,
                                    metac_identifier_ptr_t ptr);

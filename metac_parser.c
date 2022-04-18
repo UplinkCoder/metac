@@ -65,11 +65,26 @@ metac_identifier_ptr_t RegisterIdentifier(metac_parser_t* self,
             MEMBER_SUFFIX(&self->Lexer->Identifier),
             token->IdentifierPtr
         );
-
+        uint32_t identifierKey = token->IdentifierKey;
         return GetOrAddIdentifier(MEMBER_SUFFIX(&self->Identifier),
-                                  identifierString,
-                                  token->IdentifierKey);
+                                  identifierKey, identifierString,
+                                  LENGTH_FROM_IDENTIFIER_KEY(identifierKey));
 }
+
+metac_identifier_ptr_t RegisterString(metac_parser_t* self,
+                                      metac_token_t* token)
+{
+    const char* string =
+        IdentifierPtrToCharPtr(
+            MEMBER_SUFFIX(&self->Lexer->Identifier),
+            token->StringPtr
+        );
+        uint32_t stringKey = token->StringKey;
+        return GetOrAddIdentifier(MEMBER_SUFFIX(&self->String),
+                                  stringKey, string,
+                                  LENGTH_FROM_STRING_KEY(stringKey));
+}
+
 void AddDefine(metac_parser_t* self, metac_token_t* token, uint32_t nParameters)
 {
     metac_define_t define;
@@ -793,7 +808,7 @@ metac_expression_t* MetaCParserParseExpression(metac_parser_t* self, metac_expre
         // result = GetOrAddStringLiteral(_string_table, currentToken);
 
         result = AllocNewExpression(exp_string);
-        result->String = currentToken->String;
+        result->StringPtr = RegisterString(self, currentToken);
         result->StringKey = currentToken->StringKey;
         result->Hash = currentToken->StringKey;
         PushOperand(result);
@@ -1028,8 +1043,9 @@ static metac_statement_t* MetaCParserParseStatement(metac_parser_t* self, metac_
 
             stmt_label_t* result = AllocNewStatement(stmt_label, &result);
             result->Label = GetOrAddIdentifier(MEMBER_SUFFIX(&self->Identifier),
+                                               currentToken->IdentifierKey,
                                                IDENTIFIER_PTR(MEMBER_SUFFIX(&self->Lexer->Identifier), *currentToken),
-                                               currentToken->IdentifierKey);
+                                               LENGTH_FROM_IDENTIFIER_KEY(currentToken->IdentifierKey));
         }
     }
     else if (tokenType == tok_kw_goto)
@@ -1040,15 +1056,16 @@ static metac_statement_t* MetaCParserParseStatement(metac_parser_t* self, metac_
         MetaCParserMatch(self, tok_kw_goto);
         metac_token_t* label = MetaCParserMatch(self, tok_identifier);
 #ifdef IDENTIFIER_TABLE
-        result->Label = GetOrAddIdentifier(&self->IdentifierTable,
+        result->Label = GetOrAddIdentifier(&self->IdentifierTable, label->IdentifierKey,
                                            IDENTIFIER_PTR(&self->Lexer->IdentifierTable, *label),
+                                           LENGTH_FROM_IDENTIFIER_KEY(label->IdentifierKey));
 #endif
 #ifdef IDENTIFIER_TREE
-        result->Label = GetOrAddIdentifier(&self->IdentifierTree,
+        result->Label = GetOrAddIdentifier(&self->IdentifierTree, label->IdentifierKey,
                                            IDENTIFIER_PTR(&self->Lexer->IdentifierTree, *label),
+                                           LENGTH_FROM_IDENTIFIER_KEY(label->IdentifierKey));
 #endif
 
-                                           label->IdentifierKey);
         result->Hash = Mix(gotoHash, label->IdentifierKey);
     }
     else if (tokenType == tok_kw_case)
@@ -1148,8 +1165,10 @@ void LineLexerInit(void)
 {
     g_lineParser.CurrentTokenIndex = 0;
     g_lineLexer.tokens_size = 0;
-    ACCEL_INIT(g_lineLexer);
-    ACCEL_INIT(g_lineParser);
+    ACCEL_INIT(g_lineLexer, Identifier);
+    ACCEL_INIT(g_lineLexer, String);
+    ACCEL_INIT(g_lineParser, Identifier);
+    ACCEL_INIT(g_lineParser, String);
 
     if (!g_lineParser.Defines)
     {
@@ -1397,7 +1416,8 @@ const char* PrintExpression(metac_parser_t* self, metac_expression_t* exp)
     else if (exp->Kind == exp_string)
     {
         expStringLength += sprintf(scratchpad + expStringLength, "\"%.*s\" ",
-            LENGTH_FROM_STRING_KEY(exp->StringKey), exp->String);
+            LENGTH_FROM_STRING_KEY(exp->StringKey),
+            STRING_PTR(&self->String, exp->StringPtr));
     }
     else if (exp->Kind == exp_signed_integer)
     {

@@ -155,7 +155,7 @@ LnextLine:
                 }
                 else if (token.TokenType == tok_stringLiteral)
                 {
-                    printf("    \"%.*s\"\n", LENGTH_FROM_STRING_KEY(token.Key), token.String);
+                    printf("    \"%.*s\"\n", LENGTH_FROM_STRING_KEY(token.Key), STRING_PTR(&lexer.String, token.StringPtr));
                 }
 #endif
 

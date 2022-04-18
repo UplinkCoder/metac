@@ -48,11 +48,11 @@ void IdentifierTableInit(metac_identifier_table_t* table)
 
 #define ALIGN4(N) (((N) + 3) & ~3)
 metac_identifier_ptr_t GetOrAddIdentifier(metac_identifier_table_t* table,
-                                          const char* identifier, uint32_t identifierKey)
+                                          uint32_t identifierKey,
+                                          const char* identifier, uint32_t length)
 {
     TracyCZone(ctx, true);
 
-    const uint32_t length = LENGTH_FROM_IDENTIFIER_KEY(identifierKey);
     metac_identifier_ptr_t result = {0};
     metac_identifier_ptr_t insertPtr;
     const uint32_t slotIndexMask = ((1 << table->SlotCount_Log2) - 1);

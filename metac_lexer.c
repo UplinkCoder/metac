@@ -428,7 +428,8 @@ void MetaCLexerInit(metac_lexer_t* self)
         (sizeof(self->inlineTokens) / sizeof(self->inlineTokens[0]));
     self->tokens = self->inlineTokens;
 #ifdef ACCEL
-    ACCEL_INIT(*self);
+    ACCEL_INIT(*self, Identifier);
+    ACCEL_INIT(*self, String);
 #endif
 }
 metac_lexer_state_t MetaCLexerStateFromString(uint32_t sourceId,
@@ -591,10 +592,12 @@ bool static ParseHex(const char** textP, uint32_t* eatenCharsP, uint64_t* valueP
 
 bool IsValidEscapeChar(char c)
 {
+    printf("Calling %s with '%c'\n", __FUNCTION__, c);
     return (c == 'n'  || c == '"' || c == 't')
         || (c == '\'' || c == 'r' || c == '`')
-        || (c == 'a'  || c == 'v' || c == 'b')
-        || (c == 'f'  || c == 'v' || c == 'b')
+        || (c == '\\' || c == '\n'|| c == '`')
+        || (c == 'x'  || c == 'v' || c == 'a')
+        || (c == 'f'  || c == '?' || c == 'b')
         || (c >= '0' && c <= '7');
 }
 
@@ -670,10 +673,10 @@ LcontinueLexnig:
                 token.Identifier = identifierBegin;
 #elif ACCEL == ACCEL_TABLE
                     token.IdentifierPtr =
-                        GetOrAddIdentifier(&self->IdentifierTable, identifierBegin, token.IdentifierKey);
+                        GetOrAddIdentifier(&self->IdentifierTable, token.IdentifierKey, identifierBegin, identifier_length);
 #elif ACCEL == ACCEL_TREE
                     token.IdentifierPtr =
-                        GetOrAddIdentifier(&self->IdentifierTree, identifierBegin, token.IdentifierKey);
+                        GetOrAddIdentifier(&self->IdentifierTree, token.IdentifierKey, identifierBegin, identifier_length);
 #else
 #   error ("Unkown ACCELERATOR")
 #endif
@@ -700,7 +703,8 @@ LcontinueLexnig:
                         if (!ParseHex(&text, &eatenChars, &value))
                         {
                             ParseErrorF(state, "invalid hex literal %.*s", 4, text - 1);
-                            return &err_token;
+                            result = &err_token;
+                            goto Lreturn;
                         }
                         goto LParseNumberDone;
                     }
@@ -714,7 +718,8 @@ LcontinueLexnig:
                         if (!ParseOctal(&text, &eatenChars, &value))
                         {
                             ParseErrorF(state, "invalid octal literal %.*s", 4, text - 1);
-                            return &err_token;
+                            result = &err_token;
+                            goto Lreturn;
                         }
                         goto LParseNumberDone;
                     }
@@ -746,7 +751,8 @@ LcontinueLexnig:
                 if (c == '\'')
                 {
                     ParseError(state, "Empty character Literal");
-                    return &err_token;
+                    result = &err_token;
+                    goto Lreturn;
                 }
                 while(c && c != '\'')
                 {
@@ -758,8 +764,6 @@ LcontinueLexnig:
                         {
                             ParseErrorF(state, "Invalid escape seqeunce '%.*s'", 4, (text - 2));
                         }
-                        if (c == '\n')
-                            state->Line++;
                     }
                     c = *text++;
                     eatenChars++;
@@ -768,6 +772,7 @@ LcontinueLexnig:
                 {
                     assert("Unterminated char literal");
                 }
+                charLiteralLength = 
                 eatenChars++;
             }
             else if (c == '\"' || c == '`')
@@ -775,7 +780,7 @@ LcontinueLexnig:
                 ++text;
                 char matchTo = c;
                 token.TokenType = tok_stringLiteral;
-                token.String = text;
+                const char* stringBegin = text;
                 uint32_t stringHash = ~0u;
                 c = *text++;
                 eatenChars++;
@@ -832,16 +837,25 @@ LcontinueLexnig:
 
                 if (c != matchTo)
                 {
-                    ParseError(state, "Unterminated string literal");
+                    ParseErrorF(state, "Unterminated string literal '%.*s' \n", 10, text - eatenChars - 1);
+                    result = &err_token;
+                    goto Lreturn;
                 }
                 eatenChars++;
                 uint32_t stringLength = eatenChars - 2;
 #ifndef INCREMENTAL_HASH
-                stringHash = crc32c(~0, text - (eatenChars - 1), stringLength);
+                stringHash = crc32c(~0, stringBegin, stringLength);
 #endif
                 assert(stringLength < 0xFFFFF);
 
                 token.Key = STRING_KEY(stringHash, eatenChars - 2);
+#if ACCEL == ACCEL_TABLE
+                token.StringPtr = GetOrAddIdentifier(&self->StringTable, token.Key, stringBegin, stringLength);
+#elif ACCEL == ACCEL_TREE
+                token.StringPtr = GetOrAddIdentifier(&self->StringTree, token.Key, stringBegin, stringLength);
+#else
+                token.String = stringBegin;
+#endif
             }
             //TODO special hack as long as we don't do proper preprocessing
             else if (c == '\\')

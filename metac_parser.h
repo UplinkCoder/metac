@@ -210,7 +210,7 @@ typedef struct metac_expression_t
         // case identifier_exp :
         struct {
             uint32_t IdentifierKey;
-#if defined (IDENTIFIER_TABLE) || defined (IDENTIFIER_TREE)
+#ifdef ACCEL
             metac_identifier_ptr_t IdentifierPtr;
 #else
             const char* Identifier;
@@ -219,7 +219,12 @@ typedef struct metac_expression_t
         // case exp_string :
         struct {
             uint32_t StringKey;
+
+#ifdef ACCEL
+            metac_identifier_ptr_t StringPtr;
+#else
             const char* String;
+#endif
         };
 
         // case exp_signed_integer :
@@ -515,11 +520,12 @@ typedef struct metac_parser_t
 
     uint32_t CurrentTokenIndex;
     metac_parser_reorder_state_t* ExpressionReorderState;
-#ifdef IDENTIFIER_TABLE
+#if ACCEL == ACCEL_TABLE
     metac_identifier_table_t IdentifierTable;
-#endif
-#ifdef IDENTIFIER_TREE
+    metac_identifier_table_t StringTable;
+#elif ACCEL == ACCEL_TREE
     metac_identifier_tree_t IdentifierTree;
+    metac_identifier_tree_t StringTree;
 #endif
     metac_define_t* Defines;
     uint32_t DefineCount;

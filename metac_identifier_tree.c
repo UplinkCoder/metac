@@ -33,12 +33,12 @@ const char* IdentifierPtrToCharPtr(metac_identifier_tree_t* tree,
     return ptr.v + 4 + tree->StringMemory;
 }
 
-metac_identifier_ptr_t GetOrAddIdentifier(metac_identifier_tree_t* tree, const char* name,
-                                         uint32_t identifierKey)
+metac_identifier_ptr_t GetOrAddIdentifier(metac_identifier_tree_t* tree,
+                                          uint32_t identifierKey,
+                                          const char* identifier, uint32_t length)
 {
     metac_identifier_ptr_t result = {0};
     TracyCZone(ctx, true);
-    size_t length = LENGTH_FROM_IDENTIFIER_KEY(identifierKey);
     if (!length)
         return result;
 
@@ -50,7 +50,7 @@ metac_identifier_ptr_t GetOrAddIdentifier(metac_identifier_tree_t* tree, const c
         {
             const char* cached_name = (currentBranch->Ptr.v - 4)
                                     + tree->StringMemory;
-            if ((cmp_result = memcmp(name, cached_name, length)) == 0)
+            if ((cmp_result = memcmp(identifier, cached_name, length)) == 0)
             {
                 static uint32_t hits = 0;
 
@@ -90,7 +90,7 @@ metac_identifier_ptr_t GetOrAddIdentifier(metac_identifier_tree_t* tree, const c
                        < tree->StringMemoryCapacity);
                 char* cached_name =
                     tree->StringMemorySize + tree->StringMemory;
-                memcpy(cached_name, name, length);
+                memcpy(cached_name, identifier, length);
                 *(cached_name + length) = '\0';
 
                 metac_identifier_ptr_t Ptr = { tree->StringMemorySize + 4 };
