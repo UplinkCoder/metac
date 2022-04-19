@@ -26,7 +26,7 @@ void CountTokenLengths()
     ((unsigned int)(sizeof(#TOK) - sizeof("tok_kw_")))
 
 #define TOK_LENGTH(TOK) \
-    ( ((TOK_IS_KW(TOK)) ? (KW_LEN(TOK)) : StaticMetaCTokenLength(TOK)) )
+    ( ((TOK_IS_KW(TOK)) ? (KW_LEN(TOK)) : MetaCStaticTokenLength(TOK)) )
 
 #define COUNT_TOK(TOK) \
     token_len[TOK_LENGTH(TOK)]++;

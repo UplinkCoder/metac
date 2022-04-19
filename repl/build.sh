@@ -5,5 +5,9 @@ fi
 pushd ..
 ./gen_code.sh
 popd
-$CC repl.c ../metac_parser_obj.c -I.. \
+if [ -z $ACCEL ]; then
+    ACCEL=ACCEL_TABLE
+fi
+
+$CC repl.c ../metac_parser_obj.c -I.. -DACCEL=$ACCEL \
     -g3 -O0 -lm -march=native -mtune=native -o repl $@

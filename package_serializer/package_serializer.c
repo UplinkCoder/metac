@@ -110,15 +110,21 @@ int main(int argc, const char* argv[])
 
         LexFile(&lexer, arg,
             readResult.FileContent0, readResult.FileLength
+
         );
+#ifndef NO_DUMP
 #if ACCEL == ACCEL_TABLE
         char formatBuffer[512];
         sprintf(formatBuffer, "%s.identifiers", arg);
         FILE* fd = fopen(formatBuffer, "wb");
         WriteIdentifiers(&lexer.IdentifierTable, fd);
+        sprintf(formatBuffer, "%s.strings", arg);
+        fd = fopen(formatBuffer, "wb");
+        WriteIdentifiers(&lexer.StringTable, fd);
+#endif
 #endif
         metac_parser_t parser;
         MetaCParserInitFromLexer(&parser, &lexer);
     }
-    return !errored;
+    return errored;
 }

@@ -261,7 +261,7 @@ const char* MetaCTokenEnum_toChars(metac_token_enum_t type)
 #undef CASE_MACRO
 }
 
-static uint32_t StaticMetaCTokenLength(metac_token_enum_t t)
+static uint32_t MetaCStaticTokenLength(metac_token_enum_t t)
 {
     switch (t) {
         default              : return 2;
@@ -339,6 +339,9 @@ static uint32_t StaticMetaCTokenLength(metac_token_enum_t t)
         case tok_kw_scope    : return 5;
         case tok_kw_yield    : return 5;
 
+        case tok_kw___LINE__     : return 8;
+        case tok_kw___FUNCTION__ : return 12;
+        case tok_kw___METAC__    : return 9;
     }
 }
 
@@ -384,7 +387,7 @@ uint32_t MetaCTokenLength(metac_token_t token)
 {
     if (token.TokenType >= FIRST_STATIC_TOKEN(TOK_SELF))
     {
-        return StaticMetaCTokenLength(token.TokenType);
+        return MetaCStaticTokenLength(token.TokenType);
     }
     else
     {
@@ -592,7 +595,7 @@ bool static ParseHex(const char** textP, uint32_t* eatenCharsP, uint64_t* valueP
 
 bool IsValidEscapeChar(char c)
 {
-    printf("Calling %s with '%c'\n", __FUNCTION__, c);
+    // printf("Calling %s with '%c'\n", __FUNCTION__, c);
     return (c == 'n'  || c == '"' || c == 't')
         || (c == '\'' || c == 'r' || c == '`')
         || (c == '\\' || c == '\n'|| c == '`')
@@ -772,7 +775,7 @@ LcontinueLexnig:
                 {
                     assert("Unterminated char literal");
                 }
-                charLiteralLength = 
+                charLiteralLength =
                 eatenChars++;
             }
             else if (c == '\"' || c == '`')
@@ -783,7 +786,10 @@ LcontinueLexnig:
                 const char* stringBegin = text;
                 uint32_t stringHash = ~0u;
                 c = *text++;
+
                 eatenChars++;
+                uint32_t eatenCharsAtStringStart = eatenChars;
+
                 while(c && c != matchTo)
                 {
 #ifdef INCREMENTAL_HASH
@@ -841,14 +847,15 @@ LcontinueLexnig:
                     result = &err_token;
                     goto Lreturn;
                 }
+                uint32_t stringLength = (eatenChars - eatenCharsAtStringStart);
+
                 eatenChars++;
-                uint32_t stringLength = eatenChars - 2;
 #ifndef INCREMENTAL_HASH
                 stringHash = crc32c(~0, stringBegin, stringLength);
 #endif
                 assert(stringLength < 0xFFFFF);
 
-                token.Key = STRING_KEY(stringHash, eatenChars - 2);
+                token.Key = STRING_KEY(stringHash, stringLength);
 #if ACCEL == ACCEL_TABLE
                 token.StringPtr = GetOrAddIdentifier(&self->StringTable, token.Key, stringBegin, stringLength);
 #elif ACCEL == ACCEL_TREE
@@ -860,11 +867,17 @@ LcontinueLexnig:
             //TODO special hack as long as we don't do proper preprocessing
             else if (c == '\\')
             {
-                ++text;
-
-                eatenChars++;
                 c = *text++;
-                goto LcontinueLexnig;
+                if (c == '\n')
+                {
+                    c = *text++;
+                    state->Line++;
+                    goto LcontinueLexnig;
+                }
+                else
+                {
+                    assert(0); // this is not to escape a newline
+                }
             }
         }
     }
@@ -930,37 +943,27 @@ LcontinueLexnig:
         //printf("Comment ends at line: %u:%u\n", state->Line, state->Column);
         //printf("Comment was: \"%.*s\"\n", eatenChars - 4,  text + 2);
     }
+#if 0
     else if (token.TokenType == tok_hash)
     {
         uint32_t lines = 0;
         const char* newlinePtr = text;
         uint32_t offset = 0;
-        if(text[1] == 'd' && text[2] == 'e' && text[3] == 'f')
-                goto SkipToNewline;
-#if 0
-        else if(text[1] == 'i' && text[2] == 'f')
-        {
-            for(;;)
-            {
-                char s = text[offset++];
-                if(s == '\n') state->Line++;
-                if (s == '#' && text[offset + 1] == 'n')
-                {
-                    eatenChars = offset + 5;
-                    goto LcontinueLexnig;
-                }
-            }
-        }
-#endif
-SkipToNewline:
+
+    LskiptoNewline
         for(;;)
         {
             newlinePtr = (char*)memchr(newlinePtr + 1, '\n', len - offset);
             offset = (newlinePtr - text);
             //printf("offset: %u\n", offset);
-            lines++;
             if (!newlinePtr || ((*(newlinePtr - 1)) != '\\'))
+            {
+
                 break;
+            }
+
+            lines++;
+
         }
         ++offset;
         //printf("skipping %u chars\n", offset);
@@ -971,9 +974,10 @@ SkipToNewline:
         state->Column = 1;
         goto LcontinueLexnig;
     }
+#endif
     else
     {
-        const uint32_t tokLen = StaticMetaCTokenLength(token.TokenType);
+        const uint32_t tokLen = MetaCStaticTokenLength(token.TokenType);
         eatenChars += tokLen;
         state->Column += tokLen;
     }
@@ -1110,6 +1114,10 @@ void test_lexer()
         "scope",
         "yield",
 
+        "__LINE__",
+        "__FUNCTION__",
+        "__METAC__",
+
          "/*",
         "*/",
         "//",
@@ -1157,7 +1165,7 @@ void test_lexer()
             lexed = MetaCLexFixedLengthToken(word);
         }
         assert(lexed == tok);
-        assert(strlen(word) == StaticMetaCTokenLength(tok));
+        assert(strlen(word) == MetaCTokenStaticLength(tok));
     }
 }
 

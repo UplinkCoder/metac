@@ -20,6 +20,7 @@ typedef enum parse_mode_t
     parse_mode_decl,
     parse_mode_stmt,
     parse_mode_expr,
+    parse_mode_file,
 
     parse_mode_max
 } parse_mode_t;
@@ -30,12 +31,17 @@ void PrintHelp(void)
        "      :d for declaration mode\n"
        "      :s for statement mode\n"
        "      :t for token mode\n"
+       "      :l Load and lex file\n"
        "      :p for preprocessor mode\n"
        "      :q to quit\n");
 }
 int main(int argc, const char* argv[])
 {
     const char* line;
+
+    const char* srcBuffer = 0;
+    const void* freePtr = 0;
+    uint32_t srcBufferLength = 0;
 
     parse_mode_t parseMode = parse_mode_token;
     metac_lexer_state_t repl_state = {0, 0, 0, 0};
@@ -45,6 +51,7 @@ int main(int argc, const char* argv[])
     PrintHelp();
     linenoiseHistoryLoad(".repl_history");
     const char* promt_;
+
 LswitchMode:
     switch (parseMode)
     {
@@ -62,7 +69,7 @@ LswitchMode:
         promt_ = "Stmt>";
         break;
     }
-    
+
 LnextLine:
     while ((line = linenoise(promt_)))
     {
@@ -75,6 +82,30 @@ LnextLine:
             case 'q':
                 linenoiseHistorySave(".repl_history");
                 return 0;
+            case 'l' :
+            {
+                const char* filename = line + 3;
+                printf("loading and lexing: '%s'\n", filename);
+                FILE* fd = fopen(filename, "rb");
+                if (!fd)
+                {
+                    perror("loading file failed");
+                    printf("cwd: %s\n", get_current_dir_name());
+                }
+                else
+                {
+                    fseek(fd, 0, SEEK_END);
+                    uint32_t sz = ftell(fd);
+                    fseek(fd, 0, SEEK_SET);
+
+                    freePtr = srcBuffer = calloc(1, sz + 4);
+                    srcBufferLength = sz;
+                    fread(srcBuffer, 1, sz, fd);
+                    parseMode = parse_mode_file;
+                }
+
+                goto LlexSrcBuffer;
+            }
             case 't' :
                 parseMode = parse_mode_token;
                 goto LswitchMode;
@@ -90,6 +121,8 @@ LnextLine:
             case 'i' :
 #ifdef ACCEL
                 printf("Accelerator: %s\n", ACCELERATOR);
+#else
+                printf("MetaC compiled without Accelerator\n");
 #endif
                 continue;
             default :
@@ -101,7 +134,13 @@ LnextLine:
             }
         }
 
-        while (line_length > 0)
+        if (parseMode != parse_mode_file)
+        {
+            srcBuffer = line;
+            srcBufferLength = line_length;
+        }
+
+        while (srcBufferLength > 0)
         {
             metac_token_t token;
 
@@ -131,8 +170,12 @@ LnextLine:
                         PrintDeclaration(&g_lineParser, decl, 0, 0);
                 goto LnextLine;
 
+            case parse_mode_file :
+                goto LlexSrcBuffer;
             case parse_mode_token :
-                   token = *MetaCLexerLexNextToken(&lexer, &repl_state, line, line_length);
+
+LlexSrcBuffer:
+                   token = *MetaCLexerLexNextToken(&lexer, &repl_state, srcBuffer, srcBufferLength);
 
                 uint32_t eaten_chars = repl_state.Position - initalPosition;
                 const uint32_t token_length = MetaCTokenLength(token);
@@ -159,13 +202,22 @@ LnextLine:
                 }
 #endif
 
-                line_length -= eaten_chars;
-                line += eaten_chars;
-
+                srcBufferLength -= eaten_chars;
+                srcBuffer += eaten_chars;
+                printf("eaten_chars: %d\n", eaten_chars);
                 if (!token_length)
                     break;
             }
         }
+
+        if (freePtr)
+        {
+            free(freePtr);
+            freePtr = 0;
+            parseMode = parse_mode_token;
+            goto LswitchMode;
+        }
+        srcBuffer = 0;
     }
 }
 #endif

@@ -36,14 +36,14 @@ const char* IdentifierPtrToCharPtr(metac_identifier_table_t* table,
 
 void IdentifierTableInit(metac_identifier_table_t* table)
 {
-    table->SlotCount_Log2 = 16;
+    table->SlotCount_Log2 = 13;
     const uint32_t maxSlots = (1 << table->SlotCount_Log2);
     table->Slots = (metac_identifier_table_slot_t*) calloc(maxSlots, sizeof(metac_identifier_table_slot_t));
     table->StringMemory = (char*)malloc(32768 * 8);
     table->StringMemoryCapacity = 32768 * 8;
     table->StringMemorySize = 0;
     table->SlotsUsed = 0;
-    table->MaxDisplacement = 0;
+    // table->MaxDisplacement = 0;
 }
 
 #define ALIGN4(N) (((N) + 3) & ~3)
@@ -64,7 +64,7 @@ metac_identifier_ptr_t GetOrAddIdentifier(metac_identifier_table_t* table,
         (++slotIndex & slotIndexMask) != initialSlotIndex;
     )
     {
-        metac_identifier_table_slot_t *slot = &table->Slots[slotIndex - 1];
+        metac_identifier_table_slot_t* slot = &table->Slots[(slotIndex - 1) & slotIndexMask];
         const char* stringEntry;
 
         if (slot->HashKey == identifierKey)
@@ -98,7 +98,7 @@ metac_identifier_ptr_t GetOrAddIdentifier(metac_identifier_table_t* table,
         {
             uint32_t expected;
             uint32_t newValue;
-            TracyCPlot("MaxDisplacement", table->MaxDisplacement);
+            // TracyCPlot("MaxDisplacement", table->MaxDisplacement);
             TracyCPlot("Displacement", displacement);
             do {
                 assert(table->StringMemorySize + ALIGN4(length + 1)
@@ -130,6 +130,7 @@ metac_identifier_ptr_t GetOrAddIdentifier(metac_identifier_table_t* table,
             slot->Ptr = result;
 #ifdef REFCOUNT
             slot->RefCount++;
+            slot->Displacement = displacement;
 #endif
             break;
         }
@@ -150,13 +151,14 @@ metac_identifier_ptr_t GetOrAddIdentifier(metac_identifier_table_t* table,
             }
         }
  #endif
-            if (++displacement > table->MaxDisplacement)
-            {
-                table->MaxDisplacement = displacement;
-            }
+            //if (++displacement > table->MaxDisplacement)
+            //{
+            //    table->MaxDisplacement = displacement;
+            //}
             TracyCPlot("MaxDisplacement", table->MaxDisplacement);
             TracyCPlot("LoadFactor", (float)table->SlotsUsed / (float)slotIndexMask);
             TracyCPlot("StringMemorySize", table->StringMemorySize);
+            displacement++;
         continue;
     }
     TracyCZoneEnd(ctx);
@@ -186,8 +188,8 @@ void WriteIdentifiers(metac_identifier_table_t* table, FILE* fd)
             fprintf(fd, "Hash: %x Id: %s RefCount: %u Displacement: %u\n",
                                slot.HashKey,
                                       IdentifierPtrToCharPtr(table, slot.Ptr),
-                                                    slot.RefCount,
-                                                                     slot.Displacement);
+                                                   slot.RefCount,
+                                                                    slot.Displacement);
 #endif
         }
     }
