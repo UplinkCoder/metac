@@ -393,11 +393,12 @@ typedef struct metac_lexer_t {
 const char* MetaCTokenEnum_toChars(metac_token_enum_t tok);
 
 #define ParseErrorF(STATE, MSG, ...) \
-    fprintf(stderr, "ParseError[%s:%u]: {%u:%u}"  MSG  "\n", __FILE__, __LINE__, (STATE ? STATE->Line : 0), (STATE ? STATE->Column : 0), __VA_ARGS__)
+    fprintf(stderr, "ParseError[%s:%u]: {%u:%u}"  MSG  "\n", __FILE__, __LINE__, (STATE ? STATE->Line : 0), (STATE ? STATE->Column : 0), __VA_ARGS__); \
+    ParseErrorBreak();
 
 #define ParseError(STATE, MSG) \
-    fprintf(stderr, "ParseError[%s:%u]: {%u:%u}"  MSG  "\n", __FILE__, __LINE__, (STATE ? STATE->Line : 0), (STATE ? STATE->Column : 0))
-
+    fprintf(stderr, "ParseError[%s:%u]: {%u:%u}"  MSG  "\n", __FILE__, __LINE__, (STATE ? STATE->Line : 0), (STATE ? STATE->Column : 0)); \
+    ParseErrorBreak();
 
 void MetaCLexerInit(metac_lexer_t* self);
 metac_lexer_state_t MetaCLexerStateFromString(uint32_t sourceId, const char* str);

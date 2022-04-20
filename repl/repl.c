@@ -139,7 +139,6 @@ LnextLine:
             srcBuffer = line;
             srcBufferLength = line_length;
         }
-
         while (srcBufferLength > 0)
         {
             metac_token_t token;
@@ -180,8 +179,13 @@ LlexSrcBuffer:
                 uint32_t eaten_chars = repl_state.Position - initalPosition;
                 const uint32_t token_length = MetaCTokenLength(token);
 #if 1
-                printf("read tokenType: %s {length: %d}\n",
-                        MetaCTokenEnum_toChars(token.TokenType), token_length);
+                const uint32_t locPtr = token.LocationId;
+                const metac_location_t loc = lexer.LocationStorage.Locations[locPtr - 4];
+
+                printf("read tokenType: %s {length: %d}\n Location: {Line: %d, Col: %d}",
+                        MetaCTokenEnum_toChars(token.TokenType), token_length,
+                        loc.StartLine, loc.StartColumn
+                );
 
                 if (token.TokenType == tok_identifier)
                 {

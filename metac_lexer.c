@@ -598,6 +598,11 @@ bool static ParseHex(const char** textP, uint32_t* eatenCharsP, uint64_t* valueP
     return result;
 }
 
+void ParseErrorBreak(void)
+{
+    int k = 2;
+}
+
 bool IsValidEscapeChar(char c)
 {
     // printf("Calling %s with '%c'\n", __FUNCTION__, c);
@@ -714,6 +719,7 @@ LcontinueLexnig:
                 }
                 token.TokenType = tok_identifier;
                 assert(identifier_length < 0xFFF);
+                state->Column += eatenChars;
                 token.IdentifierKey =
                     IDENTIFIER_KEY(identifier_hash, identifier_length);
                 MetaCLexerMatchKeywordIdentifier(&token, identifierBegin);
