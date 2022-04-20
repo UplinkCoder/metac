@@ -426,10 +426,18 @@ uint32_t MetaCTokenLength(metac_token_t token)
 
 void MetaCLexerInit(metac_lexer_t* self)
 {
-    self->tokens_size = 0;
-    self->tokens_capacity =
+    self->TokenSize = 0;
+    self->TokenCapacity =
         (sizeof(self->inlineTokens) / sizeof(self->inlineTokens[0]));
-    self->tokens = self->inlineTokens;
+    self->Tokens = self->inlineTokens;
+
+    self->LocationStorage.LocationCapacity = self->TokenCapacity;
+    self->LocationStorage.LocationSize = 0;
+    self->LocationStorage.Locations = (metac_location_t*)malloc(
+        self->LocationStorage.LocationCapacity
+            * sizeof(metac_location_t)
+    );
+
 #ifdef ACCEL
     ACCEL_INIT(*self, Identifier);
     ACCEL_INIT(*self, String);
@@ -601,6 +609,43 @@ bool IsValidEscapeChar(char c)
         || (c >= '0' && c <= '7');
 }
 
+typedef uint32_t metac_location_ptr;
+
+void MetaCLocationStorage_EndLoc(
+        metac_location_storage_t* locationStorage,
+        metac_location_ptr locationId,
+        uint32_t line, uint16_t column)
+{
+    assert(locationId >= 4);
+    assert((locationId - 4) < locationStorage->LocationSize);
+
+    uint32_t idx = locationId - 4;
+    metac_location_t *location =
+        locationStorage->Locations + idx;
+
+    assert((line - location->StartLine) < 0xFFFF);
+
+    location->LineSpan = line - location->StartLine;
+    assert(column < 0xFFFF);
+    location->EndColumn = (uint16_t)column;
+}
+
+metac_location_ptr MetaCLocationStorage_StartLoc(
+        metac_location_storage_t* locationStorage,
+        uint32_t line, uint16_t column)
+{
+    assert(locationStorage->LocationSize <
+        locationStorage->LocationCapacity);
+
+    uint32_t result = locationStorage->LocationSize++;
+
+    locationStorage->Locations[result].StartLine = line;
+    locationStorage->Locations[result].StartColumn = column;
+
+    return result + 4;
+}
+
+
 metac_token_t* MetaCLexerLexNextToken(metac_lexer_t* self,
                                       metac_lexer_state_t* state,
                                       const char* text, uint32_t len)
@@ -615,7 +660,7 @@ metac_token_t* MetaCLexerLexNextToken(metac_lexer_t* self,
     metac_token_t* result = 0;
 
 
-    assert(self->tokens_capacity > self->tokens_size);
+    assert(self->TokenCapacity > self->TokenSize);
     uint32_t eatenChars = 0;
     char c = *text++;
 LcontinueLexnig:
@@ -644,7 +689,12 @@ LcontinueLexnig:
         text -= 1;
     }
 
-    token.Position += eatenChars;
+    state->Position += eatenChars;
+    eatenChars = 0;
+    token.Position = state->Position;
+    token.LocationId =
+        MetaCLocationStorage_StartLoc(&self->LocationStorage, state->Line, state->Column);
+
     if ((token.TokenType = MetaCLexFixedLengthToken(text)) == tok_invalid)
     {
         // const char* begin = text;
@@ -742,7 +792,7 @@ LcontinueLexnig:
             }
             else if (c == '\'')
             {
-                uint32_t charLiteralLength = 1;
+                uint32_t charLiteralLength = 0;
                 text++;
                 token.TokenType = tok_charLiteral;
                 uint32_t charHash = ~0u;
@@ -756,9 +806,11 @@ LcontinueLexnig:
                 }
                 while(c && c != '\'')
                 {
+                    token.chars[charLiteralLength++] = c;
                     if (c == '\\')
                     {
                         c = *text++;
+                        token.chars[charLiteralLength++] = c;
                         eatenChars++;
                         if (!IsValidEscapeChar(c))
                         {
@@ -772,7 +824,9 @@ LcontinueLexnig:
                 {
                     assert("Unterminated char literal");
                 }
-                charLiteralLength = eatenChars++;
+                state->Column += eatenChars;
+                assert(charLiteralLength < sizeof(token.chars));
+                token.CharLiteralLength = charLiteralLength;
             }
             else if (c == '\"' || c == '`')
             {
@@ -783,6 +837,7 @@ LcontinueLexnig:
                 uint32_t stringHash = ~0u;
                 c = *text++;
 
+                uint32_t column;
                 eatenChars++;
                 uint32_t eatenCharsAtStringStart = eatenChars;
 
@@ -792,19 +847,25 @@ LcontinueLexnig:
                     stringHash = crc32c_byte(stringHash, c);
 #endif
                     eatenChars++;
+                    column++;
                     if (c == '\\')
                     {
                         eatenChars++;
+                        column++;
 #ifdef INCREMENTAL_HASH
                         stringHash = crc32c_byte(stringHash, c);
 #endif
                         c = *text++;
                         if (!IsValidEscapeChar(c))
                         {
+                            state->Column = column;
                             ParseErrorF(state, "Invalid escape seqeunce '%.*s'", 4, (text - 2));
                         }
                         if (c == '\n')
+                        {
                             state->Line++;
+                            column = 0;
+                        }
 
                      }
                      c = *text++;
@@ -816,6 +877,7 @@ LcontinueLexnig:
                     result = &err_token;
                     goto Lreturn;
                 }
+
                 uint32_t stringLength = (eatenChars - eatenCharsAtStringStart);
 
                 eatenChars++;
@@ -870,6 +932,7 @@ LcontinueLexnig:
         eatenChars += commentLength + 1;
         token.CommentLength = commentLength;
         token.CommentBegin = text + 2;
+        state->Column += commentLength + 1;
     }
     else if (token.TokenType == tok_comment_begin_multi)
     {
@@ -955,7 +1018,7 @@ LcontinueLexnig:
 
     if (token.TokenType)
     {
-        result = self->tokens + self->tokens_size++;
+        result = self->Tokens + self->TokenSize++;
         *result = token;
     }
     else
@@ -964,6 +1027,9 @@ LcontinueLexnig:
         result = &stop_token;
     }
 Lreturn:
+    MetaCLocationStorage_EndLoc(&self->LocationStorage,
+        token.LocationId, state->Line, state->Column);
+
     state->Position += eatenChars;
     return result;
 }
@@ -1125,9 +1191,9 @@ void test_lexer()
             metac_token_t t1 = {tok_invalid};
             metac_lexer_t lexer;
 
-            lexer.tokens = &t1;
-            lexer.tokens_capacity = 1;
-            lexer.tokens_size = 0;
+            lexer.Tokens = &t1;
+            lexer.TokenCapacity = 1;
+            lexer.TokenSize = 0;
 
             lexed = MetaCLexerLexNextToken(&lexer, &state, word, strlen(word))->TokenType;
         }

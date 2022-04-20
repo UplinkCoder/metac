@@ -268,7 +268,7 @@ typedef struct metac_token_t {
         };
         // case tok_charLiteral :
         struct {
-            char Char;
+            char chars[8];
             uint32_t CharLiteralLength;
         };
         uint64_t ValueU64;
@@ -334,12 +334,36 @@ eject array_methods(meta_var ptr, meta_var size, meta_var capacity)
 }
 */
 
+typedef struct metac_location_t
+{
+    uint32_t StartLine;
+
+    uint16_t LineSpan;
+
+    uint16_t StartColumn;
+    uint16_t EndColumn;
+
+    uint16_t SourceId;
+} metac_location_t;
+
+
+typedef struct metac_location_storage_t
+{
+    metac_location_t* Locations;
+
+    uint32_t LocationSize;
+    uint32_t LocationCapacity;
+
+} metac_location_storage_t;
+
 typedef struct metac_lexer_t {
     // inject array_methods(tokens, token_size, token_capacity);
 
-    metac_token_t* tokens;
-    uint32_t tokens_size;
-    uint32_t tokens_capacity;
+    metac_token_t* Tokens;
+    uint32_t TokenSize;
+    uint32_t TokenCapacity;
+
+    metac_location_storage_t LocationStorage;
 
     metac_token_t inlineTokens[256];
 #if ACCEL == ACCEL_TABLE

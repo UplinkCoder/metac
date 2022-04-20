@@ -33,14 +33,14 @@ static inline void LexFile(metac_lexer_t* lexer,
             MetaCLexerStateFromBuffer(1, text, length);
         if (estimated > 96)
         {
-            lexer->tokens = (metac_token_t*) malloc(estimated * sizeof(metac_token_t));
-            lexer->tokens_capacity = estimated;
+            lexer->Tokens = (metac_token_t*) malloc(estimated * sizeof(metac_token_t));
+            lexer->TokenCapacity = estimated;
         }
         else
         {
-            lexer->tokens = lexer->inlineTokens;
-            lexer->tokens_capacity =
-                sizeof(lexer->inlineTokens) / sizeof(lexer->tokens[0]);
+            lexer->Tokens = lexer->inlineTokens;
+            lexer->TokenCapacity =
+                sizeof(lexer->inlineTokens) / sizeof(lexer->Tokens[0]);
         }
 
         while(length > 0)
@@ -64,7 +64,7 @@ static inline void LexFile(metac_lexer_t* lexer,
             length -= eaten_chars;
         }
 
-        printf("Lexed %d tokens\n", (int) lexer->tokens_size);
+        printf("Lexed %d tokens\n", (int) lexer->TokenSize);
     }
 }
 const char** includePaths = 0;

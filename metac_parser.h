@@ -152,11 +152,23 @@
     M(stmt_decl)
 
 
-#define FOREACH_NDOE_KIND(M) \
+#define FOREACH_NODE_KIND(M) \
     FOREACH_EXP(M) \
     FOREACH_STMT_KIND(M) \
     FOREACH_DECL_KIND(M) \
     M(node_max)
+
+#define DEFINE_NODE_MEMBERS(MEMB) \
+    node_ ## MEMB,
+
+#if 1
+typedef enum metac_node_kind_t
+{
+    FOREACH_NODE_KIND(DEFINE_NODE_MEMBERS)
+} metac_node_kind_t;
+#endif
+
+#undef DEFINE_NODE_MEMBERS
 
 #define DEFINE_MEMBERS(MEMBER) \
     MEMBER,
@@ -187,11 +199,15 @@ typedef enum metac_binary_expression_kind_t
     FOREACH_BINARY_EXP(BIN_MEMBERS)
 } metac_binary_expression_kind_t;
 
+#define EXPRESSION_HEADER \
+    metac_expression_kind_t Kind; \
+    uint32_t LocationIdx; \
+    uint32_t Hash; \
+    uint32_t Serial;
+
 typedef struct metac_expression_t
 {
-    metac_expression_kind_t Kind;
-    uint32_t LocationIdx;
-    uint32_t Hash;
+    EXPRESSION_HEADER
 
     union // switch(Kind)
     {
@@ -247,6 +263,7 @@ typedef enum metac_statement_kind_t
     metac_statement_kind_t StmtKind; \
     uint32_t LocationIdx; \
     uint32_t Hash; \
+    uint32_t Serial; \
     struct metac_statement_t* Next;
 
 typedef struct statement_header_t
@@ -383,7 +400,8 @@ typedef struct metac_statement_t
 #define DECLARATION_HEADER \
     metac_declaration_kind_t DeclKind; \
     uint32_t LocationIdx; \
-    uint32_t Hash;
+    uint32_t Hash; \
+    uint32_t Serial;
 
 typedef enum metac_type_kind_t
 {

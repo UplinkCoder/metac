@@ -191,6 +191,10 @@ LlexSrcBuffer:
                     printf("    %.*s\n", LENGTH_FROM_IDENTIFIER_KEY(token.Key), IDENTIFIER_PTR(&lexer.IdentifierTree, token));
 #endif
                 }
+                else if (token.TokenType == tok_charLiteral)
+                {
+                    printf("    '%.*s'\n", token.CharLiteralLength, token.chars);
+                }
                 else if (token.TokenType == tok_unsignedNumber)
                 {
                     char buffer[21];
@@ -208,6 +212,13 @@ LlexSrcBuffer:
                 if (!token_length)
                     break;
             }
+        }
+
+        {
+            repl_state.Line++;
+            repl_state.Column = 1;
+            lexer.TokenSize = 0;
+            lexer.LocationStorage.LocationSize = 0;
         }
 
         if (freePtr)
