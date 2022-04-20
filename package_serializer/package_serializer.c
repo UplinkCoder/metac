@@ -112,15 +112,34 @@ int main(int argc, const char* argv[])
             readResult.FileContent0, readResult.FileLength
 
         );
+
+        metac_identifier_table_slot_t firstEntry = {0};
+
+        metac_identifier_table_slot_t* firstEntryP = findFirstEntry(&lexer.IdentifierTable);
+        if (firstEntryP)
+            firstEntry = *firstEntryP;
+
+        printf("First Entry = {Hash:%x Value:%u}\n", firstEntry.HashKey, firstEntry.Ptr.v);
+
+
 #ifndef NO_DUMP
 #if ACCEL == ACCEL_TABLE
         char formatBuffer[512];
         sprintf(formatBuffer, "%s.identifiers", arg);
-        FILE* fd = fopen(formatBuffer, "wb");
-        WriteIdentifiers(&lexer.IdentifierTable, fd);
+        WriteTable(&lexer.IdentifierTable, formatBuffer, 20, 0);
+
+        metac_identifier_table_t newIdTable = ReadTable(formatBuffer);
+        sprintf(formatBuffer, "%s.identifiers.new", arg);
+        WriteTable(&newIdTable, formatBuffer, 20, "new");
+
+        printf("First entry is in read out table: %d\n",
+            IsInTable(&newIdTable, firstEntry.HashKey,
+            (metac_identifier_ptr_t) {firstEntry.Ptr.v} )
+        );
+
+
         sprintf(formatBuffer, "%s.strings", arg);
-        fd = fopen(formatBuffer, "wb");
-        WriteIdentifiers(&lexer.StringTable, fd);
+        WriteTable(&lexer.StringTable, formatBuffer, 12, 0);
 #endif
 #endif
         metac_parser_t parser;

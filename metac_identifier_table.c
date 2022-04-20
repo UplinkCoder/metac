@@ -43,7 +43,7 @@ void IdentifierTableInit(metac_identifier_table_t* table)
     table->StringMemoryCapacity = 32768 * 8;
     table->StringMemorySize = 0;
     table->SlotsUsed = 0;
-    // table->MaxDisplacement = 0;
+    table->MaxDisplacement = 0;
 }
 
 #define ALIGN4(N) (((N) + 3) & ~3)
@@ -166,11 +166,169 @@ metac_identifier_ptr_t GetOrAddIdentifier(metac_identifier_table_t* table,
     return result;
 }
 
-void WriteIdentifiers(metac_identifier_table_t* table, FILE* fd)
+#define LOG2(X) \
+    (BSR(X) + 1)
+
+#define NEXTPOW2(X) \
+    (1 << LOG2(X))
+
+#define BSR(X) \
+    (__builtin_clz(X) ^ 31)
+
+#define slot_t metac_identifier_table_slot_t
+
+void InsertSlot(slot_t* slots, slot_t slot, const uint32_t slotIndexMask)
 {
+    const uint32_t initialSlotIndex = (slot.HashKey & slotIndexMask);
+    // TracyCPlot("TargetIndex", initialSlotIndex);
+    for(
+        uint32_t slotIndex = initialSlotIndex;
+        (++slotIndex & slotIndexMask) != initialSlotIndex;
+    )
+    {
+        slot_t* dstSlot = slots + ((slotIndex - 1) & slotIndexMask);
+        if (dstSlot->HashKey == 0)
+        {
+            *dstSlot = slot;
+            break;
+        }
+    }
+}
+
+bool IsInTable(const metac_identifier_table_t* table,
+               uint32_t key, metac_identifier_ptr_t value)
+{
+    const uint32_t slotIndexMask = ((1 << table->SlotCount_Log2) - 1);
+    const uint32_t initialSlotIndex = (key & slotIndexMask);
+    // TracyCPlot("TargetIndex", initialSlotIndex);
+    for(
+        uint32_t slotIndex = initialSlotIndex;
+        (++slotIndex & slotIndexMask) != initialSlotIndex;
+    )
+    {
+        metac_identifier_table_slot_t slot =
+            table->Slots[(slotIndex - 1) & slotIndexMask];
+
+        if (slot.HashKey == 0)
+            return false;
+        if (slot.HashKey == key && slot.Ptr.v == value.v)
+            return true;
+    }
+}
+
+
+metac_identifier_table_t ReadTable(const char* filename)
+{
+    metac_identifier_table_t result = {0};
+
+    identifier_table_file_header_t header;
+    FILE* fd = fopen(filename, "rb");
+
+    fread(&header, 1, sizeof(header), fd);
+    if (header.HeaderCommentSize)
+    {
+        char* comment = (char*)malloc(header.HeaderCommentSize);
+        fread(&comment, 1, header.HeaderCommentSize, fd);
+        printf("Comment: %.*s\n", header.HeaderCommentSize, comment);
+        free((void*)comment);
+    }
+
+    uint32_t stringMemoryCapacity = ((header.StringMemorySize + 64) & ~63);
+
+    result.StringMemoryCapacity = stringMemoryCapacity;
+    result.StringMemorySize = header.StringMemorySize;
+    result.SlotCount_Log2 = LOG2(header.NumberOfSlots);
+
+    result.Slots = cast(slot_t*)
+                    calloc((1 << result.SlotCount_Log2),
+                           sizeof(metac_identifier_table_slot_t));
+
+    uint32_t slotMemorySize = ( (sizeof(slot_t) > header.SizeofSlot)
+                                ? sizeof (slot_t) : header.SizeofSlot );
+
+    const uint32_t slotIndexMask = ((1 << result.SlotCount_Log2) - 1);
+
+    slot_t* readSlot = alloca(slotMemorySize);
+    memset(readSlot, 0, slotMemorySize);
+
+    for(int i = 0; i < header.NumberOfSlots; i++)
+    {
+        fread(readSlot, 1, header.SizeofSlot, fd);
+        InsertSlot(result.Slots, *readSlot, slotIndexMask);
+    }
+    uint32_t soff = ftell(fd);
+    assert(soff == header.OffsetStrings);
+
+    result.StringMemory = malloc(result.StringMemoryCapacity);
+    fread(result.StringMemory, 1, result.StringMemorySize, fd);
+
+    uint32_t stringSizeLeft = result.StringMemorySize;
+    uint32_t stringsProcessed = 0;
+
+    for(char* prevNewline = result.StringMemory;
+        stringSizeLeft > 0;)
+    {
+        char *nextNewline = (char*) memchr(prevNewline, '\n', stringSizeLeft);
+        if (nextNewline == 0)
+            break;
+
+        (*nextNewline) = '\0';
+        stringSizeLeft -= (nextNewline - prevNewline);
+        prevNewline = nextNewline;
+        stringsProcessed++;
+    }
+
+    assert(stringsProcessed == header.NumberOfSlots);
+    result.SlotsUsed = header.NumberOfSlots;
+    return result;
+#undef slot_t
+}
+
+metac_identifier_table_slot_t* findFirstEntry(metac_identifier_table_t* table)
+{
+    for(metac_identifier_table_slot_t* slotP = table->Slots;
+        slotP < table->Slots + (1 << table->SlotCount_Log2);
+        slotP++)
+    {
+        if (slotP->HashKey)
+        {
+            return slotP;
+        }
+    }
+
+    return 0;
+}
+void WriteTable(metac_identifier_table_t* table, const char* filename, uint32_t lengthShift, const char* comment)
+{
+    // printf("Writing Table with %u entires\n", table->SlotsUsed);
+    void* newLinePosInStrings =
+        memchr(table->StringMemory, '\n', table->StringMemorySize);
+
+    if (newLinePosInStrings != 0)
+    {
+        fprintf(stderr, " --- Newline in strings detected ----\n");
+        fprintf(stderr, " --- Table will not be serilaized ----\n");
+        return ;
+    }
+
+    FILE* fd = fopen(filename, "wb");
+
+    identifier_table_file_header_t header = {0};
+    header.LengthShift = lengthShift;
+    // file looks like
     //char chunk[4192];
     //uint32_t chunk_used = 0;
+    fpos_t startPosition;
+    (void)fgetpos(fd, &startPosition);
 
+    header.HeaderCommentSize = (comment ? strlen(comment) : 0);
+    uint32_t headerSize = sizeof(header) + ALIGN4(header.HeaderCommentSize);
+    fseek(fd, headerSize, SEEK_CUR);
+
+    header.OffsetSlots = headerSize;
+    header.SizeofSlot = sizeof(metac_identifier_table_slot_t);
+    header.StringMemorySize = table->StringMemorySize;
+    // -------------- write out slots ---------------------------------
     const uint32_t maxSlots = (1 << table->SlotCount_Log2);
     for(uint32_t slotIndex = 0;
         slotIndex < maxSlots;
@@ -179,7 +337,40 @@ void WriteIdentifiers(metac_identifier_table_t* table, FILE* fd)
         metac_identifier_table_slot_t slot = table->Slots[slotIndex];
         if (slot.HashKey)
         {
+            header.NumberOfSlots++;
+            fwrite(&slot, 1, sizeof(slot), fd);
+        }
+    }
+    // ----------------- write out strings ----------------------------
+    header.OffsetStrings = header.OffsetSlots +
+        (header.SizeofSlot * header.NumberOfSlots);
+
+    const char* stringP = table->StringMemory;
+    for(uint32_t i = 0;
+        i < header.NumberOfSlots;
+        i++)
+    {
+        uint32_t len = strlen(stringP);
+        fwrite(stringP, 1, len, fd);
+        fwrite("\n", 1, 1, fd);
+        uint32_t padBy = ALIGN4(len + 1) - (len + 1);
+        fwrite("@@@@", 1, padBy, fd);
+        stringP += ALIGN4(len + 1);
+    }
+    assert((stringP - table->StringMemory) == table->StringMemorySize);
+
+    // --------------- write header / end of file ----------------------
+    fsetpos(fd, &startPosition);
+    fwrite(&header, 1, sizeof(header), fd);
+    fclose(fd);
+}
+#endif
+
+#if 0
+
 #ifndef REFCOUNT
+
+
             fprintf(fd, "Hash: %x Id: %s\n",
                                 slot.HashKey,
                                        IdentifierPtrToCharPtr(table, slot.Ptr));
@@ -191,9 +382,4 @@ void WriteIdentifiers(metac_identifier_table_t* table, FILE* fd)
                                                    slot.RefCount,
                                                                     slot.Displacement);
 #endif
-        }
-    }
-
-    fclose(fd);
-}
 #endif
