@@ -65,10 +65,11 @@ metac_identifier_ptr_t RegisterIdentifier(metac_parser_t* self,
             MEMBER_SUFFIX(&self->Lexer->Identifier),
             token->IdentifierPtr
         );
-        uint32_t identifierKey = token->IdentifierKey;
-        return GetOrAddIdentifier(MEMBER_SUFFIX(&self->Identifier),
-                                  identifierKey, identifierString,
-                                  LENGTH_FROM_IDENTIFIER_KEY(identifierKey));
+
+    uint32_t identifierKey = token->IdentifierKey;
+    return GetOrAddIdentifier(MEMBER_SUFFIX(&self->Identifier),
+                              identifierKey, identifierString,
+                              LENGTH_FROM_IDENTIFIER_KEY(identifierKey));
 }
 
 metac_identifier_ptr_t RegisterString(metac_parser_t* self,

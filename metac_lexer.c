@@ -534,9 +534,6 @@ bool static ParseOctal(const char** textP, uint32_t* eatenCharsP, uint64_t* valu
     if(c < '0' || c > '7')
     {
         result = false;
-        eatenChars++;
-        text++;
-        assert(0);
     }
 
     while(c && (c >= '0' && c <= '7'))
@@ -775,8 +772,7 @@ LcontinueLexnig:
                 {
                     assert("Unterminated char literal");
                 }
-                charLiteralLength =
-                eatenChars++;
+                charLiteralLength = eatenChars++;
             }
             else if (c == '\"' || c == '`')
             {
@@ -813,33 +809,6 @@ LcontinueLexnig:
                      }
                      c = *text++;
                 }
-#if 0
-                        if (esc == 'x')
-                        {
-                            text++;
-                            eatenChars++;
-                            if (!ParseHex(&text, &eatenChars, &number))
-                                goto LinvalidEscapeInString;
-                            c = (char) number;
-                        }
-                        else if (esc > '7' || esc < '0')
-                        {
-                            c = EscapedChar(esc);
-                            eatenChars++;
-                            text++;
-                        }
-                        else
-                        {
-                            if (!ParseOctal(&text, &eatenChars, &number))
-                                goto LinvalidEscapeInString;
-                            c = (char) number;
-                        }
-                        if (c == 'E')
-                        {
-                        LinvalidEscapeInString:
-                            ParseErrorF(state, "Invalid escape seqeunce '%.*s'", 4, (text - 1));
-                        }
-#endif
 
                 if (c != matchTo)
                 {
@@ -867,6 +836,7 @@ LcontinueLexnig:
             //TODO special hack as long as we don't do proper preprocessing
             else if (c == '\\')
             {
+                text++;
                 c = *text++;
                 if (c == '\n')
                 {
@@ -876,6 +846,7 @@ LcontinueLexnig:
                 }
                 else
                 {
+                    printf("escaping '%c' in wild code '%.*s' \n", c, 8, text - 4);
                     assert(0); // this is not to escape a newline
                 }
             }
@@ -1111,8 +1082,8 @@ void test_lexer()
         "break",
         "continue",
         "until",
-        "scope",
         "yield",
+        "scope",
 
         "__LINE__",
         "__FUNCTION__",
@@ -1165,7 +1136,7 @@ void test_lexer()
             lexed = MetaCLexFixedLengthToken(word);
         }
         assert(lexed == tok);
-        assert(strlen(word) == MetaCTokenStaticLength(tok));
+        assert(strlen(word) == MetaCStaticTokenLength(tok));
     }
 }
 
