@@ -3,7 +3,6 @@
 #include "compat.h"
 
 #define ACCEL_TABLE 1
-#define ACCEL_TREE  2
 
 #ifndef ACCEL
 #else
@@ -15,14 +14,6 @@
 #  define ACCELERATOR "Table"
 #  define ACCEL_SUFFIX Table
 #  define ACCEL_INIT(A, B) IdentifierTableInit(&((A).B ## Table))
-# elif ACCEL == ACCEL_TREE
-#  include "metac_identifier_tree.h"
-#  define IDENTIFIER_TREE
-#  define MEMBER_SUFFIX(X) X ## Tree
-#  define MEMBER_INFIX(P, S) P ## Tree # S
-#  define ACCELERATOR "Tree"
-#  define ACCEL_SUFFIX Tree
-#  define ACCEL_INIT(A, B) IdentifierTreeInit(&((A).B ## Tree))
 # else
 #  error "Unknown ACCEL value"
 # endif

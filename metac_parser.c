@@ -77,7 +77,7 @@ metac_identifier_ptr_t RegisterString(metac_parser_t* self,
 {
     const char* string =
         IdentifierPtrToCharPtr(
-            MEMBER_SUFFIX(&self->Lexer->Identifier),
+            MEMBER_SUFFIX(&self->Lexer->String),
             token->StringPtr
         );
         uint32_t stringKey = token->StringKey;
@@ -967,7 +967,9 @@ metac_expression_t* MetaCParserParseUnaryExpression(metac_parser_t* self)
 }
 
 
-metac_expression_t* MetaCParserParseBinaryExpression(metac_parser_t* self, metac_expression_t* left)
+metac_expression_t* MetaCParserParseBinaryExpression(metac_parser_t* self, 
+                                                     metac_expression_t* left,
+                                                     uint32_t min_prec)
 {
     metac_expression_t* result = 0;
 
@@ -977,7 +979,32 @@ metac_expression_t* MetaCParserParseBinaryExpression(metac_parser_t* self, metac
     metac_expression_kind_t exp_left  = left->Kind;
     metac_expression_kind_t exp_right;
 
-    if (peekTokenType == tok_plusplus)
+    if (IsBinaryOperator(peekTokenType))
+    {
+        while(IsBinaryOperator(peekTokenType)
+           && OpToPrecedence(BinExpTypeFromTokenType(peekTokenType) >= min_prec))
+        {
+            exp_right = BinExpTypeFromTokenType(peekTokenType);
+            uint32_t opPrecedence = OpToPrecedence(exp_right);
+            MetaCParserMatch(self, peekTokenType);
+            metac_expression_t* rhs = MetaCParserParsePrimaryExpression(self);
+            peekToken = MetaCParserPeekToken(self, 1);
+            peekTokenType = (peekToken ? peekToken->TokenType : tok_eof);
+            while(IsBinaryOperator(peekTokenType)
+               && opPrecedence <
+                  OpToPrecedence(BinExpTypeFromTokenType(peekTokenType)))
+            {
+                rhs = MetaCParserParseBinaryExpression(self, rhs, opPrecedence + 0);
+                peekToken = MetaCParserPeekToken(self, 1);
+                peekTokenType = (peekToken ? peekToken->TokenType : tok_eof);
+            }
+            result = AllocNewExpression(exp_right);
+            result->E1 = left;
+            result->E2 = rhs;
+            left = result;
+        }
+    }
+    else if (peekTokenType == tok_plusplus)
     {
         metac_expression_t* E1 = left;
         result = AllocNewExpression(exp_post_increment);
@@ -1023,37 +1050,12 @@ metac_expression_t* MetaCParserParseBinaryExpression(metac_parser_t* self, metac
         exp_right = ExpTypeFromTokenType(peekTokenType);
     }
 
-    ///
-    {
-        // printf("Next BinaryOp: %s\n", MetaCTokenEnum_toChars(op));
-        //if (left->Hash == 284281794)
-        //{
-        //    asm ("int $3" );
-        //}
-        metac_expression_t* E1;
-        metac_expression_t* E2;
-        uint32_t prec_left = OpToPrecedence(exp_left);
-        uint32_t prec_right = OpToPrecedence(exp_right);
-
-        if(prec_left < prec_right)
-        {
-            // we make the expression to the right our child
-            result = AllocNewExpression(exp_right);
-            result->E1 = left;
-            MetaCParserMatch(self, peekTokenType);
-            result->E2 = MetaCParserParseExpression(self, result);
-        }
-        else // we become a child of the expression to the right
-        {
-            result = left;
-        }
-    }
-
-
+    
     return result;
 }
 
-metac_expression_t* MetaCParserParseExpression(metac_parser_t* self, metac_expression_t* prev)
+metac_expression_t* MetaCParserParseExpression(metac_parser_t* self,
+                                               metac_expression_t* prev)
 {
     metac_expression_t* result = 0;
     if (g_reorder_expression)
@@ -1096,7 +1098,7 @@ metac_expression_t* MetaCParserParseExpression(metac_parser_t* self, metac_expre
     }
     else
     {
-        result = MetaCParserParseBinaryExpression(self, prev);
+        result = MetaCParserParseBinaryExpression(self, prev, 0);
     }
 
 
@@ -1107,7 +1109,9 @@ metac_expression_t* MetaCParserParseExpression(metac_parser_t* self, metac_expre
     {
         if (IsBinaryOperator(peekNext->TokenType))
         {
-            result = MetaCParserParseBinaryExpression(self, result);
+            uint32_t prec = OpToPrecedence(
+                BinExpTypeFromTokenType(peekNext->TokenType));
+            result = MetaCParserParseBinaryExpression(self, result, prec);
         }
     }
 
@@ -1289,14 +1293,10 @@ static stmt_block_t* MetaCParserParseBlockStatement(metac_parser_t* self, metac_
 
     return result;
 }
-static metac_location_t _inlineLocations[256];
-
 /// static lexer for using in the g_lineParser
 static metac_lexer_t g_lineLexer = {
-    g_lineLexer.inlineTokens,
-    0,
-    (sizeof(g_lineLexer.inlineTokens) / sizeof(g_lineLexer.inlineTokens[0])),
-    {_inlineLocations, 0, sizeof(_inlineLocations) / sizeof(_inlineLocations[0])}
+    g_lineLexer.inlineTokens,     0, ARRAY_SIZE(g_lineLexer.inlineTokens),
+    {g_lineLexer.inlineLocations, 0, ARRAY_SIZE(g_lineLexer.inlineLocations)}
 };
 /// There can only be one LineParser as it uses static storage
 metac_parser_t g_lineParser = { &g_lineLexer };
@@ -1305,6 +1305,8 @@ void LineLexerInit(void)
 {
     g_lineParser.CurrentTokenIndex = 0;
     g_lineLexer.TokenSize = 0;
+    g_lineLexer.LocationStorage.LocationSize = 0;
+    
     ACCEL_INIT(g_lineLexer, Identifier);
     ACCEL_INIT(g_lineLexer, String);
     ACCEL_INIT(g_lineParser, Identifier);
