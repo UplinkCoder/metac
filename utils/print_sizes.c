@@ -10,6 +10,8 @@ void main()
     printf("\n\n");
     printf("sizeof(metac_lexer_t): %d\n", (int) sizeof(metac_lexer_t));
     printf("sizeof(scope_kind_t): %d\n", (int) sizeof(scope_kind_t));
+    printf("sizeof(metac_location_t): %d\n", (int) sizeof(metac_location_t));
+
 #if defined(IDENTIFIER_TABLE)
     printf("sizeof(metac_identifier_table_t): %d\n", (int) sizeof(metac_identifier_table_t));
 #endif

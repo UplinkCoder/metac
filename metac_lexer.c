@@ -433,10 +433,7 @@ void MetaCLexerInit(metac_lexer_t* self)
 
     self->LocationStorage.LocationCapacity = self->TokenCapacity;
     self->LocationStorage.LocationSize = 0;
-    self->LocationStorage.Locations = (metac_location_t*)malloc(
-        self->LocationStorage.LocationCapacity
-            * sizeof(metac_location_t)
-    );
+    self->LocationStorage.Locations = self->inlineLocations;
 
 #ifdef ACCEL
     ACCEL_INIT(*self, Identifier);
@@ -482,7 +479,8 @@ static inline bool IsNumericChar(char c)
 
 static inline bool IsHexLiteralChar(char c)
 {
-    return (IsNumericChar(c) | (((cast(unsigned) (c | 32)) - 'a') <= 6));
+  c |= 32;
+  return (cast(unsigned)(c - '0') <= 9) | (cast(unsigned)(c - 'a') <= 6);
 }
 
 static inline metac_token_enum_t classify(char c)
