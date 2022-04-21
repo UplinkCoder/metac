@@ -365,8 +365,8 @@ typedef struct metac_lexer_t {
 
     metac_location_storage_t LocationStorage;
 
-    metac_token_t       inlineTokens[256];
-    metac_location_t inlineLocations[256];
+    metac_token_t       inlineTokens[32];
+    metac_location_t inlineLocations[32];
 #if ACCEL == ACCEL_TABLE
     metac_identifier_table_t IdentifierTable;
     metac_identifier_table_t StringTable;

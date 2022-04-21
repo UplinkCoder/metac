@@ -193,7 +193,12 @@ LnextLine:
                 const char* str = PrintExpression(&g_lineParser, exp);
                 printf("expr = %s\n", str);
                 goto LnextLine;
-
+            case parse_mode_ee:
+                //exp = EEParserParse(Line);
+                //const char* str = PrintExpression(&g_lineParser, exp);
+                //printf("expr = %s\n", str);
+                exp = 0;
+                goto LnextLine;
             case parse_mode_stmt :
                    stmt = MetaCParserParseStatementFromString(line);
                 goto LnextLine;
