@@ -101,6 +101,7 @@
     \
     M(exp_identifier) \
     M(exp_string) \
+    M(exp_char) \
     M(exp_signed_integer) \
     M(exp_increment) \
     M(exp_decrement) \
@@ -241,6 +242,11 @@ typedef struct metac_expression_t
 #else
             const char* String;
 #endif
+        };
+        // case exp_char:
+        struct {
+            uint32_t CharKey;
+            char Chars[8];
         };
 
         // case exp_signed_integer :

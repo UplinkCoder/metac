@@ -386,8 +386,14 @@ typedef struct metac_lexer_t {
 #define STRING_KEY(HASH, LENGTH) \
     ( (uint32_t)((HASH) & 0xFFF) | (((uint32_t)(LENGTH)) << 12) )
 
+#define CHAR_KEY(HASH, LENGTH) \
+    ( (uint32_t)((HASH) & 0xFFFFFFF) | (((uint32_t)(LENGTH)) << 28) )
+
 #define LENGTH_FROM_STRING_KEY(KEY) \
     ( (KEY) >> 12 )
+
+#define LENGTH_FROM_CHAR_KEY(KEY) \
+    ( (KEY) >> 28 )
 
 
 #include <stdio.h>
