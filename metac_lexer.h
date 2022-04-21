@@ -3,6 +3,7 @@
 #include "compat.h"
 
 #define ACCEL_TABLE 1
+#define ACCEL_TREE 2
 
 #ifndef ACCEL
 #else
@@ -260,8 +261,8 @@ typedef struct metac_token_t {
         };
         // case tok_charLiteral :
         struct {
-            char chars[8];
             uint32_t CharLiteralLength;
+            char chars[8];
         };
         uint64_t ValueU64;
         int64_t ValueI64;
