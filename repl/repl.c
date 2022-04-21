@@ -2,6 +2,7 @@
 #include "../compat.h"
 #include "../metac_lexer.h"
 #include "../metac_parser.h"
+//#include "../metac_eeP.c"
 #include "../3rd_party/linenoise/linenoise.c"
 #include "../int_to_str.c"
 #include <stdio.h>
@@ -21,6 +22,8 @@ typedef enum parse_mode_t
     parse_mode_stmt,
     parse_mode_expr,
     parse_mode_file,
+
+    parse_mode_ee,
 
     parse_mode_max
 } parse_mode_t;
@@ -57,7 +60,7 @@ int main(int argc, const char* argv[])
 LswitchMode:
     switch (parseMode)
     {
-    case parse_mode_max: break;
+    case parse_mode_max: assert(0);
     case parse_mode_token:
         promt_ = "Token>";
         break;
@@ -70,6 +73,9 @@ LswitchMode:
     case parse_mode_stmt:
         promt_ = "Stmt>";
         break;
+    case parse_mode_ee:
+        promt_ = "EE>";
+        break;
     }
 
 LnextLine:
@@ -79,7 +85,7 @@ LnextLine:
         uint32_t line_length = strlen(line);
         if (*line == ':')
         {
-            switch(*(line + 1))
+            switch(line[1])
             {
             case 'q':
                 linenoiseHistorySave(".repl_history");
@@ -120,6 +126,8 @@ LnextLine:
                     srcBufferLength = sz;
                     fread(srcBuffer, 1, sz, fd);
                     parseMode = parse_mode_file;
+
+                    repl_state.Line = 1;
                 }
 
                 goto LlexSrcBuffer;
@@ -131,8 +139,15 @@ LnextLine:
                 parseMode = parse_mode_decl;
                 goto LswitchMode;
             case 'e' :
-                parseMode = parse_mode_expr;
-                goto LswitchMode;
+                switch(line[2])
+                {
+                default:
+                    parseMode = parse_mode_expr;
+                    goto LswitchMode;
+                case 'e':
+                    parseMode = parse_mode_ee;
+                    goto LswitchMode;
+                }
             case 's' :
                 parseMode = parse_mode_stmt;
                 goto LswitchMode;
@@ -157,6 +172,7 @@ LnextLine:
             srcBuffer = line;
             srcBufferLength = line_length;
         }
+
         while (srcBufferLength > 0)
         {
             metac_token_t token;
