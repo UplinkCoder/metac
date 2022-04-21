@@ -1210,6 +1210,11 @@ void test_lexer()
             lexer.TokenCapacity = 1;
             lexer.TokenSize = 0;
 
+            metac_location_t l1;
+            lexer.LocationStorage.Locations = &l1;
+            lexer.LocationStorage.LocationCapacity = 1;
+            lexer.LocationStorage.LocationSize = 0;
+
             lexed = MetaCLexerLexNextToken(&lexer, &state, word, strlen(word))->TokenType;
         }
         else
