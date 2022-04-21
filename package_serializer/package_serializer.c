@@ -85,7 +85,7 @@ int main(int argc, const char* argv[])
 {
     includePathCount = 0;
     includePathCapacity = 256;
-    includePaths = malloc(sizeof(char**) * includePathCapacity);
+    includePaths = (const char**)malloc(sizeof(char**) * includePathCapacity);
     const char* arg = "bigcode.c";
 
     for(int arg_idx = 1;
@@ -113,7 +113,6 @@ int main(int argc, const char* argv[])
 
         LexFile(&lexer, arg,
             readResult.FileContent0, readResult.FileLength
-
         );
 
         metac_identifier_table_slot_t firstEntry = {0};
@@ -136,8 +135,8 @@ int main(int argc, const char* argv[])
         WriteTable(&newIdTable, formatBuffer, 20, "new");
 
         printf("First entry is in read out table: %d\n",
-            IsInTable(&newIdTable, firstEntry.HashKey,
-            (metac_identifier_ptr_t) {firstEntry.Ptr.v} )
+               IsInTable(&newIdTable, firstEntry.HashKey,
+                         firstEntry.Ptr)
         );
 
 

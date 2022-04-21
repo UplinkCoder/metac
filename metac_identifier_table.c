@@ -9,6 +9,10 @@
 #include <string.h>
 #include <stdio.h>
 
+#ifdef _MSC_VER
+#include <intrin.h>
+#endif
+
 #include "3rd_party/tracy/TracyC.h"
 
 #ifdef TRACY_ENABLE
@@ -172,8 +176,17 @@ metac_identifier_ptr_t GetOrAddIdentifier(metac_identifier_table_t* table,
 #define NEXTPOW2(X) \
     (1 << LOG2(X))
 
-#define BSR(X) \
+#if defined(_MSC_VER)
+    unsigned long BSR(uint32_t x)
+    {
+        unsigned long result;
+        _BitScanReverse(&result, x);
+        return result;
+	}
+#else
+#  define BSR(X) \
     (__builtin_clz(X) ^ 31)
+#endif
 
 #define slot_t metac_identifier_table_slot_t
 
@@ -248,7 +261,7 @@ metac_identifier_table_t ReadTable(const char* filename)
 
     const uint32_t slotIndexMask = ((1 << result.SlotCount_Log2) - 1);
 
-    slot_t* readSlot = alloca(slotMemorySize);
+    slot_t* readSlot = (slot_t*)alloca(slotMemorySize);
     memset(readSlot, 0, slotMemorySize);
 
     for(int i = 0; i < header.NumberOfSlots; i++)
@@ -259,7 +272,7 @@ metac_identifier_table_t ReadTable(const char* filename)
     uint32_t soff = ftell(fd);
     assert(soff == header.OffsetStrings);
 
-    result.StringMemory = malloc(result.StringMemoryCapacity);
+    result.StringMemory = (char*)malloc(result.StringMemoryCapacity);
     fread(result.StringMemory, 1, result.StringMemorySize, fd);
 
     uint32_t stringSizeLeft = result.StringMemorySize;
