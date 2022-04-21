@@ -607,7 +607,7 @@ bool IsValidEscapeChar(char c)
 {
     // printf("Calling %s with '%c'\n", __FUNCTION__, c);
     return (c == 'n'  || c == '"' || c == 't')
-        || (c == '\'' || c == 'r' || c == '`')
+        || (c == '\'' || c == 'r' || c == 'u')
         || (c == '\\' || c == '\n'|| c == '`')
         || (c == 'x'  || c == 'v' || c == 'a')
         || (c == 'f'  || c == '?' || c == 'b')
@@ -621,6 +621,7 @@ void MetaCLocationStorage_EndLoc(
         metac_location_ptr locationId,
         uint32_t line, uint16_t column)
 {
+#ifndef NO_LOCATION_TRACKING
     assert(locationId >= 4);
     assert((locationId - 4) < locationStorage->LocationSize);
 
@@ -633,12 +634,14 @@ void MetaCLocationStorage_EndLoc(
     location->LineSpan = line - location->StartLine;
     assert(column < 0xFFFF);
     location->EndColumn = (uint16_t)column;
+#endif
 }
 
 metac_location_ptr MetaCLocationStorage_StartLoc(
         metac_location_storage_t* locationStorage,
         uint32_t line, uint16_t column)
 {
+#ifndef NO_LOCATION_TRACKING
     assert(locationStorage->LocationSize <
         locationStorage->LocationCapacity);
 
@@ -648,6 +651,9 @@ metac_location_ptr MetaCLocationStorage_StartLoc(
     locationStorage->Locations[result].StartColumn = column;
 
     return result + 4;
+#else
+    return 0;
+#endif
 }
 
 
@@ -722,7 +728,10 @@ LcontinueLexnig:
                 state->Column += eatenChars;
                 token.IdentifierKey =
                     IDENTIFIER_KEY(identifier_hash, identifier_length);
+
+                // You can take out keyword matching but it doesn't cost much anywys
                 MetaCLexerMatchKeywordIdentifier(&token, identifierBegin);
+
                 if(token.TokenType == tok_identifier)
                 {
 #ifndef ACCEL
