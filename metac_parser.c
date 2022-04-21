@@ -790,7 +790,22 @@ uint32_t OpToPrecedence(metac_expression_kind_t exp)
     return 0;
 }
 
-metac_expression_t* MetaCParserParseUnaryExpression(metac_parser_t* self)
+bool IsPrimaryExpression(metac_token_enum_t tokenType)
+{
+    switch(tokenType)
+    {
+    case tok_lParen:
+    case tok_unsignedNumber:
+    case tok_stringLiteral:
+    case tok_identifier:
+        return true;
+    default:
+        return false;
+    }
+}
+
+
+metac_expression_t* MetaCParserParsePrimaryExpression(metac_parser_t* self)
 {
     metac_expression_t* result = 0;
 
@@ -798,20 +813,8 @@ metac_expression_t* MetaCParserParseUnaryExpression(metac_parser_t* self)
     metac_token_enum_t tokenType =
         (currentToken ? currentToken->TokenType : tok_eof);
 
-    if (tokenType == tok_lParen)
-    {
-        result = AllocNewExpression(exp_paren);
-        {
-            if (!MetaCParserPeekMatch(self, tok_rParen, 1));
-                result->E1 = MetaCParserParseExpression(self, 0);
-        }
-        //PushOperator(exp_paren);
-        result->Hash = Mix(crc32c(~0, "()", 2), result->E1->Hash);
-        //PushOperand(result);
-        MetaCParserMatch(self, tok_rParen);
-        //PopOperator(exp_paren);
-    }
-    else if (tokenType == tok_unsignedNumber)
+
+    if (tokenType == tok_unsignedNumber)
     {
         result = AllocNewExpression(exp_signed_integer);
         result->ValueI64 = currentToken->ValueU64;
@@ -837,7 +840,36 @@ metac_expression_t* MetaCParserParseUnaryExpression(metac_parser_t* self)
         result->Hash = currentToken->IdentifierKey;
         //PushOperand(result);
     }
-    else if (tokenType == tok_kw_eject)
+    else if (tokenType == tok_lParen)
+    {
+        result = AllocNewExpression(exp_paren);
+        {
+            if (!MetaCParserPeekMatch(self, tok_rParen, 1));
+                result->E1 = MetaCParserParseExpression(self, 0);
+        }
+        //PushOperator(exp_paren);
+        result->Hash = Mix(crc32c(~0, "()", 2), result->E1->Hash);
+        //PushOperand(result);
+        MetaCParserMatch(self, tok_rParen);
+        //PopOperator(exp_paren);
+    }
+    else
+    {
+        assert(0); // Not a primary Expression;
+    }
+
+    return result;
+}
+
+metac_expression_t* MetaCParserParseUnaryExpression(metac_parser_t* self)
+{
+    metac_expression_t* result = 0;
+
+    metac_token_t* currentToken = MetaCParserNextToken(self);
+    metac_token_enum_t tokenType =
+        (currentToken ? currentToken->TokenType : tok_eof);
+
+    if (tokenType == tok_kw_eject)
     {
         result = AllocNewExpression(exp_eject);
         //PushOperator(exp_eject);
@@ -1029,7 +1061,7 @@ metac_expression_t* MetaCParserParseExpression(metac_parser_t* self, metac_expre
 
     uint32_t prec_left =  - 1;
     uint32_t prec_right = - 1;
-
+/*
     if (prev)
     {
         prec_left =  OpToPrecedence(prev->Kind);
@@ -1041,8 +1073,12 @@ metac_expression_t* MetaCParserParseExpression(metac_parser_t* self, metac_expre
         prec_right = OpToPrecedence(exp_right);
     }
 
-
-    if (!prev || prec_left > prec_right)
+*/
+    if (IsPrimaryExpression(tokenType))
+    {
+        result = MetaCParserParsePrimaryExpression(self);
+    }
+    else  if (!prev /*|| prec_left > prec_right*/)
     {
         result = MetaCParserParseUnaryExpression(self);
     }
