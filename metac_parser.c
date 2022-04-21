@@ -771,26 +771,74 @@ metac_declaration_t* MetaCParserParseDeclaration(metac_parser_t* self, metac_dec
 bool g_reorder_expression = true;
 uint32_t OpToPrecedence(metac_expression_kind_t exp)
 {
-    if (exp == exp_paren)
+    if (exp == exp_comma)
     {
         return 1;
     }
-    else if (exp == exp_identifier || exp == exp_signed_integer)
+    else if (exp >= exp_assign && exp < exp_spaceship)
     {
         return 2;
     }
-    else if (exp == exp_div || exp == exp_mul || exp == exp_rem)
+    //else if (exp_ternary)
+    //{
+    //  return 3;
+    //}
+    else if (exp == exp_andand)
     {
-        return 3;
+        return 4;
+    }
+    else if (exp == exp_oror)
+    {
+        return 6;
+    }
+    else if (exp == exp_or)
+    {
+        return 7;
+    }
+    else if (exp == exp_xor)
+    {
+        return 8;
+    }
+    else if (exp == exp_eq || exp == exp_neq)
+    {
+        return 9;
+    }
+    else if (exp == exp_eq || exp == exp_neq)
+    {
+        return 10;
+    }
+    else if (exp >= exp_lt && exp <= exp_ge)
+    {
+        return 11;
+    }
+    else if (exp == exp_rsh || exp == exp_lsh)
+    {
+        return 12;
     }
     else if (exp == exp_add || exp == exp_sub)
     {
-        return 4;
+        return 13;
+    }
+    else if (exp == exp_div || exp == exp_mul || exp == exp_rem)
+    {
+        return 14;
+    }
+    else if (exp == exp_call)
+    {
+        return 16;
+    }
+    else if (exp == exp_paren
+          || exp == exp_signed_integer
+          || exp == exp_string
+          || exp == exp_identifier
+          || exp == exp_char)
+    {
+        return 17;
     }
     return 0;
 }
 
-bool IsPrimaryExpression(metac_token_enum_t tokenType)
+bool IsPrimaryExpressionToken(metac_token_enum_t tokenType)
 {
     switch(tokenType)
     {
@@ -967,7 +1015,7 @@ metac_expression_t* MetaCParserParseUnaryExpression(metac_parser_t* self)
 }
 
 
-metac_expression_t* MetaCParserParseBinaryExpression(metac_parser_t* self, 
+metac_expression_t* MetaCParserParseBinaryExpression(metac_parser_t* self,
                                                      metac_expression_t* left,
                                                      uint32_t min_prec)
 {
@@ -1050,7 +1098,6 @@ metac_expression_t* MetaCParserParseBinaryExpression(metac_parser_t* self,
         exp_right = ExpTypeFromTokenType(peekTokenType);
     }
 
-    
     return result;
 }
 
@@ -1088,7 +1135,7 @@ metac_expression_t* MetaCParserParseExpression(metac_parser_t* self,
     }
 
 */
-    if (IsPrimaryExpression(tokenType))
+    if (IsPrimaryExpressionToken(tokenType))
     {
         result = MetaCParserParsePrimaryExpression(self);
     }
@@ -1111,7 +1158,7 @@ metac_expression_t* MetaCParserParseExpression(metac_parser_t* self,
         {
             uint32_t prec = OpToPrecedence(
                 BinExpTypeFromTokenType(peekNext->TokenType));
-            result = MetaCParserParseBinaryExpression(self, result, prec);
+            result = MetaCParserParseBinaryExpression(self, result, 0);
         }
     }
 
@@ -1699,11 +1746,6 @@ const char* PrintExpression(metac_parser_t* self, metac_expression_t* exp)
     return result;
 }
 
-
-void ReorderExpression(metac_expression_t* exp)
-{
-    uint32_t prec = OpToPrecedence(exp->Kind);
-}
 
 #  ifdef TEST_PARSER
 void TestParseExprssion(void)

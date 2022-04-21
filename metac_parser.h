@@ -120,6 +120,7 @@
     \
     M(exp_full_slice) \
     M(exp_slice) \
+    M(exp_index) \
     M(exp_call) \
     \
     M(exp_addr_or_and) \
