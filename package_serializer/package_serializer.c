@@ -35,6 +35,9 @@ static inline void LexFile(metac_lexer_t* lexer,
         {
             lexer->Tokens = (metac_token_t*) malloc(estimated * sizeof(metac_token_t));
             lexer->TokenCapacity = estimated;
+            lexer->LocationStorage.Locations =
+                (metac_location_t*) malloc(estimated * sizeof(metac_location_t));
+            lexer->LocationStorage.LocationCapacity = estimated;
         }
         else
         {
