@@ -854,7 +854,7 @@ LcontinueLexnig:
                 uint32_t stringHash = ~0u;
                 c = *text++;
 
-                uint32_t column;
+                uint32_t column = state->Column;
                 eatenChars++;
                 uint32_t eatenCharsAtStringStart = eatenChars;
 

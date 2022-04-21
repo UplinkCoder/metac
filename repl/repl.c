@@ -48,6 +48,7 @@ int main(int argc, const char* argv[])
 
     parse_mode_t parseMode = parse_mode_token;
     metac_lexer_state_t repl_state;
+    repl_state.Position = 0;
     repl_state.Line = 1;
     repl_state.Column = 1;
     metac_lexer_t lexer;
@@ -106,7 +107,7 @@ LnextLine:
                     uint32_t sz = ftell(fd);
                     fseek(fd, 0, SEEK_SET);
 
-                    uint32_t estimatedTokenCount = (((sz / 5) + 128) & 127);
+                    uint32_t estimatedTokenCount = (((sz / 5) + 128) & ~127);
                     if (lexer.TokenCapacity < estimatedTokenCount)
                     {
                         lexer.Tokens = (metac_token_t*)
@@ -126,11 +127,12 @@ LnextLine:
                     srcBufferLength = sz;
                     fread(srcBuffer, 1, sz, fd);
                     parseMode = parse_mode_file;
-
+                    repl_state.Position = 0;
                     repl_state.Line = 1;
+                    repl_state.Column = 1;
+                    repl_state.Size = sz;
                 }
-
-                goto LlexSrcBuffer;
+                break;
             }
             case 't' :
                 parseMode = parse_mode_token;
@@ -183,7 +185,6 @@ LnextLine:
 
             uint32_t initalPosition = repl_state.Position;
             switch(parseMode)
-
             {
             case parse_mode_max: break;
             case parse_mode_expr:
