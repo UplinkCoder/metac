@@ -30,6 +30,9 @@ static metac_token_enum_t MetaCLexFixedLengthToken(const char _chrs[3])
     case '#':
         return tok_hash;
 
+    case '@':
+        return tok_at;
+
     case '!':
         switch (_chrs[1])
         {
@@ -270,6 +273,7 @@ static uint32_t MetaCStaticTokenLength(metac_token_enum_t t)
         case tok_bang        : return 1;
         case tok_question    : return 1;
         case tok_hash        : return 1;
+        case tok_at          : return 1;
         case tok_lParen      : return 1;
         case tok_rParen      : return 1;
         case tok_lBrace      : return 1;
@@ -1057,6 +1061,7 @@ void test_lexer()
         "!",
         "?",
         "#",
+        "@",
 
         "(",
         ")",

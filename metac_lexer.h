@@ -177,6 +177,7 @@ typedef struct metac_lexer_state_t
     M(tok_question) \
     \
     M(tok_hash) \
+    M(tok_at) \
     \
     M(tok_lParen) \
     M(tok_rParen) \
