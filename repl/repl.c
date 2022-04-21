@@ -44,7 +44,9 @@ int main(int argc, const char* argv[])
     uint32_t srcBufferLength = 0;
 
     parse_mode_t parseMode = parse_mode_token;
-    metac_lexer_state_t repl_state = {0, 0, 0, 0};
+    metac_lexer_state_t repl_state;
+    repl_state.Line = 1;
+    repl_state.Column = 1;
     metac_lexer_t lexer;
     MetaCLexerInit(&lexer);
 
@@ -97,6 +99,22 @@ LnextLine:
                     fseek(fd, 0, SEEK_END);
                     uint32_t sz = ftell(fd);
                     fseek(fd, 0, SEEK_SET);
+
+                    uint32_t estimatedTokenCount = (((sz / 5) + 128) & 127);
+                    if (lexer.TokenCapacity < estimatedTokenCount)
+                    {
+                        lexer.Tokens = (metac_token_t*)
+                            malloc(sizeof(metac_token_t) * estimatedTokenCount);
+                        lexer.TokenSize = 0;
+                        lexer.TokenCapacity = estimatedTokenCount;
+                        lexer.Tokens = (metac_token_t*)
+                            malloc(sizeof(metac_token_t) * estimatedTokenCount);
+
+                        lexer.LocationStorage.Locations = (metac_location_t*)
+                            malloc(sizeof(metac_location_t) * estimatedTokenCount);
+                        lexer.LocationStorage.LocationSize = 0;
+                        lexer.LocationStorage.LocationCapacity = estimatedTokenCount;
+                    }
 
                     freePtr = srcBuffer = calloc(1, sz + 4);
                     srcBufferLength = sz;

@@ -830,7 +830,7 @@ LcontinueLexnig:
                 {
                     assert("Unterminated char literal");
                 }
-                state->Column += eatenChars;
+                state->Column += eatenChars++;
                 assert(charLiteralLength < sizeof(token.chars));
                 token.CharLiteralLength = charLiteralLength;
             }
