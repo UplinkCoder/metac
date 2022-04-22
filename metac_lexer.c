@@ -416,9 +416,13 @@ uint32_t MetaCTokenLength(metac_token_t token)
         {
             return token.CommentLength + 4;
         }
-        else if (token.TokenType == tok_charLiteral)
+        else if (token.TokenType == tok_char)
         {
-            return token.CharLiteralLength + 2;
+            return token.charLength + 2;
+        }
+        else if (token.TokenType == tok_char_uni)
+        {
+            return token.charLength + 4;
         }
     }
 
@@ -613,7 +617,8 @@ bool IsValidEscapeChar(char c)
         || (c == '\\' || c == '\n'|| c == '`')
         || (c == 'x'  || c == 'v' || c == 'a')
         || (c == 'f'  || c == '?' || c == 'b')
-        || (c >= '0' && c <= '7');
+        || (c >= '0' && c <= '7')
+        || (c == 'U');
 }
 
 typedef uint32_t metac_location_ptr;
@@ -664,6 +669,7 @@ metac_token_t* MetaCLexerLexNextToken(metac_lexer_t* self,
                                       const char* text, uint32_t len)
 
 {
+    static metac_token_t stop_token = {tok_eof};
     static metac_token_t err_token = {tok_error};
     metac_token_t token = {tok_invalid};
     if (text[len] != '\0')
@@ -809,9 +815,9 @@ LcontinueLexnig:
             }
             else if (c == '\'')
             {
-                uint32_t charLiteralLength = 0;
+                uint32_t charLength = 0;
                 text++;
-                token.TokenType = tok_charLiteral;
+                token.TokenType = tok_char;
                 uint32_t charHash = ~0u;
                 c = *text++;
                 eatenChars++;
@@ -823,15 +829,29 @@ LcontinueLexnig:
                 }
                 while(c && c != '\'')
                 {
-                    token.chars[charLiteralLength++] = c;
+                    token.chars[charLength++] = c;
+                    if (charLength > 8)
+                    {
+                        ParseError(state, "Char literal too long.");
+                        token.TokenType = tok_error;
+                        goto Lreturn;
+                    }
+
                     if (c == '\\')
                     {
                         c = *text++;
-                        token.chars[charLiteralLength++] = c;
+                        token.chars[charLength++] = c;
                         eatenChars++;
                         if (!IsValidEscapeChar(c))
                         {
                             ParseErrorF(state, "Invalid escape seqeunce '%.*s'", 4, (text - 2));
+                        }
+                        if (c == 'U')
+                        {
+                            // start eating the chars after the /U
+                            // since there might be up to eight
+                            token.TokenType = tok_char_uni;
+                            charLength = 0;
                         }
                     }
                     c = *text++;
@@ -842,8 +862,7 @@ LcontinueLexnig:
                     assert("Unterminated char literal");
                 }
                 state->Column += eatenChars++;
-                assert(charLiteralLength < sizeof(token.chars));
-                token.CharLiteralLength = charLiteralLength;
+                token.charLength = charLength;
             }
             else if (c == '\"' || c == '`')
             {
@@ -1033,6 +1052,9 @@ LcontinueLexnig:
         state->Column += tokLen;
     }
 
+    MetaCLocationStorage_EndLoc(&self->LocationStorage,
+        token.LocationId, state->Line, state->Column);
+Lreturn:
     if (token.TokenType)
     {
         result = self->Tokens + self->TokenSize++;
@@ -1040,12 +1062,8 @@ LcontinueLexnig:
     }
     else
     {
-        static metac_token_t stop_token = {tok_eof};
         result = &stop_token;
     }
-Lreturn:
-    MetaCLocationStorage_EndLoc(&self->LocationStorage,
-        token.LocationId, state->Line, state->Column);
 
     state->Position += eatenChars;
     return result;

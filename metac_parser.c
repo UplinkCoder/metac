@@ -929,7 +929,7 @@ bool IsPrimaryExpressionToken(metac_token_enum_t tokenType)
     case tok_lParen:
     case tok_unsignedNumber:
     case tok_stringLiteral:
-    case tok_charLiteral:
+    case tok_char:
     case tok_identifier:
         return true;
     default:
@@ -964,10 +964,10 @@ metac_expression_t* MetaCParserParsePrimaryExpression(metac_parser_t* self)
         result->Hash = currentToken->StringKey;
         //PushOperand(result);
     }
-    else if (tokenType == tok_charLiteral)
+    else if (tokenType == tok_char)
     {
         result = AllocNewExpression(exp_char);
-        const uint32_t length = currentToken->CharLiteralLength;
+        const uint32_t length = currentToken->charLength;
         const char* chars = currentToken->chars;
         const uint32_t hash = crc32c(~0, chars, length);
 

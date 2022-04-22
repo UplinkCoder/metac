@@ -210,7 +210,8 @@ typedef struct metac_lexer_state_t
     M(tok_identifier) \
     M(tok_unsignedNumber) \
     M(tok_stringLiteral) \
-    M(tok_charLiteral) \
+    M(tok_char) \
+    M(tok_char_uni) \
     M(tok_comment_single) \
     M(tok_comment_multi) \
     \
@@ -259,9 +260,9 @@ typedef struct metac_token_t {
             uint32_t CommentLength;
             const char* CommentBegin;
         };
-        // case tok_charLiteral :
+        // case tok_char :
         struct {
-            uint32_t CharLiteralLength;
+            uint32_t charLength;
             char chars[8];
         };
         uint64_t ValueU64;

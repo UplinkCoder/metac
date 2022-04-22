@@ -237,9 +237,13 @@ LlexSrcBuffer:
                     printf("    %.*s\n", LENGTH_FROM_IDENTIFIER_KEY(token.Key), IDENTIFIER_PTR(&lexer.IdentifierTree, token));
 #endif
                 }
-                else if (token.TokenType == tok_charLiteral)
+                else if (token.TokenType == tok_char)
                 {
-                    printf("    '%.*s'\n", token.CharLiteralLength, token.chars);
+                    printf("    '%.*s'\n", token.charLength, token.chars);
+                }
+                else if (token.TokenType == tok_char_uni)
+                {
+                    printf("    '\\U%.*s'\n", token.charLength, token.chars);
                 }
                 else if (token.TokenType == tok_unsignedNumber)
                 {
