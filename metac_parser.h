@@ -39,11 +39,13 @@
 #define FOREACH_DECL_KIND(M) \
     M(decl_variable) \
     M(decl_field) \
+    M(decl_parameter) \
     FIRST_DECL_TYPE(M) \
     \
-    M(decl_struct) \
-    M(decl_union) \
-    M(decl_enum) \
+    M(decl_type_struct) \
+    M(decl_type_union) \
+    M(decl_type_enum) \
+    M(decl_type_array) \
     M(decl_functiontype) \
     LAST_DECL_TYPE(M) \
     \
@@ -408,7 +410,8 @@ typedef struct metac_statement_t
     metac_declaration_kind_t DeclKind; \
     uint32_t LocationIdx; \
     uint32_t Hash; \
-    uint32_t Serial;
+    uint32_t Serial; \
+    uint32_t AllocInLine;
 
 typedef enum metac_type_kind_t
 {
@@ -454,19 +457,9 @@ typedef struct decl_type_t
 
     TYPE_HEADER
 
-    metac_identifier_ptr_t Identifier;
+    // only set if TypeKind == type_identifier
+    metac_identifier_ptr_t TypeIdentifier;
 } decl_type_t;
-
-typedef struct decl_field_t
-{
-    DECLARATION_HEADER
-
-    decl_type_t* Type;
-
-    metac_identifier_ptr_t Identifier;
-
-    struct decl_field_t* Next;
-} decl_field_t;
 
 typedef struct decl_variable_t
 {
@@ -478,7 +471,55 @@ typedef struct decl_variable_t
 
 } decl_variable_t;
 
-typedef struct decl_struct_t
+
+typedef struct decl_field_t
+{
+    DECLARATION_HEADER
+
+    decl_variable_t Field;
+
+    struct decl_field_t* Next;
+} decl_field_t;
+
+
+typedef struct decl_parameter_t
+{
+    DECLARATION_HEADER
+
+    decl_type_t* Type;
+
+    metac_identifier_ptr_t Identifier; 
+
+    struct decl_parameter_t* Next;
+} decl_parameter_t;
+
+
+typedef struct decl_function_t
+{
+    DECLARATION_HEADER
+
+    decl_type_t* ReturnType;
+
+    decl_parameter_t* Parameters;
+
+    metac_identifier_ptr_t Identifier;
+
+    stmt_block_t* FunctionBody;
+} decl_function_t;
+
+
+typedef struct decl_type_array_t
+{
+    DECLARATION_HEADER
+    
+    TYPE_HEADER
+    
+    decl_type_t* ElementType;
+    
+    uint64_t Dim;
+} decl_type_array_t;
+
+typedef struct decl_type_struct_t
 {
     DECLARATION_HEADER
 
@@ -489,13 +530,13 @@ typedef struct decl_struct_t
     struct decl_field_t* Fields;
 
     uint32_t FieldCount;
-} decl_struct_t;
+} decl_type_struct_t;
 
 typedef struct decl_typedef_t
 {
     DECLARATION_HEADER
 
-    struct metac_declaration_t* Type;
+    decl_type_t* Type;
 
     metac_identifier_ptr_t Identifier;
 } decl_typedef_t;
@@ -509,7 +550,7 @@ typedef struct metac_declaration_t
 
         decl_typedef_t decl_typedef;
         decl_type_t decl_type;
-        decl_struct_t decl_struct;
+        decl_type_struct_t decl_type_struct;
     };
 
 } metac_declaration_t;

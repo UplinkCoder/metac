@@ -26,7 +26,10 @@
 
 #include "3rd_party/tracy/TracyC.h"
 
-void _newMemRealloc(void** memP, uint32_t* capacity, const uint32_t elementSize);
+const void* _emptyPointer = (const void*)0x1;
+#define emptyPointer ((void*)_emptyPointer)
+
+static noinline void _newMemRealloc(void** memP, uint32_t* capacity, const uint32_t elementSize);
 const char* MetaCExpressionKind_toChars(metac_expression_kind_t type);
 const metac_identifier_ptr_t empty_identifier = {~0u};
 #define ARRAY_SIZE(A) \
@@ -275,14 +278,23 @@ metac_token_t* MetaCParserPeekToken(metac_parser_t* self, int32_t p)
 }
 
 
-metac_token_t* MetaCParserMatch(metac_parser_t* self, metac_token_enum_t type)
+
+#define MetaCParserMatch(SELF, TYPE) \
+    (MetaCParserMatch_((SELF), (TYPE), __FILE__, __LINE__))
+
+metac_token_t* MetaCParserMatch_(metac_parser_t* self, metac_token_enum_t type,
+                                 const char* filename, uint32_t lineNumber)
 {
     metac_token_t* token = MetaCParserNextToken(self);
     metac_token_enum_t got = (token ? token->TokenType : tok_eof);
     if (got != type)
     {
-        printf("Expected: %s -- Got: %s\n",
-            MetaCTokenEnum_toChars(type), MetaCTokenEnum_toChars(got));
+        metac_location_t loc = self->Lexer->LocationStorage.Locations[token->LocationId - 4];
+
+        printf("[%s:%u] Expected: %s -- Got: %s {line: %u: col: %u}\n",
+            filename, lineNumber,
+            MetaCTokenEnum_toChars(type), MetaCTokenEnum_toChars(got),
+            loc.StartLine, loc.StartColumn);
     }
     return token;
 }
@@ -345,7 +357,7 @@ const char* BinExpTypeToChars(metac_binary_expression_kind_t t)
         case exp_oror      : return "||";
         case exp_andand    : return "&&";
 
-        case exp_assign    : return "==";
+        case exp_assign    : return "=";
 
         case exp_add_ass   : return "+=";
         case exp_sub_ass   : return "-=";
@@ -422,7 +434,7 @@ metac_expression_kind_t ExpTypeFromTokenType(metac_token_enum_t tokenType)
 
 }
 
-void _newMemRealloc(void** memP, uint32_t* capacityP, const uint32_t elementSize)
+static noinline void _newMemRealloc(void** memP, uint32_t* capacityP, const uint32_t elementSize)
 {
     uint32_t capacity;
     if (!*memP)
@@ -444,7 +456,7 @@ void _newMemRealloc(void** memP, uint32_t* capacityP, const uint32_t elementSize
 
 #ifndef ATOMIC
 #define INC(v) \
-    (++v)
+    (v++)
 #else
 #define INC(v)
     (__builtin_atomic_fetch_add(&v, __ATOMIC_RELEASE))
@@ -473,9 +485,9 @@ metac_expression_t* AllocNewExpression(metac_expression_kind_t kind)
 }
 
 #define AllocNewDeclaration(KIND, RESULT_PTR) \
-    (KIND ## _t*) AllocNewDeclaration_(KIND, sizeof(KIND ##_t), ((void**)(RESULT_PTR)))
+    (KIND ## _t*) AllocNewDeclaration_(KIND, sizeof(KIND ##_t), ((void**)(RESULT_PTR)), __LINE__)
 
-metac_declaration_t* AllocNewDeclaration_(metac_declaration_kind_t kind, size_t nodeSize, void** result_ptr)
+metac_declaration_t* AllocNewDeclaration_(metac_declaration_kind_t kind, size_t nodeSize, void** result_ptr, uint32_t line)
 {
     metac_declaration_t* result = 0;
 
@@ -492,10 +504,20 @@ metac_declaration_t* AllocNewDeclaration_(metac_declaration_kind_t kind, size_t 
         (*result_ptr) = result = _newDecl_mem + INC(_newDecl_size);
         result->DeclKind = kind;
         result->Serial = INC(_nodeCounter);
+        if (kind == decl_type)
+        {
+            int k = 12;
+        }
+        memset(&result->Serial, 0, nodeSize - offsetof(metac_declaration_t, Serial));
+        result->AllocInLine = line;
     }
 
     return result;
 }
+
+#define ASSERT_VALID_DECL(DECL_P) \
+            assert(((metac_declaration_t*)(DECL_P)) >= _newDecl_mem  \
+                && ((metac_declaration_t*)(DECL_P)) <= (_newDecl_mem + _newDecl_size))
 
 #define AllocNewStatement(KIND, RESULT_PTR) \
     (KIND ## _t*) AllocNewStatement_(KIND, sizeof(KIND ##_t), ((void**)(RESULT_PTR)))
@@ -569,8 +591,17 @@ bool IsBinaryOperator(metac_token_enum_t t)
 
 uint32_t Mix(uint32_t a, uint32_t b)
 {
-  return a ^ b + 0x9e3779b9 + (a << 6) + (a >> 2);
+  return (a ^ b) + 0x9e3779b9 + (a << 6) + (a >> 2);
 
+}
+
+static inline bool IsDeclType(metac_declaration_t* decl)
+{
+    metac_declaration_kind_t kind = decl->DeclKind;
+    return (kind == decl_type
+         || kind == decl_type_struct
+         || kind == decl_type_enum
+         || kind == decl_type_union);
 }
 
 static inline bool IsTypeToken(metac_token_enum_t tokenType)
@@ -581,27 +612,22 @@ static inline bool IsTypeToken(metac_token_enum_t tokenType)
             || tokenType == tok_kw_unsigned
             || tokenType == tok_kw_struct
             || tokenType == tok_kw_enum
+            || tokenType == tok_kw_union
             || tokenType == tok_identifier );
     return result;
-}
-
-static inline bool IsDeclType(metac_declaration_t* decl)
-{
-    metac_declaration_kind_t kind = decl->DeclKind;
-    return (kind == decl_type
-         || kind == decl_struct
-         || kind == decl_enum
-         || kind == decl_union);
 }
 
 #define ErrorDeclaration() \
     (metac_declaration_t*)0
 
+#define ErrorTypeDeclaration() \
+    (decl_type_t*)0
+
 #define U32(VAR) \
 	(*(uint32_t*)(&VAR))
-metac_declaration_t* MetaCParserParseTypeDeclaration(metac_parser_t* self, metac_declaration_t* parent, metac_declaration_t* prev)
+decl_type_t* MetaCParserParseTypeDeclaration(metac_parser_t* self, metac_declaration_t* parent, metac_declaration_t* prev)
 {
-    metac_declaration_t* result = 0;
+    decl_type_t* result = 0;
 
     decl_type_t* type = AllocNewDeclaration(decl_type, &result);
     metac_type_modifiers typeModifiers = typemod_none;
@@ -617,7 +643,7 @@ LnextToken:
         if (tokenType == tok_identifier)
         {
             type->TypeKind = type_identifier;
-            type->Identifier = RegisterIdentifier(self, currentToken);
+            type->TypeIdentifier = RegisterIdentifier(self, currentToken);
             U32(type->TypeModifiers) |= typeModifiers;
             break;
         }
@@ -641,7 +667,7 @@ LnextToken:
         {
             bool isPredeclated = true;
 
-            decl_struct_t* struct_ = AllocNewDeclaration(decl_struct, &result);
+            decl_type_struct_t* struct_ = AllocNewDeclaration(decl_type_struct, &result);
             type = (decl_type_t*)struct_;
             struct_->TypeKind = type_struct;
 
@@ -667,14 +693,14 @@ LnextToken:
                     decl_field_t* field =
                         AllocNewDeclaration(decl_field, (metac_declaration_t**)nextMemberPtr);
                     field->Next = 0;
-                    field->Type = (decl_type_t*)MetaCParserParseTypeDeclaration(self, result, 0);
-                    assert(IsDeclType((metac_declaration_t*)field->Type));
+                    field->Field.Type = MetaCParserParseTypeDeclaration(self, (metac_declaration_t*)result, 0);
+                    assert(IsDeclType((metac_declaration_t*)field->Field.Type));
 
                     metac_token_t* memberName = MetaCParserMatch(self, tok_identifier);
-                    if (!field->Type || !memberName || memberName->TokenType != tok_identifier)
-                        return ErrorDeclaration();
+                    if (!field->Field.Type || !memberName || memberName->TokenType != tok_identifier)
+                        return ErrorTypeDeclaration();
 
-                    field->Identifier = RegisterIdentifier(self, memberName);
+                    field->Field.Identifier = RegisterIdentifier(self, memberName);
 
                     MetaCParserMatch(self, tok_semicolon);
                     nextMemberPtr = &field->Next;
@@ -698,7 +724,6 @@ LnextToken:
     return result;
 }
 
-
 metac_declaration_t* MetaCParserParseDeclaration(metac_parser_t* self, metac_declaration_t* parent)
 {
     metac_token_t* currentToken = MetaCParserPeekToken(self, 1);
@@ -706,13 +731,15 @@ metac_declaration_t* MetaCParserParseDeclaration(metac_parser_t* self, metac_dec
         (currentToken ? currentToken->TokenType : tok_invalid);
 
 	metac_declaration_t* result = 0;
-    if (tokenType == tok_kw_struct)
+
+    decl_type_t* type = 0;
+
+    bool notVariable = false;
+    // decl cannot be a variable declaration
+
+    if (IsTypeToken(tokenType))
     {
-        return MetaCParserParseTypeDeclaration(self, parent, 0);
-    }
-    else if (tokenType == tok_kw_enum)
-    {
-        return MetaCParserParseTypeDeclaration(self, parent, 0);
+         type = MetaCParserParseTypeDeclaration(self, parent, 0);
     }
     else if (tokenType == tok_kw_typedef)
     {
@@ -725,15 +752,13 @@ metac_declaration_t* MetaCParserParseDeclaration(metac_parser_t* self, metac_dec
 */
 
         MetaCParserMatch(self, tok_kw_typedef);
+        notVariable = true;
         currentToken = MetaCParserPeekToken(self, 1);
             tokenType =
         (currentToken ? currentToken->TokenType : tok_invalid);
         decl_typedef_t* typdef = AllocNewDeclaration(decl_typedef, &result);
 
-        if (tokenType == tok_kw_struct)
-        {
-            printf("struct defined in typdef\n");
-        }
+
         typdef->Type = MetaCParserParseTypeDeclaration(self, (metac_declaration_t*) typdef, 0);
         metac_token_t* name = MetaCParserMatch(self, tok_identifier);
         if (!name || name->TokenType != tok_identifier)
@@ -743,27 +768,85 @@ metac_declaration_t* MetaCParserParseDeclaration(metac_parser_t* self, metac_dec
         }
         typdef->Identifier = RegisterIdentifier(self, name);
     }
-    else if (tokenType <= tok_kw_auto && tokenType >= tok_kw_double)
+
+    if (type && !notVariable)
     {
-        // Peek until the next identifer and see if there is a lParen after to
-        metac_token_t* peekId = 0;
-        uint32_t peekCount = 2;
-        do {
-            (peekId = MetaCParserPeekToken(self, peekCount++));
-        } while(!peekId || peekId->TokenType == tok_identifier);
-        if (peekId)
+        printf("we've got a variable potentially\n");
+        if (MetaCParserPeekMatch(self, tok_identifier, 1))
         {
-            RegisterIdentifier(self, peekId);
+            metac_token_t* id = MetaCParserMatch(self, tok_identifier);
+            assert(id);
+            metac_identifier_ptr_t identifier = RegisterIdentifier(self, id);
+
+            // id paren ... it's a function :D
+            if (MetaCParserPeekMatch(self, tok_lParen, true))
+            {
+                MetaCParserMatch(self, tok_lParen);
+                decl_function_t* funcDecl = AllocNewDeclaration(decl_function, &result);
+                printf("We've got a function yay!\n");
+                funcDecl->ReturnType = type;
+                funcDecl->Identifier = identifier;
+                funcDecl->Parameters = emptyPointer;
+
+                decl_parameter_t** nextParam = &funcDecl->Parameters;
+
+                while (!MetaCParserPeekMatch(self, tok_rParen, true))
+                {
+                    assert((*nextParam) == emptyPointer);
+
+                    decl_parameter_t* param;
+                    AllocNewDeclaration(decl_parameter, &param);
+                    (*nextParam) = param;
+ 
+                    param->Type = MetaCParserParseTypeDeclaration(self, result, 0);
+
+                    metac_token_t* nameToken = MetaCParserMatch(self, tok_identifier);
+                    param->Identifier = RegisterIdentifier(self, nameToken);
+                    // fllow parameter
+                    if (MetaCParserPeekMatch(self, tok_lBracket, true))
+                    {
+                        MetaCParserMatch(self, tok_lBracket);
+                        decl_type_t* paramType = param->Type;
+                        decl_type_array_t* arrayType =
+                            AllocNewDeclaration(decl_type_array, &param->Type);
+                        //TODO ErrorMessage array must have numeric dimension
+                        metac_token_t* arrayDim = MetaCParserMatch(self, tok_unsignedNumber);
+                        arrayType->ElementType = paramType;
+                        arrayType->Dim = arrayDim->ValueU64;
+                        MetaCParserMatch(self, tok_rBracket);
+                    }
+
+                    nextParam = &param->Next;
+                    (*nextParam) = emptyPointer;
+
+                    if (MetaCParserPeekMatch(self, tok_comma, true))
+                    {
+                        MetaCParserMatch(self, tok_comma);
+                    }
+                    else
+                    {
+                        assert(MetaCParserPeekMatch(self, tok_rParen, true));
+                    }
+                }
+                MetaCParserMatch(self, tok_rParen);
+
+                funcDecl->FunctionBody = emptyPointer;
+            }
+            else
+            {
+                decl_variable_t* varDecl = AllocNewDeclaration(decl_variable, &result);
+//            varDecl.LocationIdx =
+//                MetaCLocationStorage_StartLoc(&parser.locationStorage,
+//                    MetaCLocationStorage_StartLine(&parser.lexer.locationStorage, type.LocationIdx));
+
+                varDecl->Type = type;
+                varDecl->Identifier = identifier;
+            }
         }
-
-        decl_variable_t* var = AllocNewDeclaration(decl_variable, &result);
-        metac_declaration_t* type = MetaCParserParseTypeDeclaration(self, parent, 0);
-
     }
-    else if (tokenType == tok_identifier)
-    {
-
-    }
+    // eat a semicolon if there is one this is more a repl kindof thing
+    if (MetaCParserPeekMatch(self, tok_semicolon, true))
+        MetaCParserMatch(self, tok_semicolon);
 
 	return result;
 }
@@ -835,6 +918,7 @@ uint32_t OpToPrecedence(metac_expression_kind_t exp)
     {
         return 17;
     }
+    assert(0);
     return 0;
 }
 
@@ -904,7 +988,7 @@ metac_expression_t* MetaCParserParsePrimaryExpression(metac_parser_t* self)
     {
         result = AllocNewExpression(exp_paren);
         {
-            if (!MetaCParserPeekMatch(self, tok_rParen, 1));
+            if (!MetaCParserPeekMatch(self, tok_rParen, 1))
                 result->E1 = MetaCParserParseExpression(self, 0);
         }
         //PushOperator(exp_paren);
@@ -1101,6 +1185,22 @@ metac_expression_t* MetaCParserParseBinaryExpression(metac_parser_t* self,
     return result;
 }
 
+static bool CouldBeCast(metac_parser_t* self, metac_token_enum_t tok)
+{
+    if (tok != tok_lParen)
+        return false;
+
+    // first we see if the next could be a type token
+    // because if it isn't then we are certainly not as cast
+    metac_token_t* peek2 = MetaCParserPeekToken(self, 2);
+    metac_token_enum_t tokenType = peek2 ? peek2->TokenType : tok_invalid;
+    
+    if (!IsTypeToken(tokenType))
+        return false;
+        
+    return false;
+}
+
 metac_expression_t* MetaCParserParseExpression(metac_parser_t* self,
                                                metac_expression_t* prev)
 {
@@ -1120,21 +1220,14 @@ metac_expression_t* MetaCParserParseExpression(metac_parser_t* self,
     metac_token_enum_t tokenType =
         (currentToken ? currentToken->TokenType : tok_invalid);
 
-    uint32_t prec_left =  - 1;
-    uint32_t prec_right = - 1;
-/*
-    if (prev)
+    if (tokenType == tok_lParen && CouldBeCast(self, tokenType))
     {
-        prec_left =  OpToPrecedence(prev->Kind);
-        metac_expression_kind_t exp_right =
-            ( IsBinaryOperator(tokenType)
-              ? BinExpTypeFromTokenType(tokenType)
-              : ExpTypeFromTokenType(tokenType) );
-
-        prec_right = OpToPrecedence(exp_right);
+        // Not implemented right now
+        assert(0);
+        // exp_cast_t* = AllocNewExpression(exp_cast, &result);
+        
     }
-
-*/
+    
     if (IsPrimaryExpressionToken(tokenType))
     {
         result = MetaCParserParsePrimaryExpression(self);
@@ -1353,7 +1446,7 @@ void LineLexerInit(void)
     g_lineParser.CurrentTokenIndex = 0;
     g_lineLexer.TokenSize = 0;
     g_lineLexer.LocationStorage.LocationSize = 0;
-    
+
     ACCEL_INIT(g_lineLexer, Identifier);
     ACCEL_INIT(g_lineLexer, String);
     ACCEL_INIT(g_lineParser, Identifier);
@@ -1474,17 +1567,85 @@ void PrintToken(metac_parser_t* self,
         case tok_lBrace :
             PrintString(self, "{");
         break;
+        
         case tok_rBrace :
             PrintString(self, "}");
         break;
+        
+        case tok_lParen:
+            PrintString(self, "(");
+        break;
+        
+        case tok_rParen:
+            PrintString(self, ")");
+        break;
     }
 }
+void PrintU64(metac_parser_t* self, uint64_t value)
+{
+    printf("%llu", value);
+}
+void PrintType(metac_parser_t* self, decl_type_t* type)
+{
+    switch(type->DeclKind)
+    {
+        case decl_type_array:
+        {
+            decl_type_array_t *arrayType = (decl_type_array_t*) type;
+            // PrintTypeName(self, )
+            PrintType(self, arrayType->ElementType);
+            PrintString(self, "[");
+            PrintU64(self, arrayType->Dim);
+            PrintString(self, "]");
+        } break;
+        case decl_type:
+        {
+            // printf("TypeKind: %d\n", (int) type->Kind);
+            if (type->TypeModifiers)
+            {
+                uint32_t modifiers = type->TypeModifiers;
+                if (modifiers & typemod_const)
+                {
+                    PrintString(self, "const ");
+                }
+                if (modifiers & typemod_unsigned)
+                {
+                    PrintString(self, "unsigned ");
+                }
+            }
+            if (type->TypeKind >= type_auto && type->TypeKind <= type_double)
+            {
+                metac_token_enum_t tok = (metac_token_enum_t)
+                    ((type->TypeKind - type_type) + tok_kw_type);
+                PrintKeyword(self, tok);
+            }
+            else if (type->TypeKind == type_identifier)
+            {
+                PrintIdentifier(self, type->TypeIdentifier);
 
+                //printf("type_identifier: %d\n", type->Identifier.v);
+            }
+            else
+                assert(0);
+        } break;
+        case decl_type_struct :
+        {
+            decl_type_struct_t* structType = (decl_type_struct_t*) type;
+            PrintIdentifier(self, structType->Identifier);
+        }
+        break;
+        
+        default : assert(0);
+    }
+    
+}
 
 void PrintDeclaration(metac_parser_t* self, metac_declaration_t* decl,
                       uint32_t indent, uint32_t level)
 {
     PrintIndent(self, indent);
+
+    bool noSemicolon = false;
 
     switch (decl->DeclKind)
     {
@@ -1499,37 +1660,11 @@ void PrintDeclaration(metac_parser_t* self, metac_declaration_t* decl,
         } break;
         case decl_type:
         {
-            decl_type_t* type = (decl_type_t*) decl;
-            // printf("TypeKind: %d\n", (int) type->Kind);
-            if (type->TypeModifiers)
-            {
-                uint32_t modifiers = type->TypeModifiers;
-                if (modifiers & typemod_const)
-                {
-                    PrintString(self, "const ");
-                }
-                if (modifiers & typemod_unsigned)
-                {
-                    PrintString(self, "unsigned ");
-                }
-
-            }
-            if (type->TypeKind >= type_auto && type->TypeKind <= type_double)
-            {
-                metac_token_enum_t tok = (metac_token_enum_t)
-                    ((type->TypeKind - type_type) + tok_kw_type);
-                PrintKeyword(self, tok);
-            }
-            else if (type->TypeKind == type_identifier)
-            {
-                PrintIdentifier(self, type->Identifier);
-
-                //printf("type_identifier: %d\n", type->Identifier.v);
-            }
+            PrintType(self, (decl_type_t*) decl);
         }  break;
-        case decl_struct :
-        {
-            decl_struct_t* struct_ = (decl_struct_t*) decl;
+        case decl_type_struct :
+                {
+            decl_type_struct_t* struct_ = (decl_type_struct_t*) decl;
             PrintKeyword(self, tok_kw_struct);
             if (struct_->Identifier.v != empty_identifier.v)
             {
@@ -1547,7 +1682,7 @@ void PrintDeclaration(metac_parser_t* self, metac_declaration_t* decl,
                 memberIndex++)
             {
                 PrintDeclaration(self, (metac_declaration_t*)f, indent, level);
-                printf("\n");
+                PrintNewline(self);
                 f = f->Next;
             }
             --indent;
@@ -1559,15 +1694,58 @@ void PrintDeclaration(metac_parser_t* self, metac_declaration_t* decl,
             else
                 printf(" ");
         } break;
+        case decl_type_array:
+        {
+            PrintType(self, (decl_type_t*)decl);
+        } break;
         case decl_field :
         {
             decl_field_t* field = (decl_field_t*) decl;
-            PrintDeclaration(self, (metac_declaration_t*)field->Type, indent, level);
+            PrintType(self, field->Field.Type);
             PrintSpace(self);
-            PrintIdentifier(self, field->Identifier);
+            PrintIdentifier(self, field->Field.Identifier);
+        } break;
+        case decl_variable:
+        {
+            decl_variable_t* variable = (decl_variable_t*) decl;
+            PrintType(self, variable->Type);
+            PrintSpace(self);
+            PrintIdentifier(self, variable->Identifier);
+        } break;
+        case decl_function:
+        {
+            ASSERT_VALID_DECL(decl);
+            decl_function_t* function = (decl_function_t*) decl;
+            ASSERT_VALID_DECL(function->ReturnType);
+            PrintType(self, function->ReturnType);
+            PrintSpace(self);
+            PrintIdentifier(self, function->Identifier);
+            PrintToken(self, tok_lParen);
+            
+            for(decl_parameter_t* param = function->Parameters;
+                param != emptyPointer;
+                param = param->Next)
+            {
+                ASSERT_VALID_DECL(param);
+                ASSERT_VALID_DECL(param->Type);
+                if (param->Next != emptyPointer)
+                    ASSERT_VALID_DECL(param->Next);
+
+                PrintType(self, param->Type);
+                if (param->Identifier.v)
+                {
+                    PrintSpace(self);
+                    PrintIdentifier(self, param->Identifier);
+                }
+                if (param->Next != emptyPointer)
+                    PrintString(self, ", ");
+            }
+            
+            PrintToken(self, tok_rParen);
         } break;
     }
-    if (!indent) printf(";\n");
+    if ((!noSemicolon)) printf(";");
+    printf("\n");
 }
 
 const char* PrintExpression(metac_parser_t* self, metac_expression_t* exp)

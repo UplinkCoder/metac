@@ -1,5 +1,7 @@
 #define cast(T) (T)
 
+#define noinline volatile __attribute__ ((noinline))
+
 #ifdef _WIN32
 #  include "stdint_msvc.h"
 # ifndef __cplusplus

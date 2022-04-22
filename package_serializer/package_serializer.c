@@ -125,8 +125,13 @@ int main(int argc, const char* argv[])
 
 
 #ifndef NO_DUMP
-#if ACCEL == ACCEL_TABLE
         char formatBuffer[512];
+        sprintf(formatBuffer, "%s.tokens", arg);
+        FILE* tokens_fd = fopen(formatBuffer, "wb");
+        fwrite(lexer.Tokens, 1, lexer.TokenSize * sizeof(metac_token_t), tokens_fd);
+        fclose(tokens_fd);
+
+#if ACCEL == ACCEL_TABLE
         sprintf(formatBuffer, "%s.identifiers", arg);
         WriteTable(&lexer.IdentifierTable, formatBuffer, 20, 0);
 

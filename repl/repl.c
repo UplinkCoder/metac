@@ -207,6 +207,8 @@ LnextLine:
                     decl = MetaCParserParseDeclarationFromString(line);
                     if (decl)
                         PrintDeclaration(&g_lineParser, decl, 0, 0);
+                    else
+                        printf("Couldn't parse Declaration\n");
                 goto LnextLine;
 
             case parse_mode_file :
