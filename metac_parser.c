@@ -823,7 +823,7 @@ uint32_t OpToPrecedence(metac_expression_kind_t exp)
     {
         return 14;
     }
-    else if (exp == exp_call)
+    else if (exp == exp_call || exp == exp_index)
     {
         return 16;
     }
@@ -1750,11 +1750,15 @@ const char* PrintExpression(metac_parser_t* self, metac_expression_t* exp)
 #  ifdef TEST_PARSER
 void TestParseExprssion(void)
 {
-    metac_expression_t* expr = MetaCParserParseExpression("12 - 16 - 99");
-    assert(!strcmp(PrintExpression(self, "(12 - (16 - 99 ))")));
-    ReorderExpression(exp);
-    assert(!strcmp(PrintExpression(self, "((12 - 16 ) - 99 )")));
+    metac_expression_t* expr = MetaCParserParseExpressionFromString("12 - 16 - 99");
+    assert(!strcmp(PrintExpression(&g_lineParser, expr), "((12 - 16 )- 99 )"));
 }
+
+int main(int argc, char* argv[])
+{
+    TestParseExprssion();
+}
+
 #  endif
 #endif // ifndef DO_NOT_COMPILE
 #endif // _METAC_PARSER_C_
