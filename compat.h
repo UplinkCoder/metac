@@ -1,6 +1,10 @@
 #define cast(T) (T)
 
-#define noinline volatile __attribute__ ((noinline))
+#if !defined(_MSC_VER)
+#  define noinline volatile __attribute__ ((noinline))
+#else
+#  define noinline
+#endif
 
 #ifdef _WIN32
 #  include "stdint_msvc.h"

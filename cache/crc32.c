@@ -1,5 +1,5 @@
 #ifdef _WIN32
-#  include "stdint_msvc.h"
+#  include "../stdint_msvc.h"
 #else
 #  include <stdint.h>
 #endif

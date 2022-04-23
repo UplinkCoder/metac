@@ -229,7 +229,7 @@ bool IsInTable(const metac_identifier_table_t* table,
     }
 }
 
-
+#define CRT_SECURE_NO_WARNINGS
 metac_identifier_table_t ReadTable(const char* filename)
 {
     metac_identifier_table_t result = {0};
