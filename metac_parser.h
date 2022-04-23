@@ -516,7 +516,7 @@ typedef struct decl_type_array_t
     
     decl_type_t* ElementType;
     
-    uint64_t Dim;
+    metac_expression_t* Dim;
 } decl_type_array_t;
 
 typedef struct decl_type_struct_t
@@ -602,11 +602,11 @@ typedef struct metac_parser_t
 
 extern metac_parser_t g_lineParser;
 
-void MetaCParserInitFromLexer(metac_parser_t* self, metac_lexer_t* lexer);
-metac_expression_t* MetaCParserParseExpression(metac_parser_t* self, metac_expression_t* prev);
-metac_expression_t* MetaCParserParseExpressionFromString(const char* exp);
+void MetaCParser_InitFromLexer(metac_parser_t* self, metac_lexer_t* lexer);
+metac_expression_t* MetaCParser_ParseExpression(metac_parser_t* self, metac_expression_t* prev);
+metac_expression_t* MetaCParser_ParseExpressionFromString(const char* exp);
 
-metac_declaration_t* MetaCParserParseDeclaration(metac_parser_t* self, metac_declaration_t* parent);
+metac_declaration_t* MetaCParser_ParseDeclaration(metac_parser_t* self, metac_declaration_t* parent);
 
 const char* PrintExpression(metac_parser_t* self, metac_expression_t* exp);
 #undef DEFINE_MEMBERS

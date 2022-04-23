@@ -150,7 +150,7 @@ int main(int argc, const char* argv[])
 #endif
 #endif
         metac_parser_t parser;
-        MetaCParserInitFromLexer(&parser, &lexer);
+        MetaCParser_InitFromLexer(&parser, &lexer);
     }
     return errored;
 }

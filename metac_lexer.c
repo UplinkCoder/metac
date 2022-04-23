@@ -721,21 +721,26 @@ LcontinueLexnig:
         {
             if (IsIdentifierChar(c))
             {
-                uint32_t identifier_length = 0;
-                uint32_t identifier_hash = ~0;
+                uint32_t identifierLength = 0;
+                uint32_t identifierHash = ~0;
                 const char* identifierBegin = text;
 
                 while ((c = *text++) && (IsIdentifierChar(c) || IsNumericChar(c)))
                 {
-                    identifier_hash = crc32c_byte(identifier_hash, c);
-                    identifier_length++;
+#ifdef INCREMENTAL_HASH
+                    identifierHash = crc32c_byte(identifierHash, c);
+#endif
+                    identifierLength++;
                     eatenChars++;
                 }
                 token.TokenType = tok_identifier;
-                assert(identifier_length < 0xFFF);
+                assert(identifierLength < 0xFFF);
                 state->Column += eatenChars;
+#ifndef INCREMENTAL_HASH
+                identifierHash = crc32c(~0, identifierBegin, identifierLength);
+#endif
                 token.IdentifierKey =
-                    IDENTIFIER_KEY(identifier_hash, identifier_length);
+                    IDENTIFIER_KEY(identifierHash, identifierLength);
 
                 // You can take out keyword matching but it doesn't cost much anywys
                 MetaCLexerMatchKeywordIdentifier(&token, identifierBegin);
@@ -746,10 +751,10 @@ LcontinueLexnig:
                 token.Identifier = identifierBegin;
 #elif ACCEL == ACCEL_TABLE
                     token.IdentifierPtr =
-                        GetOrAddIdentifier(&self->IdentifierTable, token.IdentifierKey, identifierBegin, identifier_length);
+                        GetOrAddIdentifier(&self->IdentifierTable, token.IdentifierKey, identifierBegin, identifierLength);
 #elif ACCEL == ACCEL_TREE
                     token.IdentifierPtr =
-                        GetOrAddIdentifier(&self->IdentifierTree, token.IdentifierKey, identifierBegin, identifier_length);
+                        GetOrAddIdentifier(&self->IdentifierTree, token.IdentifierKey, identifierBegin, identifierLength);
 #else
 #   error ("Unkown ACCELERATOR")
 #endif
