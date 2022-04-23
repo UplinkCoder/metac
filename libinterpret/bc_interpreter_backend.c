@@ -2277,7 +2277,7 @@ static inline void BCGen_emitLongInstA(BCGen* self, const LongInst i, const BCAd
 /// semi-public functions for the vtbl start here
 BCValue BCGen_genTemporary(BCGen* self, BCType bct)
 {
-    BCValue result;
+    BCValue result = { BCValueType_StackValue };
 
     result.type = bct;
     result.temporaryIndex = ++self->temporaryCount;

@@ -698,9 +698,8 @@ Lret:
 
 EXTERN_C BCValue imm32_(uint32_t value, bool signed_)
 {
-    BCValue ret;
+    BCValue ret = { BCValueType_Immediate };
 
-    ret.vType = BCValueType_Immediate;
     ret.type.type = signed_ ? BCTypeEnum_i32 : BCTypeEnum_u32;
     ret.type.typeIndex = 0;
     ret.type.flags = BCTypeFlags_None;
@@ -713,9 +712,9 @@ EXTERN_C BCValue imm32_(uint32_t value, bool signed_)
 
 EXTERN_C BCValue imm64_(uint64_t value, bool signed_)
 {
-    BCValue ret;
+    BCValue ret = { BCValueType_Immediate };
+;
 
-    ret.vType = BCValueType_Immediate;
     ret.type.type = signed_ ? BCTypeEnum_i64 : BCTypeEnum_u64;
     ret.type.typeIndex = 0;
     ret.type.flags = BCTypeFlags_None;
