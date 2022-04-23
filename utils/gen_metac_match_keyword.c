@@ -3,6 +3,21 @@
 #include "../metac_lexer.h"
 
 #include <stdio.h>
+/*
+void WriteCmp(const char* kw, uint32_t kw_len)
+{
+	printf("if (");
+
+	uint32_t kw_pos = 0;
+	while (kw_len > 4)
+	{
+		printf("identifier")
+
+	}
+
+	printf(")");
+}
+*/
 void WriteMatchFunction(void)
 {
 #define KW_PREFIX \
@@ -40,17 +55,17 @@ void WriteMatchFunction(void)
 
     printf("    switch (tok->IdentifierKey)\n");
     printf("    {\n");
+//    WriteCmp(#KW + KW_PREFIX_LEN, KW_LEN(KW)); \
 
-#define KW_WRITE_CMP(KW) \
+#define KW_WRITE_CASE(KW) \
     printf("    case %s_key :\n", KW_STR(KW)); \
-    printf("        if (!memcmp(identifier, \"%s\", %u))\n", \
-        #KW + KW_PREFIX_LEN, KW_LEN(KW)); \
+    printf("    if(!memcmp(identifier, \"%s\", %u))\n", KW_STR(KW), KW_LEN(KW)); \
     printf("            tok->TokenType = %s;\n", #KW); \
     printf("    break;\n");
 
-    FOREACH_KEYWORD_TOKEN(KW_WRITE_CMP)
+    FOREACH_KEYWORD_TOKEN(KW_WRITE_CASE)
 
-#undef KW_WRITE_CMP
+#undef KW_WRITE_CASE
     printf("    }\n");
     printf("}\n");
 

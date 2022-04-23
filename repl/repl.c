@@ -6,6 +6,7 @@
 #include "../3rd_party/linenoise/linenoise.c"
 #include "../int_to_str.c"
 #include <stdio.h>
+#include "exp_eval.c"
 
 metac_statement_t* MetaCParserParseStatementFromString(const char* str);
 metac_declaration_t* MetaCParserParseDeclarationFromString(const char* str);
@@ -188,23 +189,33 @@ LnextLine:
             {
             case parse_mode_max: break;
             case parse_mode_expr:
+            {
                  exp =
-                    MetaCParserParseExpressionFromString(line);
+                    MetaCParser_ParseExpressionFromString(line);
 
                 const char* str = PrintExpression(&g_lineParser, exp);
                 printf("expr = %s\n", str);
                 goto LnextLine;
+            }
             case parse_mode_ee:
-                //exp = EEParserParse(Line);
-                //const char* str = PrintExpression(&g_lineParser, exp);
-                //printf("expr = %s\n", str);
-                exp = 0;
+            {
+                exp =
+                    MetaCParser_ParseExpressionFromString(line);
+
+                metac_expression_t* result = evalWithVariables(exp, 0);
+                
+                const char* str = PrintExpression(&g_lineParser, exp);
+                const char* result_str = PrintExpression(&g_lineParser, result);
+                
+                printf("%s = %s\n", str, result_str);
+                
                 goto LnextLine;
+            }
             case parse_mode_stmt :
-                   stmt = MetaCParserParseStatementFromString(line);
+                   stmt = MetaCParser_ParseStatementFromString(line);
                 goto LnextLine;
             case parse_mode_decl :
-                    decl = MetaCParserParseDeclarationFromString(line);
+                    decl = MetaCParser_ParseDeclarationFromString(line);
                     if (decl)
                         PrintDeclaration(&g_lineParser, decl, 0, 0);
                     else

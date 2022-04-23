@@ -40,7 +40,17 @@ if [ -d $DST ]; then
        $DST/utils
 
     mkdir -p $DST/repl
-    cp repl/repl.c repl/build.sh $DST/repl
+       cp repl/repl.c repl/build.sh repl/exp_eval.c repl/exp_eval.h \
+       $DST/repl
+
+    mkdir -p $DST/libinterpret
+    cp libinterpret/backend_interface_funcs.h \
+       libinterpret/bc_common.h \
+       libinterpret/bc_common.c \
+       libinterpret/bc_interpreter_backend.h \
+       libinterpret/bc_interpreter_backend.c \
+       $DST/libinterpret
+
 
     mkdir -p $DST/package_serializer
     cp package_serializer/build.sh package_serializer/build.bat \

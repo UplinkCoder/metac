@@ -1991,8 +1991,14 @@ const char* PrintExpression(metac_parser_t* self, metac_expression_t* exp)
 #  ifdef TEST_PARSER
 void TestParseExprssion(void)
 {
-    metac_expression_t* expr = MetaCParserParseExpressionFromString("12 - 16 - 99");
+    metac_expression_t* expr = MetaCParser_ParseExpressionFromString("12 - 16 - 99");
     assert(!strcmp(PrintExpression(&g_lineParser, expr), "((12 - 16 )- 99 )"));
+}
+
+void TestParseDeclaration(void)
+{
+    metac_declaration_t* decl = MetaCParser_ParseDeclarationFromString("int f(double x);");
+    // assert(!strcmp(PrintDeclaration(&g_lineParser, decl, 0, 0), "int f(double x);"));
 }
 
 int main(int argc, char* argv[])
