@@ -46,6 +46,14 @@ typedef struct Imm64
     bool signed_;
 } Imm64;
 
+typedef void (*ReadI32_cb_t)(uint32_t value, void* userCtx);
+
+typedef struct ReadI32_ctx_t
+{
+    void* userCtx;
+    ReadI32_cb_t cb;
+} ReadI32_ctx_t;
+
 typedef enum BCTypeEnum
 {
     BCTypeEnum_Undef,

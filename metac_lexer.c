@@ -307,7 +307,6 @@ static uint32_t MetaCStaticTokenLength(metac_token_enum_t t)
         case tok_kw_struct   : return 6;
         case tok_kw_union    : return 5;
         case tok_kw_enum     : return 4;
-        case tok_kw_type     : return 4;
         case tok_kw_const    : return 5;
         case tok_kw_return   : return 6;
         case tok_kw_switch   : return 6;

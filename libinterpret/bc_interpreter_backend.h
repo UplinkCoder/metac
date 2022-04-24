@@ -155,6 +155,8 @@ typedef enum LongInst
     LongInst_Line,
     LongInst_File,
 
+    LongInst_ReadI32,
+
     LongInst_max
 } LongInst;
 
@@ -236,6 +238,10 @@ typedef struct BCGen
     RetainedCall* calls;
     uint32_t callCount;
     uint32_t callCapacity;
+
+    ReadI32_ctx_t* contexts;
+    uint32_t contextCount;
+    uint32_t contextCapacity;
 
     bool finalized;
     uint32_t byteCodeArray[8192];

@@ -87,6 +87,10 @@ typedef void (*Realloc_t) (void* ctx, BCValue *result, const BCValue* lhs, const
 typedef BCValue (*run_t) (void* ctx, uint32_t fnIdx, const BCValue* args, uint32_t n_args);
 typedef void (*destroy_instance_t) (void* ctx);
 typedef void (*new_instance_t) (void ** result_p);
+typedef uint32_t (*sizeof_instance_t) (void);
+
+typedef void (*ReadI32_cb_t)(uint32_t value, void* userCtx);
+typedef void (*ReadI32_t) (void* ctx, const BCValue* val, const ReadI32_cb_t readCb, void* userCtx);
 
 typedef struct BackendInterface
 {
@@ -177,4 +181,7 @@ typedef struct BackendInterface
     const run_t run;
     const destroy_instance_t destroy_instance;
     const new_instance_t new_instance;
+    const sizeof_instance_t sizeof_instance;
+
+    const ReadI32_t ReadI32;
 } BackendInterface;

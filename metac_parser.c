@@ -771,7 +771,7 @@ metac_expression_t* MetaCParser_ParsePostfixExpression(metac_parser_t* self,
     else if (peekTokenType == tok_minusminus)
     {
         MetaCParser_Match(self, peekTokenType);
-        
+
         metac_expression_t* E1 = left;
         result = AllocNewExpression(exp_post_decrement);
         result->E1 = E1;
@@ -886,7 +886,7 @@ metac_expression_t* MetaCParser_ParseUnaryExpression(metac_parser_t* self)
     metac_token_t* peek_post = MetaCParser_PeekToken(self, 1);
     metac_token_enum_t postTokenType =
         (peek_post ? peek_post->TokenType : tok_invalid);
-    
+
     if (IsPostfixOperator(postTokenType))
     {
         result = MetaCParser_ParsePostfixExpression(self, result);
@@ -935,12 +935,12 @@ metac_expression_t* MetaCParser_ParseBinaryExpression(metac_parser_t* self,
     else if (peekTokenType == tok_lBracket)
     {
         MetaCParser_Match(self, tok_lBracket);
-        
+
         metac_expression_t* E1 = left;
         result = AllocNewExpression(exp_index);
         result->E1 = E1;
         result->E2 = MetaCParser_ParseExpression(self, 0);
-        
+
         MetaCParser_Match(self, tok_rBracket);
     }
     else if (peekTokenType == tok_lParen)
@@ -950,13 +950,13 @@ metac_expression_t* MetaCParser_ParseBinaryExpression(metac_parser_t* self,
         metac_expression_t* E1 = left;
         assert(peekToken);
         metac_expression_t* E2 = 0;
-        
+
         uint32_t nArguments = 0;
         uint32_t lookaheadLeft = MetaCParser_HowMuchLookahead(self);
         uint32_t currentLookahead = 1;
-        
+
         //if (peekTokenType->)
-        
+
         while (peekToken->TokenType != tok_rParen)
         {
             nArguments++;
@@ -982,6 +982,7 @@ static inline bool IsTypeToken(metac_token_enum_t tokenType)
            (   tokenType == tok_kw_const
             || (tokenType >= tok_kw_auto && tokenType <= tok_kw_double)
             || tokenType == tok_kw_unsigned
+            || tokenType == tok_star
             || tokenType == tok_kw_struct
             || tokenType == tok_kw_enum
             || tokenType == tok_kw_union
@@ -1007,7 +1008,7 @@ static bool CouldBeCast(metac_parser_t* self, metac_token_enum_t tok)
 }
 
 metac_expression_t* MetaCParser_ParseExpression(metac_parser_t* self,
-                                               metac_expression_t* prev)
+                                                metac_expression_t* prev)
 {
     metac_expression_t* result = 0;
     metac_token_t* currentToken = MetaCParser_PeekToken(self, 1);
@@ -1063,10 +1064,10 @@ metac_expression_t* MetaCParser_ParseExpression(metac_parser_t* self,
         {
             // there's nothing to see here crray on
         }
-        else assert(!"Stray Input");
-    }   
-    
-     
+        //else assert(!"Stray Input");
+    }
+
+
     return result;
 }
 
@@ -1102,6 +1103,9 @@ LnextToken:
     metac_token_enum_t tokenType =
         (currentToken ? currentToken->TokenType : tok_invalid);
 
+    bool postType = false;
+
+
     while(IsTypeToken(tokenType))
     {
         if (tokenType == tok_identifier)
@@ -1126,6 +1130,10 @@ LnextToken:
         {
             U32(typeModifiers) |= typemod_unsigned;
             goto LnextToken;
+        }
+        else if (tokenType == tok_star)
+        {
+            assert(0); // this is not supposed to happen
         }
         else if (tokenType == tok_kw_struct)
         {
@@ -1181,13 +1189,28 @@ LnextToken:
         else if (tokenType == tok_kw_enum)
         {
         }
+    }
 
+    currentToken = MetaCParser_PeekToken(self, 1);
+    tokenType =
+        (currentToken ? currentToken->TokenType : tok_invalid);
 
+    while(tokenType == tok_star)
+    {
+        MetaCParser_Match(self, tok_star);
+        decl_type_t* elementType = result;
+        decl_type_ptr_t* ptr = AllocNewDeclaration(decl_type_ptr, &result);
+        ptr->ElementType = elementType;
+
+        currentToken = MetaCParser_PeekToken(self, 1);
+        tokenType =
+            (currentToken ? currentToken->TokenType : tok_invalid);
     }
 
     return result;
 }
 static decl_type_array_t* ParseArraySuffix(metac_parser_t* self, decl_type_t* type);
+static stmt_block_t* MetaCParser_ParseBlockStatement(metac_parser_t* self, metac_statement_t* parent);
 
 metac_declaration_t* MetaCParser_ParseDeclaration(metac_parser_t* self, metac_declaration_t* parent)
 {
@@ -1196,14 +1219,23 @@ metac_declaration_t* MetaCParser_ParseDeclaration(metac_parser_t* self, metac_de
         (currentToken ? currentToken->TokenType : tok_invalid);
 
 	metac_declaration_t* result = 0;
+    bool isStatic = false;
 
     decl_type_t* type = 0;
+
+    if (MetaCParser_PeekMatch(self, tok_kw_static, true))
+    {
+        isStatic = true;
+        MetaCParser_Match(self, tok_kw_static);
+        currentToken = MetaCParser_PeekToken(self, 1);
+        tokenType = currentToken ? currentToken->TokenType : tok_eof;
+    }
 
     if (IsTypeToken(tokenType))
     {
          type = MetaCParser_ParseTypeDeclaration(self, parent, 0);
     }
-    
+
     if (tokenType == tok_kw_typedef)
     {
         MetaCParser_Match(self, tok_kw_typedef);
@@ -1256,7 +1288,7 @@ metac_declaration_t* MetaCParser_ParseDeclaration(metac_parser_t* self, metac_de
 
                     metac_token_t* nameToken = MetaCParser_Match(self, tok_identifier);
                     param->Identifier = RegisterIdentifier(self, nameToken);
-                    // fllow parameter
+                    // follow parameter
                     while(MetaCParser_PeekMatch(self, tok_lBracket, true))
                     {
                         param->Type = (decl_type_t*)ParseArraySuffix(self, param->Type);
@@ -1275,8 +1307,14 @@ metac_declaration_t* MetaCParser_ParseDeclaration(metac_parser_t* self, metac_de
                     }
                 }
                 MetaCParser_Match(self, tok_rParen);
-
                 funcDecl->FunctionBody = (stmt_block_t*) _emptyPointer;
+
+                if (MetaCParser_PeekMatch(self, tok_lBrace, true))
+                {
+                    funcDecl->FunctionBody = MetaCParser_ParseBlockStatement(self, 0);
+                }
+
+
             }
             else
             {
@@ -1325,7 +1363,6 @@ static decl_type_array_t* ParseArraySuffix(metac_parser_t* self, decl_type_t* ty
     return arrayType;
 }
 
-static stmt_block_t* MetaCParser_ParseBlockStatement(metac_parser_t* self, metac_statement_t* parent);
 
 #define ErrorStatement() \
     (metac_statement_t*)0
@@ -1344,18 +1381,20 @@ static metac_statement_t* MetaCParser_ParseStatement(metac_parser_t* self, metac
     }
     else if (tokenType == tok_kw_if)
     {
-        stmt_if_t* result = AllocNewStatement(stmt_if, &result);
+        stmt_if_t* if_stmt = AllocNewStatement(stmt_if, &result);
         MetaCParser_Match(self, tok_kw_if);
         MetaCParser_PeekMatch(self, tok_lParen, 0);
         metac_expression_t* condExpP =
             MetaCParser_ParseExpression(self, 0);
         assert(condExpP->Kind == exp_paren);
-        result->IfCond = condExpP;
-        result->IfBody = MetaCParser_ParseStatement(self, (metac_statement_t*)result);
+        if_stmt->IfCond = condExpP->E1;
+        if_stmt->IfBody = MetaCParser_ParseStatement(self, (metac_statement_t*)result);
         if (MetaCParser_PeekMatch(self, tok_kw_else, 1))
         {
-            result->ElseBody = (metac_statement_t*)MetaCParser_ParseBlockStatement(self, (metac_statement_t*)result);
+            MetaCParser_Match(self, tok_kw_else);
+            if_stmt->ElseBody = (metac_statement_t*)MetaCParser_ParseBlockStatement(self, (metac_statement_t*)result);
         }
+        goto LdoneWithStatement;
     }
     else if (tokenType == tok_kw_switch)
     {
@@ -1388,7 +1427,7 @@ static metac_statement_t* MetaCParser_ParseStatement(metac_parser_t* self, metac
             MetaCParser_Match(self, tok_colon);
 
             stmt_label_t* result = AllocNewStatement(stmt_label, &result);
-            
+
             result->Label = RegisterIdentifier(self, label);
         }
     }
@@ -1431,6 +1470,9 @@ static metac_statement_t* MetaCParser_ParseStatement(metac_parser_t* self, metac
         metac_token_t* peek2 = MetaCParser_PeekToken(self, 2);
         if (peek2 && IsTypeToken(peek2->TokenType))
         {
+            metac_declaration_t* decl = MetaCParser_ParseDeclaration(self, 0);
+            stmt_decl_t* declStmt = AllocNewStatement(stmt_decl, &result);
+            declStmt->Declaration = decl;
             //result = MetaCParser_ParseDeclarationStatement(self, parent);
         }
     }
@@ -1438,11 +1480,19 @@ static metac_statement_t* MetaCParser_ParseStatement(metac_parser_t* self, metac
     // if we didn't parse as a declaration try an expression as the last resort
     if (!result || result == emptyPointer)
     {
+        metac_expression_t* exp = MetaCParser_ParseExpression(self, 0);
+        stmt_exp_t* expStmt = AllocNewStatement(stmt_exp, &result);
+        expStmt->Expression = exp;
         //result = MetaCParser_ParseExpressionStatement(self, parent);
     }
-
-    if(tokenType != tok_lBrace)
+LdoneWithStatement:
+    if(tokenType != tok_lBrace && MetaCParser_PeekMatch(self, tok_semicolon, true))
+    {
+        // XXX it shouldn't stay this way ... but for now we want
+        // to parse more function bodies.
         MetaCParser_Match(self, tok_semicolon);
+    }
+
 
     return result;
 }
@@ -1508,6 +1558,8 @@ static metac_lexer_t g_lineLexer = {
 /// There can only be one LineParser as it uses static storage
 metac_parser_t g_lineParser = { &g_lineLexer };
 
+bool g_exernalIdentifierTable = false;
+
 void LineLexerInit(void)
 {
     g_lineParser.CurrentTokenIndex = 0;
@@ -1516,8 +1568,11 @@ void LineLexerInit(void)
 
     ACCEL_INIT(g_lineLexer, Identifier);
     ACCEL_INIT(g_lineLexer, String);
-    ACCEL_INIT(g_lineParser, Identifier);
-    ACCEL_INIT(g_lineParser, String);
+    if (!g_exernalIdentifierTable)
+    {
+        ACCEL_INIT(g_lineParser, Identifier);
+        ACCEL_INIT(g_lineParser, String);
+    }
 
     if (!g_lineParser.Defines)
     {
@@ -1579,6 +1634,7 @@ const char* MetaCExpressionKind_toChars(metac_expression_kind_t type)
 
 #undef CASE_MACRO
 }
+
 void PrintSpace(metac_parser_t* self)
 {
     printf(" ");
@@ -1669,6 +1725,14 @@ void PrintType(metac_parser_t* self, decl_type_t* type)
             PrintString(self, "]");
         } break;
 
+        case decl_type_ptr:
+        {
+            decl_type_ptr_t *ptrType = (decl_type_ptr_t*) type;
+            // PrintTypeName(self, )
+            PrintType(self, ptrType->ElementType);
+            PrintString(self, "*");
+        } break;
+
         case decl_type:
         {
             // printf("TypeKind: %d\n", (int) type->Kind);
@@ -1687,7 +1751,7 @@ void PrintType(metac_parser_t* self, decl_type_t* type)
             if (type->TypeKind >= type_auto && type->TypeKind <= type_double)
             {
                 metac_token_enum_t tok = (metac_token_enum_t)
-                    ((type->TypeKind - type_type) + tok_kw_type);
+                    ((type->TypeKind - type_auto) + tok_kw_auto);
                 PrintKeyword(self, tok);
             }
             else if (type->TypeKind == type_identifier)

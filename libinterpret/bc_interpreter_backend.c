@@ -85,6 +85,10 @@ static inline void BCGen_Init(BCGen* self)
     self->functionCount = 0;
     self->functionCapacity = INITIAL_LOCALS_CAPACITY;
 
+    self->contexts = (void**) malloc(sizeof(void*) * 64);
+    self->contextCount = 0;
+    self->contextCapacity = 64;
+
     self->finalized = false;
 }
 
@@ -133,6 +137,11 @@ void BCGen_new_instance(BCGen** pResult)
     *pResult = gen;
 
     return ;
+}
+
+uint32_t BCGen_sizeof_instance(void)
+{
+    return sizeof(BCGen);
 }
 
 void BCGen_destroy_instance(BCGen* p)
@@ -2062,6 +2071,14 @@ BCValue BCGen_interpret(BCGen* self, uint32_t fnIdx, BCValue* args, uint32_t n_a
                 }
             }
             break;
+        case LongInst_ReadI32:
+            {
+                assert(hi < self->contextCount);
+                ReadI32_ctx_t ctx = self->contexts[hi];
+                int32_t value = (int32_t)(*(int64_t*)opRef);
+                ctx.cb(value, ctx.userCtx);
+            }
+            break;
 
         case LongInst_Comment:
             {
@@ -3135,6 +3152,18 @@ static inline CndJmpBegin BCGen_beginCndJmp(BCGen* self, const BCValue* cond, bo
     return result;
 }
 
+static inline void BCGen_ReadI32(BCGen* self, const BCValue* value, ReadI32_cb_t ReadI32_cb, void* userCtx)
+{
+    assert(self->contextCount < self->contextCapacity);
+
+    ReadI32_ctx_t ctx = { .cb = ReadI32_cb,  .userCtx = userCtx };
+    uint32_t ptr = self->contextCount;
+    self->contexts[self->contextCount++] = ctx;
+    assert(BCValue_isStackValueOrParameter(value));
+
+    BCGen_emitLongInstSI(self, LongInst_ReadI32, value->stackAddr, ptr);
+}
+
 static inline void BCGen_endCndJmp(BCGen* self, const CndJmpBegin* jmp, BCLabel target)
 {
     uint32_t atIp = jmp->at.addr;
@@ -3277,5 +3306,8 @@ const BackendInterface BCGen_interface = {
     .Realloc = (Realloc_t) BCGen_Realloc,
     .run = (run_t) BCGen_run,
     .destroy_instance = (destroy_instance_t) BCGen_destroy_instance,
-    .new_instance = (new_instance_t) BCGen_new_instance
+    .new_instance = (new_instance_t) BCGen_new_instance,
+    .sizeof_instance = BCGen_sizeof_instance,
+
+    .ReadI32 = (ReadI32_t) BCGen_ReadI32,
 };

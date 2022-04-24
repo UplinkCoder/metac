@@ -8,6 +8,8 @@
 #include <stdio.h>
 #include "exp_eval.c"
 
+extern bool g_exernalIdentifierTable;
+
 metac_statement_t* MetaCParserParseStatementFromString(const char* str);
 metac_declaration_t* MetaCParserParseDeclarationFromString(const char* str);
 void PrintDeclaration(metac_parser_t* self, metac_declaration_t* decl,
@@ -25,14 +27,17 @@ typedef enum parse_mode_t
     parse_mode_file,
 
     parse_mode_ee,
+    parse_mode_setvars,
 
     parse_mode_max
 } parse_mode_t;
 
 void PrintHelp(void)
 {
-    printf("Press :e for expression mode\n"
+    printf("Type :e for expression mode\n"
+       "      :ee for evaluation mode\n"
        "      :d for declaration mode\n"
+       "      :v for varible mode (set vars for eval)\n"
        "      :s for statement mode\n"
        "      :t for token mode\n"
        "      :l Load and lex file\n"
@@ -59,6 +64,14 @@ int main(int argc, const char* argv[])
     linenoiseHistoryLoad(".repl_history");
     const char* promt_;
 
+    variable_store_t vstore;
+    VariableStore_Init(&vstore);
+    _ReadContextCapacity = 32;
+    _ReadContexts = (ReadI32_Ctx*)
+        malloc(sizeof(ReadI32_Ctx) * _ReadContextCapacity);
+    _ReadContextSize = 0;
+
+
 LswitchMode:
     switch (parseMode)
     {
@@ -77,6 +90,9 @@ LswitchMode:
         break;
     case parse_mode_ee:
         promt_ = "EE>";
+        break;
+    case parse_mode_setvars:
+        promt_ = "SetVars>";
         break;
     }
 
@@ -141,6 +157,9 @@ LnextLine:
             case 'd' :
                 parseMode = parse_mode_decl;
                 goto LswitchMode;
+            case 'v' :
+                parseMode = parse_mode_setvars;
+                goto LswitchMode;
             case 'e' :
                 switch(line[2])
                 {
@@ -202,17 +221,42 @@ LnextLine:
                 exp =
                     MetaCParser_ParseExpressionFromString(line);
 
-                metac_expression_t* result = evalWithVariables(exp, 0);
-                
+                metac_expression_t* result = evalWithVariables(exp, &vstore);
+
                 const char* str = PrintExpression(&g_lineParser, exp);
                 const char* result_str = PrintExpression(&g_lineParser, result);
-                
+
                 printf("%s = %s\n", str, result_str);
-                
+                // XXX static and fixed size state like _ReadContext
+                // should do away soon.
+                _ReadContextSize = 0;
                 goto LnextLine;
             }
+            case parse_mode_setvars :
+            {
+                metac_expression_t* assignExp =
+                    MetaCParser_ParseExpressionFromString(line);
+
+                if (assignExp->Kind != exp_assign)
+                {
+                    fprintf(stderr, "You must write an expression of the from identifier = value");
+                }
+                else
+                {
+                    assert(assignExp->E1->Kind == exp_identifier);
+                    assert(assignExp->E2->Kind == exp_signed_integer);
+
+                    VariableStore_SetValueI32(&vstore, assignExp->E1, (int32_t)assignExp->E2->ValueI64);
+                }
+                goto LnextLine;
+            } break;
+
             case parse_mode_stmt :
                    stmt = MetaCParser_ParseStatementFromString(line);
+                   if (!stmt)
+                   {
+                       fprintf(stderr, "couldn't parse statement\n");
+                   }
                 goto LnextLine;
             case parse_mode_decl :
                     decl = MetaCParser_ParseDeclarationFromString(line);

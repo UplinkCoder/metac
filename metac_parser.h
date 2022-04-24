@@ -46,6 +46,7 @@
     M(decl_type_union) \
     M(decl_type_enum) \
     M(decl_type_array) \
+    M(decl_type_ptr) \
     M(decl_functiontype) \
     LAST_DECL_TYPE(M) \
     \
@@ -507,6 +508,14 @@ typedef struct decl_function_t
     stmt_block_t* FunctionBody;
 } decl_function_t;
 
+typedef struct decl_type_ptr_t
+{
+    DECLARATION_HEADER
+    
+    TYPE_HEADER
+    
+    decl_type_t* ElementType;
+} decl_type_ptr_t;
 
 typedef struct decl_type_array_t
 {

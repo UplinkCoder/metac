@@ -112,7 +112,6 @@ typedef struct metac_lexer_state_t
     M(tok_kw_enum) \
     \
     M(tok_kw_auto) \
-    M(tok_kw_type) \
     M(tok_kw_void) \
     \
     M(tok_kw_char) \
