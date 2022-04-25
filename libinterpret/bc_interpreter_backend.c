@@ -85,7 +85,7 @@ static inline void BCGen_Init(BCGen* self)
     self->functionCount = 0;
     self->functionCapacity = INITIAL_LOCALS_CAPACITY;
 
-    self->contexts = (void**) malloc(sizeof(void*) * 64);
+    self->contexts = (ReadI32_ctx_t*) malloc(sizeof(ReadI32_ctx_t) * 64);
     self->contextCount = 0;
     self->contextCapacity = 64;
 

@@ -10,8 +10,8 @@
 
 extern bool g_exernalIdentifierTable;
 
-metac_statement_t* MetaCParserParseStatementFromString(const char* str);
-metac_declaration_t* MetaCParserParseDeclarationFromString(const char* str);
+metac_statement_t* MetaCParser_ParseStatementFromString(const char* str);
+metac_declaration_t* MetaCParser_ParseDeclarationFromString(const char* str);
 void PrintDeclaration(metac_parser_t* self, metac_declaration_t* decl,
 					  uint32_t indent, uint32_t level);
 
@@ -48,8 +48,8 @@ int main(int argc, const char* argv[])
 {
     const char* line;
 
-    const char* srcBuffer = 0;
-    const void* freePtr = 0;
+    char* srcBuffer = 0;
+    void* freePtr = 0;
     uint32_t srcBufferLength = 0;
 
     parse_mode_t parseMode = parse_mode_token;
@@ -142,7 +142,7 @@ LnextLine:
 
                     freePtr = srcBuffer = calloc(1, sz + 4);
                     srcBufferLength = sz;
-                    fread(srcBuffer, 1, sz, fd);
+                    fread((void*)srcBuffer, 1, sz, fd);
                     parseMode = parse_mode_file;
                     repl_state.Position = 0;
                     repl_state.Line = 1;
@@ -191,7 +191,7 @@ LnextLine:
 
         if (parseMode != parse_mode_file)
         {
-            srcBuffer = line;
+            srcBuffer = (char*)line;
             srcBufferLength = line_length;
         }
 
@@ -221,10 +221,10 @@ LnextLine:
                 exp =
                     MetaCParser_ParseExpressionFromString(line);
 
-                metac_expression_t* result = evalWithVariables(exp, &vstore);
+                metac_expression_t result = evalWithVariables(exp, &vstore);
 
                 const char* str = PrintExpression(&g_lineParser, exp);
-                const char* result_str = PrintExpression(&g_lineParser, result);
+                const char* result_str = PrintExpression(&g_lineParser, &result);
 
                 printf("%s = %s\n", str, result_str);
                 // XXX static and fixed size state like _ReadContext

@@ -1,5 +1,6 @@
 /// little eval module to evaluate a simple expression
 
+
 #include "../compat.h"
 #include "../metac_parser.h"
 #include "exp_eval.h"
@@ -7,18 +8,9 @@
 #include "../libinterpret/bc_interpreter_backend.c"
 #include <stdio.h>
 
+bool IsBinaryExp(metac_expression_kind_t k);
+
 const char* MetaCExpressionKind_toChars(metac_expression_kind_t k);
-
-void ReadI32_cb (uint32_t value, void* userCtx)
-{
-    ReadI32_Ctx* ctx = cast(ReadI32_Ctx*) userCtx;
-    VariableStore_SetValueI32(ctx->vstore, ctx->exp, value);
-}
-
-
-ReadI32_Ctx* _ReadContexts;
-uint32_t _ReadContextSize;
-uint32_t _ReadContextCapacity;
 
 static inline BCValue* GetValueFromVariableStore(variable_store_t* vstore,
                                                  metac_expression_t* identifierExp)
@@ -45,7 +37,6 @@ static inline BCValue* GetValueFromVariableStore(variable_store_t* vstore,
     return 0;
 }
 
-
 void VariableStore_SetValueI32(variable_store_t* vstore,
                                metac_expression_t* identifierExp,
                                int32_t value)
@@ -70,6 +61,16 @@ void VariableStore_SetValueI32(variable_store_t* vstore,
     *v = imm32(value);
 
 }
+
+void ReadI32_cb (uint32_t value, void* userCtx)
+{
+    ReadI32_Ctx* ctx = cast(ReadI32_Ctx*) userCtx;
+    VariableStore_SetValueI32(ctx->vstore, ctx->exp, value);
+}
+
+ReadI32_Ctx* _ReadContexts;
+uint32_t _ReadContextSize;
+uint32_t _ReadContextCapacity;
 
 static inline void WalkTree(void* c, BCValue* result,
                             metac_expression_t* e,
@@ -165,15 +166,13 @@ static inline void WalkTree(void* c, BCValue* result,
     BCGen_interface.destroyTemporary(c, rhs);
 }
 
-metac_expression_t* evalWithVariables(metac_expression_t* e,
+metac_expression_t evalWithVariables(metac_expression_t* e,
                                       variable_store_t* vstore)
 {
     void* c;
     BCGen_interface.new_instance(&c);
 
     uint32_t fIdx;
-
-    metac_expression_t result0;
 
     BCGen_interface.Initialize(c, 0); // zero extra arguments
     {
@@ -189,9 +188,9 @@ metac_expression_t* evalWithVariables(metac_expression_t* e,
     BCGen_interface.Finalize(c);
     BCValue res = BCGen_interface.run(c, fIdx, 0, 0);
 
-    metac_expression_t* result = &result0;
-    result->Kind = exp_signed_integer;
-    result->ValueI64 = res.imm32.imm32;
+    metac_expression_t result;
+    result.Kind = exp_signed_integer;
+    result.ValueI64 = res.imm32.imm32;
 
     return result;
 }

@@ -17,7 +17,7 @@ typedef struct variable_store_t
 
 void VariableStore_Init(variable_store_t* self);
 
-metac_expression_t* evalWithVariables(metac_expression_t* e, variable_store_t* vars);
+metac_expression_t evalWithVariables(metac_expression_t* e, variable_store_t* vars);
 
 
 typedef struct ReadI32_Ctx

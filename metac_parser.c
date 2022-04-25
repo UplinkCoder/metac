@@ -653,7 +653,8 @@ uint32_t OpToPrecedence(metac_expression_kind_t exp)
     {
         return 14;
     }
-    else if (exp == exp_call || exp == exp_index)
+    else if (exp == exp_call || exp == exp_index || exp == exp_dot
+          || exp == exp_arrow || exp == exp_compl)
     {
         return 16;
     }
@@ -847,6 +848,10 @@ metac_expression_t* MetaCParser_ParseUnaryExpression(metac_parser_t* self)
         //PopOperator(exp_assert);
         assert(parenExp->Kind == exp_paren);
         result->E1 = parenExp->E1;
+    }
+    else if (tokenType == tok_cat)
+    {
+        assert(0); // complement expression not implemented
     }
     else if (tokenType == tok_and)
     {
@@ -1244,7 +1249,6 @@ metac_declaration_t* MetaCParser_ParseDeclaration(metac_parser_t* self, metac_de
         (currentToken ? currentToken->TokenType : tok_invalid);
         decl_typedef_t* typdef = AllocNewDeclaration(decl_typedef, &result);
 
-
         typdef->Type = MetaCParser_ParseTypeDeclaration(self, (metac_declaration_t*) typdef, 0);
         metac_token_t* name = MetaCParser_Match(self, tok_identifier);
         if (!name || name->TokenType != tok_identifier)
@@ -1313,8 +1317,6 @@ metac_declaration_t* MetaCParser_ParseDeclaration(metac_parser_t* self, metac_de
                 {
                     funcDecl->FunctionBody = MetaCParser_ParseBlockStatement(self, 0);
                 }
-
-
             }
             else
             {
@@ -1460,6 +1462,12 @@ static metac_statement_t* MetaCParser_ParseStatement(metac_parser_t* self, metac
             caseHash = Mix(caseHash, result->Next->Hash);
         }
         result->Hash = caseHash;
+    }
+    else if (tokenType == tok_kw_return)
+    {
+        stmt_return_t* return_ = AllocNewStatement(stmt_return, &result);
+        MetaCParser_Match(self, tok_kw_return);
+        return_->Expression = MetaCParser_ParseExpression(self, 0);
     }
     else if (tokenType == tok_lBrace)
     {
@@ -1707,7 +1715,7 @@ void PrintToken(metac_parser_t* self,
 
 void PrintU64(metac_parser_t* self, uint64_t value)
 {
-    printf("%llu", value);
+    printf("%llu", (long long unsigned)value);
 }
 
 void PrintType(metac_parser_t* self, decl_type_t* type)

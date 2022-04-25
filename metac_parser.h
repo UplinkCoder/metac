@@ -117,6 +117,7 @@
     M(exp_outer) \
     M(exp_addr) \
     M(exp_ptr) \
+    M(exp_compl) \
     M(exp_paren) \
     \
     FOREACH_BINARY_EXP(M) \
@@ -152,6 +153,7 @@
     M(stmt_scope) \
     M(stmt_continue) \
     M(stmt_goto) \
+    M(stmt_return) \
     \
     M(stmt_exp) \
     M(stmt_decl)
@@ -369,6 +371,13 @@ typedef struct stmt_label_t
     metac_identifier_ptr_t Label;
 } stmt_label_t;
 
+typedef struct stmt_return_t
+{
+    STATEMENT_HEADER
+
+    metac_expression_t* Expression;
+} stmt_return_t;
+
 typedef struct stmt_switch_t
 {
     STATEMENT_HEADER
@@ -511,20 +520,20 @@ typedef struct decl_function_t
 typedef struct decl_type_ptr_t
 {
     DECLARATION_HEADER
-    
+
     TYPE_HEADER
-    
+
     decl_type_t* ElementType;
 } decl_type_ptr_t;
 
 typedef struct decl_type_array_t
 {
     DECLARATION_HEADER
-    
+
     TYPE_HEADER
-    
+
     decl_type_t* ElementType;
-    
+
     metac_expression_t* Dim;
 } decl_type_array_t;
 
@@ -559,6 +568,9 @@ typedef struct metac_declaration_t
 
         decl_typedef_t decl_typedef;
         decl_type_t decl_type;
+        decl_type_ptr_t decl_type_ptr;
+        decl_function_t decl_function;
+        decl_type_array_t decl_type_array;
         decl_type_struct_t decl_type_struct;
     };
 
