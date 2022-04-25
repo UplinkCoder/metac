@@ -2,6 +2,7 @@
 #include "../compat.h"
 #include "../metac_lexer.h"
 #include "../metac_parser.h"
+#include "../metac_printer.h"
 //#include "../metac_eeP.c"
 #include "../3rd_party/linenoise/linenoise.c"
 #include "../int_to_str.c"
@@ -12,8 +13,6 @@ extern bool g_exernalIdentifierTable;
 
 metac_statement_t* MetaCParser_ParseStatementFromString(const char* str);
 metac_declaration_t* MetaCParser_ParseDeclarationFromString(const char* str);
-void PrintDeclaration(metac_parser_t* self, metac_declaration_t* decl,
-					  uint32_t indent, uint32_t level);
 
 const char* MetaCTokenEnum_toChars(metac_token_enum_t tok);
 
@@ -63,6 +62,11 @@ int main(int argc, const char* argv[])
     PrintHelp();
     linenoiseHistoryLoad(".repl_history");
     const char* promt_;
+
+    metac_printer_t printer;
+    MetaCPrinter_Init(&printer,
+        &g_lineParser.IdentifierTable,
+        &g_lineParser.StringTable);
 
     variable_store_t vstore;
     VariableStore_Init(&vstore);
@@ -212,8 +216,9 @@ LnextLine:
                  exp =
                     MetaCParser_ParseExpressionFromString(line);
 
-                const char* str = PrintExpression(&g_lineParser, exp);
+                const char* str = MetaCPrinter_PrintExpression(&printer, exp);
                 printf("expr = %s\n", str);
+                MetaCPrinter_Reset(&printer);
                 goto LnextLine;
             }
             case parse_mode_ee:
@@ -223,10 +228,11 @@ LnextLine:
 
                 metac_expression_t result = evalWithVariables(exp, &vstore);
 
-                const char* str = PrintExpression(&g_lineParser, exp);
-                const char* result_str = PrintExpression(&g_lineParser, &result);
+                const char* str = MetaCPrinter_PrintExpression(&printer, exp);
+                const char* result_str = MetaCPrinter_PrintExpression(&printer, &result);
 
                 printf("%s = %s\n", str, result_str);
+                MetaCPrinter_Reset(&printer);
                 // XXX static and fixed size state like _ReadContext
                 // should do away soon.
                 _ReadContextSize = 0;
@@ -252,16 +258,18 @@ LnextLine:
             } break;
 
             case parse_mode_stmt :
-                   stmt = MetaCParser_ParseStatementFromString(line);
-                   if (!stmt)
-                   {
+                    stmt = MetaCParser_ParseStatementFromString(line);
+                    if (stmt)
+                        printf("stmt = %s\n", MetaCPrinter_PrintStatement(&printer, stmt));
+                    else
                        fprintf(stderr, "couldn't parse statement\n");
-                   }
+                    MetaCPrinter_Reset(&printer);
+
                 goto LnextLine;
             case parse_mode_decl :
                     decl = MetaCParser_ParseDeclarationFromString(line);
                     if (decl)
-                        PrintDeclaration(&g_lineParser, decl, 0, 0);
+                        printf("decl = %s\n", MetaCPrinter_PrintDeclaration(&printer, decl));
                     else
                         printf("Couldn't parse Declaration\n");
                 goto LnextLine;

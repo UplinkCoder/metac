@@ -31,7 +31,6 @@ const void* _emptyPointer = (const void*)0x1;
 
 static noinline void _newMemRealloc(void** memP, uint32_t* capacity, const uint32_t elementSize);
 const char* MetaCExpressionKind_toChars(metac_expression_kind_t type);
-const metac_identifier_ptr_t empty_identifier = {~0u};
 #define ARRAY_SIZE(A) \
      ((unsigned int)(sizeof((A)) / sizeof((A)[0])))
 
@@ -538,6 +537,7 @@ metac_statement_t* AllocNewStatement_(metac_statement_kind_t kind, size_t nodeSi
         (*result_ptr) = result = _newStmt_mem + INC(_newStmt_size);
         result->StmtKind = kind;
         result->Serial = INC(_nodeCounter);
+        result->Next = _emptyPointer;
     }
 
     return result;
@@ -849,9 +849,16 @@ metac_expression_t* MetaCParser_ParseUnaryExpression(metac_parser_t* self)
         assert(parenExp->Kind == exp_paren);
         result->E1 = parenExp->E1;
     }
-    else if (tokenType == tok_cat)
+    else if (tokenType == tok_minus)
     {
-        assert(0); // complement expression not implemented
+        MetaCParser_Match(self, tok_minus);
+        result = AllocNewExpression(exp_umin);
+        //PushOperator(exp_addr);
+        result->E1 = MetaCParser_ParseExpression(self, 0);
+        result->Hash = Mix(
+            crc32c(~0, "-", 1),
+            result->E1->Hash
+        );
     }
     else if (tokenType == tok_and)
     {
@@ -877,6 +884,26 @@ metac_expression_t* MetaCParser_ParseUnaryExpression(metac_parser_t* self)
             result->E1->Hash
         );
         //PushOperand(result);
+    }
+    else if (tokenType == tok_bang)
+    {
+        MetaCParser_Match(self, tok_bang);
+        result = AllocNewExpression(exp_not);
+        result->E1 = MetaCParser_ParseExpression(self, 0);
+        result->Hash = Mix(
+            crc32c(~0, "!", 1),
+            result->E1->Hash
+        );
+    }
+    else if (tokenType == tok_cat)
+    {
+        MetaCParser_Match(self, tok_cat);
+        result = AllocNewExpression(exp_compl);
+        result->E1 = MetaCParser_ParseExpression(self, 0);
+        result->Hash = Mix(
+            crc32c(~0, "~", 1),
+            result->E1->Hash
+        );
     }
     else if (IsPrimaryExpressionToken(tokenType))
     {
@@ -980,6 +1007,17 @@ metac_expression_t* MetaCParser_ParseBinaryExpression(metac_parser_t* self,
 
     return result;
 }
+
+bool IsBinaryExp(metac_expression_kind_t kind)
+{
+    return ((kind >= FIRST_BINARY_EXP(TOK_SELF)) && (kind <= LAST_BINARY_EXP(TOK_SELF)));
+}
+
+bool IsBinaryAssignExp(metac_expression_kind_t kind)
+{
+    IsBinaryExp(kind - (exp_add_ass - exp_add));
+}
+
 
 static inline bool IsTypeToken(metac_token_enum_t tokenType)
 {
@@ -1215,7 +1253,9 @@ LnextToken:
     return result;
 }
 static decl_type_array_t* ParseArraySuffix(metac_parser_t* self, decl_type_t* type);
-static stmt_block_t* MetaCParser_ParseBlockStatement(metac_parser_t* self, metac_statement_t* parent);
+static stmt_block_t* MetaCParser_ParseBlockStatement(metac_parser_t* self,
+                                                     metac_statement_t* parent,
+                                                     metac_statement_t* prev);
 
 metac_declaration_t* MetaCParser_ParseDeclaration(metac_parser_t* self, metac_declaration_t* parent)
 {
@@ -1290,12 +1330,17 @@ metac_declaration_t* MetaCParser_ParseDeclaration(metac_parser_t* self, metac_de
 
                     param->Type = MetaCParser_ParseTypeDeclaration(self, result, 0);
 
-                    metac_token_t* nameToken = MetaCParser_Match(self, tok_identifier);
-                    param->Identifier = RegisterIdentifier(self, nameToken);
-                    // follow parameter
-                    while(MetaCParser_PeekMatch(self, tok_lBracket, true))
+                    param->Identifier = empty_identifier;
+                    if (MetaCParser_PeekMatch(self, tok_identifier, 1))
                     {
-                        param->Type = (decl_type_t*)ParseArraySuffix(self, param->Type);
+                        metac_token_t* nameToken = MetaCParser_Match(self, tok_identifier);
+                        param->Identifier = RegisterIdentifier(self, nameToken);
+
+                            // follow parameter
+                        while(MetaCParser_PeekMatch(self, tok_lBracket, true))
+                        {
+                            param->Type = (decl_type_t*)ParseArraySuffix(self, param->Type);
+                        }
                     }
 
                     nextParam = &param->Next;
@@ -1315,7 +1360,7 @@ metac_declaration_t* MetaCParser_ParseDeclaration(metac_parser_t* self, metac_de
 
                 if (MetaCParser_PeekMatch(self, tok_lBrace, true))
                 {
-                    funcDecl->FunctionBody = MetaCParser_ParseBlockStatement(self, 0);
+                    funcDecl->FunctionBody = MetaCParser_ParseBlockStatement(self, 0, 0);
                 }
             }
             else
@@ -1369,7 +1414,9 @@ static decl_type_array_t* ParseArraySuffix(metac_parser_t* self, decl_type_t* ty
 #define ErrorStatement() \
     (metac_statement_t*)0
 
-static metac_statement_t* MetaCParser_ParseStatement(metac_parser_t* self, metac_statement_t* parent)
+static metac_statement_t* MetaCParser_ParseStatement(metac_parser_t* self,
+                                                     metac_statement_t* parent,
+                                                     metac_statement_t* prev)
 {
     metac_statement_t* result = 0;
 
@@ -1379,22 +1426,30 @@ static metac_statement_t* MetaCParser_ParseStatement(metac_parser_t* self, metac
 
     if (tokenType == tok_invalid)
     {
-
+        return ErrorStatement();
     }
     else if (tokenType == tok_kw_if)
     {
         stmt_if_t* if_stmt = AllocNewStatement(stmt_if, &result);
         MetaCParser_Match(self, tok_kw_if);
-        MetaCParser_PeekMatch(self, tok_lParen, 0);
+        if (!MetaCParser_PeekMatch(self, tok_lParen, 0))
+        {
+            ParseError(self->LexerState, "execpected ( after if\n");
+            return ErrorStatement();
+        }
         metac_expression_t* condExpP =
             MetaCParser_ParseExpression(self, 0);
         assert(condExpP->Kind == exp_paren);
         if_stmt->IfCond = condExpP->E1;
-        if_stmt->IfBody = MetaCParser_ParseStatement(self, (metac_statement_t*)result);
+        if_stmt->IfBody = MetaCParser_ParseStatement(self, (metac_statement_t*)result, 0);
         if (MetaCParser_PeekMatch(self, tok_kw_else, 1))
         {
             MetaCParser_Match(self, tok_kw_else);
-            if_stmt->ElseBody = (metac_statement_t*)MetaCParser_ParseBlockStatement(self, (metac_statement_t*)result);
+            if_stmt->ElseBody = (metac_statement_t*)MetaCParser_ParseStatement(self, (metac_statement_t*)result, 0);
+        }
+        else
+        {
+            if_stmt->ElseBody = _emptyPointer;
         }
         goto LdoneWithStatement;
     }
@@ -1402,7 +1457,7 @@ static metac_statement_t* MetaCParser_ParseStatement(metac_parser_t* self, metac
     {
         uint32_t switchHash =
             crc32c(~0, "switch", sizeof("switch") - 1);
-        stmt_switch_t* result = AllocNewStatement(stmt_switch, &result);
+        stmt_switch_t* switch_ = AllocNewStatement(stmt_switch, &result);
 
         MetaCParser_Match(self, tok_kw_switch);
         MetaCParser_Match(self, tok_lParen);
@@ -1417,7 +1472,7 @@ static metac_statement_t* MetaCParser_ParseStatement(metac_parser_t* self, metac
         }
 
         metac_statement_t* caseBlock =
-            (metac_statement_t*)MetaCParser_ParseBlockStatement(self, (metac_statement_t*)result);
+            (metac_statement_t*)MetaCParser_ParseBlockStatement(self, result, 0);
         switchHash = Mix(switchHash, caseBlock->Hash);
     }
     else if (tokenType == tok_identifier)
@@ -1447,7 +1502,7 @@ static metac_statement_t* MetaCParser_ParseStatement(metac_parser_t* self, metac
     {
         uint32_t caseHash =
             crc32c(~0, "case", sizeof("case") - 1);
-        stmt_case_t* result = AllocNewStatement(stmt_case, &result);
+        stmt_case_t* case_ = AllocNewStatement(stmt_case, &result);
 
         MetaCParser_Match(self, tok_kw_case);
         metac_expression_t* caseExp =
@@ -1456,8 +1511,8 @@ static metac_statement_t* MetaCParser_ParseStatement(metac_parser_t* self, metac
 
         caseHash = Mix(caseHash, caseExp->Hash);
         result->Next =
-            MetaCParser_ParseStatement(self, (metac_statement_t*)result);
-        if (result->Next)
+            MetaCParser_ParseStatement(self, result, 0);
+        if (result->Next != _emptyPointer)
         {
             caseHash = Mix(caseHash, result->Next->Hash);
         }
@@ -1469,9 +1524,15 @@ static metac_statement_t* MetaCParser_ParseStatement(metac_parser_t* self, metac
         MetaCParser_Match(self, tok_kw_return);
         return_->Expression = MetaCParser_ParseExpression(self, 0);
     }
+    else if (tokenType == tok_kw_yield)
+    {
+        stmt_yield_t* yield_ = AllocNewStatement(stmt_yield, &result);
+        MetaCParser_Match(self, tok_kw_yield);
+        yield_->Expression = MetaCParser_ParseExpression(self, 0);
+    }
     else if (tokenType == tok_lBrace)
     {
-        result = (metac_statement_t*)MetaCParser_ParseBlockStatement(self, parent);
+        result = (metac_statement_t*)MetaCParser_ParseBlockStatement(self, parent, prev);
     }
     else if (IsTypeToken(tokenType))
     {
@@ -1494,6 +1555,9 @@ static metac_statement_t* MetaCParser_ParseStatement(metac_parser_t* self, metac
         //result = MetaCParser_ParseExpressionStatement(self, parent);
     }
 LdoneWithStatement:
+    if (prev)
+        prev->Next = result;
+
     if(tokenType != tok_lBrace && MetaCParser_PeekMatch(self, tok_semicolon, true))
     {
         // XXX it shouldn't stay this way ... but for now we want
@@ -1507,7 +1571,8 @@ LdoneWithStatement:
 
 
 static stmt_block_t* MetaCParser_ParseBlockStatement(metac_parser_t* self,
-                                                    metac_statement_t* parent)
+                                                     metac_statement_t* parent,
+                                                     metac_statement_t* prev)
 {
     MetaCParser_Match(self, tok_lBrace);
 
@@ -1523,14 +1588,14 @@ static stmt_block_t* MetaCParser_ParseBlockStatement(metac_parser_t* self,
         {
             if (!firstStatement)
             {
-                // maybe put an empty statement?
+                firstStatement = _emptyPointer;
             }
             break;
         }
 
         if (!firstStatement)
         {
-            firstStatement = MetaCParser_ParseStatement(self, (metac_statement_t*)result);
+            firstStatement = MetaCParser_ParseStatement(self, (metac_statement_t*)result, firstStatement);
             nextStatement = firstStatement;
             if (nextStatement)
             {
@@ -1543,7 +1608,7 @@ static stmt_block_t* MetaCParser_ParseBlockStatement(metac_parser_t* self,
         }
         else
         {
-            nextStatement->Next = MetaCParser_ParseStatement(self, (metac_statement_t*)result);
+            MetaCParser_ParseStatement(self, (metac_statement_t*)result, nextStatement);
             result->Hash = Mix(result->Hash, nextStatement->Hash);
             if (nextStatement->Next && nextStatement->Next != emptyPointer)
             {
@@ -1552,7 +1617,7 @@ static stmt_block_t* MetaCParser_ParseBlockStatement(metac_parser_t* self,
         }
     }
 
-    result->Next = firstStatement;
+    result->Body = firstStatement;
 
     MetaCParser_Match(self, tok_rBrace);
 
@@ -1606,7 +1671,7 @@ metac_statement_t* MetaCParser_ParseStatementFromString(const char* exp)
     LineLexerInit();
     LexString(&g_lineLexer, exp);
 
-    metac_statement_t* result = MetaCParser_ParseStatement(&g_lineParser, 0);
+    metac_statement_t* result = MetaCParser_ParseStatement(&g_lineParser, 0, 0);
 
     return result;
 }
@@ -1643,422 +1708,7 @@ const char* MetaCExpressionKind_toChars(metac_expression_kind_t type)
 #undef CASE_MACRO
 }
 
-void PrintSpace(metac_parser_t* self)
-{
-    printf(" ");
-}
-
-void PrintNewline(metac_parser_t* self)
-{
-    printf("\n");
-}
-
-bool IsBinaryExp(metac_expression_kind_t type)
-{
-    return (type >= FIRST_BINARY_EXP(TOK_SELF) && type <= LAST_BINARY_EXP(TOK_SELF));
-}
-
-void static inline PrintIndent(metac_parser_t* self, uint32_t indent)
-{
-    for (int i = 0; i < indent; i++)
-        printf("    ");
-}
-
-void PrintString(metac_parser_t* self, const char* string)
-{
-    printf("%s", string);
-}
-
-void PrintIdentifier(metac_parser_t* self,
-                     metac_identifier_ptr_t idPtr)
-{
-    if (idPtr.v == empty_identifier.v)
-        assert(0); // One is not supposed to print the empty identifier
-    printf("%s", IdentifierPtrToCharPtr(MEMBER_SUFFIX(&self->Identifier),
-                                        idPtr));
-}
-
-void PrintKeyword(metac_parser_t* self,
-                  metac_token_enum_t keyword)
-{
-    printf("%s", MetaCTokenEnum_toChars(keyword) + sizeof("tok_kw"));
-}
-
-void PrintToken(metac_parser_t* self,
-                metac_token_enum_t tokenType)
-{
-#define CASE_(KW) \
-    case KW :
-
-    switch(tokenType)
-    {
-        FOREACH_KEYWORD_TOKEN(CASE_)
-            assert(0);
-
-        case tok_lBrace :
-            PrintString(self, "{");
-        break;
-
-        case tok_rBrace :
-            PrintString(self, "}");
-        break;
-
-        case tok_lParen:
-            PrintString(self, "(");
-        break;
-
-        case tok_rParen:
-            PrintString(self, ")");
-        break;
-    }
-}
-
-void PrintU64(metac_parser_t* self, uint64_t value)
-{
-    printf("%llu", (long long unsigned)value);
-}
-
-void PrintType(metac_parser_t* self, decl_type_t* type)
-{
-    switch(type->DeclKind)
-    {
-        case decl_type_array:
-        {
-            decl_type_array_t *arrayType = (decl_type_array_t*) type;
-            // PrintTypeName(self, )
-            PrintType(self, arrayType->ElementType);
-            PrintString(self, "[");
-            const char* exp = PrintExpression(self, arrayType->Dim);
-            printf("%s", exp);
-            PrintString(self, "]");
-        } break;
-
-        case decl_type_ptr:
-        {
-            decl_type_ptr_t *ptrType = (decl_type_ptr_t*) type;
-            // PrintTypeName(self, )
-            PrintType(self, ptrType->ElementType);
-            PrintString(self, "*");
-        } break;
-
-        case decl_type:
-        {
-            // printf("TypeKind: %d\n", (int) type->Kind);
-            if (type->TypeModifiers)
-            {
-                uint32_t modifiers = type->TypeModifiers;
-                if (modifiers & typemod_const)
-                {
-                    PrintString(self, "const ");
-                }
-                if (modifiers & typemod_unsigned)
-                {
-                    PrintString(self, "unsigned ");
-                }
-            }
-            if (type->TypeKind >= type_auto && type->TypeKind <= type_double)
-            {
-                metac_token_enum_t tok = (metac_token_enum_t)
-                    ((type->TypeKind - type_auto) + tok_kw_auto);
-                PrintKeyword(self, tok);
-            }
-            else if (type->TypeKind == type_identifier)
-            {
-                PrintIdentifier(self, type->TypeIdentifier);
-
-                //printf("type_identifier: %d\n", type->Identifier.v);
-            }
-            else
-                assert(0);
-        } break;
-        case decl_type_struct :
-        {
-            decl_type_struct_t* structType = (decl_type_struct_t*) type;
-            PrintIdentifier(self, structType->Identifier);
-        }
-        break;
-        default : assert(0);
-    }
-}
-
-void PrintDeclaration(metac_parser_t* self, metac_declaration_t* decl,
-                      uint32_t indent, uint32_t level)
-{
-    PrintIndent(self, indent);
-
-    bool noSemicolon = false;
-
-    switch (decl->DeclKind)
-    {
-        case decl_typedef:
-        {
-            decl_typedef_t* typdef = (decl_typedef_t*) decl;
-            printf("typedef ");
-            level++;
-            PrintDeclaration(self, (metac_declaration_t*)typdef->Type, indent, level);
-            PrintIdentifier(self, typdef->Identifier);
-            level--;
-        } break;
-        case decl_type:
-        {
-            PrintType(self, (decl_type_t*) decl);
-        }  break;
-        case decl_type_struct :
-        {
-            decl_type_struct_t* struct_ = (decl_type_struct_t*) decl;
-            PrintKeyword(self, tok_kw_struct);
-            if (struct_->Identifier.v != empty_identifier.v)
-            {
-                PrintSpace(self);
-                PrintIdentifier(self, struct_->Identifier);
-            }
-            PrintSpace(self);
-            PrintToken(self, tok_lBrace);
-            PrintNewline(self);
-            ++level;
-            ++indent;
-            decl_field_t* f = struct_->Fields;
-            for(int memberIndex = 0;
-                memberIndex < struct_->FieldCount;
-                memberIndex++)
-            {
-                PrintDeclaration(self, (metac_declaration_t*)f, indent, level);
-                PrintNewline(self);
-                f = f->Next;
-            }
-            --indent;
-            --level;
-            PrintIndent(self, indent);
-            PrintToken(self, tok_rBrace);
-            if (indent)
-                printf("\n");
-            else
-                printf(" ");
-        } break;
-        case decl_type_array:
-        {
-            PrintType(self, (decl_type_t*)decl);
-        } break;
-        case decl_field :
-        {
-            decl_field_t* field = (decl_field_t*) decl;
-            PrintType(self, field->Field.Type);
-            PrintSpace(self);
-            PrintIdentifier(self, field->Field.Identifier);
-        } break;
-        case decl_variable:
-        {
-            decl_variable_t* variable = (decl_variable_t*) decl;
-            PrintType(self, variable->Type);
-            PrintSpace(self);
-            PrintIdentifier(self, variable->Identifier);
-        } break;
-        case decl_function:
-        {
-            decl_function_t* function = (decl_function_t*) decl;
-            PrintType(self, function->ReturnType);
-            PrintSpace(self);
-            PrintIdentifier(self, function->Identifier);
-            PrintToken(self, tok_lParen);
-
-            for(decl_parameter_t* param = function->Parameters;
-                param != emptyPointer;
-                param = param->Next)
-            {
-                PrintType(self, param->Type);
-                if (param->Identifier.v)
-                {
-                    PrintSpace(self);
-                    PrintIdentifier(self, param->Identifier);
-                }
-                if (param->Next != emptyPointer)
-                    PrintString(self, ", ");
-            }
-
-            PrintToken(self, tok_rParen);
-        } break;
-    }
-    if ((!noSemicolon)) printf(";");
-    printf("\n");
-}
-
-const char* PrintExpression(metac_parser_t* self, metac_expression_t* exp)
-{
-    char scratchpad[512];
-    uint32_t expStringLength = 0;
-
-    if (exp->Kind == exp_paren)
-    {
-        if (!IsBinaryExp(exp->E1->Kind))
-            scratchpad[expStringLength++] = '(';
-        const char* e1  = PrintExpression(self, exp->E1);
-        uint32_t e1_length = strlen(e1);
-        memcpy(scratchpad + expStringLength, e1, e1_length);
-        free((void*)e1);
-        expStringLength += e1_length;
-        if (!IsBinaryExp(exp->E1->Kind))
-            scratchpad[expStringLength++] = ')';
-    }
-    else if (exp->Kind == exp_identifier)
-    {
-        const char* ident = IdentifierPtrToCharPtr(
-#ifdef IDENTIFIER_TABLE
-                &self->IdentifierTable,
-#endif
-#ifdef IDENTIFIER_TREE
-                &self->IdentifierTree,
-#endif
-                exp->IdentifierPtr
-            );
-        expStringLength += sprintf(scratchpad + expStringLength, "%s ",
-            ident
-        );
-    }
-    else if (exp->Kind == exp_string)
-    {
-        expStringLength += sprintf(scratchpad + expStringLength, "\"%.*s\" ",
-            LENGTH_FROM_STRING_KEY(exp->StringKey),
-            STRING_PTR(&self->String, exp->StringPtr));
-    }
-    else if (exp->Kind == exp_signed_integer)
-    {
-        expStringLength += sprintf(scratchpad + expStringLength, "%d ",
-            (int)exp->ValueI64);
-    }
-    else if (IsBinaryExp(exp->Kind))
-    {
-        scratchpad[expStringLength++] = '(';
-        const char* e1  = PrintExpression(self, exp->E1);
-        uint32_t e1_length = strlen(e1);
-        memcpy(scratchpad + expStringLength, e1, e1_length);
-        free((void*)e1);
-        expStringLength += e1_length;
-
-        const char* op = BinExpTypeToChars((metac_binary_expression_kind_t)exp->Kind);
-        uint32_t op_length = strlen(op);
-        memcpy(scratchpad + expStringLength, op, op_length);
-        expStringLength += op_length;
-        *(scratchpad + expStringLength++) = ' ';
-
-        const char* e2  = PrintExpression(self, exp->E2);
-        uint32_t e2_length = strlen(e2);
-        memcpy(scratchpad + expStringLength, e2, e2_length);
-        free((void*)e2);
-        expStringLength += e2_length;
-        scratchpad[expStringLength++] = ')';
-    }
-    else if (exp->Kind == exp_call)
-    {
-        const char* e1  = PrintExpression(self, exp->E1);
-        uint32_t e1_length = strlen(e1);
-        memcpy(scratchpad + expStringLength, e1, e1_length);
-        free((void*)e1);
-        expStringLength += e1_length;
-        *(scratchpad + expStringLength++) = ' ';
-        *(scratchpad + expStringLength++) = '(';
-
-        if (exp->E2)
-        {
-            const char* e2  = PrintExpression(self, exp->E2);
-            uint32_t e2_length = strlen(e2);
-            memcpy(scratchpad + expStringLength, e2, e2_length);
-            free((void*)e2);
-            expStringLength += e2_length;
-        }
-        scratchpad[expStringLength++] = ')';
-    }
-    else if (exp->Kind == exp_addr || exp->Kind == exp_ptr)
-    {
-        {
-            const char* op = 0;
-            if (exp->Kind == exp_addr)
-                op = "&";
-            else if (exp->Kind == exp_ptr)
-                op = "*";
-
-            assert(op);
-
-            expStringLength += sprintf(scratchpad + expStringLength, "%s ", op);
-        }
-
-        if (!IsBinaryExp(exp->E1->Kind))
-            scratchpad[expStringLength++] = '(';
-
-        const char* e1  = PrintExpression(self, exp->E1);
-        uint32_t e1_length = strlen(e1);
-        memcpy(scratchpad + expStringLength, e1, e1_length);
-        free((void*)e1);
-        expStringLength += e1_length;
-        if (!IsBinaryExp(exp->E1->Kind))
-            scratchpad[expStringLength++] = ')';
-    }
-    else if (exp->Kind == exp_post_increment || exp->Kind == exp_post_decrement)
-    {
-        const char* op = 0;
-        if (exp->Kind == exp_post_increment)
-            op = "++";
-        else if (exp->Kind == exp_post_decrement)
-            op = "--";
-
-        assert(op);
-
-        if (!IsBinaryExp(exp->E1->Kind))
-            scratchpad[expStringLength++] = '(';
-
-        const char* e1  = PrintExpression(self, exp->E1);
-        uint32_t e1_length = strlen(e1);
-        memcpy(scratchpad + expStringLength, e1, e1_length);
-        free((void*)e1);
-        expStringLength += e1_length;
-
-        if (!IsBinaryExp(exp->E1->Kind))
-            scratchpad[expStringLength++] = ')';
-
-        expStringLength += sprintf(scratchpad + expStringLength, "%s ", op);
-    }
-    else if (exp->Kind == exp_inject || exp->Kind == exp_eject
-          || exp->Kind == exp_typeof || exp->Kind == exp_assert)
-    {
-        {
-            const char* op = 0;
-            if (exp->Kind == exp_inject)
-                op = "inject";
-            else if (exp->Kind == exp_eject)
-                op = "eject";
-            else if (exp->Kind == exp_typeof)
-                op = "typeof";
-            else if (exp->Kind == exp_assert)
-                op = "assert";
-
-            assert(op);
-
-            expStringLength += sprintf(scratchpad + expStringLength, "%s ", op);
-        }
-
-        if (!IsBinaryExp(exp->E1->Kind))
-           scratchpad[expStringLength++] = '(';
-
-        const char* e1  = PrintExpression(self, exp->E1);
-        uint32_t e1_length = strlen(e1);
-        memcpy(scratchpad + expStringLength, e1, e1_length);
-        free((void*)e1);
-        expStringLength += e1_length;
-
-        if (!IsBinaryExp(exp->E1->Kind))
-            scratchpad[expStringLength++] = ')';
-    }
-    else
-    {
-        printf("don't know how to print %s\n", (MetaCExpressionKind_toChars(exp->Kind)));
-    }
-
-    char* result = (char*) malloc(expStringLength + 1);
-    memcpy(result, scratchpad, expStringLength);
-    result[expStringLength] = '\0';
-
-    return result;
-}
-
+#include "metac_printer.h"
 
 #  ifdef TEST_PARSER
 void TestParseExprssion(void)

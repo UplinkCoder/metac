@@ -2,10 +2,13 @@
 #define _METAC_IDENTIFIER_TABLE_H_
 #pragma once
 
+
 typedef struct metac_identifier_ptr_t
 {
     uint32_t v;
 } metac_identifier_ptr_t;
+
+extern const metac_identifier_ptr_t empty_identifier;
 
 typedef struct metac_identifier_table_slot_t
 {

@@ -13,6 +13,9 @@
 #    error "Unknow ACCEL value " #ACCEL
 #  endif
 
+extern const void* _emptyPointer;
+#define emptyPointer ((void*)_emptyPointer)
+
 #include "compat.h"
 #include "metac_lexer.h"
 #ifdef IDENTIFIER_TABLE
@@ -117,7 +120,9 @@
     M(exp_outer) \
     M(exp_addr) \
     M(exp_ptr) \
+    M(exp_not) \
     M(exp_compl) \
+    M(exp_umin) \
     M(exp_paren) \
     \
     FOREACH_BINARY_EXP(M) \
@@ -286,6 +291,8 @@ typedef struct statement_header_t
 typedef struct stmt_block_t
 {
     STATEMENT_HEADER
+
+    struct metac_statement_t* Body;
 } stmt_block_t;
 
 typedef struct stmt_break_t
@@ -302,7 +309,7 @@ typedef struct stmt_yield_t
 {
     STATEMENT_HEADER
 
-    metac_expression_t* E1;
+    metac_expression_t* Expression;
 } stmt_yield_t;
 
 typedef struct stmt_scope_t
@@ -382,14 +389,15 @@ typedef struct stmt_switch_t
 {
     STATEMENT_HEADER
 
-    metac_identifier_ptr_t Label;
+    metac_expression_t* Expression;
 } stmt_switch_t;
 
 typedef struct stmt_do_while_t
 {
     STATEMENT_HEADER
 
-    metac_expression_t* E1;
+    metac_expression_t* Expression;
+    struct metac_statement_t* Body;
 } stmt_do_while_t;
 
 typedef struct metac_statement_t
@@ -413,6 +421,10 @@ typedef struct metac_statement_t
         stmt_goto_t stmt_goto;
         // case stmt_yield :
         stmt_yield_t stmt_yield;
+        // case stmt_return :
+        stmt_return_t stmt_return;
+        // case stmt_decl :
+        stmt_decl_t stmt_decl;
     };
 } metac_statement_t;
 
@@ -498,7 +510,7 @@ typedef struct decl_parameter_t
 
     decl_type_t* Type;
 
-    metac_identifier_ptr_t Identifier; 
+    metac_identifier_ptr_t Identifier;
 
     struct decl_parameter_t* Next;
 } decl_parameter_t;
@@ -628,8 +640,6 @@ metac_expression_t* MetaCParser_ParseExpression(metac_parser_t* self, metac_expr
 metac_expression_t* MetaCParser_ParseExpressionFromString(const char* exp);
 
 metac_declaration_t* MetaCParser_ParseDeclaration(metac_parser_t* self, metac_declaration_t* parent);
-
-const char* PrintExpression(metac_parser_t* self, metac_expression_t* exp);
 #undef DEFINE_MEMBERS
 #endif
 #endif // ifndef ACCEL

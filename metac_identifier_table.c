@@ -26,6 +26,8 @@
 #  define memcpy __builtin_memcpy
 #  define memcmp __builtin_memcmp
 #endif
+const metac_identifier_ptr_t empty_identifier = {~0u};
+
 static inline bool IsFilled(metac_identifier_table_slot_t slot)
 {
     return slot.HashKey != 0;
@@ -89,13 +91,14 @@ metac_identifier_ptr_t GetOrAddIdentifier(metac_identifier_table_t* table,
             else
             {
                 TRACY_COUNTER(collisions);
+#ifdef TRACY_ENABLE
                 static char msgBuffer[256];
                 uint32_t msgLength = 0;
-#ifdef TRACY_ENABLE
                 msgLength = snprintf(msgBuffer, sizeof(msgBuffer), "'%s' collided with '%.*s'", stringEntry, length, identifier);
-#endif
                 TracyCMessage(msgBuffer, msgLength);
                 TracyCPlot("Collisions", ++collisions);
+#endif
+
             }
         }
         else if (slot->HashKey == 0)
@@ -227,6 +230,7 @@ bool IsInTable(const metac_identifier_table_t* table,
         if (slot.HashKey == key && slot.Ptr.v == value.v)
             return true;
     }
+    assert(0);
 }
 
 #define CRT_SECURE_NO_WARNINGS
