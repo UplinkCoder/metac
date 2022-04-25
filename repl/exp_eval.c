@@ -81,13 +81,21 @@ static inline void WalkTree(void* c, BCValue* result,
     BCValue *lhs = &lhsT;
     BCValue *rhs = &rhsT;
 
-    if (IsBinaryExp(e->Kind))
+    metac_expression_kind_t op = e->Kind;
+
+    if (IsBinaryAssignExp(op))
+    {
+        op -= (exp_add_ass - exp_add);
+    }
+
+    if (IsBinaryExp(op))
     {
         WalkTree(c, lhs, e->E1, vstore);
         WalkTree(c, rhs, e->E2, vstore);
     }
 
-    switch(e->Kind)
+
+    switch(op)
     {
         default : {
             fprintf(stderr,
@@ -122,6 +130,18 @@ static inline void WalkTree(void* c, BCValue* result,
         case exp_rem:
         {
             BCGen_interface.Mod3(c, result, lhs, rhs);
+        } break;
+        case exp_and:
+        {
+            BCGen_interface.And3(c, result, lhs, rhs);
+        } break;
+        case exp_or:
+        {
+            BCGen_interface.Or3(c, result, lhs, rhs);
+        } break;
+        case exp_xor:
+        {
+            BCGen_interface.Xor3(c, result, lhs, rhs);
         } break;
         case exp_identifier:
         {
@@ -160,10 +180,36 @@ static inline void WalkTree(void* c, BCValue* result,
         {
             WalkTree(c, result, e->E1, vstore);
         } break;
+        case exp_compl:
+        {
+            WalkTree(c, rhs, e->E1, vstore);
+            BCGen_interface.Not(c, result, rhs);
+        } break;
+        case exp_not:
+        {
+            WalkTree(c, lhs, e->E1, vstore);
+            BCValue zero = imm32(0);
+            BCGen_interface.Neq3(c, result, lhs, &zero);
+        } break;
+        case exp_umin:
+        {
+            WalkTree(c, lhs, e->E1, vstore);
+            BCValue zero = imm32(0);
+            BCGen_interface.Sub3(c, result, &zero, lhs);
+        } break;
     }
 
-    BCGen_interface.destroyTemporary(c, lhs);
+    if (IsBinaryAssignExp(e->Kind))
+    {
+        BCGen_interface.Set(c, lhs, result);
+        ReadI32_Ctx* userCtx = &_ReadContexts[_ReadContextSize++];
+        *userCtx = (ReadI32_Ctx){ vstore, e->E1 };
+        //TODO provide an allocExecutionContext in the BCgeninterface
+        BCGen_interface.ReadI32(c, lhs, ReadI32_cb, userCtx);
+    }
+
     BCGen_interface.destroyTemporary(c, rhs);
+    BCGen_interface.destroyTemporary(c, lhs);
 }
 
 metac_expression_t evalWithVariables(metac_expression_t* e,
@@ -177,7 +223,7 @@ metac_expression_t evalWithVariables(metac_expression_t* e,
     BCGen_interface.Initialize(c, 0); // zero extra arguments
     {
         fIdx = BCGen_interface.beginFunction(c, 0, "eval_func");
-        BCValue result = BCGen_interface.genLocal(c, (BCType){BCTypeEnum_i32}, "result");
+        BCValue result = BCGen_interface.genLocal(c, (BCType){BCTypeEnum_i64}, "result");
 
         // walk the tree;
         WalkTree(c, &result, e, vstore);
@@ -186,11 +232,12 @@ metac_expression_t evalWithVariables(metac_expression_t* e,
         void * func = BCGen_interface.endFunction(c, fIdx);
     }
     BCGen_interface.Finalize(c);
+
     BCValue res = BCGen_interface.run(c, fIdx, 0, 0);
 
     metac_expression_t result;
     result.Kind = exp_signed_integer;
-    result.ValueI64 = res.imm32.imm32;
+    result.ValueI64 = res.imm64.imm64;
 
     return result;
 }
