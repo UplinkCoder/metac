@@ -632,11 +632,11 @@ typedef struct metac_parser_t
 } metac_parser_t;
 
 extern metac_parser_t g_lineParser;
+bool IsBinaryAssignExp(metac_expression_kind_t exp_kind);
 
 void MetaCParser_InitFromLexer(metac_parser_t* self, metac_lexer_t* lexer);
 metac_expression_t* MetaCParser_ParseExpression(metac_parser_t* self, parse_expression_flags_t flags, metac_expression_t* prev);
 metac_expression_t* MetaCParser_ParseExpressionFromString(const char* exp);
-
 metac_declaration_t* MetaCParser_ParseDeclaration(metac_parser_t* self, metac_declaration_t* parent);
 #undef DEFINE_MEMBERS
 #endif

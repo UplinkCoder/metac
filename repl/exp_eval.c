@@ -197,25 +197,6 @@ static inline void WalkTree(void* c, BCValue* result,
                                                        e->IdentifierPtr));
             }
         } break;
-        case exp_post_increment:
-        {
-            WalkTree(c, lhs, e->E1, vstore, dstore);
-            BCGen_interface.Set(c, result, lhs);
-            BCValue one = imm32(1);
-            BCGen_interface.Add3(c, lhs, lhs, &one);
-            if (e->E1->Kind == exp_identifier)
-            {
-                assert(_ReadContextSize < _ReadContextCapacity);
-                ReadI32_Ctx* userCtx = &_ReadContexts[_ReadContextSize++];
-                *userCtx = (ReadI32_Ctx){ vstore, e->E1 };
-                //TODO provide an allocExecutionContext in the BCgeninterface
-                BCGen_interface.ReadI32(c, lhs, ReadI32_cb, userCtx);
-            }
-            else
-            {
-                fprintf(stderr, "lhs is not an lvalue\n");
-            }
-        } break;
         case exp_paren:
         {
             WalkTree(c, result, e->E1, vstore, dstore);
@@ -237,6 +218,26 @@ static inline void WalkTree(void* c, BCValue* result,
             BCValue zero = imm32(0);
             BCGen_interface.Sub3(c, result, &zero, lhs);
         } break;
+        case exp_post_increment:
+        {
+            WalkTree(c, lhs, e->E1, vstore, dstore);
+            BCGen_interface.Set(c, result, lhs);
+            BCValue one = imm32(1);
+            BCGen_interface.Add3(c, lhs, lhs, &one);
+            if (e->E1->Kind == exp_identifier)
+            {
+                assert(_ReadContextSize < _ReadContextCapacity);
+                ReadI32_Ctx* userCtx = &_ReadContexts[_ReadContextSize++];
+                *userCtx = (ReadI32_Ctx){ vstore, e->E1 };
+                //TODO provide an allocExecutionContext in the BCgeninterface
+                BCGen_interface.ReadI32(c, lhs, ReadI32_cb, userCtx);
+            }
+            else
+            {
+                fprintf(stderr, "lhs is not an lvalue\n");
+            }
+        } break;
+
         case exp_call:
         {
             assert(e->E1->Kind == exp_identifier);
@@ -321,8 +322,8 @@ void DeclarationStore_Init(declaration_store_t* self)
 {
     self->DeclarationCapacity = 32;
     self->DeclarationSize = 0;
-    self->Declarations = (metac_declaration_t**)
-        malloc(sizeof(metac_declaration_t*) * self->DeclarationCapacity);
+    self->Declarations = (stored_declaration_t*)
+        malloc(sizeof(stored_declaration_t) * self->DeclarationCapacity);
 
     IdentifierTableInit(&self->Table);
 }
@@ -384,10 +385,10 @@ void DeclarationStore_SetDecl(declaration_store_t* dstore,
         declIndex < dstore->DeclarationSize;
         declIndex++)
     {
-        metac_declaration_t** declP = dstore->Declarations + declIndex;
-        if (IdentifierPtrFromDecl(*declP).v == dStoreId.v)
+        stored_declaration_t* declP = dstore->Declarations + declIndex;
+        if (IdentifierPtrFromDecl(declP->Declaration).v == dStoreId.v)
         {
-            d = declP;
+            d = &declP->Declaration;
             break;
         }
     }
@@ -400,7 +401,7 @@ void DeclarationStore_SetDecl(declaration_store_t* dstore,
 
     if (!d)
     {
-        d = &dstore->Declarations[dstore->DeclarationSize++];
+        d = &dstore->Declarations[dstore->DeclarationSize++].Declaration;
     }
 
     (*d) = decl;

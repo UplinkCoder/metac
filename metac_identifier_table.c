@@ -245,7 +245,7 @@ metac_identifier_ptr_t IsIdentifierInTable(metac_identifier_table_t* table,
     assert(0);
 }
 
-bool IsInTable(const metac_identifier_table_t* table,
+bool IsInTable(metac_identifier_table_t* table,
                uint32_t key, metac_identifier_ptr_t value)
 {
     const uint32_t slotIndexMask = ((1 << table->SlotCount_Log2) - 1);
