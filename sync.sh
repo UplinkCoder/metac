@@ -10,9 +10,9 @@ if [ -d $DST ]; then
        sync.sh sync_from.sh \
        gen_code.bat gen_code.sh run_tests.sh run_tests.bat \
        metac_lexer.c metac_lexer.h metac_parser.c metac_parser.h \
-       metac_printer.c metac_printer.h \
+       metac_printer.c metac_printer.h metac_cgen.c metac_cgen.h \
        metac_parser_obj.c \
-       metac.fpg \
+       metac.fpg TODO \
        $DST
 
     chmod +x $DST/gen_code.sh $DST/sync_from.sh $DST/sync.sh $DST/run_tests.sh

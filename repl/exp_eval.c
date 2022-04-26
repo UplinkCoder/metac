@@ -128,7 +128,7 @@ int GenerateFunctionCode(void* c, decl_function_t* func,
     }
 
     BCGen_interface.endFunction(c, result);
-
+/*
     BCGen* gen = cast(BCGen*) c;
     printf("We should follow with some code:\n");
     for(int i = 0;
@@ -143,7 +143,7 @@ int GenerateFunctionCode(void* c, decl_function_t* func,
     }
     printf("\n");
     printf("There should have been some code\n");
-
+*/
     return result;
 }
 
@@ -291,10 +291,6 @@ static inline void WalkTree(void* c, BCValue* result,
 
                 metac_declaration_t* decl =
                     DeclarationStore_GetDecl(dstore, dStoreIdPtr);
-                if (decl->DeclKind == decl_function)
-                {
-                    fIndex = GenerateFunctionCode(c, &decl->decl_function, vstore, dstore);
-                }
 
                 if (fIndex)
                 {
@@ -398,7 +394,7 @@ metac_declaration_t* DeclarationStore_GetDecl(declaration_store_t* dstore,
         declIndex < dstore->DeclarationSize;
         declIndex++)
     {
-        metac_declaration_t* decl = dstore->Declarations[declIndex];
+        metac_declaration_t* decl = dstore->Declarations[declIndex].Declaration;
         uint32_t idPtrV = IdentifierPtrFromDecl(decl).v;
         printf("Checking idPtrV %u == %u\n", idPtrV, dStoreId.v);
         if (idPtrV == dStoreId.v)

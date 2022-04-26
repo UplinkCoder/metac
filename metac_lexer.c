@@ -1151,7 +1151,7 @@ void test_lexer()
         "enum",
 
         "auto",
-        "type",
+//        "type",
         "void",
 
         "char",

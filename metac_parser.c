@@ -40,9 +40,6 @@ void MetaCParser_Init(metac_parser_t* self)
 #ifdef IDENTIFIER_TABLE
     IdentifierTableInit(&self->IdentifierTable);
 #endif
-#ifdef IDENTIFIER_TREE
-    IdentifierTreeInit(&self->IdentifierTree);
-#endif
     self->Defines = self->inlineDefines;
     self->DefineCount = 0;
     self->DefineCapacity = ARRAY_SIZE(self->inlineDefines);
@@ -1631,8 +1628,6 @@ static metac_lexer_t g_lineLexer = {
 /// There can only be one LineParser as it uses static storage
 metac_parser_t g_lineParser = { &g_lineLexer };
 
-bool g_exernalIdentifierTable = false;
-
 void LineLexerInit(void)
 {
     g_lineParser.CurrentTokenIndex = 0;
@@ -1641,11 +1636,8 @@ void LineLexerInit(void)
 
     ACCEL_INIT(g_lineLexer, Identifier);
     ACCEL_INIT(g_lineLexer, String);
-    if (!g_exernalIdentifierTable)
-    {
-        ACCEL_INIT(g_lineParser, Identifier);
-        ACCEL_INIT(g_lineParser, String);
-    }
+    ACCEL_INIT(g_lineParser, Identifier);
+    ACCEL_INIT(g_lineParser, String);
 
     if (!g_lineParser.Defines)
     {
@@ -1711,10 +1703,16 @@ const char* MetaCExpressionKind_toChars(metac_expression_kind_t type)
 #include "metac_printer.h"
 
 #  ifdef TEST_PARSER
+#include "metac_printer.c"
 void TestParseExprssion(void)
 {
+    metac_printer_t printer;
+    MetaCPrinter_Init(&printer,
+        &g_lineParser.IdentifierTable,
+        &g_lineParser.StringTable
+    );
     metac_expression_t* expr = MetaCParser_ParseExpressionFromString("12 - 16 - 99");
-    assert(!strcmp(PrintExpression(&g_lineParser, expr), "((12 - 16 )- 99 )"));
+    assert(!strcmp(MetaCPrinter_PrintExpression(&printer, expr), "((12 - 16) - 99)"));
 }
 
 void TestParseDeclaration(void)
