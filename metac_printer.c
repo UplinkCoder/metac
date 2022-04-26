@@ -54,7 +54,7 @@ static inline void CheckAndRellocIfNeeded(metac_printer_t* self,
     {
         uint32_t newCapa = self->StringMemoryCapacity * 1.3;
         newCapa = ((newCapa + 4095) & ~4095);
-        self->StringMemory = realloc(self->StringMemory, newCapa);
+        self->StringMemory = (char*)realloc(self->StringMemory, newCapa);
         if (self->StringMemory == 0)
         {
             abort();
@@ -422,7 +422,7 @@ static inline void PrintDeclaration(metac_printer_t* self,
 
             if (function_->FunctionBody != _emptyPointer)
             {
-                PrintStatement(self, function_->FunctionBody);
+                PrintStatement(self, (metac_statement_t*)function_->FunctionBody);
                 printSemicolon = false;
             }
         } break;
@@ -585,7 +585,7 @@ void MetaCPrinter_Init(metac_printer_t* self,
                        metac_identifier_table_t* stringTable)
 {
     self->StringMemoryCapacity = INITIAL_SIZE;
-    self->StringMemory = malloc(self->StringMemoryCapacity);
+    self->StringMemory = (char*)malloc(self->StringMemoryCapacity);
     self->StringMemorySize = self->StringMemoryCapacity;
 
     MetaCPrinter_Reset(self);

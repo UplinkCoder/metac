@@ -534,7 +534,7 @@ metac_statement_t* AllocNewStatement_(metac_statement_kind_t kind, size_t nodeSi
         (*result_ptr) = result = _newStmt_mem + INC(_newStmt_size);
         result->StmtKind = kind;
         result->Serial = INC(_nodeCounter);
-        result->Next = _emptyPointer;
+        result->Next = (metac_statement_t*)_emptyPointer;
     }
 
     return result;
@@ -988,7 +988,7 @@ metac_expression_t* MetaCParser_ParseBinaryExpression(metac_parser_t* self,
             {
                 assert((*nextArgument) == _emptyPointer);
 
-                (*nextArgument) = AllocNewExpression(exp_argument);
+                (*nextArgument) = (exp_argument_t*)AllocNewExpression(exp_argument);
                 ((*nextArgument)->Expression) = MetaCParser_ParseExpression(self, expr_flags_call, 0);
                 nextArgument = &((*nextArgument)->Next);
                 (*nextArgument) = (exp_argument_t*) _emptyPointer;
@@ -1463,7 +1463,7 @@ static metac_statement_t* MetaCParser_ParseStatement(metac_parser_t* self,
         }
         else
         {
-            if_stmt->ElseBody = _emptyPointer;
+            if_stmt->ElseBody = (metac_statement_t*)_emptyPointer;
         }
         goto LdoneWithStatement;
     }
@@ -1602,7 +1602,7 @@ static stmt_block_t* MetaCParser_ParseBlockStatement(metac_parser_t* self,
         {
             if (!firstStatement)
             {
-                firstStatement = _emptyPointer;
+                firstStatement = (metac_statement_t*)_emptyPointer;
             }
             break;
         }

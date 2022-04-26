@@ -1,11 +1,17 @@
+#include "metac_cgen.h"
+#include "metac_parser.h"
+#include "libinterpret/backend_interface_funcs.h"
+
+extern const BackendInterface BCGen_interface;
+
 //FIXME we never hit this ... why?
 // maybe an issue with the declaration store or maybe with
 // aligning the tables ....
 
-int GenerateFunctionCode(void* c, decl_function_t* func,
-                         variable_store_t* vstore,
-                         declaration_store_t* dstore)
+int GenerateFunctionCode(metac_codegen_function_t* cgfunction, void* c)
 {
+    decl_function_t* func = cgfunction->decl_func;
+
     for(decl_parameter_t* p = func->Parameters;
         p != emptyPointer;
         p = p->Next)
@@ -29,7 +35,7 @@ int GenerateFunctionCode(void* c, decl_function_t* func,
                 BCValue retval = BCGen_interface.genTemporary(c, BCType_i32);
                 // TODO we don't want to use WalkTree on this
                 // as we want to generate functionbodies indepentnt of vstore and dstore
-                WalkTree(c, &retval, exp, vstore, dstore);
+
                 BCGen_interface.Ret(c, &retval);
             } break;
         }
@@ -53,5 +59,11 @@ int GenerateFunctionCode(void* c, decl_function_t* func,
     printf("There should have been some code\n");
 */
     return result;
+}
+
+const BCValue* GenerateExpression(metac_codegen_function_t* cgfunction,
+                                  void* c, metac_expression_t* expr)
+{
+
 }
 

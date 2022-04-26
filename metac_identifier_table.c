@@ -211,7 +211,7 @@ void InsertSlot(slot_t* slots, slot_t slot, const uint32_t slotIndexMask)
     }
 }
 
-metac_identifier_ptr_t IsIdentifierInTable(const metac_identifier_table_t* table,
+metac_identifier_ptr_t IsIdentifierInTable(metac_identifier_table_t* table,
                                            uint32_t key,
                                            const char* idChars)
 {
