@@ -3,6 +3,7 @@
 #include "../metac_lexer.h"
 #include "../metac_parser.h"
 #include "../metac_printer.h"
+#include "../cache/crc32.c"
 //#include "../metac_eeP.c"
 #include "../3rd_party/linenoise/linenoise.c"
 #include "../int_to_str.c"
@@ -68,8 +69,13 @@ int main(int argc, const char* argv[])
         &g_lineParser.IdentifierTable,
         &g_lineParser.StringTable);
 
+    declaration_store_t dstore;
+    DeclarationStore_Init(&dstore);
+
+
     variable_store_t vstore;
     VariableStore_Init(&vstore);
+
     _ReadContextCapacity = 32;
     _ReadContexts = (ReadI32_Ctx*)
         malloc(sizeof(ReadI32_Ctx) * _ReadContextCapacity);
@@ -80,6 +86,9 @@ LswitchMode:
     switch (parseMode)
     {
     case parse_mode_max: assert(0);
+    case parse_mode_file:
+        promt_ = ">File<";
+        break;
     case parse_mode_token:
         promt_ = "Token>";
         break;
@@ -226,7 +235,7 @@ LnextLine:
                 exp =
                     MetaCParser_ParseExpressionFromString(line);
 
-                metac_expression_t result = evalWithVariables(exp, &vstore);
+                metac_expression_t result = evalWithVariables(exp, &vstore, &dstore);
 
                 const char* str = MetaCPrinter_PrintExpression(&printer, exp);
                 const char* result_str = MetaCPrinter_PrintExpression(&printer, &result);
@@ -240,21 +249,57 @@ LnextLine:
             }
             case parse_mode_setvars :
             {
-                metac_expression_t* assignExp =
-                    MetaCParser_ParseExpressionFromString(line);
-
-                if (assignExp->Kind != exp_assign)
+                metac_declaration_t* decl = MetaCParser_ParseDeclarationFromString(line);
+                if (decl)
                 {
-                    fprintf(stderr, "You must write an expression of the from identifier = value");
+                    metac_identifier_ptr_t idPtr = {0};
+                    idPtr = IdentifierPtrFromDecl(decl);
+
+                    if (idPtr.v == 0)
+                    {
+                        fprintf(stderr, "declation could not be handled only functions are supported for now\n");
+                        goto LnextLine;
+                    }
+
+                    const char* idChars = IdentifierPtrToCharPtr(&g_lineParser.IdentifierTable, idPtr);
+                    const uint32_t length = strlen(idChars);
+                    uint32_t idHash = crc32c(~0, idChars, length);
+                    uint32_t idKey = IDENTIFIER_KEY(idHash, length);
+                    metac_identifier_ptr_t dstoreId
+                        = GetOrAddIdentifier(&dstore.Table, idKey, idChars, length);
+
+                    if (decl->DeclKind == decl_function)
+                    {
+                        decl->decl_function.Identifier = dstoreId;
+                        printf("Setting dStore ID: %u\n", dstoreId.v);
+                    }
+
+                    DeclarationStore_SetDecl(&dstore, dstoreId, decl);
+                    goto LnextLine;
                 }
                 else
                 {
-                    assert(assignExp->E1->Kind == exp_identifier);
-                    assert(assignExp->E2->Kind == exp_signed_integer);
+                    metac_expression_t* assignExp = MetaCParser_ParseExpressionFromString(line);
+                    if (assignExp)
+                    {
+                        if (assignExp->Kind != exp_assign)
+                        {
+                            fprintf(stderr, "You must write an expression of the from identifier = value");
+                        }
+                        else
+                        {
+                            assert(assignExp->E1->Kind == exp_identifier);
+                            assert(assignExp->E2->Kind == exp_signed_integer);
 
-                    VariableStore_SetValueI32(&vstore, assignExp->E1, (int32_t)assignExp->E2->ValueI64);
+                            VariableStore_SetValueI32(&vstore, assignExp->E1, (int32_t)assignExp->E2->ValueI64);
+                        }
+                        goto LnextLine;
+                    }
+                    else
+                    {
+                        fprintf(stderr, "Input did not parse as either an assign-expression or declaration\n");
+                    }
                 }
-                goto LnextLine;
             } break;
 
             case parse_mode_stmt :

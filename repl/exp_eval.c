@@ -1,6 +1,5 @@
 /// little eval module to evaluate a simple expression
 
-
 #include "../compat.h"
 #include "../metac_parser.h"
 #include "exp_eval.h"
@@ -35,6 +34,20 @@ static inline BCValue* GetValueFromVariableStore(variable_store_t* vstore,
     }
 
     return 0;
+}
+
+metac_identifier_ptr_t FindMatchingIdentifier(metac_identifier_table_t* searchTable,
+                                              metac_identifier_table_t* sourceTable,
+                                              metac_identifier_ptr_t sourcePtr)
+{
+    const char* idChars = IdentifierPtrToCharPtr(sourceTable, sourcePtr);
+    uint32_t idLength = strlen(idChars);
+    uint32_t idHash = crc32c(~0, idChars, idLength);
+    uint32_t idKey = IDENTIFIER_KEY(idHash, idLength);
+
+    metac_identifier_ptr_t result = IsIdentifierInTable(searchTable, idKey, idChars);
+
+    return result;
 }
 
 void VariableStore_SetValueI32(variable_store_t* vstore,
@@ -74,7 +87,70 @@ uint32_t _ReadContextCapacity;
 
 static inline void WalkTree(void* c, BCValue* result,
                             metac_expression_t* e,
-                            variable_store_t* vstore)
+                            variable_store_t* vstore,
+                            declaration_store_t* dstore);
+
+//FIXME we never hit this ... why?
+// maybe an issue with the declaration store or maybe with
+// aligning the tables ....
+
+int GenerateFunctionCode(void* c, decl_function_t* func,
+                         variable_store_t* vstore,
+                         declaration_store_t* dstore)
+{
+    for(decl_parameter_t* p = func->Parameters;
+        p != emptyPointer;
+        p = p->Next)
+    {
+        const char* name = IdentifierPtrToCharPtr(&g_lineParser.IdentifierTable,
+                                                  p->Identifier);
+        BCGen_interface.genParameter(c, BCType_i32, name);
+    }
+    int result = BCGen_interface.beginFunction(c, 0, "func");
+
+    for(metac_statement_t* stmt = func->FunctionBody->Body;
+        stmt != _emptyPointer;
+        stmt = stmt->Next)
+    {
+        switch(stmt->StmtKind)
+        {
+            case stmt_return:
+            {
+                stmt_return_t* return_ = cast(stmt_return_t*) stmt;
+                metac_expression_t* exp = return_->Expression;
+                BCValue retval = BCGen_interface.genTemporary(c, BCType_i32);
+                // TODO we don't want to use WalkTree on this
+                // as we want to generate functionbodies indepentnt of vstore and dstore
+                WalkTree(c, &retval, exp, vstore, dstore);
+                BCGen_interface.Ret(c, &retval);
+            } break;
+        }
+    }
+
+    BCGen_interface.endFunction(c, result);
+
+    BCGen* gen = cast(BCGen*) c;
+    printf("We should follow with some code:\n");
+    for(int i = 0;
+        i < gen->ip;
+        i++)
+    {
+        printf("%d, ", gen->byteCodeArray[i]);
+        if ((i % 8) == 0)
+        {
+            printf("\n");
+        }
+    }
+    printf("\n");
+    printf("There should have been some code\n");
+
+    return result;
+}
+
+static inline void WalkTree(void* c, BCValue* result,
+                            metac_expression_t* e,
+                            variable_store_t* vstore,
+                            declaration_store_t* dstore)
 {
     BCValue lhsT = BCGen_interface.genTemporary(c, BCType_i32);
     BCValue rhsT = BCGen_interface.genTemporary(c, BCType_i32);
@@ -83,15 +159,19 @@ static inline void WalkTree(void* c, BCValue* result,
 
     metac_expression_kind_t op = e->Kind;
 
-    if (IsBinaryAssignExp(op))
+    if (op == exp_call)
+    {
+
+    }
+    else if (IsBinaryAssignExp(op))
     {
         op -= (exp_add_ass - exp_add);
     }
 
     if (IsBinaryExp(op))
     {
-        WalkTree(c, lhs, e->E1, vstore);
-        WalkTree(c, rhs, e->E2, vstore);
+        WalkTree(c, lhs, e->E1, vstore, dstore);
+        WalkTree(c, rhs, e->E2, vstore, dstore);
     }
 
 
@@ -159,7 +239,7 @@ static inline void WalkTree(void* c, BCValue* result,
         } break;
         case exp_post_increment:
         {
-            WalkTree(c, lhs, e->E1, vstore);
+            WalkTree(c, lhs, e->E1, vstore, dstore);
             BCGen_interface.Set(c, result, lhs);
             BCValue one = imm32(1);
             BCGen_interface.Add3(c, lhs, lhs, &one);
@@ -178,24 +258,51 @@ static inline void WalkTree(void* c, BCValue* result,
         } break;
         case exp_paren:
         {
-            WalkTree(c, result, e->E1, vstore);
+            WalkTree(c, result, e->E1, vstore, dstore);
         } break;
         case exp_compl:
         {
-            WalkTree(c, rhs, e->E1, vstore);
+            WalkTree(c, rhs, e->E1, vstore, dstore);
             BCGen_interface.Not(c, result, rhs);
         } break;
         case exp_not:
         {
-            WalkTree(c, lhs, e->E1, vstore);
+            WalkTree(c, lhs, e->E1, vstore, dstore);
             BCValue zero = imm32(0);
             BCGen_interface.Neq3(c, result, lhs, &zero);
         } break;
         case exp_umin:
         {
-            WalkTree(c, lhs, e->E1, vstore);
+            WalkTree(c, lhs, e->E1, vstore, dstore);
             BCValue zero = imm32(0);
             BCGen_interface.Sub3(c, result, &zero, lhs);
+        } break;
+        case exp_call:
+        {
+            assert(e->E1->Kind == exp_identifier);
+            metac_identifier_ptr_t idPtr = e->E1->IdentifierPtr;
+            metac_identifier_ptr_t dStoreIdPtr =
+                FindMatchingIdentifier(&dstore->Table,
+                                       &g_lineParser.IdentifierTable,
+                                       idPtr);
+            if (dStoreIdPtr.v)
+            {
+                int fIndex = -1;
+
+                metac_declaration_t* decl =
+                    DeclarationStore_GetDecl(dstore, dStoreIdPtr);
+                if (decl->DeclKind == decl_function)
+                {
+                    fIndex = GenerateFunctionCode(c, &decl->decl_function, vstore, dstore);
+                }
+
+                if (fIndex)
+                {
+                    const BCValue findex_value = imm32(fIndex);
+                    BCValue args[1] = {imm32(42)};
+                    BCGen_interface.Call(c, result, &findex_value, args, 1);
+                }
+            }
         } break;
     }
 
@@ -213,7 +320,8 @@ static inline void WalkTree(void* c, BCValue* result,
 }
 
 metac_expression_t evalWithVariables(metac_expression_t* e,
-                                      variable_store_t* vstore)
+                                     variable_store_t* vstore,
+                                     declaration_store_t* dstore)
 {
     void* c;
     BCGen_interface.new_instance(&c);
@@ -226,9 +334,10 @@ metac_expression_t evalWithVariables(metac_expression_t* e,
         BCValue result = BCGen_interface.genLocal(c, (BCType){BCTypeEnum_i64}, "result");
 
         // walk the tree;
-        WalkTree(c, &result, e, vstore);
+        WalkTree(c, &result, e, vstore, dstore);
 
         BCGen_interface.Ret(c, &result);
+
         void * func = BCGen_interface.endFunction(c, fIdx);
     }
     BCGen_interface.Finalize(c);
@@ -250,4 +359,93 @@ void VariableStore_Init(variable_store_t* self)
         malloc(sizeof(variable_t) * self->VariableCapacity);
 
     IdentifierTableInit(&self->Table);
+}
+
+void DeclarationStore_Init(declaration_store_t* self)
+{
+    self->DeclarationCapacity = 32;
+    self->DeclarationSize = 0;
+    self->Declarations = (metac_declaration_t**)
+        malloc(sizeof(metac_declaration_t*) * self->DeclarationCapacity);
+
+    IdentifierTableInit(&self->Table);
+}
+
+metac_identifier_ptr_t IdentifierPtrFromDecl(metac_declaration_t* decl)
+{
+    metac_identifier_ptr_t idPtr = {0};
+
+    switch(decl->DeclKind)
+    {
+        case decl_function:
+        {
+            decl_function_t* f = cast(decl_function_t*) decl;
+            idPtr = f->Identifier;
+            break;
+        }
+        default : assert(0);
+    }
+
+    return idPtr;
+}
+
+metac_declaration_t* DeclarationStore_GetDecl(declaration_store_t* dstore,
+                                              metac_identifier_ptr_t dStoreId)
+{
+    metac_declaration_t* result = 0;
+
+    for(int declIndex = 0;
+        declIndex < dstore->DeclarationSize;
+        declIndex++)
+    {
+        metac_declaration_t* decl = dstore->Declarations[declIndex];
+        uint32_t idPtrV = IdentifierPtrFromDecl(decl).v;
+        printf("Checking idPtrV %u == %u\n", idPtrV, dStoreId.v);
+        if (idPtrV == dStoreId.v)
+        {
+            result = decl;
+            break;
+        }
+    }
+
+    if(!result)
+    {
+        fprintf(stderr, "Couldn't find decl for dStoreId: %u\n", dStoreId.v);
+    }
+
+    return result;
+}
+
+void DeclarationStore_SetDecl(declaration_store_t* dstore,
+                              metac_identifier_ptr_t dStoreId,
+                              metac_declaration_t* decl)
+{
+    metac_declaration_t** d = 0;
+
+    assert(IdentifierPtrFromDecl(decl).v == dStoreId.v);
+
+    for(int declIndex = 0;
+        declIndex < dstore->DeclarationSize;
+        declIndex++)
+    {
+        metac_declaration_t** declP = dstore->Declarations + declIndex;
+        if (IdentifierPtrFromDecl(*declP).v == dStoreId.v)
+        {
+            d = declP;
+            break;
+        }
+    }
+
+    if (d)
+    {
+        const char* idChars = IdentifierPtrToCharPtr(&dstore->Table, dStoreId);
+        fprintf(stderr, "overwriting stored version of %s\n", idChars);
+    }
+
+    if (!d)
+    {
+        d = &dstore->Declarations[dstore->DeclarationSize++];
+    }
+
+    (*d) = decl;
 }

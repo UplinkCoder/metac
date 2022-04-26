@@ -1665,22 +1665,22 @@ metac_expression_t* MetaCParser_ParseExpressionFromString(const char* exp)
     return result;
 }
 
-metac_statement_t* MetaCParser_ParseStatementFromString(const char* exp)
+metac_statement_t* MetaCParser_ParseStatementFromString(const char* stmt)
 {
     assert(g_lineLexer.TokenCapacity == ARRAY_SIZE(g_lineLexer.inlineTokens));
     LineLexerInit();
-    LexString(&g_lineLexer, exp);
+    LexString(&g_lineLexer, stmt);
 
     metac_statement_t* result = MetaCParser_ParseStatement(&g_lineParser, 0, 0);
 
     return result;
 }
 
-metac_declaration_t* MetaCParser_ParseDeclarationFromString(const char* exp)
+metac_declaration_t* MetaCParser_ParseDeclarationFromString(const char* decl)
 {
     assert(g_lineLexer.TokenCapacity == ARRAY_SIZE(g_lineLexer.inlineTokens));
     LineLexerInit();
-    LexString(&g_lineLexer, exp);
+    LexString(&g_lineLexer, decl);
 
     metac_declaration_t* result = MetaCParser_ParseDeclaration(&g_lineParser, 0);
 

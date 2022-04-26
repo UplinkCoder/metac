@@ -54,6 +54,10 @@ void IdentifierTableInit(metac_identifier_table_t* table);
 metac_identifier_ptr_t GetOrAddIdentifier(metac_identifier_table_t* table,
                                           uint32_t identifierKey,
                                           const char* identifier, uint32_t length);
+
+metac_identifier_ptr_t IsIdentifierInTable(const metac_identifier_table_t* table, uint32_t key,
+                         const char* idChars);
+
 bool IsInTable(const metac_identifier_table_t* table,
                uint32_t key, metac_identifier_ptr_t value);
 

@@ -1,5 +1,17 @@
 #include "../metac_identifier_table.h"
 
+typedef struct declation_store_t
+{
+    metac_declaration_t** Declarations;
+    uint32_t DeclarationSize;
+    uint32_t DeclarationCapacity;
+
+    metac_identifier_table_t Table;
+} declaration_store_t;
+
+void DeclarationStore_Init(declaration_store_t* self);
+metac_declaration_t* DeclarationStore_GetDecl(declaration_store_t* dstore,
+                                              metac_identifier_ptr_t dStoreId);
 typedef struct variable_t
 {
     metac_identifier_ptr_t IdentifierPtr;
@@ -17,7 +29,9 @@ typedef struct variable_store_t
 
 void VariableStore_Init(variable_store_t* self);
 
-metac_expression_t evalWithVariables(metac_expression_t* e, variable_store_t* vars);
+metac_expression_t evalWithVariables(metac_expression_t* e,
+                                     variable_store_t* vars,
+                                     declaration_store_t* dstore);
 
 
 typedef struct ReadI32_Ctx

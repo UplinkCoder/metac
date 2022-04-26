@@ -31,24 +31,24 @@ static inline void PrintNewline(metac_printer_t* self)
 void static inline PrintIndent(metac_printer_t* self)
 {
     const uint32_t indent = self->IndentLevel;
-    
+
     self->StringMemorySize += 4 * indent;
     self->CurrentColumn += 4 * indent;
     assert(self->CurrentColumn == 4 * indent);
     if (self->StartColumn > self->CurrentColumn)
     {
-        int32_t columnAdvance = 
+        int32_t columnAdvance =
             self->StartColumn - self->CurrentColumn;
         self->StringMemorySize += columnAdvance;
         self->CurrentColumn    += columnAdvance;
     }
 }
 
-static inline void CheckAndRellocIfNeeded(metac_printer_t* self, 
+static inline void CheckAndRellocIfNeeded(metac_printer_t* self,
                                    uint32_t length)
 {
-    int32_t underflow = 
-        self->StringMemoryCapacity - 
+    int32_t underflow =
+        self->StringMemoryCapacity -
         (self->StringMemorySize + length + 1024);
     if (underflow < 0)
     {
@@ -66,7 +66,7 @@ static inline void PrintString(metac_printer_t* self,
                  const char* string, uint32_t length)
 {
     char c;
-    
+
     while((c = *string++))
     {
         self->StringMemory[self->StringMemorySize++] = c;
@@ -80,16 +80,16 @@ static inline void PrintIdentifier(metac_printer_t* self,
     if (idPtr.v == empty_identifier.v)
         assert(0); // One is not supposed to print the empty identifier
     const char* ident = IdentifierPtrToCharPtr(self->IdentifierTable, idPtr);
-    
+
     PrintString(self, ident, strlen(ident));
 }
 
 static void PrintKeyword(metac_printer_t* self,
                          metac_token_enum_t keyword)
 {
-    const char * str = 
+    const char * str =
         MetaCTokenEnum_toChars(keyword) + sizeof("tok_kw");
-    
+
     PrintString(self, str, strlen(str));
 }
 
@@ -128,7 +128,7 @@ static inline void PrintToken(metac_printer_t* self,
 static inline void PrintU64(metac_printer_t* self, uint64_t value)
 {
     char u64Buffer[21];
-    
+
     const char* result = u64tostr(value, u64Buffer);
     int32_t length = (u64Buffer + 20) - result;
     // assert((length > 0) && (length <= 20));
@@ -138,7 +138,7 @@ static inline void PrintU64(metac_printer_t* self, uint64_t value)
 static inline void PrintI64(metac_printer_t* self, int64_t value)
 {
     char i64Buffer[22];
-    
+
     const char* result = i64tostr(value, i64Buffer);
     int32_t length = (i64Buffer + 20) - result;
     // assert((length > 0) && (length <= 20));
@@ -219,7 +219,7 @@ static inline void PrintStatement(metac_printer_t* self, metac_statement_t* stmt
         case stmt_return :
         {
             stmt_return_t* stmt_return = cast(stmt_return_t*) stmt;
-            
+
             PrintKeyword(self, tok_kw_return);
             PrintSpace(self);
             PrintExpression(self, stmt_return->Expression);
@@ -228,7 +228,7 @@ static inline void PrintStatement(metac_printer_t* self, metac_statement_t* stmt
         case stmt_yield :
         {
             stmt_yield_t* stmt_yield = cast(stmt_yield_t*) stmt;
-            
+
             PrintKeyword(self, tok_kw_yield);
             PrintSpace(self);
             PrintExpression(self, stmt_yield->Expression);
@@ -237,10 +237,10 @@ static inline void PrintStatement(metac_printer_t* self, metac_statement_t* stmt
         case stmt_block :
         {
             stmt_block_t* stmt_block = cast(stmt_block_t*) stmt;
-            
+
             PrintToken(self, tok_lBrace);
             ++self->IndentLevel;
-            
+
             for(metac_statement_t* nextStmt = stmt_block->Body;
                 nextStmt != _emptyPointer;
                 nextStmt = nextStmt->Next)
@@ -249,7 +249,7 @@ static inline void PrintStatement(metac_printer_t* self, metac_statement_t* stmt
                 PrintIndent(self);
                 PrintStatement(self, nextStmt);
             }
-            
+
             --self->IndentLevel;
             if (stmt->Next)
             {
@@ -261,13 +261,13 @@ static inline void PrintStatement(metac_printer_t* self, metac_statement_t* stmt
         case stmt_if :
         {
             stmt_if_t* stmt_if_ = cast(stmt_if_t*) stmt;
-            
+
             PrintKeyword(self, tok_kw_if);
             PrintSpace(self);
             PrintChar(self, '(');
             PrintExpression(self, stmt_if_->IfCond);
             PrintChar(self, ')');
-            
+
             if (stmt_if_->IfBody->StmtKind != stmt_block)
                 ++self->IndentLevel;
             PrintNewline(self);
@@ -275,12 +275,12 @@ static inline void PrintStatement(metac_printer_t* self, metac_statement_t* stmt
             PrintStatement(self, stmt_if_->IfBody);
             if (stmt_if_->IfBody->StmtKind != stmt_block)
             {
-                
+
                 --self->IndentLevel;
-            } 
+            }
             PrintNewline(self);
             PrintIndent(self);
-            
+
             if (stmt_if_->ElseBody != emptyPointer)
             {
                 PrintKeyword(self, tok_kw_else);
@@ -288,22 +288,22 @@ static inline void PrintStatement(metac_printer_t* self, metac_statement_t* stmt
                 {
                     PrintSpace(self);
                 }
-                else 
+                else
                 {
                     if (stmt_if_->ElseBody->StmtKind != stmt_block)
                         ++self->IndentLevel;
-                
+
                     PrintNewline(self);
                     PrintIndent(self);
                 }
                 PrintStatement(self, stmt_if_->ElseBody);
-                
+
                 if (stmt_if_->ElseBody->StmtKind != stmt_if)
                 {
                     if (stmt_if_->ElseBody->StmtKind != stmt_block)
                         --self->IndentLevel;
                 }
-                
+
                 PrintNewline(self);
                 PrintIndent(self);
             }
@@ -315,7 +315,7 @@ static inline void PrintStatement(metac_printer_t* self, metac_statement_t* stmt
             PrintToken(self, tok_semicolon);
         } break;
         default : {
-            fprintf(stderr, 
+            fprintf(stderr,
                 "Statement Kind: not handled by printer\n");
                 //MetaCStatementKind_toChars(stmt->StmtKind));
             assert(0);
@@ -419,7 +419,7 @@ static inline void PrintDeclaration(metac_printer_t* self,
             }
 
             PrintToken(self, tok_rParen);
-            
+
             if (function_->FunctionBody != _emptyPointer)
             {
                 PrintStatement(self, function_->FunctionBody);
@@ -464,7 +464,7 @@ static inline void PrintExpression(metac_printer_t* self, metac_expression_t* ex
     {
         PrintChar(self, '(');
         PrintExpression(self, exp->E1);
-        
+
         PrintSpace(self);
         const char* op = BinExpTypeToChars((metac_binary_expression_kind_t)exp->Kind);
         PrintString(self, op, strlen(op));
@@ -484,7 +484,7 @@ static inline void PrintExpression(metac_printer_t* self, metac_expression_t* ex
         }
         PrintChar(self, ')');
     }
-    else if (exp->Kind == exp_addr || exp->Kind == exp_ptr 
+    else if (exp->Kind == exp_addr || exp->Kind == exp_ptr
           || exp->Kind == exp_not  || exp->Kind == exp_compl
           || exp->Kind == exp_umin)
     {
@@ -508,7 +508,7 @@ static inline void PrintExpression(metac_printer_t* self, metac_expression_t* ex
             PrintChar(self, '(');
 
         PrintExpression(self, exp->E1);
-        
+
         if (!IsBinaryExp(exp->E1->Kind))
             PrintChar(self, ')');
     }
@@ -524,9 +524,9 @@ static inline void PrintExpression(metac_printer_t* self, metac_expression_t* ex
 
         if (!IsBinaryExp(exp->E1->Kind))
             PrintChar(self, '(');
-        
-        PrintExpression(self, exp);
-        
+
+        PrintExpression(self, exp->E1);
+
         if (!IsBinaryExp(exp->E1->Kind))
             PrintChar(self, ')');
 
@@ -547,7 +547,7 @@ static inline void PrintExpression(metac_printer_t* self, metac_expression_t* ex
                 op = "assert";
 
             assert(op);
-            
+
             PrintString(self, op, strlen(op));
         }
 
@@ -555,7 +555,7 @@ static inline void PrintExpression(metac_printer_t* self, metac_expression_t* ex
            PrintChar(self, '(');
 
         PrintExpression(self, exp->E1);
-        
+
         if (!IsBinaryExp(exp->E1->Kind))
             PrintChar(self, ')');
     }
@@ -569,7 +569,7 @@ static inline void PrintExpression(metac_printer_t* self, metac_expression_t* ex
 void MetaCPrinter_Reset(metac_printer_t* self)
 {
     memset(self->StringMemory, ' ', self->StringMemorySize);
-    
+
     self->StringMemorySize = 0;
     self->IndentLevel = 0;
     self->CurrentColumn = 0;
@@ -583,9 +583,9 @@ void MetaCPrinter_Init(metac_printer_t* self,
     self->StringMemoryCapacity = INITIAL_SIZE;
     self->StringMemory = malloc(self->StringMemoryCapacity);
     self->StringMemorySize = self->StringMemoryCapacity;
-    
+
     MetaCPrinter_Reset(self);
-    
+
     self->IdentifierTable = identifierTable;
     self->StringTable = stringTable;
 }
@@ -594,22 +594,22 @@ void MetaCPrinter_Init(metac_printer_t* self,
 const char* MetaCPrinter_PrintExpression(metac_printer_t* self, metac_expression_t* exp)
 {
     const char* result = self->StringMemory + self->StringMemorySize;
-    
+
     PrintExpression(self, exp);
-    
+
     self->StringMemory[self->StringMemorySize++] = '\0';
-    
+
     return result;
 }
 
 const char* MetaCPrinter_PrintDeclaration(metac_printer_t* self, metac_declaration_t* decl)
 {
     const char* result = self->StringMemory + self->StringMemorySize;
-    
+
     PrintDeclaration(self, decl, 0);
-    
+
     self->StringMemory[self->StringMemorySize++] = '\0';
-    
+
     return result;
 }
 
@@ -619,8 +619,8 @@ const char* MetaCPrinter_PrintStatement(metac_printer_t* self, metac_statement_t
     uint32_t posBegin = self->StringMemorySize;
     PrintStatement(self, exp);
     int advancement = self->StringMemorySize - posBegin;
-    
+
     self->StringMemory[self->StringMemorySize++] = '\0';
-    
+
     return result;
 }

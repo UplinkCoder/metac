@@ -211,6 +211,40 @@ void InsertSlot(slot_t* slots, slot_t slot, const uint32_t slotIndexMask)
     }
 }
 
+metac_identifier_ptr_t IsIdentifierInTable(const metac_identifier_table_t* table,
+                                           uint32_t key,
+                                           const char* idChars)
+{
+    metac_identifier_ptr_t result = {0};
+    
+    const uint32_t slotIndexMask = ((1 << table->SlotCount_Log2) - 1);
+    const uint32_t initialSlotIndex = (key & slotIndexMask);
+    // TracyCPlot("TargetIndex", initialSlotIndex);
+    for(
+        uint32_t slotIndex = initialSlotIndex;
+        (++slotIndex & slotIndexMask) != initialSlotIndex;
+    )
+    {
+        metac_identifier_table_slot_t slot =
+            table->Slots[(slotIndex - 1) & slotIndexMask];
+
+        if (slot.HashKey == 0)
+            return result;
+        if (slot.HashKey == key)
+        {
+            bool matches = 
+                !memcmp(IdentifierPtrToCharPtr(table, slot.Ptr), idChars,
+                        LENGTH_FROM_IDENTIFIER_KEY(key));
+            if (matches)
+            {
+                result = slot.Ptr;
+                return result;
+            }
+        }
+    }
+    assert(0);
+}
+
 bool IsInTable(const metac_identifier_table_t* table,
                uint32_t key, metac_identifier_ptr_t value)
 {
