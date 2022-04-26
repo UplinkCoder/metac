@@ -131,6 +131,7 @@ extern const void* _emptyPointer;
     M(exp_slice) \
     M(exp_index) \
     M(exp_call) \
+    M(exp_argument) \
     \
     M(exp_addr_or_and) \
     M(exp_ptr_or_mul) \
@@ -185,6 +186,12 @@ typedef enum metac_node_kind_t
 #define DEFINE_MEMBERS(MEMBER) \
     MEMBER,
 
+typedef enum parse_expression_flags_t
+{
+    expr_flags_none,
+    expr_flags_call = (1 << 0),
+} parse_expression_flags_t;
+
 typedef enum scope_kind_t
 {
     scope_exit
@@ -217,6 +224,12 @@ typedef enum metac_binary_expression_kind_t
     uint32_t Hash; \
     uint32_t Serial;
 
+typedef struct exp_argument_t
+{
+    struct metac_expression_t* Expression;
+    struct exp_argument_t* Next;
+} exp_argument_t;
+
 typedef struct metac_expression_t
 {
     EXPRESSION_HEADER
@@ -235,6 +248,8 @@ typedef struct metac_expression_t
         struct {
             struct metac_expression_t* E1;
         };
+        // case exp_argument:
+        exp_argument_t* arguments;
         // case identifier_exp :
         struct {
             uint32_t IdentifierKey;
@@ -588,18 +603,6 @@ typedef struct metac_declaration_t
 
 } metac_declaration_t;
 
-
-
-typedef struct metac_parser_reorder_state_t
-{
-    metac_expression_t* operandStack[1024];
-    metac_expression_kind_t operatorStack[1024];
-
-    uint32_t nOperands;
-    uint32_t nOperators;
-    uint32_t Depth;
-} metac_parser_reorder_state_t;
-
 typedef struct metac_define_t
 {
     uint32_t IdentifierKey;
@@ -618,14 +621,9 @@ typedef struct metac_parser_t
     metac_lexer_state_t* LexerState;
 
     uint32_t CurrentTokenIndex;
-    metac_parser_reorder_state_t* ExpressionReorderState;
-#if ACCEL == ACCEL_TABLE
     metac_identifier_table_t IdentifierTable;
     metac_identifier_table_t StringTable;
-#elif ACCEL == ACCEL_TREE
-    metac_identifier_tree_t IdentifierTree;
-    metac_identifier_tree_t StringTree;
-#endif
+
     metac_define_t* Defines;
     uint32_t DefineCount;
     uint32_t DefineCapacity;
@@ -636,7 +634,7 @@ typedef struct metac_parser_t
 extern metac_parser_t g_lineParser;
 
 void MetaCParser_InitFromLexer(metac_parser_t* self, metac_lexer_t* lexer);
-metac_expression_t* MetaCParser_ParseExpression(metac_parser_t* self, metac_expression_t* prev);
+metac_expression_t* MetaCParser_ParseExpression(metac_parser_t* self, parse_expression_flags_t flags, metac_expression_t* prev);
 metac_expression_t* MetaCParser_ParseExpressionFromString(const char* exp);
 
 metac_declaration_t* MetaCParser_ParseDeclaration(metac_parser_t* self, metac_declaration_t* parent);

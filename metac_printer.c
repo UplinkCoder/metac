@@ -478,9 +478,13 @@ static inline void PrintExpression(metac_printer_t* self, metac_expression_t* ex
         PrintExpression(self, exp->E1);
         PrintChar(self, '(');
 
-        if (exp->E2)
+        for(exp_argument_t* arg = (exp_argument_t*)exp->E2;
+            arg != _emptyPointer;
+            arg = arg->Next)
         {
-            PrintExpression(self, exp->E2);
+            PrintExpression(self, arg->Expression);
+            if (arg->Next != _emptyPointer)
+                PrintString(self, ", ", 2);
         }
         PrintChar(self, ')');
     }
