@@ -602,7 +602,7 @@ uint32_t OpToPrecedence(metac_expression_kind_t exp)
     {
         return 1;
     }
-    else if (exp >= exp_assign && exp < exp_spaceship)
+    else if (exp >= exp_assign && exp <= exp_rsh_ass)
     {
         return 2;
     }
@@ -610,13 +610,13 @@ uint32_t OpToPrecedence(metac_expression_kind_t exp)
     //{
     //  return 3;
     //}
-    else if (exp == exp_andand)
+    else if (exp == exp_oror)
     {
         return 4;
     }
-    else if (exp == exp_oror)
+    else if (exp == exp_andand)
     {
-        return 6;
+        return 5;
     }
     else if (exp == exp_or)
     {
@@ -626,7 +626,7 @@ uint32_t OpToPrecedence(metac_expression_kind_t exp)
     {
         return 8;
     }
-    else if (exp == exp_eq || exp == exp_neq)
+    else if (exp == exp_and)
     {
         return 9;
     }
@@ -1103,7 +1103,7 @@ metac_expression_t* MetaCParser_ParseExpression(metac_parser_t* self,
         if (IsBinaryOperator(tokenType))
         {
             uint32_t prec = OpToPrecedence(BinExpTypeFromTokenType(tokenType));
-            result = MetaCParser_ParseBinaryExpression(self, result, prec);
+            result = MetaCParser_ParseBinaryExpression(self, result, 0);
         }
         else if (IsPostfixOperator(tokenType))
         {
@@ -1728,8 +1728,16 @@ void TestParseExprssion(void)
         &g_lineParser.IdentifierTable,
         &g_lineParser.StringTable
     );
-    metac_expression_t* expr = MetaCParser_ParseExpressionFromString("12 - 16 - 99");
+    metac_expression_t* expr;
+
+    expr = MetaCParser_ParseExpressionFromString("12 - 16 - 99");
     assert(!strcmp(MetaCPrinter_PrintExpression(&printer, expr), "((12 - 16) - 99)"));
+
+    expr = MetaCParser_ParseExpressionFromString("2 * 12 + 10");
+    assert(!strcmp(MetaCPrinter_PrintExpression(&printer, expr), "((2 * 12) + 10)"));
+
+    expr = MetaCParser_ParseExpressionFromString("2 + 10 * 2");
+    assert(!strcmp(MetaCPrinter_PrintExpression(&printer, expr), "(2 + (10 * 2))"));
 }
 
 void TestParseDeclaration(void)

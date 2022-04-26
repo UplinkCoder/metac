@@ -159,11 +159,7 @@ static inline void WalkTree(void* c, BCValue* result,
 
     metac_expression_kind_t op = e->Kind;
 
-    if (op == exp_call)
-    {
-
-    }
-    else if (IsBinaryAssignExp(op))
+    if (IsBinaryAssignExp(op))
     {
         op -= (exp_add_ass - exp_add);
     }
