@@ -688,6 +688,77 @@ bool IsPrimaryExpressionToken(metac_token_enum_t tokenType)
     }
 }
 
+static inline bool IsTypeToken(metac_token_enum_t tokenType)
+{
+    bool  result =
+           (   tokenType == tok_kw_const
+            || (tokenType >= tok_kw_auto && tokenType <= tok_kw_double)
+            || tokenType == tok_kw_unsigned
+            || tokenType == tok_star
+            || tokenType == tok_kw_struct
+            || tokenType == tok_kw_enum
+            || tokenType == tok_kw_union
+            || tokenType == tok_identifier );
+    return result;
+}
+
+static inline bool IsPunctuationToken(metac_token_enum_t tok)
+{
+    return (tok == tok_dot
+        ||  tok == tok_dotdot
+        ||  tok == tok_comma
+        ||  tok == tok_semicolon
+        ||  tok == tok_arrow
+        ||  tok == tok_div
+        ||  tok == tok_andand
+        ||  tok == tok_oror
+        ||  tok == tok_cat);
+}
+
+static bool CouldBeCast(metac_parser_t* self, metac_token_enum_t tok)
+{
+    bool result = true;
+
+    if (tok != tok_lParen)
+        return false;
+
+    // first we see if the next could be a type token
+    // because if it isn't then we are certainly not as cast
+    metac_token_t* peek;
+    int rParenPos = 0;
+    for(int peekCount = 2;
+        (peek = MetaCParser_PeekToken(self, peekCount)), peek;
+        peekCount++)
+    {
+        if (peek->TokenType == tok_rParen)
+        {
+            rParenPos = peekCount;
+            break;
+        }
+        if (peek->TokenType == tok_star && peekCount == 2)
+        {
+            return false;
+        }
+        if (!IsTypeToken(peek->TokenType))
+        {
+            return false;
+        }
+    }
+
+    if (rParenPos)
+    {
+        metac_token_t* afterParen =
+            MetaCParser_PeekToken(self, rParenPos + 1);
+        if (!afterParen || IsPunctuationToken(afterParen->TokenType))
+            return false;
+    }
+
+    return true;
+}
+
+decl_type_t* MetaCParser_ParseTypeDeclaration(metac_parser_t* self,
+                                              metac_declaration_t* parent,
+                                              metac_declaration_t* prev);
 
 metac_expression_t* MetaCParser_ParsePrimaryExpression(metac_parser_t* self)
 {
@@ -697,8 +768,17 @@ metac_expression_t* MetaCParser_ParsePrimaryExpression(metac_parser_t* self)
     metac_token_enum_t tokenType =
         (currentToken ? currentToken->TokenType : tok_eof);
 
-
-    if (tokenType == tok_unsignedNumber)
+    if (tokenType == tok_lParen && CouldBeCast(self, tokenType))
+    {
+        // Not implemented right now
+        result = AllocNewExpression(exp_cast);
+        //typedef unsigned int b;
+        // MetaCParser_Match(self, tok_lParen);
+        result->CastType = MetaCParser_ParseTypeDeclaration(self, 0, 0);
+        MetaCParser_Match(self, tok_rParen);
+        result->CastExp = MetaCParser_ParseExpression(self, expr_flags_none, 0);
+    }
+    else if (tokenType == tok_unsignedNumber)
     {
         result = AllocNewExpression(exp_signed_integer);
         result->ValueI64 = currentToken->ValueU64;
@@ -1034,75 +1114,6 @@ bool IsBinaryAssignExp(metac_expression_kind_t kind)
 }
 
 
-static inline bool IsTypeToken(metac_token_enum_t tokenType)
-{
-    bool  result =
-           (   tokenType == tok_kw_const
-            || (tokenType >= tok_kw_auto && tokenType <= tok_kw_double)
-            || tokenType == tok_kw_unsigned
-            || tokenType == tok_star
-            || tokenType == tok_kw_struct
-            || tokenType == tok_kw_enum
-            || tokenType == tok_kw_union
-            || tokenType == tok_identifier );
-    return result;
-}
-
-static inline bool IsPunctuationToken(metac_token_enum_t tok)
-{
-    return (tok == tok_dot
-        ||  tok == tok_dotdot
-        ||  tok == tok_comma
-        ||  tok == tok_semicolon
-        ||  tok == tok_arrow
-        ||  tok == tok_div
-        ||  tok == tok_andand
-        ||  tok == tok_oror
-        ||  tok == tok_cat);
-}
-
-static bool CouldBeCast(metac_parser_t* self, metac_token_enum_t tok)
-{
-    bool result = true;
-
-    if (tok != tok_lParen)
-        return false;
-
-    // first we see if the next could be a type token
-    // because if it isn't then we are certainly not as cast
-    metac_token_t* peek;
-    int rParenPos = 0;
-    for(int peekCount = 2;
-        (peek = MetaCParser_PeekToken(self, peekCount)), peek;
-        peekCount++)
-    {
-        if (peek->TokenType == tok_rParen)
-        {
-            rParenPos = peekCount;
-            break;
-        }
-        if (peek->TokenType == tok_star && peekCount == 2)
-        {
-            return false;
-        }
-        if (!IsTypeToken(peek->TokenType))
-        {
-            return false;
-        }
-    }
-
-    if (rParenPos)
-    {
-        metac_token_t* afterParen =
-            MetaCParser_PeekToken(self, rParenPos + 1);
-        if (!afterParen || IsPunctuationToken(afterParen->TokenType))
-            return false;
-    }
-
-    return true;
-}
-decl_type_t* MetaCParser_ParseTypeDeclaration(metac_parser_t* self, metac_declaration_t* parent, metac_declaration_t* prev);
-
 metac_expression_t* MetaCParser_ParseExpression(metac_parser_t* self,
                                                 parse_expression_flags_t eflags,
                                                 metac_expression_t* prev)
@@ -1112,17 +1123,7 @@ metac_expression_t* MetaCParser_ParseExpression(metac_parser_t* self,
     metac_token_enum_t tokenType =
         (currentToken ? currentToken->TokenType : tok_invalid);
 
-    if (tokenType == tok_lParen && CouldBeCast(self, tokenType))
-    {
-        // Not implemented right now
-        result = AllocNewExpression(exp_cast);
-        //typedef unsigned int b;
-        MetaCParser_Match(self, tok_lParen);
-        result->CastType = MetaCParser_ParseTypeDeclaration(self, 0, 0);
-        MetaCParser_Match(self, tok_rParen);
-        result->CastExp = MetaCParser_ParseExpression(self, expr_flags_none, 0);
-    }
-    else if (IsPrimaryExpressionToken(tokenType))
+    if (IsPrimaryExpressionToken(tokenType))
     {
         result = MetaCParser_ParsePrimaryExpression(self);
     }
