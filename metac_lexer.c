@@ -39,7 +39,7 @@ static metac_token_enum_t MetaCLexFixedLengthToken(const char _chrs[3])
         default:
             return tok_bang;
         case '=':
-            return tok_notEqual;
+            return tok_not_equal;
         }
 
     case '$':
@@ -196,7 +196,7 @@ static metac_token_enum_t MetaCLexFixedLengthToken(const char _chrs[3])
         default:
             return tok_assign;
         case '=':
-            return tok_equalsEquals;
+            return tok_equals_equals;
         }
 
     case '>':

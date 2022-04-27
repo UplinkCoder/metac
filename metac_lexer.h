@@ -96,8 +96,8 @@ typedef struct metac_lexer_state_t
     M(tok_lsh_ass) \
     M(tok_rsh_ass) \
     \
-    M(tok_equalsEquals) \
-    M(tok_notEqual) \
+    M(tok_equals_equals) \
+    M(tok_not_equal) \
     M(tok_lt) \
     M(tok_le) \
     M(tok_gt) \

@@ -3,12 +3,10 @@
 
 #ifndef ACCEL
 #  error "You must compile the parser with ACCEL set"
-#  error "Known values are ACCEL_TABLE and ACCEL_TREE"
+#  error "Known values are ACCEL_TABLE"
 #else
 #  if ACCEL == ACCEL_TABLE
 #    include "metac_identifier_table.h"
-#  elif ACCEL == ACCEL_TREE
-#    include "metac_identifier_tree.h"
 #  else
 #    error "Unknow ACCEL value " #ACCEL
 #  endif
@@ -43,6 +41,7 @@ extern const void* _emptyPointer;
     M(decl_variable) \
     M(decl_field) \
     M(decl_parameter) \
+    M(decl_enum_member) \
     FIRST_DECL_TYPE(M) \
     \
     M(decl_type_struct) \
@@ -50,7 +49,7 @@ extern const void* _emptyPointer;
     M(decl_type_enum) \
     M(decl_type_array) \
     M(decl_type_ptr) \
-    M(decl_functiontype) \
+    M(decl_type_functiontype) \
     LAST_DECL_TYPE(M) \
     \
     M(decl_function)
@@ -124,6 +123,7 @@ extern const void* _emptyPointer;
     M(exp_compl) \
     M(exp_umin) \
     M(exp_paren) \
+    M(exp_cast) \
     \
     FOREACH_BINARY_EXP(M) \
     \
@@ -151,6 +151,7 @@ extern const void* _emptyPointer;
     M(stmt_if) \
     M(stmt_switch) \
     M(stmt_while) \
+    M(stmt_for) \
     M(stmt_do_while) \
     M(stmt_label) \
     M(stmt_case) \
@@ -169,7 +170,7 @@ extern const void* _emptyPointer;
     FOREACH_EXP(M) \
     FOREACH_STMT_KIND(M) \
     FOREACH_DECL_KIND(M) \
-    M(node_max)
+    M(max)
 
 #define DEFINE_NODE_MEMBERS(MEMB) \
     node_ ## MEMB,
@@ -248,6 +249,12 @@ typedef struct metac_expression_t
         struct {
             struct metac_expression_t* E1;
         };
+        // case exp_cast:
+        struct {
+            struct metac_expression_t* CastExp;
+            struct decl_type_t* CastType;
+        };
+
         // case exp_argument:
         exp_argument_t* arguments;
         // case identifier_exp :
@@ -342,6 +349,17 @@ typedef struct stmt_defer_t
     struct metac_statement_t* Stmt;
 } stmt_defer_t;
 
+typedef struct stmt_for_t
+{
+    STATEMENT_HEADER
+
+    metac_expression_t* ForInit;
+    metac_expression_t* ForCond;
+    metac_expression_t* ForPostLoop;
+
+    struct metac_statement_t* ForBody;
+} stmt_for_t;
+
 typedef struct stmt_while_t
 {
     STATEMENT_HEADER
@@ -381,7 +399,7 @@ typedef struct stmt_if_t
 {
     STATEMENT_HEADER
 
-    metac_expression_t* IfCond;
+    struct metac_expression_t* IfCond;
     struct metac_statement_t* IfBody;
     struct metac_statement_t* ElseBody;
 } stmt_if_t;
@@ -448,7 +466,6 @@ typedef struct metac_statement_t
     uint32_t LocationIdx; \
     uint32_t Hash; \
     uint32_t Serial; \
-    uint32_t AllocInLine;
 
 typedef enum metac_type_kind_t
 {
@@ -502,9 +519,11 @@ typedef struct decl_variable_t
 {
     DECLARATION_HEADER
 
-    decl_type_t* Type;
+    decl_type_t* VarType;
 
-    metac_identifier_ptr_t Identifier;
+    metac_identifier_ptr_t VarIdentifier;
+
+    metac_expression_t* VarInitExpression;
 
 } decl_variable_t;
 
@@ -553,6 +572,35 @@ typedef struct decl_type_ptr_t
     decl_type_t* ElementType;
 } decl_type_ptr_t;
 
+typedef struct decl_enum_member_t
+{
+    DECLARATION_HEADER
+
+    metac_identifier_ptr_t Name;
+
+    metac_expression_t* Value;
+
+    struct decl_enum_member_t* Next;
+} decl_enum_member_t;
+
+typedef struct decl_type_enum_t
+{
+    DECLARATION_HEADER
+
+    TYPE_HEADER
+
+    decl_enum_member_t Members;
+
+} decl_type_enum_t;
+
+typedef struct decl_type_functiontype_t
+{
+    DECLARATION_HEADER
+
+    TYPE_HEADER
+
+} decl_type_functiontype_t;
+
 typedef struct decl_type_array_t
 {
     DECLARATION_HEADER
@@ -563,6 +611,7 @@ typedef struct decl_type_array_t
 
     metac_expression_t* Dim;
 } decl_type_array_t;
+
 
 typedef struct decl_type_struct_t
 {
@@ -576,6 +625,19 @@ typedef struct decl_type_struct_t
 
     uint32_t FieldCount;
 } decl_type_struct_t;
+
+typedef struct decl_type_union_t
+{
+    DECLARATION_HEADER
+
+    TYPE_HEADER
+
+    metac_identifier_ptr_t Identifier;
+
+    struct decl_field_t* Fields;
+
+    uint32_t FieldCount;
+} decl_type_union_t;
 
 typedef struct decl_typedef_t
 {

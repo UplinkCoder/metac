@@ -41,7 +41,7 @@ if [ -d $DST ]; then
        $DST/utils
 
     mkdir -p $DST/repl
-       cp repl/repl.c repl/build.sh repl/exp_eval.c repl/exp_eval.h \
+    cp repl/repl.c repl/build.sh repl/exp_eval.c repl/exp_eval.h \
        $DST/repl
 
     mkdir -p $DST/libinterpret
@@ -61,11 +61,11 @@ if [ -d $DST ]; then
     chmod +x $DST/repl/build.sh
 
     mkdir -p $DST/$LINENOISE_DIR
-    cp  $LINENOISE_DIR/linenoise.c \
-        $LINENOISE_DIR/linenoise.h \
-        $LINENOISE_DIR/ocaml_community_mod.inl \
-        $LINENOISE_DIR/win32_support_mod.inl \
-        $DST/$LINENOISE_DIR
+    cp $LINENOISE_DIR/linenoise.c \
+       $LINENOISE_DIR/linenoise.h \
+       $LINENOISE_DIR/ocaml_community_mod.inl \
+       $LINENOISE_DIR/win32_support_mod.inl \
+       $DST/$LINENOISE_DIR
 
 else
     echo "You need to give a target directory as argument"

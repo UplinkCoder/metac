@@ -320,14 +320,17 @@ static uint32_t _nodeCounter = 1;
 metac_expression_kind_t BinExpTypeFromTokenType(metac_token_enum_t tokenType)
 {
     metac_expression_kind_t result = exp_invalid;
-    if (((tokenType >= FIRST_BINARY_TOKEN(TOK_SELF)) | (tokenType <= LAST_BINARY_TOKEN(TOK_SELF))))
+    if (((tokenType >= FIRST_BINARY_TOKEN(TOK_SELF)) & (tokenType <= LAST_BINARY_TOKEN(TOK_SELF))))
     {
-        return cast(metac_expression_kind_t)(cast(int)tokenType -
+        result = cast(metac_expression_kind_t)(cast(int)tokenType -
                 (cast(int)FIRST_BINARY_TOKEN(TOK_SELF) -
                  cast(int)FIRST_BINARY_EXP(TOK_SELF)));
     }
 
-    return exp_invalid;
+    if (tokenType == tok_lParen)
+        result = exp_call;
+
+    return result;
 }
 
 const char* BinExpTypeToChars(metac_binary_expression_kind_t t)
@@ -504,7 +507,6 @@ metac_declaration_t* AllocNewDeclaration_(metac_declaration_kind_t kind, size_t 
         result->DeclKind = kind;
         result->Serial = INC(_nodeCounter);
         memset(&result->Serial, 0, nodeSize - offsetof(metac_declaration_t, Serial));
-        result->AllocInLine = line;
     }
 
     return result;
@@ -587,7 +589,7 @@ bool IsPostfixOperator(metac_token_enum_t t)
 
 bool IsBinaryOperator(metac_token_enum_t t)
 {
-    return (t >= FIRST_BINARY_TOKEN(TOK_SELF) && t <= LAST_BINARY_TOKEN(TOK_SELF));
+    return (t >= FIRST_BINARY_TOKEN(TOK_SELF) && t <= LAST_BINARY_TOKEN(TOK_SELF) || t == tok_lParen);
 }
 
 uint32_t Mix(uint32_t a, uint32_t b)
@@ -649,6 +651,10 @@ uint32_t OpToPrecedence(metac_expression_kind_t exp)
     else if (exp == exp_div || exp == exp_mul || exp == exp_rem)
     {
         return 14;
+    }
+    else if (exp == exp_ptr)
+    {
+        return 15;
     }
     else if (exp == exp_call || exp == exp_index || exp == exp_dot
           || exp == exp_arrow || exp == exp_compl)
@@ -936,43 +942,7 @@ metac_expression_t* MetaCParser_ParseBinaryExpression(metac_parser_t* self,
     metac_expression_kind_t exp_left;
     metac_expression_kind_t exp_right;
 
-    if (IsBinaryOperator(peekTokenType))
-    {
-        while(IsBinaryOperator(peekTokenType)
-           && OpToPrecedence(BinExpTypeFromTokenType(peekTokenType)) >= min_prec)
-        {
-            exp_right = BinExpTypeFromTokenType(peekTokenType);
-            uint32_t opPrecedence = OpToPrecedence(exp_right);
-            MetaCParser_Match(self, peekTokenType);
-            metac_expression_t* rhs = MetaCParser_ParseUnaryExpression(self);
-            peekToken = MetaCParser_PeekToken(self, 1);
-            peekTokenType = (peekToken ? peekToken->TokenType : tok_eof);
-            while(IsBinaryOperator(peekTokenType)
-               && opPrecedence <
-                  OpToPrecedence(BinExpTypeFromTokenType(peekTokenType)))
-            {
-                rhs = MetaCParser_ParseBinaryExpression(self, rhs, opPrecedence + 0);
-                peekToken = MetaCParser_PeekToken(self, 1);
-                peekTokenType = (peekToken ? peekToken->TokenType : tok_eof);
-            }
-            result = AllocNewExpression(exp_right);
-            result->E1 = left;
-            result->E2 = rhs;
-            left = result;
-        }
-    }
-    else if (peekTokenType == tok_lBracket)
-    {
-        MetaCParser_Match(self, tok_lBracket);
-
-        metac_expression_t* E1 = left;
-        result = AllocNewExpression(exp_index);
-        result->E1 = E1;
-        result->E2 = MetaCParser_ParseExpression(self, expr_flags_none, 0);
-
-        MetaCParser_Match(self, tok_rBracket);
-    }
-    else if (peekTokenType == tok_lParen)
+    if (peekTokenType == tok_lParen)
     {
         MetaCParser_Match(self, tok_lParen);
         metac_expression_t* E1 = left;
@@ -1009,6 +979,42 @@ metac_expression_t* MetaCParser_ParseBinaryExpression(metac_parser_t* self,
 
         //PopOperator(exp_call);
     }
+    else if (IsBinaryOperator(peekTokenType))
+    {
+        while(IsBinaryOperator(peekTokenType)
+           && OpToPrecedence(BinExpTypeFromTokenType(peekTokenType)) >= min_prec)
+        {
+            exp_right = BinExpTypeFromTokenType(peekTokenType);
+            uint32_t opPrecedence = OpToPrecedence(exp_right);
+            MetaCParser_Match(self, peekTokenType);
+            metac_expression_t* rhs = MetaCParser_ParseUnaryExpression(self);
+            peekToken = MetaCParser_PeekToken(self, 1);
+            peekTokenType = (peekToken ? peekToken->TokenType : tok_eof);
+            while(IsBinaryOperator(peekTokenType)
+               && opPrecedence <
+                  OpToPrecedence(BinExpTypeFromTokenType(peekTokenType)))
+            {
+                rhs = MetaCParser_ParseBinaryExpression(self, rhs, opPrecedence + 0);
+                peekToken = MetaCParser_PeekToken(self, 1);
+                peekTokenType = (peekToken ? peekToken->TokenType : tok_eof);
+            }
+            result = AllocNewExpression(exp_right);
+            result->E1 = left;
+            result->E2 = rhs;
+            left = result;
+        }
+    }
+    else if (peekTokenType == tok_lBracket)
+    {
+        MetaCParser_Match(self, tok_lBracket);
+
+        metac_expression_t* E1 = left;
+        result = AllocNewExpression(exp_index);
+        result->E1 = E1;
+        result->E2 = MetaCParser_ParseExpression(self, expr_flags_none, 0);
+
+        MetaCParser_Match(self, tok_rBracket);
+    }
     else
     {
         assert(!"Unexpected Token");
@@ -1042,22 +1048,60 @@ static inline bool IsTypeToken(metac_token_enum_t tokenType)
     return result;
 }
 
+static inline bool IsPunctuationToken(metac_token_enum_t tok)
+{
+    return (tok == tok_dot
+        ||  tok == tok_dotdot
+        ||  tok == tok_comma
+        ||  tok == tok_semicolon
+        ||  tok == tok_arrow
+        ||  tok == tok_div
+        ||  tok == tok_andand
+        ||  tok == tok_oror
+        ||  tok == tok_cat);
+}
 
 static bool CouldBeCast(metac_parser_t* self, metac_token_enum_t tok)
 {
+    bool result = true;
+
     if (tok != tok_lParen)
         return false;
 
     // first we see if the next could be a type token
     // because if it isn't then we are certainly not as cast
-    metac_token_t* peek2 = MetaCParser_PeekToken(self, 2);
-    metac_token_enum_t tokenType = peek2 ? peek2->TokenType : tok_invalid;
+    metac_token_t* peek;
+    int rParenPos = 0;
+    for(int peekCount = 2;
+        (peek = MetaCParser_PeekToken(self, peekCount)), peek;
+        peekCount++)
+    {
+        if (peek->TokenType == tok_rParen)
+        {
+            rParenPos = peekCount;
+            break;
+        }
+        if (peek->TokenType == tok_star && peekCount == 2)
+        {
+            return false;
+        }
+        if (!IsTypeToken(peek->TokenType))
+        {
+            return false;
+        }
+    }
 
-    if (!IsTypeToken(tokenType))
-        return false;
+    if (rParenPos)
+    {
+        metac_token_t* afterParen =
+            MetaCParser_PeekToken(self, rParenPos + 1);
+        if (!afterParen || IsPunctuationToken(afterParen->TokenType))
+            return false;
+    }
 
-    return false;
+    return true;
 }
+decl_type_t* MetaCParser_ParseTypeDeclaration(metac_parser_t* self, metac_declaration_t* parent, metac_declaration_t* prev);
 
 metac_expression_t* MetaCParser_ParseExpression(metac_parser_t* self,
                                                 parse_expression_flags_t eflags,
@@ -1071,12 +1115,14 @@ metac_expression_t* MetaCParser_ParseExpression(metac_parser_t* self,
     if (tokenType == tok_lParen && CouldBeCast(self, tokenType))
     {
         // Not implemented right now
-        assert(0);
-        // exp_cast_t* = AllocNewExpression(exp_cast, &result);
-
+        result = AllocNewExpression(exp_cast);
+        //typedef unsigned int b;
+        MetaCParser_Match(self, tok_lParen);
+        result->CastType = MetaCParser_ParseTypeDeclaration(self, 0, 0);
+        MetaCParser_Match(self, tok_rParen);
+        result->CastExp = MetaCParser_ParseExpression(self, expr_flags_none, 0);
     }
-
-    if (IsPrimaryExpressionToken(tokenType))
+    else if (IsPrimaryExpressionToken(tokenType))
     {
         result = MetaCParser_ParsePrimaryExpression(self);
     }
@@ -1102,7 +1148,8 @@ metac_expression_t* MetaCParser_ParseExpression(metac_parser_t* self,
 
         if (IsBinaryOperator(tokenType))
         {
-            uint32_t prec = OpToPrecedence(BinExpTypeFromTokenType(tokenType));
+            //uint32_t prec = OpToPrecedence(BinExpTypeFromTokenType(tokenType));
+            uint32_t prec = OpToPrecedence(result->Kind);
             result = MetaCParser_ParseBinaryExpression(self, result, 0);
         }
         else if (IsPostfixOperator(tokenType))
@@ -1222,14 +1269,14 @@ LnextToken:
                     decl_field_t* field =
                         AllocNewDeclaration(decl_field, (metac_declaration_t**)nextMemberPtr);
                     field->Next = 0;
-                    field->Field.Type = MetaCParser_ParseTypeDeclaration(self, (metac_declaration_t*)result, 0);
-                    assert(IsDeclType((metac_declaration_t*)field->Field.Type));
+                    field->Field.VarType = MetaCParser_ParseTypeDeclaration(self, (metac_declaration_t*)result, 0);
+                    assert(IsDeclType((metac_declaration_t*)field->Field.VarType));
 
                     metac_token_t* memberName = MetaCParser_Match(self, tok_identifier);
-                    if (!field->Field.Type || !memberName || memberName->TokenType != tok_identifier)
+                    if (!field->Field.VarType || !memberName || memberName->TokenType != tok_identifier)
                         return ErrorTypeDeclaration();
 
-                    field->Field.Identifier = RegisterIdentifier(self, memberName);
+                    field->Field.VarIdentifier = RegisterIdentifier(self, memberName);
 
                     MetaCParser_Match(self, tok_semicolon);
                     nextMemberPtr = &field->Next;
@@ -1384,11 +1431,16 @@ metac_declaration_t* MetaCParser_ParseDeclaration(metac_parser_t* self, metac_de
 //                MetaCLocationStorage_StartLoc(&parser.locationStorage,
 //                    MetaCLocationStorage_StartLine(&parser.lexer.locationStorage, type.LocationIdx));
 
-                varDecl->Type = type;
-                varDecl->Identifier = identifier;
+                varDecl->VarType = type;
+                varDecl->VarIdentifier = identifier;
                 while (MetaCParser_PeekMatch(self, tok_lBracket, true))
                 {
-                    varDecl->Type = (decl_type_t*)ParseArraySuffix(self, varDecl->Type);
+                    varDecl->VarType = (decl_type_t*)ParseArraySuffix(self, varDecl->VarType);
+                }
+                if (MetaCParser_PeekMatch(self, tok_assign, true))
+                {
+                    MetaCParser_Match(self, tok_assign);
+                    varDecl->VarInitExpression = MetaCParser_ParseExpression(self, expr_flags_none, 0);
                 }
             }
         }
@@ -1467,6 +1519,13 @@ static metac_statement_t* MetaCParser_ParseStatement(metac_parser_t* self,
         }
         goto LdoneWithStatement;
     }
+    else if (tokenType == tok_kw_for)
+    {
+        stmt_for_t* for_ = AllocNewStatement(stmt_for, &result);
+        uint32_t hash = crc32c(~0, "for", sizeof("for") - 1);
+
+        result->Hash = hash;
+    }
     else if (tokenType == tok_kw_switch)
     {
         uint32_t switchHash =
@@ -1494,23 +1553,37 @@ static metac_statement_t* MetaCParser_ParseStatement(metac_parser_t* self,
         metac_token_t* peek2 = MetaCParser_PeekToken(self, 2);
         if (peek2 && peek2->TokenType == tok_colon)
         {
-            metac_token_t* label = MetaCParser_Match(self, tok_identifier);
+            metac_token_t* label_tok = MetaCParser_Match(self, tok_identifier);
             MetaCParser_Match(self, tok_colon);
 
-            stmt_label_t* result = AllocNewStatement(stmt_label, &result);
+            stmt_label_t* label = AllocNewStatement(stmt_label, &result);
 
-            result->Label = RegisterIdentifier(self, label);
+            label->Label = RegisterIdentifier(self, label_tok);
         }
     }
     else if (tokenType == tok_kw_goto)
     {
-        stmt_goto_t* result = AllocNewStatement(stmt_goto, &result);
+        stmt_goto_t* goto_ = AllocNewStatement(stmt_goto, &result);
         uint32_t gotoHash = crc32c(~0, "goto", sizeof("goto") - 1);
 
         MetaCParser_Match(self, tok_kw_goto);
         metac_token_t* label = MetaCParser_Match(self, tok_identifier);
-        result->Label = RegisterIdentifier(self, label);
-        result->Hash = Mix(gotoHash, label->IdentifierKey);
+        goto_->Label = RegisterIdentifier(self, label);
+        goto_->Hash = Mix(gotoHash, label->IdentifierKey);
+    }
+    else if (tokenType == tok_kw_break)
+    {
+        stmt_break_t* result = AllocNewStatement(stmt_break, &result);
+        uint32_t hash = crc32c(~0, "break", sizeof("break") - 1);
+
+        result->Hash = hash;
+    }
+    else if (tokenType == tok_kw_continue)
+    {
+        stmt_continue_t* result = AllocNewStatement(stmt_continue, &result);
+        uint32_t hash = crc32c(~0, "break", sizeof("break") - 1);
+
+        result->Hash = hash;
     }
     else if (tokenType == tok_kw_case)
     {
@@ -1738,6 +1811,9 @@ void TestParseExprssion(void)
 
     expr = MetaCParser_ParseExpressionFromString("2 + 10 * 2");
     assert(!strcmp(MetaCPrinter_PrintExpression(&printer, expr), "(2 + (10 * 2))"));
+
+    expr = MetaCParser_ParseExpressionFromString("a = b(c)");
+    assert(!strcmp(MetaCPrinter_PrintExpression(&printer, expr), "(a = b(c))"));
 }
 
 void TestParseDeclaration(void)

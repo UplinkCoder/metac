@@ -94,7 +94,8 @@ LswitchMode:
         break;
     case parse_mode_decl:
         promt_ = "Decl>";
-         break;
+        linenoiseSetMultiLine(1);
+        break;
     case parse_mode_expr:
         promt_ = "Exp>";
         break;
@@ -279,7 +280,7 @@ LnextLine:
                 }
                 else
                 {
-                    metac_expression_t* assignExp = MetaCParser_ParseExpressionFromString(line);
+                     metac_expression_t* assignExp = MetaCParser_ParseExpressionFromString(line);
                     if (assignExp)
                     {
                         if (assignExp->Kind != exp_assign)
@@ -317,6 +318,7 @@ LnextLine:
                         printf("decl = %s\n", MetaCPrinter_PrintDeclaration(&printer, decl));
                     else
                         printf("Couldn't parse Declaration\n");
+                    linenoiseSetMultiLine(false);
                 goto LnextLine;
 
             case parse_mode_file :

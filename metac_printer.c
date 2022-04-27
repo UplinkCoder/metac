@@ -94,7 +94,7 @@ static void PrintKeyword(metac_printer_t* self,
 }
 
 static inline void PrintToken(metac_printer_t* self,
-                metac_token_enum_t tokenType)
+                              metac_token_enum_t tokenType)
 {
 #define CASE_(KW) \
     case KW :
@@ -121,6 +121,9 @@ static inline void PrintToken(metac_printer_t* self,
 
         case tok_rParen:
             PrintChar(self, ')');
+        break;
+        case tok_assign:
+            PrintChar(self, '=');
         break;
     }
 }
@@ -385,16 +388,24 @@ static inline void PrintDeclaration(metac_printer_t* self,
         case decl_field :
         {
             decl_field_t* field = (decl_field_t*) decl;
-            PrintType(self, field->Field.Type);
+            PrintType(self, field->Field.VarType);
             PrintSpace(self);
-            PrintIdentifier(self, field->Field.Identifier);
+            PrintIdentifier(self, field->Field.VarIdentifier);
+
         } break;
         case decl_variable:
         {
             decl_variable_t* variable = (decl_variable_t*) decl;
-            PrintType(self, variable->Type);
+            PrintType(self, variable->VarType);
             PrintSpace(self);
-            PrintIdentifier(self, variable->Identifier);
+            PrintIdentifier(self, variable->VarIdentifier);
+            if (variable->VarInitExpression != _emptyPointer)
+            {
+                PrintSpace(self);
+                PrintToken(self, tok_assign);
+                PrintSpace(self);
+                PrintExpression(self, variable->VarInitExpression);
+            }
         } break;
         case decl_function:
         {
@@ -472,6 +483,15 @@ static inline void PrintExpression(metac_printer_t* self, metac_expression_t* ex
 
         PrintExpression(self, exp->E2);
         PrintChar(self, ')');
+    }
+    else if (exp->Kind == exp_cast)
+    {
+        PrintString(self, "cast", 4);
+        PrintChar(self, '(');
+        PrintType(self, exp->CastType);
+        PrintChar(self, ')');
+
+        PrintExpression(self, exp->CastExp);
     }
     else if (exp->Kind == exp_call)
     {

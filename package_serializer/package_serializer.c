@@ -2,6 +2,7 @@
 #include "../utils/read_file.c"
 #include "../cache/crc32.c"
 #include "../metac_parser_obj.c"
+//#include "../3rd_party/tracyC.h"
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -9,7 +10,7 @@
 uint32_t EstimateNumberOfTokens(uint32_t length)
 {
     uint32_t aligned_length = (length + 16) & ~15;
-    float token_estimate = ( aligned_length / 4.7f );
+    float token_estimate = ( aligned_length / 4.3f );
     return (((uint32_t) token_estimate) + 128) & ~127;
 }
 
