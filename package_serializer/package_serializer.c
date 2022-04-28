@@ -16,6 +16,41 @@ uint32_t EstimateNumberOfTokens(uint32_t length)
 
 bool errored = false;
 
+static inline void ParseFile(metac_parser_t* parser,
+                             const char* path)
+{
+    metac_printer_t printer;
+
+    MetaCPrinter_Init(&printer,
+        &parser->IdentifierTable,
+        &parser->StringTable
+    );
+    uint32_t declarationSize = 0;
+    uint32_t declarationCapacity = 1024;
+
+    metac_declaration_t** declarations =
+        (metac_declaration_t**)
+            calloc(sizeof(metac_declaration_t*),
+            declarationCapacity);
+
+    while(parser->CurrentTokenIndex < parser->Lexer->TokenSize)
+    {
+        declarations[declarationSize++] = MetaCParser_ParseDeclaration(parser, 0);
+        printf("Parsed %u tokens\n", parser->CurrentTokenIndex);
+        metac_token_t* lastToken = MetaCParser_PeekToken(parser, 1);
+        const char* str =
+            MetaCPrinter_PrintDeclaration(&printer,
+                declarations[declarationSize - 1]
+        );
+        printf("%s\n", str);
+        MetaCPrinter_Reset(&printer);
+        if (!lastToken || lastToken->TokenType == tok_eof)
+            break;
+    }
+
+    printf("Parsed %u declarations\n", declarationSize);
+}
+
 static inline void LexFile(metac_lexer_t* lexer,
                            const char* path,
                            const char* text, uint32_t length)
@@ -71,6 +106,7 @@ static inline void LexFile(metac_lexer_t* lexer,
         printf("Lexed %d tokens\n", (int) lexer->TokenSize);
     }
 }
+
 const char** includePaths = 0;
 uint32_t includePathCount = 0;
 uint32_t includePathCapacity = 0;
@@ -116,6 +152,11 @@ int main(int argc, const char* argv[])
             readResult.FileContent0, readResult.FileLength
         );
 
+        metac_parser_t parser;
+        MetaCParser_InitFromLexer(&parser, &lexer);
+
+        ParseFile(&parser, arg);
+
         metac_identifier_table_slot_t firstEntry = {0};
 
         metac_identifier_table_slot_t* firstEntryP = findFirstEntry(&lexer.IdentifierTable);
@@ -150,8 +191,6 @@ int main(int argc, const char* argv[])
         WriteTable(&lexer.StringTable, formatBuffer, 12, 0);
 #endif
 #endif
-        metac_parser_t parser;
-        MetaCParser_InitFromLexer(&parser, &lexer);
     }
     return errored;
 }

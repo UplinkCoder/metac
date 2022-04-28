@@ -113,6 +113,7 @@ extern const void* _emptyPointer;
     M(exp_post_increment) \
     M(exp_post_decrement) \
     M(exp_typeof) \
+    M(exp_sizeof) \
     M(exp_inject) \
     M(exp_eject) \
     M(exp_assert) \
@@ -248,6 +249,13 @@ typedef struct metac_expression_t
         // case  exp_inject, exp_eject, exp_assert, exp_outerParen, exp_outer :
         struct {
             struct metac_expression_t* E1;
+        };
+        // case exp_sizeof:
+        struct {
+            union {
+                // struct metac_expression_t* SizeofExp;
+                struct decl_type_t* SizeofType;
+            };
         };
         // case exp_cast:
         struct {
@@ -558,6 +566,7 @@ typedef struct decl_function_t
 
     decl_parameter_t* Parameters;
 
+    uint32_t ParameterCount;
     metac_identifier_ptr_t Identifier;
 
     stmt_block_t* FunctionBody;
@@ -589,7 +598,7 @@ typedef struct decl_type_enum_t
 
     TYPE_HEADER
 
-    decl_enum_member_t Members;
+    decl_enum_member_t* Members;
 
 } decl_type_enum_t;
 

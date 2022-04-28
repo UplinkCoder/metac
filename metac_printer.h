@@ -15,13 +15,13 @@ typedef struct metac_printer_t
     char* StringMemory;
     uint32_t StringMemorySize;
     uint32_t StringMemoryCapacity;
-    
+
     metac_identifier_table_t* IdentifierTable;
     metac_identifier_table_t* StringTable;
-    
+
     uint16_t IndentLevel;
     uint16_t CurrentColumn;
-    
+
     uint16_t StartColumn;
 } metac_printer_t;
 

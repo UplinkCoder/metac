@@ -122,6 +122,14 @@ static inline void PrintToken(metac_printer_t* self,
         case tok_rParen:
             PrintChar(self, ')');
         break;
+
+        case tok_lBracket:
+            PrintChar(self, '[');
+        break;
+        case tok_rBracket:
+            PrintChar(self, ']');
+        break;
+
         case tok_assign:
             PrintChar(self, '=');
         break;
@@ -214,9 +222,25 @@ static inline void PrintDeclaration(metac_printer_t* self,
                                     metac_declaration_t* decl,
                                     uint32_t level);
 
+#define CASE_MACRO(EXP_TYPE) \
+    case EXP_TYPE : {result = #EXP_TYPE;} break;
 
+const char* StatementKind_toChars(metac_statement_kind_t kind)
+{
+    const char* result = 0;
+
+    switch(kind)
+    {
+        FOREACH_STMT_KIND(CASE_MACRO)
+    }
+
+    return result;
+}
+
+#undef CASE_MACRO
 static inline void PrintStatement(metac_printer_t* self, metac_statement_t* stmt)
 {
+    printf("StmtKind: %s\n", StatementKind_toChars(stmt->StmtKind));
     switch(stmt->StmtKind)
     {
         case stmt_return :
@@ -225,7 +249,8 @@ static inline void PrintStatement(metac_printer_t* self, metac_statement_t* stmt
 
             PrintKeyword(self, tok_kw_return);
             PrintSpace(self);
-            PrintExpression(self, stmt_return->Expression);
+            if (stmt_return->Expression != _emptyPointer)
+                PrintExpression(self, stmt_return->Expression);
             PrintChar(self, ';');
         } break;
         case stmt_yield :
@@ -315,6 +340,12 @@ static inline void PrintStatement(metac_printer_t* self, metac_statement_t* stmt
         {
             stmt_exp_t* exp_stmt = cast(stmt_exp_t*) stmt;
             PrintExpression(self, exp_stmt->Expression);
+            PrintToken(self, tok_semicolon);
+        } break;
+        case stmt_decl:
+        {
+            stmt_decl_t* decl_stmt = cast(stmt_decl_t*) stmt;
+            PrintDeclaration(self, decl_stmt->Declaration, 0);
             PrintToken(self, tok_semicolon);
         } break;
         default : {
@@ -507,6 +538,20 @@ static inline void PrintExpression(metac_printer_t* self, metac_expression_t* ex
                 PrintString(self, ", ", 2);
         }
         PrintChar(self, ')');
+    }
+    else if (exp->Kind == exp_index)
+    {
+        PrintExpression(self, exp->E1);
+        PrintToken(self, tok_lBracket);
+        PrintExpression(self, exp->E2);
+        PrintToken(self, tok_rBracket);
+    }
+    else if (exp->Kind == exp_sizeof)
+    {
+        PrintKeyword(self, tok_kw_sizeof);
+        PrintToken(self, tok_lParen);
+        PrintType(self, exp->SizeofType);
+        PrintToken(self, tok_rParen);
     }
     else if (exp->Kind == exp_addr || exp->Kind == exp_ptr
           || exp->Kind == exp_not  || exp->Kind == exp_compl

@@ -14,7 +14,7 @@
 
 #include "cache/crc32.c"
 
-static metac_token_enum_t MetaCLexFixedLengthToken(const char _chrs[3])
+static inline metac_token_enum_t MetaCLexFixedLengthToken(const char _chrs[3])
 {
     switch (_chrs[0])
     {
@@ -1225,7 +1225,7 @@ void test_lexer()
             continue;
         }
         metac_token_enum_t lexed;
-        if ((tok >= FIRST_KEYWORD_TOKEN(TOK_SELF)) & tok <= LAST_KEYWORD_TOKEN(TOK_SELF))
+        if ((tok >= FIRST_KEYWORD_TOKEN(TOK_SELF)) & (tok <= LAST_KEYWORD_TOKEN(TOK_SELF)))
         {
             metac_lexer_state_t state = {0};
             metac_token_t t1 = {tok_invalid};
