@@ -325,6 +325,7 @@ static uint32_t MetaCStaticTokenLength(metac_token_enum_t t)
         case tok_kw_until    : return 5;
 
         case tok_kw_auto     : return 4;
+        case tok_kw_bool     : return 4;
         case tok_kw_double   : return 6;
         case tok_kw_float    : return 5;
         case tok_kw_long     : return 4;
@@ -332,6 +333,7 @@ static uint32_t MetaCStaticTokenLength(metac_token_enum_t t)
         case tok_kw_short    : return 5;
         case tok_kw_char     : return 4;
         case tok_kw_void     : return 4;
+        case tok_kw_signed   : return 6;
         case tok_kw_unsigned : return 8;
         case tok_kw_volatile : return 8;
         case tok_kw_extern   : return 6;
@@ -1150,10 +1152,12 @@ void test_lexer()
         "union",
         "enum",
 
+        "typedef",
         "auto",
 //        "type",
         "void",
 
+        "bool",
         "char",
         "short",
         "int",
@@ -1162,6 +1166,7 @@ void test_lexer()
         "float",
         "double",
 
+        "signed",
         "unsigned",
         "const",
         "volatile",
@@ -1178,7 +1183,6 @@ void test_lexer()
         "inject",
         "eject",
         "assert",
-        "typedef",
         "case",
         "goto",
         "static",

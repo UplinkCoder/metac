@@ -111,9 +111,11 @@ typedef struct metac_lexer_state_t
     M(tok_kw_union) \
     M(tok_kw_enum) \
     \
+    M(tok_kw_typedef) \
     M(tok_kw_auto) \
     M(tok_kw_void) \
     \
+    M(tok_kw_bool) \
     M(tok_kw_char) \
     M(tok_kw_short) \
     M(tok_kw_int) \
@@ -121,6 +123,7 @@ typedef struct metac_lexer_state_t
     M(tok_kw_float) \
     M(tok_kw_double) \
     \
+    M(tok_kw_signed) \
     M(tok_kw_unsigned) \
     M(tok_kw_const) \
     M(tok_kw_volatile) \
@@ -138,7 +141,6 @@ typedef struct metac_lexer_state_t
     M(tok_kw_eject) \
     M(tok_kw_assert) \
     \
-    M(tok_kw_typedef) \
     M(tok_kw_case) \
     M(tok_kw_goto) \
     M(tok_kw_static) \
