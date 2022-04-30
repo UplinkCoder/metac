@@ -394,7 +394,7 @@ uint32_t MetaCTokenLength(metac_token_t token)
     }
     else
     {
-        if (token.TokenType == tok_unsignedNumber)
+        if (token.TokenType == tok_uint)
         {
             uint64_t v = token.ValueU64;
             return (uint32_t)(fastLog10(v) + 1);
@@ -403,7 +403,7 @@ uint32_t MetaCTokenLength(metac_token_t token)
         {
             return LENGTH_FROM_IDENTIFIER_KEY(token.Key);
         }
-        else if (token.TokenType == tok_stringLiteral)
+        else if (token.TokenType == tok_string)
         {
             return LENGTH_FROM_STRING_KEY(token.Key);
         }
@@ -500,11 +500,11 @@ static inline metac_token_enum_t classify(char c)
     }
     else if (IsNumericChar(c))
     {
-        result = tok_unsignedNumber;
+        result = tok_uint;
     }
     else if (c == '\"')
     {
-        result = tok_stringLiteral;
+        result = tok_string;
     }
 
     return result;
@@ -761,7 +761,7 @@ LcontinueLexnig:
             }
             else if (IsNumericChar(c))
             {
-                token.TokenType = tok_unsignedNumber;
+                token.TokenType = tok_uint;
                 bool isHex;
                 uint64_t value;
              LparseDigits:
@@ -872,7 +872,7 @@ LcontinueLexnig:
             {
                 ++text;
                 char matchTo = c;
-                token.TokenType = tok_stringLiteral;
+                token.TokenType = tok_string;
                 const char* stringBegin = text;
                 uint32_t stringHash = ~0u;
                 c = *text++;

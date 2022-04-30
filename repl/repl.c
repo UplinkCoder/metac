@@ -355,12 +355,12 @@ LlexSrcBuffer:
                 {
                     printf("    '\\U%.*s'\n", token.charLength, token.chars);
                 }
-                else if (token.TokenType == tok_unsignedNumber)
+                else if (token.TokenType == tok_uint)
                 {
                     char buffer[21];
                     printf("    %s\n", u64tostr(token.ValueU64, buffer));
                 }
-                else if (token.TokenType == tok_stringLiteral)
+                else if (token.TokenType == tok_string)
                 {
                     printf("    \"%.*s\"\n", LENGTH_FROM_STRING_KEY(token.Key), STRING_PTR(&lexer.String, token.StringPtr));
                 }

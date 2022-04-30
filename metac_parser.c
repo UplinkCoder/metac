@@ -391,11 +391,11 @@ const char* BinExpTypeToChars(metac_binary_expression_kind_t t)
 
 metac_expression_kind_t ExpTypeFromTokenType(metac_token_enum_t tokenType)
 {
-    if (tokenType == tok_unsignedNumber)
+    if (tokenType == tok_uint)
     {
         return exp_signed_integer;
     }
-    else if (tokenType == tok_stringLiteral)
+    else if (tokenType == tok_string)
     {
         return exp_string;
     }
@@ -665,13 +665,17 @@ uint32_t OpToPrecedence(metac_expression_kind_t exp)
     {
         return 16;
     }
+    else if (exp == exp_umin)
+    {
+        return 17;
+    }
     else if (exp == exp_paren
           || exp == exp_signed_integer
           || exp == exp_string
           || exp == exp_identifier
           || exp == exp_char)
     {
-        return 17;
+        return 18;
     }
     assert(0);
     return 0;
@@ -682,8 +686,8 @@ bool IsPrimaryExpressionToken(metac_token_enum_t tokenType)
     switch(tokenType)
     {
     case tok_lParen:
-    case tok_unsignedNumber:
-    case tok_stringLiteral:
+    case tok_uint:
+    case tok_string:
     case tok_char:
     case tok_identifier:
         return true;
@@ -782,18 +786,18 @@ metac_expression_t* MetaCParser_ParsePrimaryExpression(metac_parser_t* self)
         MetaCParser_Match(self, tok_rParen);
         result->CastExp = MetaCParser_ParseExpression(self, expr_flags_none, 0);
     }
-    else if (tokenType == tok_unsignedNumber)
+    else if (tokenType == tok_uint)
     {
-        MetaCParser_Match(self, tok_unsignedNumber);
+        MetaCParser_Match(self, tok_uint);
         result = AllocNewExpression(exp_signed_integer);
         result->ValueI64 = currentToken->ValueU64;
         result->Hash = crc32c(~0, &result->ValueU64, sizeof(result->ValueU64));
         //PushOperand(result);
     }
-    else if (tokenType == tok_stringLiteral)
+    else if (tokenType == tok_string)
     {
         // result = GetOrAddStringLiteral(_string_table, currentToken);
-        MetaCParser_Match(self, tok_stringLiteral);
+        MetaCParser_Match(self, tok_string);
         result = AllocNewExpression(exp_string);
         result->StringPtr = RegisterString(self, currentToken);
         result->StringKey = currentToken->StringKey;
@@ -962,7 +966,7 @@ metac_expression_t* MetaCParser_ParseUnaryExpression(metac_parser_t* self)
         MetaCParser_Match(self, tok_minus);
         result = AllocNewExpression(exp_umin);
         //PushOperator(exp_addr);
-        result->E1 = MetaCParser_ParseExpression(self, expr_flags_none, 0);
+        result->E1 = MetaCParser_ParseExpression(self, expr_flags_unary, result);
         result->Hash = Mix(
             crc32c(~0, "-", 1),
             result->E1->Hash
@@ -973,7 +977,7 @@ metac_expression_t* MetaCParser_ParseUnaryExpression(metac_parser_t* self)
         MetaCParser_Match(self, tok_and);
         result = AllocNewExpression(exp_addr);
         //PushOperator(exp_addr);
-        result->E1 = MetaCParser_ParseExpression(self, expr_flags_none, 0);
+        result->E1 = MetaCParser_ParseExpression(self, expr_flags_unary, 0);
         result->Hash = Mix(
             crc32c(~0, "&", sizeof("&") - 1),
             result->E1->Hash
@@ -986,7 +990,7 @@ metac_expression_t* MetaCParser_ParseUnaryExpression(metac_parser_t* self)
         MetaCParser_Match(self, tok_star);
         result = AllocNewExpression(exp_ptr);
         //PushOperator(exp_ptr);
-        result->E1 = MetaCParser_ParseExpression(self, expr_flags_none, 0);
+        result->E1 = MetaCParser_ParseExpression(self, expr_flags_unary, 0);
         result->Hash = Mix(
             crc32c(~0, "*", sizeof("*") - 1),
             result->E1->Hash
@@ -997,7 +1001,7 @@ metac_expression_t* MetaCParser_ParseUnaryExpression(metac_parser_t* self)
     {
         MetaCParser_Match(self, tok_bang);
         result = AllocNewExpression(exp_not);
-        result->E1 = MetaCParser_ParseExpression(self, expr_flags_none, 0);
+        result->E1 = MetaCParser_ParseExpression(self, expr_flags_unary, 0);
         result->Hash = Mix(
             crc32c(~0, "!", 1),
             result->E1->Hash
@@ -1007,7 +1011,7 @@ metac_expression_t* MetaCParser_ParseUnaryExpression(metac_parser_t* self)
     {
         MetaCParser_Match(self, tok_cat);
         result = AllocNewExpression(exp_compl);
-        result->E1 = MetaCParser_ParseExpression(self, expr_flags_none, 0);
+        result->E1 = MetaCParser_ParseExpression(self, expr_flags_unary, 0);
         result->Hash = Mix(
             crc32c(~0, "~", 1),
             result->E1->Hash
@@ -1171,16 +1175,21 @@ metac_expression_t* MetaCParser_ParseExpression(metac_parser_t* self,
     metac_token_t* peekNext = MetaCParser_PeekToken(self, 1);
     if (peekNext)
     {
+        uint32_t min_prec = 0;
+
         tokenType = peekNext->TokenType;
         //within a call we must not treat a comma as a binary expression
         if ((eflags & expr_flags_call) && tokenType == tok_comma)
             goto LreturnExp;
 
+        if ((eflags & expr_flags_unary))
+            min_prec = 14;
+
         if (IsBinaryOperator(tokenType))
         {
             //uint32_t prec = OpToPrecedence(BinExpTypeFromTokenType(tokenType));
             uint32_t prec = OpToPrecedence(result->Kind);
-            result = MetaCParser_ParseBinaryExpression(self, result, 0);
+            result = MetaCParser_ParseBinaryExpression(self, result, min_prec);
         }
         else if (IsPostfixOperator(tokenType))
         {

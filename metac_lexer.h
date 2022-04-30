@@ -207,8 +207,8 @@ typedef struct metac_lexer_state_t
     FIRST_TOKEN(M) \
     \
     M(tok_identifier) \
-    M(tok_unsignedNumber) \
-    M(tok_stringLiteral) \
+    M(tok_uint) \
+    M(tok_string) \
     M(tok_char) \
     M(tok_char_uni) \
     M(tok_comment_single) \
@@ -245,7 +245,7 @@ typedef struct metac_token_t {
             const char* Identifier;
 #endif
         };
-        // case tok_stringLiteral :
+        // case tok_string :
         struct {
             uint32_t StringKey;
 #ifdef ACCEL

@@ -240,7 +240,7 @@ const char* StatementKind_toChars(metac_statement_kind_t kind)
 #undef CASE_MACRO
 static inline void PrintStatement(metac_printer_t* self, metac_statement_t* stmt)
 {
-    printf("StmtKind: %s\n", StatementKind_toChars(stmt->StmtKind));
+    // printf("StmtKind: %s\n", StatementKind_toChars(stmt->StmtKind));
     switch(stmt->StmtKind)
     {
         case stmt_return :
@@ -268,14 +268,19 @@ static inline void PrintStatement(metac_printer_t* self, metac_statement_t* stmt
 
             PrintToken(self, tok_lBrace);
             ++self->IndentLevel;
+            PrintNewline(self);
+            PrintIndent(self);
 
             for(metac_statement_t* nextStmt = stmt_block->Body;
                 nextStmt != _emptyPointer;
                 nextStmt = nextStmt->Next)
             {
-                PrintNewline(self);
-                PrintIndent(self);
                 PrintStatement(self, nextStmt);
+                if(nextStmt->Next)
+                {
+                    PrintNewline(self);
+                    PrintIndent(self);
+                }
             }
 
             --self->IndentLevel;
@@ -361,8 +366,6 @@ static inline void PrintDeclaration(metac_printer_t* self,
                                     metac_declaration_t* decl,
                                     uint32_t level)
 {
-    PrintIndent(self);
-
     bool printSemicolon = true;
 
     switch (decl->DeclKind)
