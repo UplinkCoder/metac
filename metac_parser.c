@@ -31,6 +31,7 @@ const void* _emptyPointer = (const void*)0x1;
 
 static noinline void _newMemRealloc(void** memP, uint32_t* capacity, const uint32_t elementSize);
 const char* MetaCExpressionKind_toChars(metac_expression_kind_t type);
+
 #define ARRAY_SIZE(A) \
      ((unsigned int)(sizeof((A)) / sizeof((A)[0])))
 
@@ -42,6 +43,7 @@ void MetaCParser_Init(metac_parser_t* self)
     self->Defines = self->inlineDefines;
     self->DefineCount = 0;
     self->DefineCapacity = ARRAY_SIZE(self->inlineDefines);
+
 #ifndef NO_DOT_PRINTER
     self->DotPrinter = (metac_dot_printer_t*)malloc(sizeof(metac_dot_printer_t));
     MetaCDotPrinter_Init(self->DotPrinter, &self->IdentifierTable);
@@ -291,7 +293,8 @@ metac_token_t* MetaCParser_Match_(metac_parser_t* self, metac_token_enum_t type,
     metac_token_enum_t got = (token ? token->TokenType : tok_eof);
     if (got != type)
     {
-        metac_location_t loc = self->Lexer->LocationStorage.Locations[token->LocationId - 4];
+        metac_location_t loc =
+            self->Lexer->LocationStorage.Locations[token->LocationId - 4];
 
         printf("[%s:%u] Expected: %s -- Got: %s {line: %u: col: %u}\n",
             filename, lineNumber,
@@ -1397,7 +1400,6 @@ LnextToken:
                 struct_->Identifier = empty_identifier;
             }
 
-
             if (MetaCParser_PeekMatch(self, tok_lBrace, 1))
             {
                 MetaCParser_Match(self, tok_lBrace);
@@ -1490,7 +1492,8 @@ metac_declaration_t* MetaCParser_ParseDeclaration(metac_parser_t* self, metac_de
         (currentToken ? currentToken->TokenType : tok_invalid);
         decl_typedef_t* typdef = AllocNewDeclaration(decl_typedef, &result);
 
-        typdef->Type = MetaCParser_ParseTypeDeclaration(self, (metac_declaration_t*) typdef, 0);
+        typdef->Type =
+            MetaCParser_ParseTypeDeclaration(self, (metac_declaration_t*) typdef, 0);
         metac_token_t* name = MetaCParser_Match(self, tok_identifier);
         if (!name || name->TokenType != tok_identifier)
         {
@@ -1507,13 +1510,15 @@ metac_declaration_t* MetaCParser_ParseDeclaration(metac_parser_t* self, metac_de
         {
             metac_token_t* id = MetaCParser_Match(self, tok_identifier);
             assert(id);
-            metac_identifier_ptr_t identifier = RegisterIdentifier(self, id);
+            metac_identifier_ptr_t identifier =
+                RegisterIdentifier(self, id);
 
             // id paren ... it's a function :D
             if (MetaCParser_PeekMatch(self, tok_lParen, true))
             {
                 MetaCParser_Match(self, tok_lParen);
-                decl_function_t* funcDecl = AllocNewDeclaration(decl_function, &result);
+                decl_function_t* funcDecl =
+                    AllocNewDeclaration(decl_function, &result);
                 uint32_t parameterCount = 0;
                 funcDecl->ReturnType = type;
                 funcDecl->Identifier = identifier;
@@ -1541,7 +1546,8 @@ metac_declaration_t* MetaCParser_ParseDeclaration(metac_parser_t* self, metac_de
                             // follow parameter
                         while(MetaCParser_PeekMatch(self, tok_lBracket, true))
                         {
-                            param->Type = (decl_type_t*)ParseArraySuffix(self, param->Type);
+                            param->Type = (decl_type_t*)
+                                ParseArraySuffix(self, param->Type);
                         }
                     }
 
@@ -1563,28 +1569,33 @@ metac_declaration_t* MetaCParser_ParseDeclaration(metac_parser_t* self, metac_de
 
                 if (MetaCParser_PeekMatch(self, tok_lBrace, true))
                 {
-                    funcDecl->FunctionBody = MetaCParser_ParseBlockStatement(self, 0, 0);
+                    funcDecl->FunctionBody =
+                        MetaCParser_ParseBlockStatement(self, 0, 0);
                 }
             }
             else
             {
-                decl_variable_t* varDecl = AllocNewDeclaration(decl_variable, &result);
+                decl_variable_t* varDecl =
+                    AllocNewDeclaration(decl_variable, &result);
 //            varDecl.LocationIdx =
 //                MetaCLocationStorage_StartLoc(&parser.locationStorage,
 //                    MetaCLocationStorage_StartLine(&parser.lexer.locationStorage, type.LocationIdx));
 
                 varDecl->VarType = type;
                 varDecl->VarIdentifier = identifier;
-                varDecl->VarInitExpression = (metac_expression_t*)_emptyPointer;
+                varDecl->VarInitExpression =
+                    (metac_expression_t*)_emptyPointer;
 
                 while (MetaCParser_PeekMatch(self, tok_lBracket, true))
                 {
-                    varDecl->VarType = (decl_type_t*)ParseArraySuffix(self, varDecl->VarType);
+                    varDecl->VarType = (decl_type_t*)
+                        ParseArraySuffix(self, varDecl->VarType);
                 }
                 if (MetaCParser_PeekMatch(self, tok_assign, true))
                 {
                     MetaCParser_Match(self, tok_assign);
-                    varDecl->VarInitExpression = MetaCParser_ParseExpression(self, expr_flags_none, 0);
+                    varDecl->VarInitExpression =
+                        MetaCParser_ParseExpression(self, expr_flags_none, 0);
                 }
             }
         }
@@ -1654,11 +1665,13 @@ static metac_statement_t* MetaCParser_ParseStatement(metac_parser_t* self,
             MetaCParser_ParseExpression(self, expr_flags_none, 0);
         MetaCParser_Match(self, tok_rParen);
         if_stmt->IfCond = condExpP;
-        if_stmt->IfBody = MetaCParser_ParseStatement(self, (metac_statement_t*)result, 0);
+        if_stmt->IfBody =
+            MetaCParser_ParseStatement(self, (metac_statement_t*)result, 0);
         if (MetaCParser_PeekMatch(self, tok_kw_else, 1))
         {
             MetaCParser_Match(self, tok_kw_else);
-            if_stmt->ElseBody = (metac_statement_t*)MetaCParser_ParseStatement(self, (metac_statement_t*)result, 0);
+            if_stmt->ElseBody = (metac_statement_t*)
+                MetaCParser_ParseStatement(self, (metac_statement_t*)result, 0);
         }
         else
         {
@@ -1767,19 +1780,23 @@ static metac_statement_t* MetaCParser_ParseStatement(metac_parser_t* self,
     {
         stmt_yield_t* yield_ = AllocNewStatement(stmt_yield, &result);
         MetaCParser_Match(self, tok_kw_yield);
-        yield_->Expression = MetaCParser_ParseExpression(self, expr_flags_none, 0);
+        yield_->Expression =
+            MetaCParser_ParseExpression(self, expr_flags_none, 0);
     }
     else if (tokenType == tok_lBrace)
     {
-        result = (metac_statement_t*)MetaCParser_ParseBlockStatement(self, parent, prev);
+        result = (metac_statement_t*)
+            MetaCParser_ParseBlockStatement(self, parent, prev);
     }
     else if (IsTypeToken(tokenType))
     {
         metac_token_t* peek2 = MetaCParser_PeekToken(self, 2);
         if (peek2 && IsTypeToken(peek2->TokenType))
         {
-            metac_declaration_t* decl = MetaCParser_ParseDeclaration(self, 0);
-            stmt_decl_t* declStmt = AllocNewStatement(stmt_decl, &result);
+            metac_declaration_t* decl =
+                MetaCParser_ParseDeclaration(self, 0);
+            stmt_decl_t* declStmt =
+                AllocNewStatement(stmt_decl, &result);
             declStmt->Declaration = decl;
             //result = MetaCParser_ParseDeclarationStatement(self, parent);
         }
@@ -1788,8 +1805,10 @@ static metac_statement_t* MetaCParser_ParseStatement(metac_parser_t* self,
     // if we didn't parse as a declaration try an expression as the last resort
     if (!result || result == emptyPointer)
     {
-        metac_expression_t* exp = MetaCParser_ParseExpression(self, expr_flags_none, 0);
-        stmt_exp_t* expStmt = AllocNewStatement(stmt_exp, &result);
+        metac_expression_t* exp =
+            MetaCParser_ParseExpression(self, expr_flags_none, 0);
+        stmt_exp_t* expStmt =
+            AllocNewStatement(stmt_exp, &result);
         expStmt->Expression = exp;
         //result = MetaCParser_ParseExpressionStatement(self, parent);
     }
@@ -1797,7 +1816,8 @@ LdoneWithStatement:
     if (prev)
         prev->Next = result;
 
-    if(tokenType != tok_lBrace && MetaCParser_PeekMatch(self, tok_semicolon, true))
+    if(tokenType != tok_lBrace
+        && MetaCParser_PeekMatch(self, tok_semicolon, true))
     {
         // XXX it shouldn't stay this way ... but for now we want
         // to parse more function bodies.
@@ -1834,7 +1854,9 @@ static stmt_block_t* MetaCParser_ParseBlockStatement(metac_parser_t* self,
 
         if (!firstStatement)
         {
-            firstStatement = MetaCParser_ParseStatement(self, (metac_statement_t*)result, firstStatement);
+            firstStatement = MetaCParser_ParseStatement(self,
+                (metac_statement_t*)result, firstStatement);
+
             nextStatement = firstStatement;
             if (nextStatement)
             {
@@ -1847,7 +1869,8 @@ static stmt_block_t* MetaCParser_ParseBlockStatement(metac_parser_t* self,
         }
         else
         {
-            MetaCParser_ParseStatement(self, (metac_statement_t*)result, nextStatement);
+            MetaCParser_ParseStatement(self,
+                (metac_statement_t*)result, nextStatement);
             result->Hash = Mix(result->Hash, nextStatement->Hash);
             if (nextStatement->Next && nextStatement->Next != emptyPointer)
             {
@@ -1890,11 +1913,13 @@ void LineLexerInit(void)
 
 metac_expression_t* MetaCParser_ParseExpressionFromString(const char* exp)
 {
-    assert(g_lineLexer.TokenCapacity == ARRAY_SIZE(g_lineLexer.inlineTokens));
+    assert(g_lineLexer.TokenCapacity ==
+        ARRAY_SIZE(g_lineLexer.inlineTokens));
     LineLexerInit();
     LexString(&g_lineLexer, exp);
 
-    metac_expression_t* result = MetaCParser_ParseExpression(&g_lineParser, expr_flags_none, 0);
+    metac_expression_t* result =
+        MetaCParser_ParseExpression(&g_lineParser, expr_flags_none, 0);
 
     return result;
 }
@@ -1905,18 +1930,21 @@ metac_statement_t* MetaCParser_ParseStatementFromString(const char* stmt)
     LineLexerInit();
     LexString(&g_lineLexer, stmt);
 
-    metac_statement_t* result = MetaCParser_ParseStatement(&g_lineParser, 0, 0);
+    metac_statement_t* result =
+        MetaCParser_ParseStatement(&g_lineParser, 0, 0);
 
     return result;
 }
 
 metac_declaration_t* MetaCParser_ParseDeclarationFromString(const char* decl)
 {
-    assert(g_lineLexer.TokenCapacity == ARRAY_SIZE(g_lineLexer.inlineTokens));
+    assert(g_lineLexer.TokenCapacity ==
+        ARRAY_SIZE(g_lineLexer.inlineTokens));
     LineLexerInit();
     LexString(&g_lineLexer, decl);
 
-    metac_declaration_t* result = MetaCParser_ParseDeclaration(&g_lineParser, 0);
+    metac_declaration_t* result =
+        MetaCParser_ParseDeclaration(&g_lineParser, 0);
 
     return result;
 }
@@ -1956,16 +1984,20 @@ void TestParseExprssion(void)
     metac_expression_t* expr;
 
     expr = MetaCParser_ParseExpressionFromString("12 - 16 - 99");
-    assert(!strcmp(MetaCPrinter_PrintExpression(&printer, expr), "((12 - 16) - 99)"));
+    assert(!strcmp(MetaCPrinter_PrintExpression(&printer, expr),
+        "((12 - 16) - 99)"));
 
     expr = MetaCParser_ParseExpressionFromString("2 * 12 + 10");
-    assert(!strcmp(MetaCPrinter_PrintExpression(&printer, expr), "((2 * 12) + 10)"));
+    assert(!strcmp(MetaCPrinter_PrintExpression(&printer, expr),
+        "((2 * 12) + 10)"));
 
     expr = MetaCParser_ParseExpressionFromString("2 + 10 * 2");
-    assert(!strcmp(MetaCPrinter_PrintExpression(&printer, expr), "(2 + (10 * 2))"));
+    assert(!strcmp(MetaCPrinter_PrintExpression(&printer, expr),
+        "(2 + (10 * 2))"));
 
     expr = MetaCParser_ParseExpressionFromString("a = b(c)");
-    assert(!strcmp(MetaCPrinter_PrintExpression(&printer, expr), "(a = b(c))"));
+    assert(!strcmp(MetaCPrinter_PrintExpression(&printer, expr),
+        "(a = b(c))"));
 }
 
 void TestParseDeclaration(void)
