@@ -1,3 +1,7 @@
+#ifndef _HEX_TO_STR_C_
+#define _HEX_TO_STR_C_
+#pragma once
+
 #include "compat.h"
 static inline char* u64tostr(uint64_t v, char buffer[21])
 {
@@ -54,3 +58,4 @@ static inline char* u64tohexstr(uint64_t v, char buffer[17])
     }
     return buffer + i + 1;
 }
+#endif

@@ -4,6 +4,14 @@
 
 #include <stdio.h>
 /*
+    switch (tok->IdentifierKey)
+    {
+    case struct_key :
+    if(!memcmp(identifier, "struct", 6))
+            tok->TokenType = tok_kw_struct;
+    break;
+
+
 void WriteCmp(const char* kw, uint32_t kw_len)
 {
 	printf("if (");

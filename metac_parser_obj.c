@@ -5,4 +5,5 @@
 #  include "metac_lexer.h"
 #  include "metac_parser.c"
 #  include "metac_printer.c"
+#  include "metac_dot_printer.c"
 #endif

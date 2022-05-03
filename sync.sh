@@ -9,7 +9,9 @@ if [ -d $DST ]; then
        sync.sh sync_from.sh \
        gen_code.bat gen_code.sh run_tests.sh run_tests.bat \
        metac_lexer.c metac_lexer.h metac_parser.c metac_parser.h \
+       metac_parsetree.h \
        metac_printer.c metac_printer.h metac_cgen.c metac_cgen.h \
+       metac_dot_printer.c metac_dot_printer.h \
        metac_parser_obj.c \
        metac.fpg TODO \
        $DST

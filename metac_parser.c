@@ -37,12 +37,15 @@ const char* MetaCExpressionKind_toChars(metac_expression_kind_t type);
 void MetaCParser_Init(metac_parser_t* self)
 {
     self->CurrentTokenIndex = 0;
-#ifdef IDENTIFIER_TABLE
     IdentifierTableInit(&self->IdentifierTable);
-#endif
+    IdentifierTableInit(&self->StringTable);
     self->Defines = self->inlineDefines;
     self->DefineCount = 0;
     self->DefineCapacity = ARRAY_SIZE(self->inlineDefines);
+#ifndef NO_DOT_PRINTER
+    self->DotPrinter = (metac_dot_printer_t*)malloc(sizeof(metac_dot_printer_t));
+    MetaCDotPrinter_Init(self->DotPrinter, &self->IdentifierTable);
+#endif
 }
 
 void MetaCParser_InitFromLexer(metac_parser_t* self, metac_lexer_t* lexer)
@@ -602,6 +605,24 @@ uint32_t Mix(uint32_t a, uint32_t b)
 
 }
 
+typedef enum precedence_level_t
+{
+    prec_none,
+    prec_comma,
+    prec_op_assign,
+    prec_oror,
+    prec_andand,
+    prec_or,
+    prec_xor,
+    prec_and,
+    prec_eq,
+    prec_cmp,
+    prec_shift,
+    prec_add,
+    prec_mul,
+    prec_max
+} precedence_level_t;
+
 uint32_t OpToPrecedence(metac_expression_kind_t exp)
 {
     if (exp == exp_comma)
@@ -656,7 +677,7 @@ uint32_t OpToPrecedence(metac_expression_kind_t exp)
     {
         return 14;
     }
-    else if (exp == exp_ptr || exp == exp_arrow || exp == exp_dot)
+    else if (exp == exp_ptr || exp == exp_arrow || exp == exp_dot || exp == exp_addr)
     {
         return 15;
     }
@@ -733,6 +754,7 @@ static bool CouldBeCast(metac_parser_t* self, metac_token_enum_t tok)
     // first we see if the next could be a type token
     // because if it isn't then we are certainly not as cast
     metac_token_t* peek;
+    bool seenStar = false;
     int rParenPos = 0;
     for(int peekCount = 2;
         (peek = MetaCParser_PeekToken(self, peekCount)), peek;
@@ -743,13 +765,20 @@ static bool CouldBeCast(metac_parser_t* self, metac_token_enum_t tok)
             rParenPos = peekCount;
             break;
         }
-        if (peek->TokenType == tok_star && peekCount == 2)
+        if (peek->TokenType == tok_star)
         {
-            return false;
+            seenStar = true;
+            if (peekCount == 2)
+                return false;
         }
         if (!IsTypeToken(peek->TokenType))
         {
             return false;
+        }
+        else
+        {
+            if (peek->TokenType == tok_identifier && seenStar)
+                return false;
         }
     }
 
@@ -977,7 +1006,7 @@ metac_expression_t* MetaCParser_ParseUnaryExpression(metac_parser_t* self)
         MetaCParser_Match(self, tok_and);
         result = AllocNewExpression(exp_addr);
         //PushOperator(exp_addr);
-        result->E1 = MetaCParser_ParseExpression(self, expr_flags_unary, 0);
+        result->E1 = MetaCParser_ParseExpression(self, expr_flags_unary, result);
         result->Hash = Mix(
             crc32c(~0, "&", sizeof("&") - 1),
             result->E1->Hash
@@ -1041,6 +1070,23 @@ metac_expression_t* MetaCParser_ParseUnaryExpression(metac_parser_t* self)
 
     return result;
 }
+typedef struct binexp_stack_slot_t {
+  metac_expression_t* Exp;
+
+} binexp_stack_slot_t;
+
+static inline void XChangeExpressionStack(binexp_stack_slot_t* stack, uint32_t sp)
+{
+    assert(sp > 1);
+    binexp_stack_slot_t* src_slot    = &stack[--sp];
+    binexp_stack_slot_t* target_slot = &stack[sp - 1];
+
+    metac_expression_t* newLhs = target_slot->Exp;
+
+    target_slot->Exp = AllocNewExpression(src_slot->Exp->Kind);
+    target_slot->Exp->E1 = newLhs->E1;
+    target_slot->Exp->E2 = src_slot->Exp;
+}
 
 metac_expression_t* MetaCParser_ParseBinaryExpression(metac_parser_t* self,
                                                       metac_expression_t* left,
@@ -1048,12 +1094,19 @@ metac_expression_t* MetaCParser_ParseBinaryExpression(metac_parser_t* self,
 {
     metac_expression_t* result = 0;
 
-    metac_token_t* peekToken = MetaCParser_PeekToken(self, 1);
-    metac_token_enum_t peekTokenType = (peekToken ? peekToken->TokenType : tok_eof);
+    uint32_t sp = 0;
+    binexp_stack_slot_t binexp_stack[prec_max];
+//    metac_location_t* startLocation =
+//        self->Lexer->LocationStorage.Locations + (left->LocationIdx - 4);
 
-    metac_expression_kind_t exp_left;
-    metac_expression_kind_t exp_right;
+    metac_token_t* peekToken;
+    metac_token_enum_t peekTokenType;
 
+    peekToken = MetaCParser_PeekToken(self, 1);
+    peekTokenType = (peekToken ? peekToken->TokenType : tok_eof);
+    // a * b + c * d
+    // a * b | (a * b) + c |
+    // here we pop the stack
 
     if (peekTokenType == tok_lBracket)
     {
@@ -1105,6 +1158,46 @@ metac_expression_t* MetaCParser_ParseBinaryExpression(metac_parser_t* self,
     }
     else if (IsBinaryOperator(peekTokenType))
     {
+#if 0
+        while (IsBinaryOperator(peekTokenType))
+        {
+            MetaCParser_Match(self, peekTokenType);
+            metac_expression_kind_t expKind = BinExpTypeFromTokenType(peekTokenType);
+            uint32_t OpPrec = OpToPrecedence(expKind);
+            if (OpPrec >
+                (sp ? OpToPrecedence(binexp_stack[sp - 1].Exp->Kind) : 0))
+            {
+                binexp_stack_slot_t* slot = &binexp_stack[sp++];
+                slot->Exp = AllocNewExpression(expKind);
+                slot->Exp->E1 = left;
+                slot->Exp->E2 = MetaCParser_ParseUnaryExpression(self);
+                left = slot->Exp;
+                // continue;
+            }
+            else // this is when we have a lower or equal precence operator
+            {
+                assert(sp >= 1);
+                while(sp && (OpPrec <= OpToPrecedence(binexp_stack[sp - 1].Exp->Kind)))
+                {
+                    binexp_stack_slot_t* slot = &binexp_stack[--sp];
+                    result = AllocNewExpression(expKind);
+                    result->E1 = slot->Exp;
+                    result->E2 = MetaCParser_ParseUnaryExpression(self);
+                }
+            }
+            peekToken = MetaCParser_PeekToken(self, 1);
+            peekTokenType = (peekToken ? peekToken->TokenType : tok_eof);
+        }
+        while (sp > 1)
+        {
+            XChangeExpressionStack(binexp_stack, sp--);
+        }
+        if (sp == 1)
+            result = binexp_stack[0].Exp;
+#else
+        metac_expression_kind_t exp_left;
+        metac_expression_kind_t exp_right;
+
         while(IsBinaryOperator(peekTokenType)
            && OpToPrecedence(BinExpTypeFromTokenType(peekTokenType)) >= min_prec)
         {
@@ -1127,6 +1220,7 @@ metac_expression_t* MetaCParser_ParseBinaryExpression(metac_parser_t* self,
             result->E2 = rhs;
             left = result;
         }
+#endif
     }
     else
     {
@@ -1169,7 +1263,6 @@ metac_expression_t* MetaCParser_ParseExpression(metac_parser_t* self,
         result = MetaCParser_ParseBinaryExpression(self, prev, 0);
     }
 
-
 //    printf("TokenType: %s\n", MetaCTokenEnum_toChars(tokenType));
 
     metac_token_t* peekNext = MetaCParser_PeekToken(self, 1);
@@ -1189,6 +1282,8 @@ metac_expression_t* MetaCParser_ParseExpression(metac_parser_t* self,
         {
             //uint32_t prec = OpToPrecedence(BinExpTypeFromTokenType(tokenType));
             uint32_t prec = OpToPrecedence(result->Kind);
+            if (prec < min_prec)
+                return result;
             result = MetaCParser_ParseBinaryExpression(self, result, min_prec);
         }
         else if (IsPostfixOperator(tokenType))

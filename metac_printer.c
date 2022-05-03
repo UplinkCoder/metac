@@ -34,7 +34,7 @@ void static inline PrintIndent(metac_printer_t* self)
 
     self->StringMemorySize += 4 * indent;
     self->CurrentColumn += 4 * indent;
-    assert(self->CurrentColumn == 4 * indent);
+    // assert(self->CurrentColumn == 4 * indent);
     if (self->StartColumn > self->CurrentColumn)
     {
         int32_t columnAdvance =

@@ -9,5 +9,5 @@ fi
 $CC metac_lexer.c -g3 -DTEST_LEXER -o lexer_test
 ./lexer_test
 
-$CC metac_parser.c -g3 -DACCEL=ACCEL_TABLE -DTEST_PARSER -o parser_test
+$CC metac_parser.c -g3 -DACCEL=ACCEL_TABLE -DNO_DOT_PRINTER -DTEST_PARSER -o parser_test
 ./parser_test

@@ -4,7 +4,7 @@
 
 #include "compat.h"
 #include "metac_identifier_table.h"
-#include "metac_parser.h"
+#include "metac_parsetree.h"
 
 #define CHUNK_SIZE 4096
 #define INITIAL_SIZE (16 * 4096)
