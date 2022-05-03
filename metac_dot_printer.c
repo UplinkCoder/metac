@@ -25,7 +25,7 @@ static inline void Dot_PrintNewline(metac_dot_printer_t* self)
 }
 
 static inline void Dot_CheckAndRellocIfNeeded(metac_dot_printer_t* self,
-                                   uint32_t length)
+                                              uint32_t length)
 {
     int32_t underflow =
         self->StringMemoryCapacity -
@@ -43,7 +43,7 @@ static inline void Dot_CheckAndRellocIfNeeded(metac_dot_printer_t* self,
 }
 
 static inline void Dot_PrintString(metac_dot_printer_t* self,
-                 const char* string, uint32_t length)
+                                   const char* string, uint32_t length)
 {
     char c;
 
@@ -54,7 +54,7 @@ static inline void Dot_PrintString(metac_dot_printer_t* self,
 }
 
 static inline void Dot_PrintIdentifier(metac_dot_printer_t* self,
-                                   metac_identifier_ptr_t idPtr)
+                                       metac_identifier_ptr_t idPtr)
 {
     if (idPtr.v == empty_identifier.v)
         assert(0); // One is not supposed to print the empty identifier
