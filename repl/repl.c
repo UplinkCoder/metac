@@ -69,6 +69,11 @@ int main(int argc, const char* argv[])
         &g_lineParser.IdentifierTable,
         &g_lineParser.StringTable);
 
+#ifndef NO_DOT_PRINTER
+    metac_dot_printer_t dot_printer;
+    MetaCDotPrinter_Init(&dot_printer, &g_lineParser.IdentifierTable);
+    g_lineParser.DotPrinter = &dot_printer;
+#endif
     declaration_store_t dstore;
     DeclarationStore_Init(&dstore);
 

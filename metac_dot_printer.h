@@ -12,26 +12,34 @@
 #define INITIAL_SIZE (16 * 4096)
 #define GROWTH_FACTOR 1.3f
 
+typedef struct metac_dot_printer_label_t
+{
+    char* LabelMemory;
+    uint32_t LabelMemorySize;
+    uint32_t LabelMemoryCapacity;
+} metac_dot_printer_label_t;
+
+
 typedef struct metac_dot_printer_t
 {
     char* StringMemory;
     uint32_t StringMemorySize;
     uint32_t StringMemoryCapacity;
-    
+
+    char* SnapshotMemory;
+    uint32_t SnapshotMemoryCapacity;
+
     metac_identifier_table_t* IdTable;
+
+    metac_dot_printer_label_t* CurrentLabel;
 } metac_dot_printer_t;
 
 
-typedef struct metac_dot_printer_label_t
-{
-    char* LabelMemory;
-    uint32_t LabelMemorySize;
-    uint32_t LabelMemoryCapacity;    
-} metac_dot_printer_label_t;
 
 
 void MetaCDotPrinter_Init(metac_dot_printer_t* self,
                           metac_identifier_table_t* idTable);
+const char* MetaCDotPrinter_Snapshot(metac_dot_printer_t* self);
 
 void MetaCDotPrinter_Reset(metac_dot_printer_t* self);
 
