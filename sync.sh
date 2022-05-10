@@ -12,6 +12,9 @@ if [ -d $DST ]; then
        metac_parsetree.h \
        metac_printer.c metac_printer.h metac_cgen.c metac_cgen.h \
        metac_dot_printer.c metac_dot_printer.h \
+       metac_semantic.c metac_semantic.h \
+       metac_type_table.c metac_type_table.h \
+       metac_thread.c metac_thread.h \
        metac_parser_obj.c \
        metac.fpg TODO \
        $DST

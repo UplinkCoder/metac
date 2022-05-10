@@ -1,6 +1,10 @@
 #ifndef _METAC_PARSETREE_H_
 #define _METAC_PARSETREE_H_
 
+#include "compat.h"
+#include "metac_identifier_table.h"
+#include "metac_type_table.h"
+
 #define FIRST_BINARY_EXP(M) \
     M(exp_comma)
 
@@ -196,7 +200,8 @@ typedef enum metac_binary_expression_kind_t
     metac_expression_kind_t Kind; \
     uint32_t LocationIdx; \
     uint32_t Hash; \
-    uint32_t Serial;
+    uint32_t Serial; \
+    type_index_t TypeIndex;
 
 typedef struct exp_argument_t
 {
@@ -463,11 +468,22 @@ typedef enum metac_type_kind_t
     type_short,
     type_int,
     type_long,
+    type_long_long,
 
     type_float,
     type_double,
 
+    type_unsigned_char,
+    type_unsigned_short,
+    type_unsigned_int,
+    type_unsigned_long,
+    type_unsigned_long_long,
+
     type_identifier,
+    
+    type_ptr,
+    type_array,
+    
     type_max
 } metac_type_kind_t;
 

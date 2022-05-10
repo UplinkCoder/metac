@@ -16,7 +16,7 @@ typedef struct metac_dot_printer_label_t
 {
     char* LabelMemory;
     uint32_t LabelMemorySize;
-    uint32_t LabelMemoryCapacity;
+    uint32_t LabelMemoryCapacity; 
 } metac_dot_printer_label_t;
 
 
@@ -25,18 +25,18 @@ typedef struct metac_dot_printer_t
     char* StringMemory;
     uint32_t StringMemorySize;
     uint32_t StringMemoryCapacity;
-
+    
     char* SnapshotMemory;
     uint32_t SnapshotMemoryCapacity;
-
+    
     metac_identifier_table_t* IdTable;
-
+    
     metac_dot_printer_label_t* CurrentLabel;
 } metac_dot_printer_t;
 
 
 
-
+void Dot_PrintString(metac_dot_printer_t* self, const char* string);
 void MetaCDotPrinter_Init(metac_dot_printer_t* self,
                           metac_identifier_table_t* idTable);
 const char* MetaCDotPrinter_Snapshot(metac_dot_printer_t* self);

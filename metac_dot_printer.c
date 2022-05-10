@@ -50,7 +50,7 @@ metac_dot_printer_label_t* MetaCDotPrinter_BeginLabel(metac_dot_printer_t* self)
     self->CurrentLabel->LabelMemoryCapacity = 128;
     self->CurrentLabel->LabelMemory =
         ((char*) self->CurrentLabel) + sizeof(metac_dot_printer_label_t);
-
+        
     return self->CurrentLabel;
 }
 
@@ -67,7 +67,7 @@ static inline bool NeedsEscape(char c)
     return false;
 }
 
-static inline AfterEscape(char c)
+static inline char AfterEscape(char c)
 {
     switch (c)
     {
@@ -76,7 +76,7 @@ static inline AfterEscape(char c)
         case '\t':
             return 't';
     }
-
+    
     return c;
 }
 
@@ -103,18 +103,18 @@ void MetaCDotPrinter_EndLabel(metac_dot_printer_t* self, metac_dot_printer_label
     assert(self->CurrentLabel == label);
     uint32_t neededSize = self->CurrentLabel->LabelMemorySize + sizeof("label=\"\"");
     uint32_t newCapa = ALIGN4(self->StringMemorySize + neededSize);
-
+    
     if (newCapa > self->StringMemoryCapacity)
     {
         self->StringMemory = realloc(self->StringMemory, newCapa);
         self->StringMemoryCapacity = newCapa;
     }
     Dot_PrintString(self, "label=\"");
-
+    
     memcpy(self->StringMemory + self->StringMemorySize,
         self->CurrentLabel->LabelMemory,
         self->CurrentLabel->LabelMemorySize);
-
+        
     Dot_PrintChar(self, '\"');
 }
 
@@ -178,7 +178,7 @@ const char* MetaCDotPrinter_Snapshot(metac_dot_printer_t* self)
         self->SnapshotMemory = realloc(self->SnapshotMemory, newCapa);
         self->StringMemoryCapacity = newCapa;
     }
-
+    
     memcpy(self->SnapshotMemory, self->StringMemory, self->StringMemorySize);
     self->SnapshotMemory[self->StringMemorySize] = '\0';
     return self->SnapshotMemory;
@@ -190,7 +190,7 @@ void MetaCDotPrinter_Init(metac_dot_printer_t* self,
     self->StringMemoryCapacity = INITIAL_SIZE;
     self->StringMemory = (char*)malloc(self->StringMemoryCapacity);
     self->StringMemorySize = self->StringMemoryCapacity;
-
+    
     self->SnapshotMemoryCapacity = INITIAL_SIZE;
     self->SnapshotMemory = (char*)malloc(self->SnapshotMemoryCapacity);
     self->IdTable = idTable;

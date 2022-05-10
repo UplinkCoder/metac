@@ -7,6 +7,14 @@
 #include <stdlib.h>
 #include <stdio.h>
 
+typedef struct DeclarationArray
+{
+    metac_declaration_t** Ptr;
+    uint32_t Length;
+    uint32_t Capacity;
+} DeclarationArray;
+
+
 uint32_t EstimateNumberOfTokens(uint32_t length)
 {
     uint32_t aligned_length = (length + 16) & ~15;
@@ -17,7 +25,8 @@ uint32_t EstimateNumberOfTokens(uint32_t length)
 bool errored = false;
 
 static inline void ParseFile(metac_parser_t* parser,
-                             const char* path)
+                             const char* path,
+                             DeclarationArray* result)
 {
     metac_printer_t printer;
 
@@ -49,6 +58,15 @@ static inline void ParseFile(metac_parser_t* parser,
     }
 
     printf("Parsed %u declarations\n", declarationSize);
+    
+    if (result != 0)
+    {
+        result->Capacity = ALIGN4(declarationSize);
+        result->Ptr = calloc(result->Capacity, sizeof(metac_declaration_t*));
+        result->Length = declarationSize;
+        memcpy(result->Ptr, declarations, declarationSize * sizeof(metac_declaration_t));
+        free(declarations);
+    }
 }
 
 static inline void LexFile(metac_lexer_t* lexer,
@@ -155,7 +173,7 @@ int main(int argc, const char* argv[])
         metac_parser_t parser;
         MetaCParser_InitFromLexer(&parser, &lexer);
 
-        ParseFile(&parser, arg);
+        ParseFile(&parser, arg, 0);
 
         metac_identifier_table_slot_t firstEntry = {0};
 

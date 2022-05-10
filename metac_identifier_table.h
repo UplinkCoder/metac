@@ -2,6 +2,23 @@
 #define _METAC_IDENTIFIER_TABLE_H_
 #pragma once
 
+#define IDENTIFIER_KEY(HASH, LENGTH) \
+    ( ((uint32_t)(HASH & 0xFFFFF)) | (((uint32_t)(LENGTH)) << 20) )
+
+#define LENGTH_FROM_IDENTIFIER_KEY(KEY) \
+    ( (KEY) >> 20 )
+
+#define STRING_KEY(HASH, LENGTH) \
+    ( (uint32_t)((HASH) & 0xFFF) | (((uint32_t)(LENGTH)) << 12) )
+
+#define CHAR_KEY(HASH, LENGTH) \
+    ( (uint32_t)((HASH) & 0xFFFFFFF) | (((uint32_t)(LENGTH)) << 28) )
+
+#define LENGTH_FROM_STRING_KEY(KEY) \
+    ( (KEY) >> 12 )
+
+#define LENGTH_FROM_CHAR_KEY(KEY) \
+    ( (KEY) >> 28 )
 
 typedef struct metac_identifier_ptr_t
 {
