@@ -62,7 +62,7 @@ static inline void ParseFile(metac_parser_t* parser,
     if (result != 0)
     {
         result->Capacity = ALIGN4(declarationSize);
-        result->Ptr = calloc(result->Capacity, sizeof(metac_declaration_t*));
+        result->Ptr = (metac_declaration_t**)calloc(result->Capacity, sizeof(metac_declaration_t*));
         result->Length = declarationSize;
         memcpy(result->Ptr, declarations, declarationSize * sizeof(metac_declaration_t));
         free(declarations);

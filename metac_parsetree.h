@@ -22,8 +22,8 @@
     M(decl_field) \
     M(decl_parameter) \
     M(decl_enum_member) \
-    FIRST_DECL_TYPE(M) \
     \
+    FIRST_DECL_TYPE(M) \
     M(decl_type_struct) \
     M(decl_type_union) \
     M(decl_type_enum) \
@@ -450,7 +450,7 @@ typedef struct metac_statement_t
     metac_declaration_kind_t DeclKind; \
     uint32_t LocationIdx; \
     uint32_t Hash; \
-    uint32_t Serial; \
+    uint32_t Serial;
 
 typedef enum metac_type_kind_t
 {
@@ -480,10 +480,10 @@ typedef enum metac_type_kind_t
     type_unsigned_long_long,
 
     type_identifier,
-    
+
     type_ptr,
     type_array,
-    
+
     type_max
 } metac_type_kind_t;
 

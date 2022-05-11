@@ -398,7 +398,7 @@ static inline void PrintDeclaration(metac_printer_t* self,
             ++level;
             ++self->IndentLevel;
             decl_field_t* f = struct_->Fields;
-            for(int memberIndex = 0;
+            for(uint32_t memberIndex = 0;
                 memberIndex < struct_->FieldCount;
                 memberIndex++)
             {

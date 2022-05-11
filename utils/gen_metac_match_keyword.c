@@ -1,10 +1,11 @@
 #include "../compat.h"
 #include "../cache/crc32.c"
 #include "../metac_lexer.h"
+#include "../metac_identifier_table.h"
 
 const char* C4Macros =
 "#define C4(A, B, C, D) \\\n"
-"    ((uint32_t)(A | B << 8 | C << 16 | D << 24)) \\\n"
+"    ((uint32_t)(A | B << 8 | C << 16 | D << 24)) \n"
 "\n\n"
 "#define C2(A, B) \\\n"
 "    ((uint16_t)(A | B << 8))\n";

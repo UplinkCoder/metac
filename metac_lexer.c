@@ -1,10 +1,4 @@
-#ifdef IDENTIFIER_TABLE
-#  include "metac_identifier_table.c"
-#endif
-
-#ifdef IDENTIFIER_TREE
-#  include "metac_identifier_tree.c"
-#endif
+#include "metac_identifier_table.c"
 
 #include "metac_lexer.h"
 #include "compat.h"

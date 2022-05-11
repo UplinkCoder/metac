@@ -18,15 +18,10 @@ extern const void* _emptyPointer;
 #include "metac_lexer.h"
 #include "metac_parsetree.h"
 
-#ifdef IDENTIFIER_TABLE
-#  include "metac_identifier_table.h"
-#endif
+#include "metac_identifier_table.h"
 
 #include "metac_dot_printer.h"
 
-#ifdef IDENTIFIER_TREE
-#  include "metac_identifier_tree.h"
-#endif
 /*    M(exp_bin_invalid) \*/
 
 typedef enum parse_expression_flags_t

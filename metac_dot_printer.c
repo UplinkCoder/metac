@@ -106,7 +106,7 @@ void MetaCDotPrinter_EndLabel(metac_dot_printer_t* self, metac_dot_printer_label
     
     if (newCapa > self->StringMemoryCapacity)
     {
-        self->StringMemory = realloc(self->StringMemory, newCapa);
+        self->StringMemory = (char*)realloc(self->StringMemory, newCapa);
         self->StringMemoryCapacity = newCapa;
     }
     Dot_PrintString(self, "label=\"");
@@ -175,7 +175,7 @@ const char* MetaCDotPrinter_Snapshot(metac_dot_printer_t* self)
     if (self->StringMemorySize > self->SnapshotMemoryCapacity)
     {
         uint32_t newCapa  = ALIGN4(self->StringMemorySize + 1);
-        self->SnapshotMemory = realloc(self->SnapshotMemory, newCapa);
+        self->SnapshotMemory = (char*)realloc(self->SnapshotMemory, newCapa);
         self->StringMemoryCapacity = newCapa;
     }
     

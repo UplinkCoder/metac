@@ -4,7 +4,6 @@
 typedef struct metac_semantic_state_t
 {
     metac_type_table_t* TypeTable;
-    
 } metac_semantic_state_t;
 
 
