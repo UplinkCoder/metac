@@ -120,13 +120,11 @@ metac_identifier_ptr_t GetOrAddIdentifier(metac_identifier_table_t* table,
             ++table->SlotsUsed;
             TracyCPlot("LoadFactor", (float)table->SlotsUsed / (float)slotIndexMask);
             TracyCPlot("StringMemorySize", table->StringMemorySize);
-
-
 #else
             } while(!__atomic_compare_exchange(&table->StringMemorySize, &expected, &newValue,
                 false, __ATOMIC_ACQUIRE, __ATOMIC_ACQUIRE));
             // atomic compare exchange has been done.
-            __atomic_add_fetch(&table->SlotsUsed, 1, __ATOMIC_ACQUIRE)
+            __atomic_add_fetch(&table->SlotsUsed, 1, __ATOMIC_ACQUIRE);
 #endif
             char* tableMem = (table->StringMemory + (result.v - 4));
             memcpy(tableMem, identifier, length);

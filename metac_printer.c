@@ -505,6 +505,12 @@ static inline void PrintExpression(metac_printer_t* self, metac_expression_t* ex
     {
         PrintI64(self, exp->ValueI64);
     }
+    else if (exp->Kind == exp_char)
+    {
+        PrintChar(self, '\'');
+        PrintString(self, exp->Chars, LENGTH_FROM_CHAR_KEY(exp->CharKey));
+        PrintChar(self, '\'');
+    }
     else if (IsBinaryExp(exp->Kind))
     {
         PrintChar(self, '(');
@@ -662,6 +668,15 @@ void MetaCPrinter_Init(metac_printer_t* self,
     self->StringTable = stringTable;
 }
 
+void MetacPrinter_PrintStringLiteral(metac_printer_t* self, const char* str)
+{
+    PrintString(self, str, strlen(str));
+}
+
+void MetacPrinter_PrintI64(metac_printer_t* self, int64_t val)
+{
+    PrintI64(self, val);
+}
 
 const char* MetaCPrinter_PrintExpression(metac_printer_t* self, metac_expression_t* exp)
 {

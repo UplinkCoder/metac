@@ -3,12 +3,15 @@
 #include "../metac_lexer.h"
 #include "../metac_parser.h"
 #include "../metac_printer.h"
+
+#include "../metac_semantic.h"
 #include "../cache/crc32.c"
 //#include "../metac_eeP.c"
 #include "../3rd_party/linenoise/linenoise.c"
 #include "../int_to_str.c"
 #include <stdio.h>
 #include "exp_eval.c"
+#include "../metac_type_table.h"
 
 extern bool g_exernalIdentifierTable;
 
@@ -27,6 +30,7 @@ typedef enum parse_mode_t
     parse_mode_file,
 
     parse_mode_ee,
+    parse_mode_es,
     parse_mode_setvars,
 
     parse_mode_max
@@ -36,6 +40,7 @@ void PrintHelp(void)
 {
     printf("Type :e for expression mode\n"
        "      :ee for evaluation mode\n"
+       "      :es for expression semantic mode\n"
        "      :d for declaration mode\n"
        "      :v for varible mode (set vars for eval)\n"
        "      :s for statement mode\n"
@@ -108,6 +113,9 @@ LswitchMode:
         break;
     case parse_mode_ee:
         promt_ = "EE>";
+        break;
+    case parse_mode_es:
+        promt_ = "ES>";
         break;
     case parse_mode_setvars:
         promt_ = "SetVars>";
@@ -187,10 +195,26 @@ LnextLine:
                 case 'e':
                     parseMode = parse_mode_ee;
                     goto LswitchMode;
+                case 's':
+                    parseMode = parse_mode_es;
+                    goto LswitchMode;
                 }
             case 's' :
                 parseMode = parse_mode_stmt;
                 goto LswitchMode;
+            case 'g' :
+            {
+                uint32_t a = 0, b = 0;
+                sscanf(line + 2, "%d %d", &a, &b);
+                uint32_t result = EntangleInts(a, b);
+                printf("Entangle (%d, %d) = %d\n", a, b, result);
+                a = 0; b = 0;
+                uint32_t untangled = UntangleInts(result);
+                a = untangled & 0xFFFF;
+                b = untangled >> 16;
+                printf("Untangled %d = (%d, %d)\n", untangled, a, b);
+            }
+            goto LswitchMode;
             case 'i' :
 #ifdef ACCEL
                 printf("Accelerator: %s\n", ACCELERATOR);
@@ -247,6 +271,23 @@ LnextLine:
 
                 printf("%s = %s\n", str, result_str);
                 MetaCPrinter_Reset(&printer);
+                // XXX static and fixed size state like _ReadContext
+                // should go away soon.
+                _ReadContextSize = 0;
+                goto LnextLine;
+            }
+            case parse_mode_es:
+            {
+                exp =
+                    MetaCParser_ParseExpressionFromString(line);
+
+                const char* str = MetaCPrinter_PrintExpression(&printer, exp);
+                metac_semantic_state_t sema;
+                MetaCSemantic_Init(&sema);
+                MetaCSemantic_doExprSemantic(&sema, exp);
+                const char* type_str = TypeToChars(&sema, exp->TypeIndex);
+
+                printf("typeof(%s) = %s\n", str, type_str);
                 // XXX static and fixed size state like _ReadContext
                 // should do away soon.
                 _ReadContextSize = 0;

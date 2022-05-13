@@ -42,6 +42,7 @@ void MetaCParser_Init(metac_parser_t* self)
     self->Defines = self->inlineDefines;
     self->DefineCount = 0;
     self->DefineCapacity = ARRAY_SIZE(self->inlineDefines);
+
 #ifndef NO_DOT_PRINTER
     self->DotPrinter = (metac_dot_printer_t*)malloc(sizeof(metac_dot_printer_t));
     MetaCDotPrinter_Init(self->DotPrinter, &self->IdentifierTable);
