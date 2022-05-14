@@ -77,18 +77,19 @@ FOREACH_TABLE_SLOT_TYPE(METAC_TYPE_TABLE_T_DEF)
 
 #define FOREACH_TABLE_MEMBER(M) \
     M(array, Array) \
-    M(struct, Struct)
+    M(struct, Struct) \
+    M(ptr, Ptr)
 
 #define DECLARE_GET_OR_ADD(TYPE_NAME, MEMBER_NAME) \
     metac_type_index_t MetaCTypeTable_GetOrAdd ## MEMBER_NAME ## Type \
     (METAC_TYPE_TABLE_T(TYPE_NAME)* table, \
      uint32_t hash, METAC_TYPE_TABLE_KEY_T(TYPE_NAME)* key);
 
-//FOREACH_TABLE_MEMBER(DECLARE_GET_OR_ADD)
-
+FOREACH_TABLE_MEMBER(DECLARE_GET_OR_ADD)
+/*
 metac_type_index_t MetaCTypeTable_GetOrAddArrayType(METAC_TYPE_TABLE_T(array)* table,
                                                     uint32_t hash,
                                                     metac_type_array_slot_t* key);
-
+*/
 //void MetaCTypeTable_
 #endif

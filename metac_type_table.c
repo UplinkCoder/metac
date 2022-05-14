@@ -29,9 +29,9 @@ void TypeTableInitImpl(metac_type_table_t* table, const uint32_t sizeof_slot, me
 #  define ALIGN4(N) (((N) + 3) & ~3)
 #endif
 metac_type_index_t MetaCTypeTable_GetOrAddTypeImpl(metac_type_table_t* table,
-                                uint32_t hash,
-                                metac_type_table_slot_t* key,
-                                const uint32_t keyTrailingSize)
+                                                   uint32_t hash,
+                                                   metac_type_table_slot_t* key,
+                                                   const uint32_t keyTrailingSize)
 {
     metac_type_index_t result = {0};
 

@@ -44,6 +44,8 @@ typedef struct metac_type_index_t
 #define TYPE_INDEX_V(KIND, INDEX) \
     (((KIND) << 28) | (INDEX)) 
 
+#define ERROR_TYPE_INDEX_V -1
+
 typedef struct metac_type_t
 {
 } metac_type_t;

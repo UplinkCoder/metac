@@ -29,7 +29,7 @@
 const void* _emptyPointer = (const void*)0x1;
 #define emptyPointer ((void*)_emptyPointer)
 
-static noinline void _newMemRealloc(void** memP, uint32_t* capacity, const uint32_t elementSize);
+noinline void _newMemRealloc(void** memP, uint32_t* capacity, const uint32_t elementSize);
 const char* MetaCExpressionKind_toChars(metac_expression_kind_t type);
 #define ARRAY_SIZE(A) \
      ((unsigned int)(sizeof((A)) / sizeof((A)[0])))
@@ -443,7 +443,7 @@ metac_expression_kind_t ExpTypeFromTokenType(metac_token_enum_t tokenType)
 
 }
 
-static noinline void _newMemRealloc(void** memP, uint32_t* capacityP, const uint32_t elementSize)
+noinline void _newMemRealloc(void** memP, uint32_t* capacityP, const uint32_t elementSize)
 {
     uint32_t capacity;
     if (!*memP)
@@ -1100,7 +1100,7 @@ static void PushOpStack(metac_parser_t* self, metac_expression_kind_t expKind)
 #ifndef NO_DOT_PRINTER
     metac_dot_printer_label_t* CurrentLabel =
         self->DotPrinter->CurrentLabel;
-    const char* op = 
+    const char* op =
         BinExpTypeToChars((metac_binary_expression_kind_t)expKind);
     if (!CurrentLabel)
     {

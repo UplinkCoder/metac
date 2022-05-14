@@ -20,6 +20,26 @@ void MetaCSemantic_Init(metac_semantic_state_t* self)
     TypeTableInitImpl(&self->StructTypeTable,
                       sizeof(metac_type_struct_slot_t),
                       type_index_struct);
+
+    TypeTableInitImpl(&self->PtrTypeTable,
+                      sizeof(metac_type_ptr_slot_t),
+                      type_index_ptr);
+
+    IdentifierTableInit(&self->SemanticIdentifierTable);
+
+
+    self->ExpressionStackCapacity = 64;
+    self->ExpressionStack = malloc(
+        sizeof(metac_expression_t) * self->ExpressionStackCapacity);
+    self->ExpressionStackSize = 0;
+
+
+    self->ScopeStackCapacity = 64;
+    self->ScopeStack = malloc(
+        sizeof(metac_scope_t) * self->ExpressionStackCapacity);
+    self->ScopeStackSize = 0;
+
+    MetaCPrinter_Init(&self->Printer, &self->SemanticIdentifierTable, 0);
 }
 
 void MetaCSemantic_doDeclSemantic(metac_semantic_state_t* state,
@@ -61,6 +81,18 @@ metac_type_index_t MetaCSemantic_GetArrayTypeOf(metac_semantic_state_t* state,
 
     metac_type_index_t result =
         MetaCTypeTable_GetOrAddArrayType(&state->ArrayTypeTable, hash, &key);
+
+    return result;
+}
+
+metac_type_index_t MetaCSemantic_GetPtrTypeOf(metac_semantic_state_t* state,
+                                              metac_type_index_t elementTypeIndex)
+{
+    uint32_t hash = elementTypeIndex.v;
+    metac_type_ptr_slot_t key = {hash, elementTypeIndex};
+
+    metac_type_index_t result =
+        MetaCTypeTable_GetOrAddPtrType(&state->PtrTypeTable, hash, &key);
 
     return result;
 }
@@ -111,8 +143,6 @@ static inline void TypeToCharsP(metac_semantic_state_t* self,
     {
         case type_index_array:
         {
-            metac_type_array_slot_t (*slots)[4096] = (metac_type_array_slot_t(*)[4096])self->ArrayTypeTable.Slots;
-
             metac_type_array_slot_t* arrayType =
                 (self->ArrayTypeTable.Slots + TYPE_INDEX_INDEX(typeIndex));
             TypeToCharsP(self, printer, arrayType->ElementTypeIndex);
@@ -125,6 +155,13 @@ static inline void TypeToCharsP(metac_semantic_state_t* self,
             const char* typeString = BasicTypeToChars(typeIndex);
             MetacPrinter_PrintStringLiteral(printer, typeString);
         } break;
+        case type_index_ptr:
+        {
+            metac_type_array_slot_t* ptrType =
+                (self->PtrTypeTable.Slots + TYPE_INDEX_INDEX(typeIndex));
+            TypeToCharsP(self, printer, ptrType->ElementTypeIndex);
+            MetacPrinter_PrintStringLiteral(printer, "*");
+        } break;
     }
 }
 
@@ -133,7 +170,7 @@ const char* TypeToChars(metac_semantic_state_t* self, metac_type_index_t typeInd
     const char* result = 0;
     static metac_printer_t printer = {0};
     if (!printer.IdentifierTable)
-        MetaCPrinter_Init(&printer, self->IdentifierTable, 0);
+        MetaCPrinter_Init(&printer, self->ParserIdentifierTable, 0);
     else
         MetaCPrinter_Reset(&printer);
     TypeToCharsP(self, &printer, typeIndex);
@@ -141,25 +178,128 @@ const char* TypeToChars(metac_semantic_state_t* self, metac_type_index_t typeInd
     result = printer.StringMemory;
 }
 
-
-void MetaCSemantic_doExprSemantic(metac_semantic_state_t* state,
-                                  metac_expression_t* expr)
+void MetaCSemantic_PushExpr(metac_semantic_state_t* self, metac_expression_t* expr)
 {
+    if (self->ExpressionStackCapacity < self->ExpressionStackSize)
+    {
+        assert(0);
+        // we would need to realloc in this case.
+    }
+
+
+}
+
+void MetaCSemantic_PopExpr(metac_semantic_state_t* self,  metac_expression_t* expr)
+{
+
+}
+
+bool MetaCSemantic_HasAddress(metac_semantic_state_t* self,
+                              metac_sema_expression_t* expr)
+{
+    if (!expr->TypeIndex.v || expr->TypeIndex.v == ERROR_TYPE_INDEX_V)
+    {
+        return false;
+    }
+
+    switch (expr->Kind)
+    {
+        case exp_identifier:
+            return true;
+        default: return false;
+    }
+}
+#include <stdio.h>
+
+static uint32_t _newSemaExp_capacity;
+static uint32_t _newSemaExp_size;
+static metac_sema_expression_t* _newSemaExp_mem;
+static uint32_t _nodeCounter;
+
+#ifndef ATOMIC
+#define INC(v) \
+    (v++)
+#else
+#define INC(v)
+    (__builtin_atomic_fetch_add(&v, __ATOMIC_RELEASE))
+#endif
+
+metac_sema_expression_t* AllocNewSemaExpression(metac_expression_t* expr)
+{
+    metac_sema_expression_t* result = 0;
+
+    if (_newSemaExp_capacity <= _newSemaExp_size)
+    {
+        _newMemRealloc(
+            (void**)&_newSemaExp_mem,
+            &_newSemaExp_capacity,
+            sizeof(metac_sema_expression_t)
+        );
+    }
+
+    {
+        result = _newSemaExp_mem + INC(_newSemaExp_size);
+        memcpy(result, expr, sizeof(metac_expression_t));
+        result->Serial = INC(_nodeCounter);
+        result->TypeIndex = 0;
+
+    }
+
+    return result;
+}
+
+
+metac_sema_expression_t* MetaCSemantic_doExprSemantic(metac_semantic_state_t* self,
+                                                      metac_expression_t* expr)
+{
+    metac_sema_expression_t* result = 0;
+
+    result = AllocNewSemaExpression(expr);
+
+    if (IsBinaryExp(expr->Kind))
+    {
+        MetaCSemantic_PushExpr(self, expr);
+
+        MetaCSemantic_doExprSemantic(self, expr->E1);
+        MetaCSemantic_doExprSemantic(self, expr->E2);
+
+        MetaCSemantic_PopExpr(self, expr);
+    }
+
     switch(expr->Kind)
     {
         case exp_invalid:
             assert(0);
 
         case exp_char :
-            expr->TypeIndex = MetaCSemantic_GetTypeIndex(state, type_char, 0);
+            result->TypeIndex = MetaCSemantic_GetTypeIndex(self, type_char, 0);
         break;
         case exp_string :
-            expr->TypeIndex = MetaCSemantic_GetArrayTypeOf(state,
-                MetaCSemantic_GetTypeIndex(state, type_char, 0),
+            result->TypeIndex = MetaCSemantic_GetArrayTypeOf(self,
+                MetaCSemantic_GetTypeIndex(self, type_char, 0),
                 LENGTH_FROM_STRING_KEY(expr->StringKey));
         break;
         case exp_signed_integer :
-            expr->TypeIndex = MetaCSemantic_GetTypeIndex(state, type_int, 0);
+            result->TypeIndex = MetaCSemantic_GetTypeIndex(self, type_int, 0);
         break;
+        case exp_addr:
+            MetaCSemantic_PushExpr(self, result);
+            result->E1 = MetaCSemantic_doExprSemantic(self, expr->E1);
+            MetaCSemantic_PopExpr(self, result);
+            assert(result->E1->TypeIndex.v != 0 && result->E1->TypeIndex.v != ERROR_TYPE_INDEX_V);
+            if (!MetaCSemantic_HasAddress(self, expr->E1))
+            {
+                result->TypeIndex.v = ERROR_TYPE_INDEX_V;
+                SemanticError(self, "cannot take the address of %s", MetaCPrinter_PrintExpression(&self->Printer, expr->E1))
+            }
+            else
+            {
+                result->TypeIndex = MetaCSemantic_GetPtrTypeOf(self, result->E1->TypeIndex);
+            }
+        break;
+        case exp_identifier:
+        {
+
+        } break;
     }
 }

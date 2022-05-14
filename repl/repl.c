@@ -284,8 +284,10 @@ LnextLine:
                 const char* str = MetaCPrinter_PrintExpression(&printer, exp);
                 metac_semantic_state_t sema;
                 MetaCSemantic_Init(&sema);
-                MetaCSemantic_doExprSemantic(&sema, exp);
-                const char* type_str = TypeToChars(&sema, exp->TypeIndex);
+                metac_sema_expression_t* result =
+                    MetaCSemantic_doExprSemantic(&sema, exp);
+
+                const char* type_str = TypeToChars(&sema, result->TypeIndex);
 
                 printf("typeof(%s) = %s\n", str, type_str);
                 // XXX static and fixed size state like _ReadContext

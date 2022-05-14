@@ -200,8 +200,7 @@ typedef enum metac_binary_expression_kind_t
     metac_expression_kind_t Kind; \
     uint32_t LocationIdx; \
     uint32_t Hash; \
-    uint32_t Serial; \
-    metac_type_index_t TypeIndex;
+    uint32_t Serial;
 
 typedef struct exp_argument_t
 {
@@ -463,7 +462,7 @@ typedef enum metac_type_kind_t
     type_auto,
     type_type,
     type_void,
-    
+
     type_bool,
     type_char,
     type_short,
@@ -596,6 +595,8 @@ typedef struct decl_type_functiontype_t
     DECLARATION_HEADER
 
     TYPE_HEADER
+
+    decl_type_t ReturnType;
 
 } decl_type_functiontype_t;
 
