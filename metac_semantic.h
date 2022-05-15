@@ -42,3 +42,5 @@ void MetaCSemantic_Init(metac_semantic_state_t* self, metac_parser_t* parser);
 
 void MetaCSemantic_PushExpr(metac_semantic_state_t* self, metac_sema_expression_t* expr);
 void MetaCSemantic_PopExpr(metac_semantic_state_t* self,  metac_sema_expression_t* expr);
+metac_sema_expression_t* MetaCSemantic_doExprSemantic(metac_semantic_state_t* self,
+                                                      metac_expression_t* expr);

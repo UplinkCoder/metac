@@ -210,6 +210,11 @@ typedef enum metac_binary_expression_kind_t
     uint32_t Hash; \
     uint32_t Serial;
 
+typedef struct metac_expression_header_t
+{
+    EXPRESSION_HEADER
+} metac_expression_header_t;
+
 typedef struct exp_argument_t
 {
     struct metac_expression_t* Expression;

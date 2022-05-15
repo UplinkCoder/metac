@@ -33,7 +33,6 @@ void MetaCSemantic_Init(metac_semantic_state_t* self, metac_parser_t* parser)
         sizeof(metac_expression_t) * self->ExpressionStackCapacity);
     self->ExpressionStackSize = 0;
 
-
     self->ScopeStackCapacity = 64;
     self->ScopeStack = malloc(
         sizeof(metac_scope_t) * self->ExpressionStackCapacity);
@@ -215,7 +214,7 @@ const char* TypeToChars(metac_semantic_state_t* self, metac_type_index_t typeInd
 {
     const char* result = 0;
     static metac_printer_t printer = {0};
-    if (!printer.IdentifierTable)
+    if (!printer.StringMemory)
         MetaCPrinter_Init(&printer, self->ParserIdentifierTable, 0);
     else
         MetaCPrinter_Reset(&printer);
@@ -288,12 +287,19 @@ metac_sema_expression_t* AllocNewSemaExpression(metac_expression_t* expr)
 
     {
         result = _newSemaExp_mem + INC(_newSemaExp_size);
-        (*(metac_node_header_t*) result) = (*(metac_node_header_t*) expr);
+        (*(metac_expression_header_t*) result) = (*(metac_expression_header_t*) expr);
 
         result->Serial = INC(_nodeCounter);
         result->TypeIndex.v = 0;
-        memcpy(&result->TypeIndex.v + 1, ((char*)expr) + offsetof(metac_expression_t, E1),
-                                         sizeof(metac_expression_t) - offsetof(metac_expression_t, E1));
+        memcpy(
+               ((char*)result) + sizeof(metac_sema_expression_header_t),
+               ((char*)expr) + sizeof(metac_expression_header_t),
+               sizeof(metac_expression_t) - sizeof(metac_expression_header_t));
+
+        printf("(dst:%p src:%p size:%d)\n",
+                ((char*)result) + sizeof(metac_sema_expression_header_t),
+                ((char*)expr) + sizeof(metac_expression_header_t),
+                sizeof(metac_expression_t) - sizeof(metac_expression_header_t));
     }
 
     return result;
@@ -309,12 +315,12 @@ metac_sema_expression_t* MetaCSemantic_doExprSemantic(metac_semantic_state_t* se
 
     if (IsBinaryExp(expr->Kind))
     {
-        MetaCSemantic_PushExpr(self, expr);
+        MetaCSemantic_PushExpr(self, result);
 
         MetaCSemantic_doExprSemantic(self, expr->E1);
         MetaCSemantic_doExprSemantic(self, expr->E2);
 
-        MetaCSemantic_PopExpr(self, expr);
+        MetaCSemantic_PopExpr(self, result);
     }
 
     switch(expr->Kind)

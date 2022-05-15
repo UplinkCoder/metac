@@ -30,7 +30,7 @@ typedef struct metac_scope_table_t
 {
     metac_scope_table_slot_t* Slots;
     uint32_t SlotCount_Log2;
-    uint32_t SlotsUsed;   
+    uint32_t SlotsUsed;
 } metac_scope_table_t;
 
 typedef struct metac_scope_lru_t
@@ -46,8 +46,8 @@ typedef struct metac_scope_lru_t
 typedef struct metac_scope_t
 {
     metac_scope_ptr_t Parent;
-    metac_identifier_table_t ScopeTable;
-    
+    metac_scope_table_t ScopeTable;
+
     metac_scope_lru_t LRU;
 } metac_scope_t;
 

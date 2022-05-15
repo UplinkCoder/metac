@@ -18,7 +18,7 @@ if [ -d $DST ]; then
        metac_semantic.c metac_semantic.h \
        metac_type_table.c metac_type_table.h \
        metac_thread.c metac_thread.h \
-       metac_parser_obj.c \
+       metac_parser_obj.c metac_semantic_obj.c \
        metac.fpg TODO \
        $DST
 

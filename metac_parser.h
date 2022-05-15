@@ -11,8 +11,8 @@
 #    error "Unknow ACCEL value " #ACCEL
 #  endif
 
-extern const void* _emptyPointer;
-#define emptyPointer ((void*)_emptyPointer)
+
+#define emptyPointer ((void*)0x1)
 
 #include "compat.h"
 #include "metac_lexer.h"
