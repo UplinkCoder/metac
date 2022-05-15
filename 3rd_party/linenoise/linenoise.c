@@ -103,8 +103,6 @@
  *
  */
 
-#include "win32_support_mod.inl"
-
 #include <stdlib.h>
 #include <stdarg.h>
 #include <stdio.h>
@@ -117,6 +115,7 @@
 #include <sys/stat.h>
 #include <ctype.h>
 #include "linenoise.h"
+#include "win32_support_mod.inl"
 
 #include "ocaml_community_mod.inl"
 

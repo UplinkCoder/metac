@@ -103,3 +103,9 @@ metac_node_header_t* MetaCScope_LookupIdentifier(metac_scope_t* self,
 
     return result;
 }
+
+metac_scope_t* MetaCScope_PushScope(metac_scope_t *self, metac_sema_declaration_t* scopeDecl)
+{
+    metac_scope_t* result = 0;
+    return result;
+}

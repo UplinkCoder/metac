@@ -3,6 +3,9 @@
 #include "compat.h"
 #include "metac_identifier_table.h"
 #include "metac_sematree.h"
+
+struct metac_sema_declaration_t;
+
 typedef struct metac_scope_ptr_t
 {
     uint32_t v;
@@ -57,5 +60,5 @@ metac_node_header_t* MetaCScope_LookupIdentifier(metac_scope_t* self,
                                                  uint32_t identifierKey,
                                                  metac_identifier_ptr_t identifierPtr);
 
-metac_scope_t* MetaCScope_PushScope(metac_scope_t* self);
+metac_scope_t* MetaCScope_PushScope(metac_scope_t* self, struct metac_sema_declaration_t* decl);
 #endif // _METAC_SCOPE_H_

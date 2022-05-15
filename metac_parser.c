@@ -47,6 +47,7 @@ void MetaCParser_Init(metac_parser_t* self)
     self->Defines = self->inlineDefines;
     self->DefineCount = 0;
     self->DefineCapacity = ARRAY_SIZE(self->inlineDefines);
+    self->LexerState = 0;
 
 #ifndef NO_DOT_PRINTER
     self->DotPrinter = (metac_dot_printer_t*)malloc(sizeof(metac_dot_printer_t));
@@ -257,6 +258,12 @@ LexpectedIdent:
     return result;
 }
 
+static inline uint32_t MetaCParser_HowMuchLookahead(metac_parser_t* self)
+{
+    return (self->Lexer->TokenSize - self->CurrentTokenIndex);
+}
+
+
 metac_token_t* MetaCParser_PeekToken(metac_parser_t* self, int32_t p)
 {
     metac_token_t* result = 0;
@@ -271,6 +278,15 @@ metac_token_t* MetaCParser_PeekToken(metac_parser_t* self, int32_t p)
         }
         else if(result && result->TokenType == tok_hash)
         {
+            int lookahead = MetaCParser_HowMuchLookahead(self);
+            while (p < lookahead)
+            {
+                result = self->Lexer->Tokens + self->CurrentTokenIndex + (p++);
+                if (result->TokenType == tok_newline)
+                {
+
+                }
+            }
             HandlePreprocessor(self);
         }
     }
@@ -280,11 +296,6 @@ metac_token_t* MetaCParser_PeekToken(metac_parser_t* self, int32_t p)
     }
 
     return result;
-}
-
-static inline uint32_t MetaCParser_HowMuchLookahead(metac_parser_t* self)
-{
-    return (self->Lexer->TokenSize - self->CurrentTokenIndex);
 }
 
 #define MetaCParser_Match(SELF, TYPE) \
@@ -922,7 +933,17 @@ metac_expression_t* MetaCParser_ParseUnaryExpression(metac_parser_t* self)
         (currentToken ? currentToken->TokenType : tok_eof);
 
 
-    if (tokenType == tok_kw_eject)
+    if (tokenType == tok_dot)
+    {
+        MetaCParser_Match(self, tok_dot);
+        result = AllocNewExpression(exp_dot);
+        result->E1 = MetaCParser_ParseExpression(self, expr_flags_none, 0);
+        result->Hash = Mix(
+            crc32c(~0, ".", sizeof(".") - 1),
+            result->E1->Hash
+        );
+    }
+    else if (tokenType == tok_kw_eject)
     {
         MetaCParser_Match(self, tok_kw_eject);
         result = AllocNewExpression(exp_eject);

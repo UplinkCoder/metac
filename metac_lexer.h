@@ -196,6 +196,7 @@ typedef struct metac_lexer_state_t
     M(tok_plusplus) \
     M(tok_minusminus) \
     M(tok_full_slice) \
+    M(tok_newline) \
     \
     LAST_STATIC_TOKEN(M)
 

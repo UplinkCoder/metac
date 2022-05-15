@@ -2,6 +2,13 @@
 #include <assert.h>
 bool IsExpressionNode(metac_node_kind_t);
 
+static uint32_t _newSemaExp_capacity;
+static uint32_t _newSemaExp_size;
+static metac_sema_expression_t* _newSemaExp_mem;
+
+static uint32_t _newSemaFunc_capacity;
+static uint32_t _newSemaFunc_size;
+static metac_sema_expression_t* _newSemaFunc_mem;
 
 static inline bool isBasicType(metac_type_kind_t typeKind)
 {
@@ -11,6 +18,8 @@ static inline bool isBasicType(metac_type_kind_t typeKind)
     }
     return false;
 }
+
+static uint32_t _nodeCounter = 64;
 
 void MetaCSemantic_Init(metac_semantic_state_t* self, metac_parser_t* parser)
 {
@@ -42,7 +51,7 @@ void MetaCSemantic_Init(metac_semantic_state_t* self, metac_parser_t* parser)
     MetaCPrinter_Init(&self->Printer, &self->SemanticIdentifierTable, &parser->StringTable);
 }
 
-void MetaCSemantic_doDeclSemantic(metac_semantic_state_t* state,
+void MetaCSemantic_doDeclSemantic(metac_semantic_state_t* self,
                                   metac_declaration_t* decl)
 {
     switch(decl->DeclKind)
@@ -56,6 +65,81 @@ void MetaCSemantic_doDeclSemantic(metac_semantic_state_t* state,
             decl_variable_t* v = cast(decl_variable_t*) decl;
         } break;
     }
+}
+
+void MetaCSemantic_doParameterSemantic(metac_semantic_state_t* self,
+                                       decl_sema_function_t* func,
+                                       decl_sema_parameter_t *result,
+                                       decl_parameter_t* param)
+{
+    uint32_t paramIndex = result - func->Parameters;
+
+}
+
+#ifndef ATOMIC
+#define INC(v) \
+    (v++)
+#else
+#define INC(v)
+    (__builtin_atomic_fetch_add(&v, __ATOMIC_RELEASE))
+#endif
+
+
+decl_sema_function_t* AllocNewSemaFunction(decl_function_t* func)
+{
+    decl_sema_function_t* result = 0;
+
+    if (_newSemaFunc_capacity <= _newSemaFunc_size)
+    {
+        _newMemRealloc(
+            (void**)&_newSemaFunc_mem,
+            &_newSemaFunc_capacity,
+            sizeof(decl_sema_function_t)
+        );
+    }
+
+    {
+        result = _newSemaFunc_mem + INC(_newSemaFunc_size);
+        (*(metac_node_header_t*) result) = (*(metac_node_header_t*) func);
+
+        result->Serial = INC(_nodeCounter);
+        result->TypeIndex.v = 0;
+    }
+
+    return result;
+}
+
+
+decl_sema_parameter_t* AllocParameters(decl_sema_function_t* func,
+                                       uint32_t parameterCount)
+{
+    decl_sema_parameter_t* result = calloc(sizeof(decl_sema_parameter_t),
+                                           parameterCount);
+}
+
+void MetaCSemantic_doFunctionSemantic(metac_semantic_state_t* self,
+                                      decl_function_t* func)
+{
+    decl_sema_function_t* f =
+        AllocNewSemaFunction(func);
+    // let's first do the parameters
+    decl_sema_parameter_t* params = f->Parameters =
+        AllocParameters(f, func->ParameterCount);
+
+    decl_parameter_t* currentParam = func->Parameters;
+    for(int i = 0;
+        i < func->ParameterCount;
+        i++)
+    {
+        MetaCSemantic_doParameterSemantic(self, f,
+                                          params + i,
+                                          currentParam);
+        currentParam = currentParam->Next;
+    }
+
+    assert(currentParam == 0);
+
+    f->Scope = MetaCScope_PushScope(self->CurrentScope, (metac_sema_declaration_t*)f);
 }
 
 metac_type_index_t MetaCSemantic_GetTypeIndex(metac_semantic_state_t* state,
@@ -252,18 +336,6 @@ bool MetaCSemantic_CanHaveAddress(metac_semantic_state_t* self,
 }
 #include <stdio.h>
 
-static uint32_t _newSemaExp_capacity;
-static uint32_t _newSemaExp_size;
-static metac_sema_expression_t* _newSemaExp_mem;
-static uint32_t _nodeCounter = 64;
-
-#ifndef ATOMIC
-#define INC(v) \
-    (v++)
-#else
-#define INC(v)
-    (__builtin_atomic_fetch_add(&v, __ATOMIC_RELEASE))
-#endif
 
 #undef offsetof
 

@@ -2,6 +2,7 @@
 #define _IDENTIFIER_TABLE_C_
 
 #include "compat.h"
+
 #include <assert.h>
 #include <stdlib.h>
 #include "metac_lexer.h"
@@ -277,7 +278,6 @@ bool IsInTable(metac_identifier_table_t* table,
 }
 
 #ifdef WRITE_TABLE
-#include <alloca.h>
 #define CRT_SECURE_NO_WARNINGS
 metac_identifier_table_t ReadTable(const char* filename)
 {

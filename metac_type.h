@@ -42,13 +42,9 @@ typedef struct metac_type_index_t
     ((metac_type_index_kind_t)((TYPE_INDEX).v >> 28))
 
 #define TYPE_INDEX_V(KIND, INDEX) \
-    (((KIND) << 28) | (INDEX)) 
+    (((KIND) << 28) | (INDEX))
 
 #define ERROR_TYPE_INDEX_V -1
-
-typedef struct metac_type_t
-{
-} metac_type_t;
 
 typedef struct metac_struct_field_t
 {
@@ -59,10 +55,5 @@ typedef struct metac_struct_field_t
 
     uint32_t Offset;
 } metac_struct_field_t;
-
-typedef struct metac_type_array_t
-{
-    
-} metac_type_array_t;
 
 #endif

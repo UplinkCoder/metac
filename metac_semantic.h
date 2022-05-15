@@ -15,6 +15,8 @@ typedef struct metac_semantic_state_t
 
     metac_sema_declaration_t* currentDeclaration;
 
+    metac_scope_t* CurrentScope;
+
     metac_scope_t* ScopeStack;
     uint32_t ScopeStackSize;
     uint32_t ScopeStackCapacity;

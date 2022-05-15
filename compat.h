@@ -8,17 +8,29 @@
 
 #ifdef _WIN32
 #  include "stdint_msvc.h"
+#  include <malloc.h>
+#define alloca _alloca
 # ifndef __cplusplus
 #  error "win32 compile only works in c++ mode ... use /TP"
 # endif
 #else
 #  include <stdint.h>
+#  include <alloca.h>
 #endif
 
-#ifndef __cplusplus
-# include "stdbool.h"
-#endif
+#  ifdef __CC65__
+#  define bool _Bool
+typedef unsigned char _Bool;
+#define inline
 
+/* Standard test-results. */
+#  define false 0
+#  define true  1
+#else
+#  ifndef __cplusplus
+#     include "stdbool.h"
+#  endif
+#endif
 
 #ifdef __cplusplus
 #  define EXTERN_C extern "C"
