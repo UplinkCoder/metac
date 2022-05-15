@@ -11,7 +11,7 @@ static inline bool isBasicType(metac_type_kind_t typeKind)
     return false;
 }
 
-void MetaCSemantic_Init(metac_semantic_state_t* self)
+void MetaCSemantic_Init(metac_semantic_state_t* self, metac_parser_t* parser)
 {
     TypeTableInitImpl(&self->ArrayTypeTable,
                       sizeof(metac_type_array_slot_t),
@@ -39,7 +39,7 @@ void MetaCSemantic_Init(metac_semantic_state_t* self)
         sizeof(metac_scope_t) * self->ExpressionStackCapacity);
     self->ScopeStackSize = 0;
 
-    MetaCPrinter_Init(&self->Printer, &self->SemanticIdentifierTable, 0);
+    MetaCPrinter_Init(&self->Printer, &self->SemanticIdentifierTable, &parser->StringTable);
 }
 
 void MetaCSemantic_doDeclSemantic(metac_semantic_state_t* state,
@@ -132,6 +132,52 @@ static inline const char* BasicTypeToChars(metac_type_index_t typeIndex)
     }
     return 0;
 }
+#ifndef _emptyPointer
+#define _emptyPointer 0x1
+#define emptyNode (metac_node_header_t*) _emptyPointer
+#endif
+
+
+/// Returns _emptyNode to signifiy it could not be found
+/// a valid node otherwise
+metac_node_header_t* MetaCSemantic_LookupIdentifier(metac_semantic_state_t* self,
+                                                    uint32_t identifierKey,
+                                                    metac_identifier_ptr_t identifierPtr)
+{
+    metac_node_header_t* result = emptyNode;
+#if 1
+    if (self->ScopeStackSize == 0 && self->declStore)
+    {
+        metac_identifier_ptr_t dStoreIdPtr =
+            FindMatchingIdentifier(&self->declStore->Table,
+                                   self->ParserIdentifierTable,
+                                   identifierPtr);
+        if (dStoreIdPtr.v)
+        {
+            metac_declaration_t* decl =
+                DeclarationStore_GetDecl(self->declStore, dStoreIdPtr);
+        }
+    }
+    else
+#endif
+    {
+        assert(self->ScopeStackSize >= 1);
+        uint32_t StackTopIdx = self->ScopeStackSize;
+        //TODO do an LRU lookup first
+        while(StackTopIdx)
+        {
+            metac_scope_t* currentScope = &self->ScopeStack[--StackTopIdx];
+            metac_node_header_t* lookupResult =
+                MetaCScope_LookupIdentifier(currentScope, identifierKey, identifierPtr);
+            if (lookupResult)
+            {
+                result = lookupResult;
+                break;
+            }
+        }
+    }
+    return result;
+}
 
 static inline void TypeToCharsP(metac_semantic_state_t* self,
                                 metac_printer_t* printer,
@@ -178,18 +224,16 @@ const char* TypeToChars(metac_semantic_state_t* self, metac_type_index_t typeInd
     result = printer.StringMemory;
 }
 
-void MetaCSemantic_PushExpr(metac_semantic_state_t* self, metac_expression_t* expr)
+void MetaCSemantic_PushExpr(metac_semantic_state_t* self, metac_sema_expression_t* expr)
 {
     if (self->ExpressionStackCapacity < self->ExpressionStackSize)
     {
         assert(0);
         // we would need to realloc in this case.
     }
-
-
 }
 
-void MetaCSemantic_PopExpr(metac_semantic_state_t* self,  metac_expression_t* expr)
+void MetaCSemantic_PopExpr(metac_semantic_state_t* self,  metac_sema_expression_t* expr)
 {
 
 }
@@ -214,7 +258,7 @@ bool MetaCSemantic_HasAddress(metac_semantic_state_t* self,
 static uint32_t _newSemaExp_capacity;
 static uint32_t _newSemaExp_size;
 static metac_sema_expression_t* _newSemaExp_mem;
-static uint32_t _nodeCounter;
+static uint32_t _nodeCounter = 64;
 
 #ifndef ATOMIC
 #define INC(v) \
@@ -223,6 +267,11 @@ static uint32_t _nodeCounter;
 #define INC(v)
     (__builtin_atomic_fetch_add(&v, __ATOMIC_RELEASE))
 #endif
+
+#undef offsetof
+
+#define offsetof(st, m) \
+    ((size_t)((char *)&((st *)0)->m - (char *)0))
 
 metac_sema_expression_t* AllocNewSemaExpression(metac_expression_t* expr)
 {
@@ -239,10 +288,12 @@ metac_sema_expression_t* AllocNewSemaExpression(metac_expression_t* expr)
 
     {
         result = _newSemaExp_mem + INC(_newSemaExp_size);
-        memcpy(result, expr, sizeof(metac_expression_t));
-        result->Serial = INC(_nodeCounter);
-        result->TypeIndex = 0;
+        (*(metac_node_header_t*) result) = (*(metac_node_header_t*) expr);
 
+        result->Serial = INC(_nodeCounter);
+        result->TypeIndex.v = 0;
+        memcpy(&result->TypeIndex.v + 1, ((char*)expr) + offsetof(metac_expression_t, E1),
+                                         sizeof(metac_expression_t) - offsetof(metac_expression_t, E1));
     }
 
     return result;
@@ -282,6 +333,12 @@ metac_sema_expression_t* MetaCSemantic_doExprSemantic(metac_semantic_state_t* se
         case exp_signed_integer :
             result->TypeIndex = MetaCSemantic_GetTypeIndex(self, type_int, 0);
         break;
+        case exp_identifier:
+            result = MetaCSemantic_LookupIdentifier(self, result->IdentifierKey, result->IdentifierPtr);
+
+            //assert(0);
+            //
+        break;
         case exp_addr:
             MetaCSemantic_PushExpr(self, result);
             result->E1 = MetaCSemantic_doExprSemantic(self, expr->E1);
@@ -290,16 +347,14 @@ metac_sema_expression_t* MetaCSemantic_doExprSemantic(metac_semantic_state_t* se
             if (!MetaCSemantic_HasAddress(self, expr->E1))
             {
                 result->TypeIndex.v = ERROR_TYPE_INDEX_V;
-                SemanticError(self, "cannot take the address of %s", MetaCPrinter_PrintExpression(&self->Printer, expr->E1))
+                SemanticError(self, "cannot take the address of %s", MetaCPrinter_PrintExpression(&self->Printer, expr->E1));
             }
             else
             {
                 result->TypeIndex = MetaCSemantic_GetPtrTypeOf(self, result->E1->TypeIndex);
             }
         break;
-        case exp_identifier:
-        {
-
-        } break;
     }
+
+    return result;
 }

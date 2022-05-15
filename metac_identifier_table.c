@@ -243,8 +243,10 @@ metac_identifier_ptr_t IsIdentifierInTable(metac_identifier_table_t* table,
     assert(0);
 }
 
-bool IsInTable(metac_identifier_table_t* table,
-               uint32_t key, metac_identifier_ptr_t value)
+
+metac_identifier_table_slot_t* IdentifierTableLookup(
+            metac_identifier_table_t* table,
+            uint32_t key, metac_identifier_ptr_t value)
 {
     const uint32_t slotIndexMask = ((1 << table->SlotCount_Log2) - 1);
     const uint32_t initialSlotIndex = (key & slotIndexMask);
@@ -254,15 +256,22 @@ bool IsInTable(metac_identifier_table_t* table,
         (++slotIndex & slotIndexMask) != initialSlotIndex;
     )
     {
+        uint32_t lookupIdx = (slotIndex - 1) & slotIndexMask;
         metac_identifier_table_slot_t slot =
-            table->Slots[(slotIndex - 1) & slotIndexMask];
+            table->Slots[lookupIdx];
 
         if (slot.HashKey == 0)
-            return false;
+            return 0;
         if (slot.HashKey == key && slot.Ptr.v == value.v)
-            return true;
+            return table->Slots + lookupIdx;
     }
     assert(0);
+}
+
+bool IsInTable(metac_identifier_table_t* table,
+               uint32_t key, metac_identifier_ptr_t value)
+{
+    return IdentifierTableLookup(table, key, value) != 0;
 }
 
 #define CRT_SECURE_NO_WARNINGS

@@ -145,6 +145,18 @@ static inline void WalkTree(void* c, BCValue* result,
             assert(0);
         } break;
 
+        case exp_assign:
+        {
+            assert(e->E1->Kind == exp_identifier);
+            metac_identifier_ptr_t idPtr = e->E1->IdentifierPtr;
+            metac_identifier_ptr_t dStoreIdPtr =
+                FindMatchingIdentifier(&dstore->Table,
+                                       &g_lineParser.IdentifierTable,
+                                       idPtr);
+            BCGen_interface.Set(c, lhs, rhs);
+            BCGen_interface.Set(c, result, lhs);
+        } break;
+
         case exp_signed_integer :
         {
             BCValue imm = imm32((uint32_t)e->ValueU64);
@@ -338,6 +350,12 @@ metac_identifier_ptr_t IdentifierPtrFromDecl(metac_declaration_t* decl)
         {
             decl_function_t* f = cast(decl_function_t*) decl;
             idPtr = f->Identifier;
+            break;
+        }
+        case decl_variable:
+        {
+            decl_variable_t* v = cast(decl_variable_t*) decl;
+            idPtr = v->VarIdentifier;
             break;
         }
         default : assert(0);

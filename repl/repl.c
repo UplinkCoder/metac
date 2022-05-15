@@ -283,7 +283,8 @@ LnextLine:
 
                 const char* str = MetaCPrinter_PrintExpression(&printer, exp);
                 metac_semantic_state_t sema;
-                MetaCSemantic_Init(&sema);
+                MetaCSemantic_Init(&sema, &g_lineParser);
+                sema.declStore = &dstore;
                 metac_sema_expression_t* result =
                     MetaCSemantic_doExprSemantic(&sema, exp);
 
@@ -321,13 +322,19 @@ LnextLine:
                         decl->decl_function.Identifier = dstoreId;
                         printf("Setting dStore ID: %u\n", dstoreId.v);
                     }
+                    else if (decl->DeclKind == decl_variable)
+                    {
+                        decl->decl_variable.VarIdentifier = dstoreId;
+
+                        //VariableStore_SetValueI32(&vstore, assignExp->E1, (int32_t)assignExp->E2->ValueI64);
+                    }
 
                     DeclarationStore_SetDecl(&dstore, dstoreId, decl);
                     goto LnextLine;
                 }
                 else
                 {
-                     metac_expression_t* assignExp = MetaCParser_ParseExpressionFromString(line);
+                    metac_expression_t* assignExp = MetaCParser_ParseExpressionFromString(line);
                     if (assignExp)
                     {
                         if (assignExp->Kind != exp_assign)

@@ -1,3 +1,6 @@
+#ifndef _EXP_EVAL_H_
+#define _EXP_EVAL_H_
+
 #include "../metac_identifier_table.h"
 
 typedef struct stored_declaration_t
@@ -6,7 +9,7 @@ typedef struct stored_declaration_t
     union
     {
         uint32_t FunctionIndex;
-        uint16_t frameOffset;
+        uint16_t FrameOffset;
     };
 
 } stored_declaration_t;
@@ -46,6 +49,10 @@ metac_expression_t evalWithVariables(metac_expression_t* e,
                                      variable_store_t* vars,
                                      declaration_store_t* dstore);
 
+metac_identifier_ptr_t FindMatchingIdentifier(metac_identifier_table_t* searchTable,
+                                              metac_identifier_table_t* sourceTable,
+                                              metac_identifier_ptr_t sourcePtr);
+
 typedef struct ReadI32_Ctx
 {
     variable_store_t* vstore;
@@ -55,3 +62,4 @@ typedef struct ReadI32_Ctx
 extern ReadI32_Ctx* _ReadContexts;
 extern uint32_t _ReadContextSize;
 extern uint32_t _ReadContextCapacity;
+#endif // _EXP_EVAL_H_

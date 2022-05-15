@@ -161,6 +161,14 @@ typedef enum metac_node_kind_t
 {
     FOREACH_NODE_KIND(DEFINE_NODE_MEMBERS)
 } metac_node_kind_t;
+
+typedef struct metac_node_header_t
+{
+    metac_node_kind_t Kind;
+    uint32_t LocationIdx;
+    uint32_t Hash;
+    uint32_t Serial;
+} metac_node_header_t;
 #endif
 
 #undef DEFINE_NODE_MEMBERS
@@ -654,6 +662,7 @@ typedef struct metac_declaration_t
             DECLARATION_HEADER
         };
 
+        decl_variable_t decl_variable;
         decl_typedef_t decl_typedef;
         decl_type_t decl_type;
         decl_type_ptr_t decl_type_ptr;

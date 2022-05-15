@@ -31,6 +31,7 @@ typedef struct metac_identifier_table_slot_t
 {
     uint32_t HashKey;
     metac_identifier_ptr_t Ptr;
+
 #ifdef REFCOUNT
     uint32_t RefCount;
     uint32_t Displacement;
@@ -73,10 +74,15 @@ metac_identifier_ptr_t GetOrAddIdentifier(metac_identifier_table_t* table,
                                           const char* identifier, uint32_t length);
 
 metac_identifier_ptr_t IsIdentifierInTable(metac_identifier_table_t* table, uint32_t key,
-                         const char* idChars);
+                                           const char* idChars);
 
 bool IsInTable(metac_identifier_table_t* table,
                uint32_t key, metac_identifier_ptr_t value);
+
+metac_identifier_table_slot_t* IdentifierTableLookup(
+            metac_identifier_table_t* table,
+            uint32_t key, metac_identifier_ptr_t value);
+
 
 const char* IdentifierPtrToCharPtr(metac_identifier_table_t* table,
                                    metac_identifier_ptr_t ptr);
