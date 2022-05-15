@@ -410,13 +410,13 @@ void DeclarationStore_SetDecl(declaration_store_t* dstore,
             break;
         }
     }
-
+/*
     if (d)
     {
         const char* idChars = IdentifierPtrToCharPtr(&dstore->Table, dStoreId);
         fprintf(stderr, "overwriting stored version of %s\n", idChars);
     }
-
+*/
     if (!d)
     {
         d = &dstore->Declarations[dstore->DeclarationSize++].Declaration;

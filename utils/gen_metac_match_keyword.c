@@ -6,7 +6,7 @@
 const char* C4Macros =
 "#define C4(A, B, C, D) \\\n"
 "    ((uint32_t)(A | B << 8 | C << 16 | D << 24)) \n"
-"\n\n"
+"\n"
 "#define C2(A, B) \\\n"
 "    ((uint16_t)(A | B << 8))\n";
 
@@ -40,7 +40,7 @@ void WriteCmp(const char* kw, uint32_t kw_len)
         else
             printf("\n    ");
 		printf("(*(((uint32_t*)identifier) + %u)) == C4('%c', '%c', '%c', '%c')",
-                                                  index,      c1,   c2,   c3,   c4);
+                                             index,      c1,   c2,   c3,   c4);
         kw_pos += 4;
 	}
 
