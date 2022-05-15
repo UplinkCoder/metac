@@ -7,6 +7,7 @@
 //TODO get rid of exp_eval after testing
 #include "repl/exp_eval.h"
 
+
 typedef struct metac_semantic_state_t
 {
     metac_identifier_table_t SemanticIdentifierTable;
@@ -44,3 +45,9 @@ void MetaCSemantic_PushExpr(metac_semantic_state_t* self, metac_sema_expression_
 void MetaCSemantic_PopExpr(metac_semantic_state_t* self,  metac_sema_expression_t* expr);
 metac_sema_expression_t* MetaCSemantic_doExprSemantic(metac_semantic_state_t* self,
                                                       metac_expression_t* expr);
+
+/// Returns _emptyNode to signifiy it could not be found
+/// a valid node otherwise
+metac_node_header_t* MetaCSemantic_LookupIdentifier(metac_semantic_state_t* self,
+                                                    uint32_t identifierKey,
+                                                    metac_identifier_ptr_t identifierPtr);

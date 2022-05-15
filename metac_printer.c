@@ -658,7 +658,18 @@ void MetaCPrinter_Init(metac_printer_t* self,
                        metac_identifier_table_t* identifierTable,
                        metac_identifier_table_t* stringTable)
 {
-    self->StringMemoryCapacity = INITIAL_SIZE;
+    MetaCPrinter_InitSz(self,
+                        identifierTable,
+                        stringTable,
+                        INITIAL_SIZE);
+}
+
+void MetaCPrinter_InitSz(metac_printer_t* self,
+                         metac_identifier_table_t* identifierTable,
+                         metac_identifier_table_t* stringTable,
+                         uint32_t initialSize)
+{
+    self->StringMemoryCapacity = initialSize;
     self->StringMemory = (char*)malloc(self->StringMemoryCapacity);
     self->StringMemorySize = self->StringMemoryCapacity;
 

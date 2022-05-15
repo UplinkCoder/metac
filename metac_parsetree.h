@@ -221,6 +221,7 @@ typedef struct exp_argument_t
     struct exp_argument_t* Next;
 } exp_argument_t;
 
+#pragma pack(push, 1)
 typedef struct metac_expression_t
 {
     EXPRESSION_HEADER
@@ -285,6 +286,7 @@ typedef struct metac_expression_t
         uint64_t ValueU64;
     };
 } metac_expression_t;
+#pragma pack(pop)
 
 typedef enum metac_statement_kind_t
 {

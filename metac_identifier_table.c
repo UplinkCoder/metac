@@ -184,6 +184,8 @@ metac_identifier_ptr_t GetOrAddIdentifier(metac_identifier_table_t* table,
         _BitScanReverse(&result, x);
         return result;
 	}
+#elif defined(__TINYC__)
+#  include "3rd_party/bsr.c"
 #else
 #  define BSR(X) \
     (__builtin_clz(X) ^ 31)
@@ -274,6 +276,8 @@ bool IsInTable(metac_identifier_table_t* table,
     return IdentifierTableLookup(table, key, value) != 0;
 }
 
+#ifdef WRITE_TABLE
+#include <alloca.h>
 #define CRT_SECURE_NO_WARNINGS
 metac_identifier_table_t ReadTable(const char* filename)
 {
@@ -422,6 +426,7 @@ void WriteTable(metac_identifier_table_t* table, const char* filename, uint32_t 
     fwrite(&header, 1, sizeof(header), fd);
     fclose(fd);
 }
+#endif
 #endif
 
 #if 0

@@ -81,7 +81,6 @@ int main(int argc, const char* argv[])
     declaration_store_t dstore;
     DeclarationStore_Init(&dstore);
 
-
     variable_store_t vstore;
     VariableStore_Init(&vstore);
 
@@ -89,7 +88,6 @@ int main(int argc, const char* argv[])
     _ReadContexts = (ReadI32_Ctx*)
         malloc(sizeof(ReadI32_Ctx) * _ReadContextCapacity);
     _ReadContextSize = 0;
-
 
 LswitchMode:
     switch (parseMode)
@@ -202,19 +200,6 @@ LnextLine:
             case 's' :
                 parseMode = parse_mode_stmt;
                 goto LswitchMode;
-            case 'g' :
-            {
-                uint32_t a = 0, b = 0;
-                sscanf(line + 2, "%d %d", &a, &b);
-                uint32_t result = EntangleInts(a, b);
-                printf("Entangle (%d, %d) = %d\n", a, b, result);
-                a = 0; b = 0;
-                uint32_t untangled = UntangleInts(result);
-                a = untangled & 0xFFFF;
-                b = untangled >> 16;
-                printf("Untangled %d = (%d, %d)\n", untangled, a, b);
-            }
-            goto LswitchMode;
             case 'i' :
 #ifdef ACCEL
                 printf("Accelerator: %s\n", ACCELERATOR);
@@ -289,6 +274,7 @@ LnextLine:
                     MetaCSemantic_doExprSemantic(&sema, exp);
 
                 const char* type_str = TypeToChars(&sema, result->TypeIndex);
+                printf("type_str = %p\n", type_str);
 
                 printf("typeof(%s) = %s\n", str, type_str);
                 // XXX static and fixed size state like _ReadContext

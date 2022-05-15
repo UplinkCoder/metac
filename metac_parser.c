@@ -34,6 +34,11 @@ const char* MetaCExpressionKind_toChars(metac_expression_kind_t type);
 #define ARRAY_SIZE(A) \
      ((unsigned int)(sizeof((A)) / sizeof((A)[0])))
 
+bool IsExpressionNode(metac_node_kind_t Kind)
+{
+    return ((Kind > node_exp_invalid) & (Kind < node_exp_max));
+}
+
 void MetaCParser_Init(metac_parser_t* self)
 {
     self->CurrentTokenIndex = 0;

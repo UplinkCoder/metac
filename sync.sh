@@ -24,6 +24,10 @@ if [ -d $DST ]; then
 
     chmod +x $DST/gen_code.sh $DST/sync_from.sh $DST/sync.sh $DST/run_tests.sh
 
+    mkdir -p $DST/3rd_party
+    cp 3rd_party/bsr.c \
+       $DST/3rd_party
+
     mkdir -p $DST/$TRACY_DIR
     cp $TRACY_DIR/TracyC.h \
        $DST/$TRACY_DIR

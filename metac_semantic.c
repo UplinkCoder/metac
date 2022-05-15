@@ -1,6 +1,7 @@
 #include "metac_semantic.h"
-#include "compat.h"
 #include <assert.h>
+bool IsExpressionNode(metac_node_kind_t);
+
 
 static inline bool isBasicType(metac_type_kind_t typeKind)
 {
@@ -13,15 +14,15 @@ static inline bool isBasicType(metac_type_kind_t typeKind)
 
 void MetaCSemantic_Init(metac_semantic_state_t* self, metac_parser_t* parser)
 {
-    TypeTableInitImpl(&self->ArrayTypeTable,
+    TypeTableInitImpl((metac_type_table_t*)&self->ArrayTypeTable,
                       sizeof(metac_type_array_slot_t),
                       type_index_array);
 
-    TypeTableInitImpl(&self->StructTypeTable,
+    TypeTableInitImpl((metac_type_table_t*)&self->StructTypeTable,
                       sizeof(metac_type_struct_slot_t),
                       type_index_struct);
 
-    TypeTableInitImpl(&self->PtrTypeTable,
+    TypeTableInitImpl((metac_type_table_t*)&self->PtrTypeTable,
                       sizeof(metac_type_ptr_slot_t),
                       type_index_ptr);
 
@@ -30,7 +31,7 @@ void MetaCSemantic_Init(metac_semantic_state_t* self, metac_parser_t* parser)
 
     self->ExpressionStackCapacity = 64;
     self->ExpressionStack = malloc(
-        sizeof(metac_expression_t) * self->ExpressionStackCapacity);
+        sizeof(metac_sema_expression_t) * self->ExpressionStackCapacity);
     self->ExpressionStackSize = 0;
 
     self->ScopeStackCapacity = 64;
@@ -202,7 +203,7 @@ static inline void TypeToCharsP(metac_semantic_state_t* self,
         } break;
         case type_index_ptr:
         {
-            metac_type_array_slot_t* ptrType =
+            metac_type_ptr_slot_t* ptrType =
                 (self->PtrTypeTable.Slots + TYPE_INDEX_INDEX(typeIndex));
             TypeToCharsP(self, printer, ptrType->ElementTypeIndex);
             MetacPrinter_PrintStringLiteral(printer, "*");
@@ -215,12 +216,14 @@ const char* TypeToChars(metac_semantic_state_t* self, metac_type_index_t typeInd
     const char* result = 0;
     static metac_printer_t printer = {0};
     if (!printer.StringMemory)
-        MetaCPrinter_Init(&printer, self->ParserIdentifierTable, 0);
+        MetaCPrinter_InitSz(&printer, self->ParserIdentifierTable, 0, 32);
     else
         MetaCPrinter_Reset(&printer);
     TypeToCharsP(self, &printer, typeIndex);
     printer.StringMemory[printer.StringMemorySize++] = '\0';
     result = printer.StringMemory;
+
+    return result;
 }
 
 void MetaCSemantic_PushExpr(metac_semantic_state_t* self, metac_sema_expression_t* expr)
@@ -237,14 +240,9 @@ void MetaCSemantic_PopExpr(metac_semantic_state_t* self,  metac_sema_expression_
 
 }
 
-bool MetaCSemantic_HasAddress(metac_semantic_state_t* self,
-                              metac_sema_expression_t* expr)
+bool MetaCSemantic_CanHaveAddress(metac_semantic_state_t* self,
+                                  metac_expression_t* expr)
 {
-    if (!expr->TypeIndex.v || expr->TypeIndex.v == ERROR_TYPE_INDEX_V)
-    {
-        return false;
-    }
-
     switch (expr->Kind)
     {
         case exp_identifier:
@@ -295,11 +293,6 @@ metac_sema_expression_t* AllocNewSemaExpression(metac_expression_t* expr)
                ((char*)result) + sizeof(metac_sema_expression_header_t),
                ((char*)expr) + sizeof(metac_expression_header_t),
                sizeof(metac_expression_t) - sizeof(metac_expression_header_t));
-
-        printf("(dst:%p src:%p size:%d)\n",
-                ((char*)result) + sizeof(metac_sema_expression_header_t),
-                ((char*)expr) + sizeof(metac_expression_header_t),
-                sizeof(metac_expression_t) - sizeof(metac_expression_header_t));
     }
 
     return result;
@@ -340,17 +333,29 @@ metac_sema_expression_t* MetaCSemantic_doExprSemantic(metac_semantic_state_t* se
             result->TypeIndex = MetaCSemantic_GetTypeIndex(self, type_int, 0);
         break;
         case exp_identifier:
-            result = MetaCSemantic_LookupIdentifier(self, result->IdentifierKey, result->IdentifierPtr);
-
+        {
+            metac_node_header_t* node =
+                MetaCSemantic_LookupIdentifier(self,
+                                               result->IdentifierKey,
+                                               result->IdentifierPtr);
+            if (IsExpressionNode(node->Kind))
+            {
+                result = (metac_sema_expression_t*) node;
+                if (node->Kind == exp_identifier)
+                {
+                    fprintf(stderr, "Identifier lookup failed\n");
+                }
+            }
             //assert(0);
             //
+        }
         break;
         case exp_addr:
             MetaCSemantic_PushExpr(self, result);
             result->E1 = MetaCSemantic_doExprSemantic(self, expr->E1);
             MetaCSemantic_PopExpr(self, result);
             assert(result->E1->TypeIndex.v != 0 && result->E1->TypeIndex.v != ERROR_TYPE_INDEX_V);
-            if (!MetaCSemantic_HasAddress(self, expr->E1))
+            if (!MetaCSemantic_CanHaveAddress(self, expr->E1))
             {
                 result->TypeIndex.v = ERROR_TYPE_INDEX_V;
                 SemanticError(self, "cannot take the address of %s", MetaCPrinter_PrintExpression(&self->Printer, expr->E1));
