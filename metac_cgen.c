@@ -23,7 +23,7 @@ int GenerateFunctionCode(metac_codegen_function_t* cgfunction, void* c)
     int result = BCGen_interface.beginFunction(c, 0, "func");
 
     for(metac_statement_t* stmt = func->FunctionBody->Body;
-        stmt != _emptyPointer;
+        stmt != emptyPointer;
         stmt = stmt->Next)
     {
         switch(stmt->StmtKind)
