@@ -473,21 +473,22 @@ typedef enum metac_type_kind_t
 
     type_struct,
     type_union,
+    type_class,
     type_enum,
 
-    type_auto,
-    type_type,
-    type_void,
+    type_typedef,
 
+    type_auto,
+    type_void,
     type_bool,
     type_char,
     type_short,
     type_int,
     type_long,
-    type_long_long,
-
     type_float,
     type_double,
+
+    type_long_long,
 
     type_unsigned_char,
     type_unsigned_short,
@@ -495,10 +496,13 @@ typedef enum metac_type_kind_t
     type_unsigned_long,
     type_unsigned_long_long,
 
+    type_type,
     type_identifier,
 
     type_ptr,
     type_array,
+
+    type_map,
 
     type_max
 } metac_type_kind_t;
@@ -636,23 +640,12 @@ typedef struct decl_type_struct_t
 
     metac_identifier_ptr_t Identifier;
 
+    metac_identifier_ptr_t BaseIdentifier;
+
     struct decl_field_t* Fields;
 
     uint32_t FieldCount;
 } decl_type_struct_t;
-
-typedef struct decl_type_union_t
-{
-    DECLARATION_HEADER
-
-    TYPE_HEADER
-
-    metac_identifier_ptr_t Identifier;
-
-    struct decl_field_t* Fields;
-
-    uint32_t FieldCount;
-} decl_type_union_t;
 
 typedef struct decl_typedef_t
 {

@@ -335,8 +335,6 @@ typedef struct sema_decl_enum_member_t
     metac_identifier_ptr_t Name;
 
     metac_sema_expression_t* Value;
-
-    struct sema_decl_enum_member_t* Next;
 } sema_decl_enum_member_t;
 
 typedef struct sema_decl_type_enum_t
@@ -345,8 +343,11 @@ typedef struct sema_decl_type_enum_t
 
     SEMA_TYPE_HEADER
 
+    metac_identifier_ptr_t Name;
+
     sema_decl_enum_member_t* Members;
 
+    uint32_t MemberCount;
 } sema_decl_type_enum_t;
 
 typedef struct sema_decl_type_functiontype_t
@@ -370,7 +371,7 @@ typedef struct sema_decl_type_array_t
 } sema_decl_type_array_t;
 
 
-typedef struct sema_decl_type_struct_t
+typedef struct sema_type_aggregate_t
 {
     SEMA_DECLARATION_HEADER
 
@@ -381,7 +382,7 @@ typedef struct sema_decl_type_struct_t
     struct metac_aggregate_field_t* Fields;
 
     uint32_t FieldCount;
-} sema_decl_type_struct_t;
+} sema_type_aggregate_t;
 
 typedef struct sema_decl_type_union_t
 {
@@ -417,7 +418,7 @@ typedef struct metac_sema_declaration_t
         sema_decl_type_ptr_t sema_decl_type_ptr;
         sema_decl_function_t sema_decl_function;
         sema_decl_type_array_t sema_decl_type_array;
-        sema_decl_type_struct_t sema_decl_type_struct;
+        sema_type_aggregate_t sema_type_aggergate;
     };
 
 } metac_sema_declaration_t;

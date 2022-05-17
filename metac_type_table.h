@@ -13,13 +13,22 @@ typedef struct metac_type_table_slot_t
     uint32_t HashKey;
 } metac_type_table_slot_t;
 
-typedef struct metac_type_struct_slot_t
+typedef struct metac_type_enum_slot_t
+{
+    uint32_t HashKey;
+
+    uint32_t MemberCount;
+    metac_enum_member_t* Members;
+} metac_type_enum_slot_t;
+
+typedef struct metac_type_aggregate_slot_t
 {
     uint32_t HashKey;
 
     uint32_t fieldCount;
-    // metac_aggregate_field_t* fields;
-} metac_type_struct_slot_t;
+    metac_type_aggregate_field_t* fields;
+} metac_type_aggregate_slot_t;
+
 
 typedef struct metac_type_ptr_slot_t
 {
@@ -68,16 +77,19 @@ typedef struct  METAC_TYPE_TABLE_T(SLOT_TYPE) \
 } METAC_TYPE_TABLE_T(SLOT_TYPE);
 
 #define FOREACH_TABLE_SLOT_TYPE(M) \
+    M(enum) \
     M(array) \
-    M(struct) \
+    M(aggregate) \
     M(ptr)
 
 FOREACH_TABLE_SLOT_TYPE(METAC_TYPE_TABLE_T_DEF)
 
 
 #define FOREACH_TABLE_MEMBER(M) \
+    M(enum, Enum) \
     M(array, Array) \
-    M(struct, Struct) \
+    M(aggregate, Struct) \
+    M(aggregate, Union) \
     M(ptr, Ptr)
 
 #define DECLARE_GET_OR_ADD(TYPE_NAME, MEMBER_NAME) \

@@ -61,11 +61,13 @@ typedef struct chunk_ptr_t
     }
 } chunk_ptr_t;
 */
+#pragma pack(push, 2)
 typedef struct node_ptr_t
 {
-    metac_node_kind_t Kind : 4;
-    uint32_t          Ptr  : 28;
+    uint32_t          Ptr;
+    metac_node_kind_t Kind : 7;
 } ndoe_ptr_t;
+#pragma pack(pop)
 
 noinline void _newMemRealloc(void** memP, uint32_t* capacityP, const uint32_t elementSize)
 {
@@ -96,18 +98,21 @@ noinline void _newMemRealloc(void** memP, uint32_t* capacityP, const uint32_t el
     M(sema_decl_function_t, _newSemaFunc) \
     M(sema_decl_variable_t, _newSemaVariables) \
     M(sema_decl_type_enum_t, _newSemaEnums) \
-    M(sema_decl_type_struct_t, _newSemaStructs) \
+    M(sema_type_aggregate_t, _newSemaStructs) \
+    M(metac_type_aggregate_field_t, _newSemaStructFields) \
+    M(sema_type_aggregate_t, _newSemaUnions) \
+    M(metac_type_aggregate_field_t, _newSemaUnionFields) \
     M(metac_sema_statement_t, _newSemaStatements) \
     M(metac_scope_t, _newScopes)
 
 
-#define FREELIST(TYPE_NAME) \
-    struct TYPE_NAME ## _freelist_t
+#define FREELIST(PREFIX) \
+    struct PREFIX ## _freelist_t
 
-#define DEF_FREELIST_T(TYPE_NAME) \
-    FREELIST(TYPE_NAME) { \
+#define DEF_FREELIST_T(TYPE_NAME, PREFIX) \
+    FREELIST(PREFIX) { \
         TYPE_NAME* Element; \
-        FREELIST(TYPE_NAME)* Next; \
+        FREELIST(PREFIX)* Next; \
         uint8_t nElements; \
     };
 
@@ -120,10 +125,11 @@ static metac_expression_t* _newExp_mem = 0;
 #define DECLARE_STATIC_POOL(TYPE_NAME, PREFIX) \
     static uint32_t PREFIX ##_size = 0; \
     static uint32_t PREFIX ##_capacity = 0; \
-    static TYPE_NAME* PREFIX ##_mem = (TYPE_NAME*)0; \
-    DEF_FREELIST_T(TYPE_NAME) \
-    static FREELIST(TYPE_NAME)* PREFIX ##_freelist = (FREELIST(TYPE_NAME)*)0;
-
+    static TYPE_NAME* PREFIX ##_mem = (TYPE_NAME*)0;
+/*
+    DEF_FREELIST_T(TYPE_NAME, PREFIX) \
+    static FREELIST(PREFIX)* PREFIX ##_freelist = (FREELIST(PREFIX)*)0;
+*/
 FOREACH_ALLOCATED_TYPE(DECLARE_STATIC_POOL)
 
 static uint32_t _nodeCounter = 1;
@@ -137,6 +143,7 @@ static uint32_t _nodeCounter = 1;
     (__builtin_atomic_fetch_add(&v, __ATOMIC_RELEASE))
 #endif
 
+/// TODO: lock during realloc
 #define REALLOC_BOILERPLATE(PREFIX) \
 if (PREFIX ## _capacity <= PREFIX ## _size) \
     { \
@@ -285,6 +292,75 @@ sema_decl_variable_t* AllocFunctionParameters(sema_decl_function_t* func,
             i++)
         {
             (result + i)->Serial = INC(_nodeCounter);
+        }
+
+    }
+
+    return result;
+}
+
+sema_type_aggregate_t* AllocNewAggregate(metac_type_kind_t kind)
+{
+    sema_type_aggregate_t* result = 0;
+
+    switch(kind)
+    {
+        case type_struct:
+        {
+            REALLOC_BOILERPLATE(_newSemaStructs)
+            result = _newSemaStructs_mem + INC(_newSemaStructs_size);
+        } break;
+        case type_union:
+        {
+            REALLOC_BOILERPLATE(_newSemaUnions)
+            result = _newSemaUnions_mem + INC(_newSemaUnions_size);
+        } break;
+        case type_class:
+        {
+            assert(0);
+        } break;
+        default: assert(0);
+    }
+
+    result->TypeKind = kind;
+    result->Serial = INC(_nodeCounter);
+
+    return result;
+}
+
+metac_type_aggregate_field_t* AllocAggregateFields(sema_type_aggregate_t* aggregate,
+                                                   metac_type_kind_t kind,
+                                                   uint32_t fieldCount)
+{
+    uint32_t aggregateIndex = 0;
+    metac_type_aggregate_field_t* result = 0;
+    switch(kind)
+    {
+        case type_struct:
+        {
+            REALLOC_BOILERPLATE(_newSemaStructFields)
+            result = _newSemaStructFields_mem + POST_ADD(_newSemaStructFields_size, fieldCount);
+            aggregateIndex = aggregate - _newSemaStructs_mem;
+        } break;
+        case type_union:
+        {
+            REALLOC_BOILERPLATE(_newSemaUnionFields)
+            result = _newSemaUnionFields_mem + POST_ADD(_newSemaUnionFields_size, fieldCount);
+            aggregateIndex = aggregate - _newSemaUnions_mem;
+        } break;
+        case type_class:
+        {
+            assert(0);
+        } break;
+    }
+
+    {
+        for(int i = 0;
+            i < fieldCount;
+            i++)
+        {
+            (result + i)->Serial = INC(_nodeCounter);
+            (result + i)->AggregateIndex = aggregateIndex;
         }
 
     }

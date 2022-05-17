@@ -3,19 +3,22 @@
 
 #include "compat.h"
 #include "metac_identifier_table.h"
+
 typedef enum metac_type_index_kind_t
 {
     type_index_unknown  = 0,
 
-    type_index_struct   = 1,
-    type_index_union    = 2,
-    type_index_class    = 3,
+    type_index_basic    = 1,
 
-    type_index_enum     = 4,
-    type_index_basic    = 5,
+    type_index_enum     = 2,
 
-    type_index_ptr      = 6,
-    type_index_array    = 7,
+    type_index_ptr      = 3,
+    type_index_array    = 4,
+
+    type_index_struct   = 5,
+    type_index_union    = 6,
+    type_index_class    = 7,
+
     type_index_map      = 8,
 
     // unused range 9-D 9, A, B, C, D
@@ -46,14 +49,27 @@ typedef struct metac_type_index_t
 
 #define ERROR_TYPE_INDEX_V -1
 
-typedef struct metac_struct_field_t
+typedef struct metac_type_aggregate_field_t
 {
     uint32_t Hash;
+    uint32_t Serial;
 
     metac_type_index_t Type;
     metac_identifier_ptr_t Identifier;
 
     uint32_t Offset;
-} metac_struct_field_t;
+    uint32_t AggregateIndex;
+} metac_type_aggregate_field_t;
+
+typedef struct metac_enum_member_t
+{
+    uint32_t Hash;
+    uint32_t Serial;
+
+    metac_type_index_t Type;
+    metac_identifier_ptr_t Identifier;
+
+    struct metac_sema_expression_t* Value;
+} metac_enum_member_t;
 
 #endif

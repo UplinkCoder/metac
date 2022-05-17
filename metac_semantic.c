@@ -25,7 +25,7 @@ void MetaCSemantic_Init(metac_semantic_state_t* self, metac_parser_t* parser)
                       type_index_array);
 
     TypeTableInitImpl((metac_type_table_t*)&self->StructTypeTable,
-                      sizeof(metac_type_struct_slot_t),
+                      sizeof(metac_type_aggregate_slot_t),
                       type_index_struct);
 
     TypeTableInitImpl((metac_type_table_t*)&self->PtrTypeTable,
@@ -76,16 +76,183 @@ metac_sema_statement_t* MetaCSemantic_doStatementSemantic(metac_semantic_state_t
     return result;
 }
 
+metac_type_index_t MetaCSemantic_GetTypeIndex(metac_semantic_state_t* state,
+                                              metac_type_kind_t typeKind,
+                                              decl_type_t* type)
+{
+    metac_type_index_t result = {0};
+
+    if (isBasicType(typeKind))
+    {
+        result.v = TYPE_INDEX_V(type_index_basic, (uint32_t) typeKind);
+
+        assert((type == emptyPointer) || type->TypeKind == typeKind);
+        if ((type != emptyPointer) && (type->TypeModifiers & typemod_unsigned))
+        {
+            if((typeKind >= type_char) & (typeKind <= type_long))
+            {
+                result.v +=
+                    (((uint32_t)type_unsigned_char) - ((uint32_t)type_char));
+            }
+            else if (typeKind == type_long_long)
+            {
+                result.v +=
+                    (((uint32_t)type_unsigned_long_long) - ((uint32_t)type_long_long));
+            }
+            else
+            {
+                //TODO Real error macro
+                fprintf(stderr, "modifier unsigned cannot be applied to: %s\n", TypeToChars(state, result));
+            }
+        }
+    }
+
+    return result;
+}
+
+bool isAggregateType(metac_type_kind_t TypeKind)
+{
+    if (TypeKind == type_struct || TypeKind == type_union)
+    {
+        return true;
+    }
+    return false;
+}
+#define INVALID_SIZE ((uint32_t)-1)
+#ifndef U32
+#define U32(VAR) \
+	(*(uint32_t*)(&VAR))
+#endif
+/// Returns size in byte or INVALID_SIZE on error
+uint32_t MetaCSemantic_getTypeSize(metac_semantic_state_t* self,
+                                   metac_type_index_t typeIndex)
+{
+    uint32_t result = INVALID_SIZE;
+    if (TYPE_INDEX_KIND(typeIndex) == type_index_basic)
+    {
+        if ((TYPE_INDEX_INDEX(typeIndex) >= type_unsigned_char)
+         && (TYPE_INDEX_INDEX(typeIndex) <= type_unsigned_int))
+        {
+            U32(typeIndex) -=
+                ((uint32_t)type_char - (uint32_t)type_unsigned_char);
+        }
+
+        switch((metac_type_kind_t)TYPE_INDEX_INDEX(typeIndex))
+        {
+        case type_void:
+            result = 0;
+            break;
+        case type_bool:
+            result = 1;
+            break;
+        case type_char:
+            result = 1;
+            break;
+        case type_short:
+            result = 2;
+            break;
+        case type_int:
+            result = 4;
+            break;
+        case type_long:
+            //TODO have this configureable
+            //FIXME
+            result = 4;
+            break;
+        case type_float:
+            result = 4;
+            break;
+        case type_double:
+            result = 8;
+            break;
+        case type_long_long:
+            result = 8;
+            break;
+        case type_unsigned_long_long:
+            result = 8;
+            break;
+        }
+    }
+    else
+    {
+        assert(0);
+    }
+
+    return result;
+}
+
 metac_type_index_t MetaCSemantic_doTypeSemantic(metac_semantic_state_t* self,
                                                 decl_type_t* type)
 {
     metac_type_index_t result = {0};
 
-    if (type->TypeIdentifier.v)
+    const metac_type_kind_t typeKind = type->TypeKind;
+
+    if (isBasicType(typeKind))
+    {
+        result = MetaCSemantic_GetTypeIndex(self, typeKind, type);
+    }
+    else if (isAggregateType(typeKind))
+    {
+        decl_type_struct_t* agg = (decl_type_struct_t*) type;
+        sema_type_aggregate_t* semaAgg = AllocNewAggregate(typeKind);
+        metac_type_aggregate_field_t* semaFields =
+            AllocAggregateFields(semaAgg, typeKind, agg->FieldCount);
+
+        metac_type_aggregate_field_t* onePastLast =
+            semaFields + agg->FieldCount;
+        switch(typeKind)
+        {
+            case type_struct:
+            {
+                decl_field_t* declField = agg->Fields;
+                uint32_t currentFieldOffset = 0;
+                uint32_t alignment = 1;
+                for(metac_type_aggregate_field_t* semaField = semaFields;
+                    semaField < onePastLast;
+                    semaField++)
+                {
+                    metac_type_index_t fieldTypeIndex =
+                        MetaCSemantic_doTypeSemantic(self, declField->Field.VarType);
+                    uint32_t size = MetaCSemantic_getTypeSize(self, fieldTypeIndex);
+                    if (size > alignment)
+                        alignment = size;
+                    if (size < alignment)
+                        size = alignment;
+                    assert(size != INVALID_SIZE);
+                    semaField->Offset = currentFieldOffset;
+                    currentFieldOffset += size;
+                    declField = declField->Next;
+                }
+                fprintf(stderr, "sizeof(struct) = %u\n", currentFieldOffset);//DEBUG
+            } break;
+
+            case type_union:
+            {
+
+            } break;
+
+            case type_class:
+            {
+                assert(0);
+                // Not implemented yet
+            } break;
+
+            default: assert(0);
+
+        }
+    }
+    else if (type->TypeIdentifier.v)
     {
         printf("Type: %s\n", IdentifierPtrToCharPtr(self->ParserIdentifierTable, type->TypeIdentifier));
         //self->ParserIdentifierTable->
     }
+    else
+    {
+
+    }
+
+
 
     return result;
 }
@@ -156,6 +323,23 @@ metac_sema_declaration_t* MetaCSemantic_doDeclSemantic(metac_semantic_state_t* s
         {
             decl_variable_t* v = cast(decl_variable_t*) decl;
         } break;
+        case decl_type_struct:
+            ((decl_type_t*)decl)->TypeKind = type_struct;
+            goto LdoTypeSemantic;
+        case decl_type_union:
+            ((decl_type_t*)decl)->TypeKind = type_union;
+            goto LdoTypeSemantic;
+        case decl_type_array:
+            ((decl_type_t*)decl)->TypeKind = type_array;
+            goto LdoTypeSemantic;
+        case decl_typedef:
+            ((decl_type_t*)decl)->TypeKind = type_typedef;
+            goto LdoTypeSemantic;
+    LdoTypeSemantic:
+        {
+            metac_type_index_t type_index =
+                MetaCSemantic_doTypeSemantic(self, (decl_type_t*)decl);
+        } break;
     }
 }
 
@@ -166,20 +350,6 @@ metac_sema_declaration_t* MetaCSemantic_doDeclSemantic(metac_semantic_state_t* s
 #define INC(v)
     (__builtin_atomic_fetch_add(&v, __ATOMIC_RELEASE))
 #endif
-
-metac_type_index_t MetaCSemantic_GetTypeIndex(metac_semantic_state_t* state,
-                                              metac_type_kind_t typeKind,
-                                              decl_type_t* type)
-{
-    if (isBasicType(typeKind))
-    {
-        return (metac_type_index_t) {
-            TYPE_INDEX_V(type_index_basic, (uint32_t) typeKind)
-        };
-    }
-
-    return (metac_type_index_t) {0};
-}
 
 metac_type_index_t MetaCSemantic_GetArrayTypeOf(metac_semantic_state_t* state,
                                                 metac_type_index_t elementTypeIndex,
@@ -222,22 +392,33 @@ static inline const char* BasicTypeToChars(metac_type_index_t typeIndex)
             return "bool";
         case type_char:
             return "char";
-
-        case type_unsigned_int:
-            return "unsigned int";
-        case type_unsigned_long :
-            return "long";
-        case type_unsigned_long_long:
-            return "unsigned long long";
-
+        case type_short:
+            return "short";
+        case type_int :
+            return "int";
         case type_long :
             return "long";
         case type_long_long:
             return "long long";
-        case type_int :
-            return "int";
+
         case type_float :
             return "float";
+        case type_double :
+            return "double";
+
+        case type_unsigned_char:
+            return "unsigned char";
+        case type_unsigned_short:
+            return "unsigned short";
+        case type_unsigned_int:
+            return "unsigned int";
+        case type_unsigned_long :
+            return "unsigned long";
+        case type_unsigned_long_long:
+            return "unsigned long long";
+
+
+        default: assert(0);
     }
     return 0;
 }
@@ -390,15 +571,15 @@ metac_sema_expression_t* MetaCSemantic_doExprSemantic(metac_semantic_state_t* se
             assert(0);
 
         case exp_char :
-            result->TypeIndex = MetaCSemantic_GetTypeIndex(self, type_char, 0);
+            result->TypeIndex = MetaCSemantic_GetTypeIndex(self, type_char, emptyPointer);
         break;
         case exp_string :
             result->TypeIndex = MetaCSemantic_GetArrayTypeOf(self,
-                MetaCSemantic_GetTypeIndex(self, type_char, 0),
+                MetaCSemantic_GetTypeIndex(self, type_char, _emptyPointer),
                 LENGTH_FROM_STRING_KEY(expr->StringKey));
         break;
         case exp_signed_integer :
-            result->TypeIndex = MetaCSemantic_GetTypeIndex(self, type_int, 0);
+            result->TypeIndex = MetaCSemantic_GetTypeIndex(self, type_int, emptyPointer);
         break;
         case exp_identifier:
         {

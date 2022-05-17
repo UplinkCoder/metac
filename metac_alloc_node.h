@@ -21,9 +21,17 @@ metac_statement_t* AllocNewStatement_(metac_statement_kind_t kind, size_t nodeSi
 // ------------------------------------------- sema ---------------------------------------------------
 
 metac_sema_expression_t* AllocNewSemaExpression(metac_expression_t* expr);
+
 sema_decl_function_t* AllocNewSemaFunction(decl_function_t* func);
+
 sema_decl_variable_t* AllocFunctionParameters(sema_decl_function_t* func,
-                                               uint32_t parameterCount);
+                                              uint32_t parameterCount);
+
+sema_type_aggregate_t* AllocNewAggregate(metac_type_kind_t kind);
+
+metac_type_aggregate_field_t* AllocAggregateFields(sema_type_aggregate_t* aggregate,
+                                                   metac_type_kind_t kind,
+                                                   uint32_t fieldCount);
 
 #define AllocNewSemaStatement(KIND, RESULT_PTR) \
     (sema_ ## KIND ## _t*) AllocNewSemaStatement_(KIND, sizeof(sema_ ## KIND ##_t), ((void**)(RESULT_PTR)))

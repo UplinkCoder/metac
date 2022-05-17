@@ -1308,6 +1308,14 @@ LnextToken:
         {
             type->TypeKind = (metac_type_kind_t)(type_auto + (tokenType - tok_kw_auto));
             U32(type->TypeModifiers) |= typeModifiers;
+            if (tokenType == tok_kw_long)
+            {
+                if (MetaCParser_PeekMatch(self, tok_kw_long, 1))
+                {
+                    MetaCParser_Match(self, tok_kw_long);
+                    type->TypeKind = type_long_long;
+                }
+            }
             break;
         }
         else if (tokenType == tok_kw_unsigned)
@@ -1343,7 +1351,21 @@ LnextToken:
                 struct_->Identifier = empty_identifier;
             }
 
-
+            if (tokenType == tok_kw_struct)
+            {
+                if (MetaCParser_PeekMatch(self, tok_colon, 1))
+                {
+                    MetaCParser_Match(self, tok_colon);
+                    metac_token_t* baseName = MetaCParser_NextToken(self);
+                    struct_->BaseIdentifier = RegisterIdentifier(self, baseName);
+                }
+                goto LSetEmptyBase;
+            }
+            else
+            {
+        LSetEmptyBase:
+                struct_->BaseIdentifier = empty_identifier;
+            }
             if (MetaCParser_PeekMatch(self, tok_lBrace, 1))
             {
                 MetaCParser_Match(self, tok_lBrace);
@@ -1426,6 +1448,10 @@ metac_declaration_t* MetaCParser_ParseDeclaration(metac_parser_t* self, metac_de
     if (IsTypeToken(tokenType))
     {
          type = MetaCParser_ParseTypeDeclaration(self, parent, 0);
+         if (((tokenType == tok_kw_struct) | (tokenType == tok_kw_union)))
+         {
+             result = type;
+         }
     }
 
     if (tokenType == tok_kw_typedef)
@@ -1484,7 +1510,7 @@ metac_declaration_t* MetaCParser_ParseDeclaration(metac_parser_t* self, metac_de
                         metac_token_t* nameToken = MetaCParser_Match(self, tok_identifier);
                         param->Identifier = RegisterIdentifier(self, nameToken);
 
-                            // follow parameter
+                        // follow parameter
                         while(MetaCParser_PeekMatch(self, tok_lBracket, true))
                         {
                             param->Type = (decl_type_t*)ParseArraySuffix(self, param->Type);
@@ -1586,6 +1612,7 @@ static metac_statement_t* MetaCParser_ParseStatement(metac_parser_t* self,
     {
         return ErrorStatement();
     }
+
     if (self->CurrentBlockStatement)
         self->CurrentBlockStatement->StatementCount++;
 

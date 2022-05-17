@@ -110,11 +110,10 @@ typedef struct metac_lexer_state_t
     \
     M(tok_kw_union) \
     M(tok_kw_enum) \
-    \
     M(tok_kw_typedef) \
+    \
     M(tok_kw_auto) \
     M(tok_kw_void) \
-    \
     M(tok_kw_bool) \
     M(tok_kw_char) \
     M(tok_kw_short) \

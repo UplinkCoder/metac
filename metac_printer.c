@@ -199,6 +199,10 @@ static inline void PrintType(metac_printer_t* self, decl_type_t* type)
                     ((type->TypeKind - type_auto) + tok_kw_auto);
                 PrintKeyword(self, tok);
             }
+            else if (type->TypeKind == type_long_long)
+            {
+                PrintString(self, "long long", sizeof("long long") - 1);
+            }
             else if (type->TypeKind == type_identifier)
             {
                 PrintIdentifier(self, type->TypeIdentifier);

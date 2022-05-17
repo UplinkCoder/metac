@@ -20,6 +20,16 @@ typedef struct metac_sema_decl_state_t
     // uint32_t CurrentOffset;
 } metac_sema_decl_state_t;
 
+#define DECLARE_TYPE_TABLE(TYPE_NAME, MEMBER_NAME) \
+    METAC_TYPE_TABLE_T(TYPE_NAME) MEMBER_NAME;
+
+#define FOREACH_TYPE_TABLE(M) \
+    M(enum,   EnumTypeTable) \
+    M(array, ArrayTypeTable) \
+    M(aggregate, StructTypeTable) \
+    M(ptr, PtrTypeTable) \
+    M(aggregate, UnionTypeTable)
+
 typedef struct metac_semantic_state_t
 {
     metac_identifier_table_t SemanticIdentifierTable;
@@ -36,9 +46,7 @@ typedef struct metac_semantic_state_t
     uint32_t ScopeStackCapacity;
 
     // metac_type_table_t* TypeTable;
-    METAC_TYPE_TABLE_T(array) ArrayTypeTable;
-    METAC_TYPE_TABLE_T(struct) StructTypeTable;
-    METAC_TYPE_TABLE_T(ptr) PtrTypeTable;
+    FOREACH_TYPE_TABLE(DECLARE_TYPE_TABLE)
 
     metac_sema_expression_t* ExpressionStack;
     uint32_t ExpressionStackSize;
