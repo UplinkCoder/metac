@@ -112,3 +112,4 @@ metac_scope_t* MetaCScope_PushScope(metac_scope_t *self, metac_scope_parent_t sc
 
     return result;
 }
+#undef _emptyPointer

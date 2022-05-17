@@ -467,46 +467,6 @@ typedef struct metac_statement_t
     uint32_t Hash; \
     uint32_t Serial;
 
-typedef enum metac_type_kind_t
-{
-    type_invalid,
-
-    type_struct,
-    type_union,
-    type_class,
-    type_enum,
-
-    type_typedef,
-
-    type_auto,
-    type_void,
-    type_bool,
-    type_char,
-    type_short,
-    type_int,
-    type_long,
-    type_float,
-    type_double,
-
-    type_long_long,
-
-    type_unsigned_char,
-    type_unsigned_short,
-    type_unsigned_int,
-    type_unsigned_long,
-    type_unsigned_long_long,
-
-    type_type,
-    type_identifier,
-
-    type_ptr,
-    type_array,
-
-    type_map,
-
-    type_max
-} metac_type_kind_t;
-
 typedef enum metac_type_modifiers
 {
     typemod_none,

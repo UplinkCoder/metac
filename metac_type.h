@@ -72,4 +72,49 @@ typedef struct metac_enum_member_t
     struct metac_sema_expression_t* Value;
 } metac_enum_member_t;
 
+
+typedef enum metac_type_kind_t
+{
+    type_invalid,
+
+    type_struct,
+    type_union,
+    type_class,
+    type_enum,
+
+    type_typedef,
+
+    type_auto,
+// DoNT CHANGE THE ORDER FROM HERE
+// XXX: Order needs to be in sync with the type tokens in metac_lexer.h
+    type_void,
+    type_bool,
+    type_char,
+    type_short,
+    type_int,
+    type_long,
+    type_float,
+    type_double,
+//TO HERE
+    type_long_long,
+    type_long_double,
+// ALSO DON"T CHANGE ANYTHIBG FROM HERE
+    type_unsigned_char,
+    type_unsigned_short,
+    type_unsigned_int,
+    type_unsigned_long,
+//TO HERE
+    type_unsigned_long_long,
+
+
+    type_type,
+    type_identifier,
+
+    type_ptr,
+    type_array,
+
+    type_map,
+
+    type_max
+} metac_type_kind_t;
 #endif

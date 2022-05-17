@@ -1,6 +1,8 @@
 #include "metac_semantic.h"
 #include <assert.h>
 #include "metac_alloc_node.h"
+#include "metac_target_info.h"
+#include "generated/default_target_info.h"
 
 #define AT(...)
 
@@ -299,8 +301,8 @@ sema_decl_function_t* MetaCSemantic_doFunctionSemantic(metac_semantic_state_t* s
 
     f->Scope = MetaCScope_PushScope(self->CurrentScope, Parent);
 
-    f->FunctionBody =
-        MetaCSemantic_doStatementSemantic(self, func->FunctionBody);
+    f->FunctionBody = (sema_stmt_block_t*)
+        MetaCSemantic_doStatementSemantic(self, (metac_statement_t*)func->FunctionBody);
 
     return f;
 }
@@ -423,7 +425,7 @@ static inline const char* BasicTypeToChars(metac_type_index_t typeIndex)
     return 0;
 }
 #ifndef _emptyPointer
-#define _emptyPointer 0x1
+#define _emptyPointer (void*)0x1
 #define emptyNode (metac_node_header_t*) _emptyPointer
 #endif
 

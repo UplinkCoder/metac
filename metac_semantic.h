@@ -67,8 +67,18 @@ void MetaCSemantic_Init(metac_semantic_state_t* self, metac_parser_t* parser);
 
 void MetaCSemantic_PushExpr(metac_semantic_state_t* self, metac_sema_expression_t* expr);
 void MetaCSemantic_PopExpr(metac_semantic_state_t* self,  metac_sema_expression_t* expr);
+
 metac_sema_expression_t* MetaCSemantic_doExprSemantic(metac_semantic_state_t* self,
                                                       metac_expression_t* expr);
+
+metac_sema_statement_t* MetaCSemantic_doStatementSemantic(metac_semantic_state_t* self,
+                                                          metac_statement_t* stmt);
+
+metac_sema_declaration_t* MetaCSemantic_doDeclSemantic(metac_semantic_state_t* self,
+                                                       metac_declaration_t* decl);
+
+metac_type_index_t MetaCSemantic_doTypeSemantic(metac_semantic_state_t* self,
+                                                decl_type_t* type);
 
 /// Returns _emptyNode to signifiy it could not be found
 /// a valid node otherwise
