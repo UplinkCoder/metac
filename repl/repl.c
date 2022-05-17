@@ -29,6 +29,9 @@ typedef enum parse_mode_t
     parse_mode_expr,
     parse_mode_file,
 
+    parse_mode_ds,
+    parse_mode_ss,
+
     parse_mode_ee,
     parse_mode_es,
     parse_mode_setvars,
@@ -42,8 +45,10 @@ void PrintHelp(void)
        "      :ee for evaluation mode\n"
        "      :es for expression semantic mode\n"
        "      :d for declaration mode\n"
+       "      :ds for declaration semantic mode\n"
        "      :v for varible mode (set vars for eval)\n"
        "      :s for statement mode\n"
+       "      :ss for statement semantic mode\n"
        "      :t for token mode\n"
        "      :l Load and lex file\n"
        "      :p for preprocessor mode\n"
@@ -115,6 +120,12 @@ LswitchMode:
     case parse_mode_es:
         promt_ = "ES>";
         break;
+    case parse_mode_ss:
+        promt_ = "SS>";
+        break;
+    case parse_mode_ds:
+        promt_ = "DS>";
+        break;
     case parse_mode_setvars:
         promt_ = "SetVars>";
         break;
@@ -179,8 +190,17 @@ LnextLine:
                 parseMode = parse_mode_token;
                 goto LswitchMode;
             case 'd' :
-                parseMode = parse_mode_decl;
-                goto LswitchMode;
+                switch (line[2])
+                {
+                default:
+                    parseMode = parse_mode_decl;
+                    goto LswitchMode;
+
+                 case 's':
+                    parseMode = parse_mode_ds;
+                    goto LswitchMode;
+                }
+
             case 'v' :
                 parseMode = parse_mode_setvars;
                 goto LswitchMode;
@@ -198,8 +218,15 @@ LnextLine:
                     goto LswitchMode;
                 }
             case 's' :
-                parseMode = parse_mode_stmt;
-                goto LswitchMode;
+                switch (line[2])
+                {
+                default:
+                    parseMode = parse_mode_stmt;
+                    goto LswitchMode;
+                case 's':
+                    parseMode = parse_mode_ss;
+                    goto LswitchMode;
+                }
             case 'i' :
 #ifdef ACCEL
                 printf("Accelerator: %s\n", ACCELERATOR);
@@ -360,6 +387,23 @@ LnextLine:
                         printf("Couldn't parse Declaration\n");
                     linenoiseSetMultiLine(false);
                 goto LnextLine;
+
+            case parse_mode_ds :
+            {
+                decl = MetaCParser_ParseDeclarationFromString(line);
+                if (decl)
+                    printf("decl = %s\n", MetaCPrinter_PrintDeclaration(&printer, decl));
+                else
+                    printf("Couldn't parse Declaration\n");
+
+                metac_semantic_state_t sema;
+                MetaCSemantic_Init(&sema, &g_lineParser);
+
+                metac_sema_declaration_t* ds =
+                    MetaCSemantic_doDeclSemantic(&sema, decl);
+
+                goto LnextLine;
+            }
 
             case parse_mode_file :
                 goto LlexSrcBuffer;

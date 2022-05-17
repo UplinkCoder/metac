@@ -237,7 +237,13 @@ static inline metac_token_enum_t MetaCLexFixedLengthToken(const char _chrs[3])
         case '=':
             return tok_cat_ass;
         }
+
+    case '\n':
+        return tok_newline;
+
     }
+
+
     return tok_invalid;
 }
 
@@ -291,6 +297,7 @@ static uint32_t MetaCStaticTokenLength(metac_token_enum_t t)
         case tok_assign      : return 1;
         case tok_lt          : return 1;
         case tok_gt          : return 1;
+        case tok_newline     : return 1;
 
         case tok_lsh_ass     : return 3; // <<=
         case tok_rsh_ass     : return 3; // >>=
@@ -760,7 +767,7 @@ LcontinueLexnig:
                 token.TokenType = tok_uint;
                 bool isHex;
                 uint64_t value;
-             LparseDigits:
+//             LparseDigits:
                 value = 0;
                 isHex = false;
 
@@ -1200,6 +1207,7 @@ void test_lexer()
         "++",
         "--",
         "[]",
+        "\n",
 
         "\0",
 

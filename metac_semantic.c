@@ -1,17 +1,11 @@
 #include "metac_semantic.h"
 #include <assert.h>
+#include "metac_alloc_node.h"
 
 #define AT(...)
 
 bool IsExpressionNode(metac_node_kind_t);
 
-static uint32_t _newSemaExp_capacity;
-static uint32_t _newSemaExp_size;
-static metac_sema_expression_t* _newSemaExp_mem;
-
-static uint32_t _newSemaFunc_capacity;
-static uint32_t _newSemaFunc_size;
-static metac_sema_expression_t* _newSemaFunc_mem;
 
 static inline bool isBasicType(metac_type_kind_t typeKind)
 {
@@ -39,7 +33,7 @@ void MetaCSemantic_Init(metac_semantic_state_t* self, metac_parser_t* parser)
                       type_index_ptr);
 
     IdentifierTableInit(&self->SemanticIdentifierTable);
-
+    self->ParserIdentifierTable = &parser->IdentifierTable;
 
     self->ExpressionStackCapacity = 64;
     self->ExpressionStack = malloc(
@@ -51,117 +45,75 @@ void MetaCSemantic_Init(metac_semantic_state_t* self, metac_parser_t* parser)
         sizeof(metac_scope_t) * self->ExpressionStackCapacity);
     self->ScopeStackSize = 0;
 
+    self->CurrentDeclarationState = 0;
+
     MetaCPrinter_Init(&self->Printer, &self->SemanticIdentifierTable, &parser->StringTable);
 }
 
-void MetaCSemantic_doDeclSemantic(metac_semantic_state_t* self,
-                                  metac_declaration_t* decl)
+metac_sema_statement_t* MetaCSemantic_doStatementSemantic(metac_semantic_state_t* self,
+                                                          metac_statement_t* stmt)
 {
-    switch(decl->DeclKind)
+    metac_sema_statement_t* result;
+
+    switch (stmt->StmtKind)
     {
-        case decl_function:
+        case stmt_exp:
         {
-            decl_function_t* f = cast(decl_function_t*) decl;
+            sema_stmt_exp_t* sse = AllocNewSemaStatement(stmt_exp, &result);
         } break;
-        case decl_variable:
+
+        default: assert(0);
+
+        case stmt_block:
         {
-            decl_variable_t* v = cast(decl_variable_t*) decl;
+            sema_stmt_block_t* ssb = AllocNewSemaStatement(stmt_block, &result);
+            metac_scope_parent_t parent = {SCOPE_PARENT_V(scope_parent_stmt, StatementIndex(ssb))};
+            self->CurrentScope = MetaCScope_PushScope(self->CurrentScope, parent);
+            //for(int i = 0; i < ssb->Body.)
         } break;
     }
+
+    return result;
+}
+
+metac_type_index_t MetaCSemantic_doTypeSemantic(metac_semantic_state_t* self,
+                                                decl_type_t* type)
+{
+    metac_type_index_t result = {0};
+
+    if (type->TypeIdentifier.v)
+    {
+        printf("Type: %s\n", IdentifierPtrToCharPtr(self->ParserIdentifierTable, type->TypeIdentifier));
+        //self->ParserIdentifierTable->
+    }
+
+    return result;
 }
 
 void MetaCSemantic_doParameterSemantic(metac_semantic_state_t* self,
                                        sema_decl_function_t* func,
-                                       sema_decl_parameter_t *result,
+                                       sema_decl_variable_t *result,
                                        decl_parameter_t* param)
 {
     uint32_t paramIndex = result - func->Parameters;
 
+    result->VarIdentifier = param->Identifier;
+    result->VarType = MetaCSemantic_doTypeSemantic(self, param->Type);
+    result->VarInitExpression = 0;
 }
 
-#ifndef ATOMIC
-#define INC(v) \
-    (v++)
-#else
-#define INC(v)
-    (__builtin_atomic_fetch_add(&v, __ATOMIC_RELEASE))
-#endif
-
-#ifndef ATOMIC
-#define POST_ADD(v, b) \
-    (v += b, v - b)
-#else
-#define POST_ADD(v, b)
-    (__builtin_atomic_fetch_add(&v, b))
-#endif
-
-
-sema_decl_parameter_t* AllocFunctionParameters(decl_function_t* func,
-                                               uint32_t parameterCount)
+sema_decl_function_t* MetaCSemantic_doFunctionSemantic(metac_semantic_state_t* self,
+                                                       decl_function_t* func)
 {
-    sema_decl_function_t* result = 0;
+    // one cannot do nested function semantic at this point
+    // assert(self->CurrentDeclarationState == 0);
+    metac_sema_decl_state_t declState = {0};
+    self->CurrentDeclarationState = &declState;
 
-    while (_newSemaFunc_capacity <= _newSemaFunc_size + parameterCount)
-    {
-        _newMemRealloc(
-            (void**)&_newSemaFunc_mem,
-            &_newSemaFunc_capacity,
-            sizeof(sema_decl_function_t)
-        );
-    }
-
-    {
-        result = _newSemaFunc_mem + POST_ADD(_newSemaFunc_size, parameterCount);
-        (*(metac_node_header_t*) result) = (*(metac_node_header_t*) func);
-
-        result->Serial = INC(_nodeCounter);
-        result->TypeIndex.v = 0;
-    }
-
-    return result;
-}
-
-
-
-sema_decl_function_t* AllocNewSemaFunction(decl_function_t* func)
-{
-    sema_decl_function_t* result = 0;
-
-    if (_newSemaFunc_capacity <= _newSemaFunc_size)
-    {
-        _newMemRealloc(
-            (void**)&_newSemaFunc_mem,
-            &_newSemaFunc_capacity,
-            sizeof(sema_decl_function_t)
-        );
-    }
-
-    {
-        result = _newSemaFunc_mem + INC(_newSemaFunc_size);
-        (*(metac_node_header_t*) result) = (*(metac_node_header_t*) func);
-
-        result->Serial = INC(_nodeCounter);
-        result->TypeIndex.v = 0;
-    }
-
-    return result;
-}
-
-
-metac_sema_statement_t* MetaCSemantic_doStatementSemantic(metac_semantic_state_t* self,
-                                                          metac_sema_statement_t* stmt)
-{
-    
-}
-
-
-void MetaCSemantic_doFunctionSemantic(metac_semantic_state_t* self,
-                                      decl_function_t* func)
-{
     sema_decl_function_t* f =
         AllocNewSemaFunction(func);
     // let's first do the parameters
-    sema_decl_parameter_t* params = f->Parameters =
+    sema_decl_variable_t* params = f->Parameters =
         AllocFunctionParameters(f, func->ParameterCount);
 
     decl_parameter_t* currentParam = func->Parameters;
@@ -175,12 +127,45 @@ void MetaCSemantic_doFunctionSemantic(metac_semantic_state_t* self,
         currentParam = currentParam->Next;
     }
 
-    assert(currentParam == 0);
+    assert(currentParam == emptyPointer);
+    metac_scope_parent_t Parent = {SCOPE_PARENT_V(scope_parent_function, FunctionIndex(f))};
 
-    f->Scope = MetaCScope_PushScope(self->CurrentScope, (metac_sema_declaration_t*)f);
-    MetaCSemantic_doStatementSemantic(self, f->FunctionBody);
-    
+    f->Scope = MetaCScope_PushScope(self->CurrentScope, Parent);
+
+    f->FunctionBody =
+        MetaCSemantic_doStatementSemantic(self, func->FunctionBody);
+
+    return f;
 }
+
+metac_sema_declaration_t* MetaCSemantic_doDeclSemantic(metac_semantic_state_t* self,
+                                                       metac_declaration_t* decl)
+{
+    metac_sema_declaration_t* result;
+
+    switch(decl->DeclKind)
+    {
+        case decl_function:
+        {
+            decl_function_t* f = cast(decl_function_t*) decl;
+            result = (metac_sema_declaration_t*)
+                MetaCSemantic_doFunctionSemantic(self, f);
+
+        } break;
+        case decl_variable:
+        {
+            decl_variable_t* v = cast(decl_variable_t*) decl;
+        } break;
+    }
+}
+
+#ifndef ATOMIC
+#define INC(v) \
+    (v++)
+#else
+#define INC(v)
+    (__builtin_atomic_fetch_add(&v, __ATOMIC_RELEASE))
+#endif
 
 metac_type_index_t MetaCSemantic_GetTypeIndex(metac_semantic_state_t* state,
                                               metac_type_kind_t typeKind,
@@ -381,35 +366,6 @@ bool MetaCSemantic_CanHaveAddress(metac_semantic_state_t* self,
 
 #define offsetof(st, m) \
     ((size_t)((char *)&((st *)0)->m - (char *)0))
-
-metac_sema_expression_t* AllocNewSemaExpression(metac_expression_t* expr)
-{
-    metac_sema_expression_t* result = 0;
-
-    if (_newSemaExp_capacity <= _newSemaExp_size)
-    {
-        _newMemRealloc(
-            (void**)&_newSemaExp_mem,
-            &_newSemaExp_capacity,
-            sizeof(metac_sema_expression_t)
-        );
-    }
-
-    {
-        result = _newSemaExp_mem + INC(_newSemaExp_size);
-        (*(metac_expression_header_t*) result) = (*(metac_expression_header_t*) expr);
-
-        result->Serial = INC(_nodeCounter);
-        result->TypeIndex.v = 0;
-        memcpy(
-               ((char*)result) + sizeof(metac_sema_expression_header_t),
-               ((char*)expr) + sizeof(metac_expression_header_t),
-               sizeof(metac_expression_t) - sizeof(metac_expression_header_t));
-    }
-
-    return result;
-}
-
 
 metac_sema_expression_t* MetaCSemantic_doExprSemantic(metac_semantic_state_t* self,
                                                       metac_expression_t* expr)

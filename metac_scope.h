@@ -2,9 +2,50 @@
 #define _METAC_SCOPE_H_
 #include "compat.h"
 #include "metac_identifier_table.h"
-#include "metac_sematree.h"
 
 struct metac_sema_declaration_t;
+
+
+typedef enum metac_scope_parent_kind_t
+{
+    scope_parent_unknown   = 0x0,
+
+    /// unused for now
+    scope_parent_module    = 0x1,
+
+    scope_parent_function  = 0x2,
+    scope_parent_aggregate = 0x3,
+    scope_parent_stmt      = 0x4,
+
+    scope_parent_extended  = 0x6,
+    scope_parent_invalid  = 0x7
+
+    // unused range 9-D 9, A, B, C, D
+} metac_scope_parent_kind_t;
+
+
+typedef struct metac_scope_parent_t
+{
+    union {
+        uint32_t v;
+        struct {
+            uint32_t Index : 29;
+            metac_scope_parent_kind_t Kind : 3;
+        };
+    };
+} metac_scope_parent_t;
+
+#include "metac_sematree.h"
+
+
+#define SCOPE_PARENT_INDEX(PARENT_INDEX) \
+    ((PARENT_INDEX).v & 0x1fffffff)
+
+#define SCOPE_PARENT_KIND(PARENT_INDEX) \
+    ((metac_sema_parent_kind_t)((PARENT_INDEX).v >> 29))
+
+#define SCOPE_PARENT_V(KIND, INDEX) \
+    ((uint32_t)(((KIND) << 29) | (INDEX)))
 
 typedef struct metac_scope_ptr_t
 {
@@ -48,7 +89,8 @@ typedef struct metac_scope_lru_t
 
 typedef struct metac_scope_t
 {
-    metac_scope_ptr_t Parent;
+    uint32_t Serial;
+    metac_scope_parent_t Parent;
     metac_scope_table_t ScopeTable;
 
     metac_scope_lru_t LRU;
@@ -56,9 +98,9 @@ typedef struct metac_scope_t
 
 /// Returns 0 to keep looking upwards
 /// and a vaild pointer if it could be found
-metac_node_header_t* MetaCScope_LookupIdentifier(metac_scope_t* self,
-                                                 uint32_t identifierKey,
-                                                 metac_identifier_ptr_t identifierPtr);
+struct metac_node_header_t* MetaCScope_LookupIdentifier(metac_scope_t* self,
+                                                        uint32_t identifierKey,
+                                                        metac_identifier_ptr_t identifierPtr);
 
-metac_scope_t* MetaCScope_PushScope(metac_scope_t* self, struct metac_sema_declaration_t* decl);
+metac_scope_t* MetaCScope_PushScope(metac_scope_t* self, metac_scope_parent_t owner);
 #endif // _METAC_SCOPE_H_

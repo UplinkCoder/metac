@@ -11,6 +11,61 @@
 #endif
 #define offsetof(st, m) \
     ((size_t)((char *)&((st *)0)->m - (char *)0))
+/*
+#define CHUNK_MAX_IN_BYTES ((65536 * 4) - 1);
+
+typedef struct memory_t
+{
+    void* MostEmptyChunkFreeArea;
+    uint16_t MostEmptyChunkBytesUsed4;
+
+    uint16_t chunksUsed;
+    uint16_t chunksAllocated;
+
+
+    uint16_t MostEmptyChunk;
+    uint16_t SecondMostEmptyChunk;
+    uint16_t SecondMostEmptyChunkBytesUsed4;
+
+    void* SecondMostEmptyChunkFreeArea;
+} memory_t;
+
+typedef struct move_target_t
+{
+    uint16_t TargetChunk;
+    uint16_t Offset4;
+} move_target_t;
+
+typedef struct chunk_header_t
+{
+    uint16_t BytesFree4;
+    /// 0xFFFF means there is no move target;
+
+
+} chunk_header_t;
+
+typedef struct chunk_ptr_t
+{
+    union
+    {
+        uint32_t v;
+        struct
+        {
+            uint8_t  Kind : 4;
+            /// Chunk 0xFFFF is reserved for extension
+            uint16_t Chunk;
+            /// offset from chunk start in multiples of 4
+            /// i.e. ptr = ((char*)chunks[index].Memory) + (offset4 * 4);
+            uint16_t Offset4 : 12;
+        }
+    }
+} chunk_ptr_t;
+*/
+typedef struct node_ptr_t
+{
+    metac_node_kind_t Kind : 4;
+    uint32_t          Ptr  : 28;
+} ndoe_ptr_t;
 
 noinline void _newMemRealloc(void** memP, uint32_t* capacityP, const uint32_t elementSize)
 {
@@ -32,17 +87,44 @@ noinline void _newMemRealloc(void** memP, uint32_t* capacityP, const uint32_t el
     *capacityP = capacity;
 }
 
+
+#define FOREACH_ALLOCATED_TYPE(M) \
+    M(metac_expression_t, _newExp) \
+    M(metac_declaration_t, _newDecl) \
+    M(metac_statement_t, _newStmt) \
+    M(metac_sema_expression_t, _newSemaExp) \
+    M(sema_decl_function_t, _newSemaFunc) \
+    M(sema_decl_variable_t, _newSemaVariables) \
+    M(sema_decl_type_enum_t, _newSemaEnums) \
+    M(sema_decl_type_struct_t, _newSemaStructs) \
+    M(metac_sema_statement_t, _newSemaStatements) \
+    M(metac_scope_t, _newScopes)
+
+
+#define FREELIST(TYPE_NAME) \
+    struct TYPE_NAME ## _freelist_t
+
+#define DEF_FREELIST_T(TYPE_NAME) \
+    FREELIST(TYPE_NAME) { \
+        TYPE_NAME* Element; \
+        FREELIST(TYPE_NAME)* Next; \
+        uint8_t nElements; \
+    };
+
+/** makes code of the form
 static uint32_t _newExp_size = 0;
 static uint32_t _newExp_capacity = 0;
 static metac_expression_t* _newExp_mem = 0;
+*/
 
-static uint32_t _newStmt_size = 0;
-static uint32_t _newStmt_capacity = 0;
-static metac_statement_t* _newStmt_mem = 0;
+#define DECLARE_STATIC_POOL(TYPE_NAME, PREFIX) \
+    static uint32_t PREFIX ##_size = 0; \
+    static uint32_t PREFIX ##_capacity = 0; \
+    static TYPE_NAME* PREFIX ##_mem = (TYPE_NAME*)0; \
+    DEF_FREELIST_T(TYPE_NAME) \
+    static FREELIST(TYPE_NAME)* PREFIX ##_freelist = (FREELIST(TYPE_NAME)*)0;
 
-static uint32_t _newDecl_size = 0;
-static uint32_t _newDecl_capacity = 0;
-static metac_declaration_t* _newDecl_mem = 0;
+FOREACH_ALLOCATED_TYPE(DECLARE_STATIC_POOL)
 
 static uint32_t _nodeCounter = 1;
 
@@ -55,18 +137,21 @@ static uint32_t _nodeCounter = 1;
     (__builtin_atomic_fetch_add(&v, __ATOMIC_RELEASE))
 #endif
 
+#define REALLOC_BOILERPLATE(PREFIX) \
+if (PREFIX ## _capacity <= PREFIX ## _size) \
+    { \
+        _newMemRealloc( \
+            (void**)&  PREFIX ## _mem, \
+            &PREFIX## _capacity, \
+            sizeof(* PREFIX ## _mem) \
+        ); \
+    }
+
 metac_expression_t* AllocNewExpression(metac_expression_kind_t kind)
 {
     metac_expression_t* result = 0;
 
-    if (_newExp_capacity <= _newExp_size)
-    {
-        _newMemRealloc(
-            (void**)&_newExp_mem,
-            &_newExp_capacity,
-            sizeof(metac_expression_t)
-        );
-    }
+    REALLOC_BOILERPLATE(_newExp)
 
     {
         result = _newExp_mem + INC(_newExp_size);
@@ -77,19 +162,24 @@ metac_expression_t* AllocNewExpression(metac_expression_kind_t kind)
     return result;
 }
 
+uint32_t FunctionIndex(sema_decl_function_t* func)
+{
+    uint32_t result = (func - _newSemaFunc_mem);
+    return result;
+}
+
+uint32_t StatementIndex_(metac_sema_statement_t* stmt)
+{
+    uint32_t result = (stmt - _newSemaStatements_mem);
+    return result;
+}
+
 
 metac_declaration_t* AllocNewDeclaration_(metac_declaration_kind_t kind, size_t nodeSize, void** result_ptr, uint32_t line)
 {
     metac_declaration_t* result = 0;
 
-    if (_newDecl_capacity <= _newDecl_size)
-    {
-        _newMemRealloc(
-            (void**)&_newDecl_mem,
-            &_newDecl_capacity,
-            sizeof(metac_declaration_t)
-        );
-    }
+    REALLOC_BOILERPLATE(_newDecl)
 
     {
         (*result_ptr) = result = _newDecl_mem + INC(_newDecl_size);
@@ -105,20 +195,116 @@ metac_statement_t* AllocNewStatement_(metac_statement_kind_t kind, size_t nodeSi
 {
     metac_statement_t* result = 0;
 
-    if (_newStmt_capacity <= _newStmt_size)
-    {
-        _newMemRealloc(
-            (void**)&_newStmt_mem,
-            &_newStmt_capacity,
-            sizeof(metac_statement_t)
-        );
-    }
+    REALLOC_BOILERPLATE(_newStmt)
 
     {
         (*result_ptr) = result = _newStmt_mem + INC(_newStmt_size);
         result->StmtKind = kind;
         result->Serial = INC(_nodeCounter);
         result->Next = (metac_statement_t*)EMPTY_POINTER_VALUE;
+    }
+
+    return result;
+}
+
+metac_sema_expression_t* AllocNewSemaExpression(metac_expression_t* expr)
+{
+    metac_sema_expression_t* result = 0;
+
+    REALLOC_BOILERPLATE(_newSemaExp)
+
+    {
+        result = _newSemaExp_mem + INC(_newSemaExp_size);
+        (*(metac_expression_header_t*) result) = (*(metac_expression_header_t*) expr);
+
+        result->Serial = INC(_nodeCounter);
+        result->TypeIndex.v = 0;
+        memcpy(
+               ((char*)result) + sizeof(metac_sema_expression_header_t),
+               ((char*)expr) + sizeof(metac_expression_header_t),
+               sizeof(metac_expression_t) - sizeof(metac_expression_header_t));
+    }
+
+    return result;
+}
+// ---------------------------------------------- sema -----------------------------
+
+metac_scope_t* AllocNewScope(metac_scope_t* parent, metac_scope_parent_t owner)
+{
+    metac_scope_t* result;
+
+    REALLOC_BOILERPLATE(_newScopes)
+
+    {
+        result = _newScopes_mem + INC(_newScopes_size);
+        result->Serial = INC(_nodeCounter);
+        result->Parent = owner;
+    }
+
+    return result;
+}
+
+
+sema_decl_function_t* AllocNewSemaFunction(decl_function_t* func)
+{
+    sema_decl_function_t* result = 0;
+
+    REALLOC_BOILERPLATE(_newSemaFunc)
+
+    {
+        result = _newSemaFunc_mem + INC(_newSemaFunc_size);
+        (*(metac_node_header_t*) result) = (*(metac_node_header_t*) func);
+
+        result->Serial = INC(_nodeCounter);
+        result->TypeIndex.v = 0;
+    }
+
+    return result;
+}
+
+#ifndef ATOMIC
+#define POST_ADD(v, b) \
+    (v += b, v - b)
+#else
+#define POST_ADD(v, b)
+    (__builtin_atomic_fetch_add(&v, b))
+#endif
+
+
+sema_decl_variable_t* AllocFunctionParameters(sema_decl_function_t* func,
+                                              uint32_t parameterCount)
+{
+    sema_decl_variable_t* result = 0;
+
+    REALLOC_BOILERPLATE(_newSemaVariables)
+
+    {
+        result = _newSemaVariables_mem + POST_ADD(_newSemaVariables_size, parameterCount);
+        for(int i = 0;
+            i < parameterCount;
+            i++)
+        {
+            (result + i)->Serial = INC(_nodeCounter);
+        }
+
+    }
+
+    return result;
+}
+
+metac_sema_statement_t* AllocNewSemaStatement_(metac_statement_kind_t kind,
+                                               size_t nodeSize, void** result_ptr)
+{
+    metac_sema_statement_t* result = 0;
+
+    REALLOC_BOILERPLATE(_newSemaStatements)
+
+    {
+        result = _newSemaStatements_mem + INC(_newSemaStatements_size);
+        // result->Parent = 0;
+
+        result->Serial = INC(_nodeCounter);
+        // result->TypeIndex.v = 0;
     }
 
     return result;

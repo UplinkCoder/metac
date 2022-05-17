@@ -314,6 +314,7 @@ typedef struct stmt_block_t
     STATEMENT_HEADER
 
     struct metac_statement_t* Body;
+    uint32_t StatementCount;
 } stmt_block_t;
 
 typedef struct stmt_break_t

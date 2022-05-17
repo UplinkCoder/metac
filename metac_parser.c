@@ -19,6 +19,7 @@
 
 #include "metac_lexer.c"
 #include "metac_parser.h"
+#include "metac_alloc_node.h"
 
 #include <string.h>
 #include <stdlib.h>
@@ -27,7 +28,10 @@
 #include "3rd_party/tracy/TracyC.h"
 
 const void* _emptyPointer = (const void*)0x1;
-#define emptyPointer ((void*)_emptyPointer)
+
+#ifndef emptyPointer
+#  define emptyPointer ((void*)_emptyPointer)
+#endif
 
 void _newMemRealloc(void** memP, uint32_t* capacity, const uint32_t elementSize);
 const char* MetaCExpressionKind_toChars(metac_expression_kind_t type);
@@ -48,6 +52,11 @@ void MetaCParser_Init(metac_parser_t* self)
     self->DefineCount = 0;
     self->DefineCapacity = ARRAY_SIZE(self->inlineDefines);
     self->LexerState = 0;
+
+    self->BlockStatementStackCapacity = 16;
+    self->BlockStatementStackSize = 0;
+    self->BlockStatementStack = (stmt_block_t**)
+        malloc(sizeof(stmt_block_t**) * self->BlockStatementStackCapacity);
 
 #ifndef NO_DOT_PRINTER
     self->DotPrinter = (metac_dot_printer_t*)malloc(sizeof(metac_dot_printer_t));
@@ -1577,7 +1586,10 @@ static metac_statement_t* MetaCParser_ParseStatement(metac_parser_t* self,
     {
         return ErrorStatement();
     }
-    else if (tokenType == tok_kw_if)
+    if (self->CurrentBlockStatement)
+        self->CurrentBlockStatement->StatementCount++;
+
+    if (tokenType == tok_kw_if)
     {
         stmt_if_t* if_stmt = AllocNewStatement(stmt_if, &result);
         MetaCParser_Match(self, tok_kw_if);
@@ -1745,6 +1757,23 @@ LdoneWithStatement:
     return result;
 }
 
+static inline void MetaCParser_PushBlockStatement(metac_parser_t* self,
+												  stmt_block_t* stmt)
+{
+    self->CurrentBlockStatement =
+        self->BlockStatementStack[self->BlockStatementStackSize++] = stmt;
+}
+
+static inline void MetaCParser_PopBlockStatement(metac_parser_t* self,
+                                                 stmt_block_t* stmt)
+{
+    assert(stmt == self->CurrentBlockStatement);
+    if (self->BlockStatementStackSize-- > 1)
+        self->CurrentBlockStatement =
+            self->BlockStatementStack[self->BlockStatementStackSize];
+    else
+        self->CurrentBlockStatement = 0;
+}
 
 static stmt_block_t* MetaCParser_ParseBlockStatement(metac_parser_t* self,
                                                      metac_statement_t* parent,
@@ -1755,6 +1784,8 @@ static stmt_block_t* MetaCParser_ParseBlockStatement(metac_parser_t* self,
     metac_statement_t* firstStatement = 0;
     metac_statement_t* nextStatement = 0;
     stmt_block_t* result = AllocNewStatement(stmt_block, &result);
+
+    MetaCParser_PushBlockStatement(self, result);
 
     for (;;)
     {
@@ -1797,6 +1828,8 @@ static stmt_block_t* MetaCParser_ParseBlockStatement(metac_parser_t* self,
 
     MetaCParser_Match(self, tok_rBrace);
 
+    MetaCParser_PopBlockStatement(self, result);
+
     return result;
 }
 /// static lexer for using in the g_lineParser
@@ -1817,6 +1850,14 @@ void LineLexerInit(void)
     ACCEL_INIT(g_lineLexer, String);
     ACCEL_INIT(g_lineParser, Identifier);
     ACCEL_INIT(g_lineParser, String);
+
+    if (!g_lineParser.BlockStatementStack)
+    {
+        g_lineParser.BlockStatementStackCapacity = 8;
+        g_lineParser.BlockStatementStackSize = 0;
+        g_lineParser.BlockStatementStack = (stmt_block_t**)
+            malloc(sizeof(stmt_block_t**) * g_lineParser.BlockStatementStackCapacity);
+    }
 
     if (!g_lineParser.Defines)
     {

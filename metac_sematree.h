@@ -4,8 +4,10 @@
 #include "compat.h"
 #include "metac_identifier_table.h"
 #include "metac_type_table.h"
-#include "metac_parsetree.h"
 #include "metac_scope.h"
+#include "metac_parsetree.h"
+
+#define ERROR_PARENT_INDEX_V -1
 
 #define SEMA_EXPRESSION_HEADER \
     EXPRESSION_HEADER \
@@ -95,6 +97,7 @@ typedef struct metac_sema_expression_t
     uint32_t Hash; \
     uint32_t Serial;
 
+
 typedef struct sema_statement_header_t
 {
     SEMA_STATEMENT_HEADER
@@ -105,6 +108,7 @@ typedef struct sema_stmt_block_t
     SEMA_STATEMENT_HEADER
 
     struct metac_sema_statement_t* Body;
+    uint32_t StatementCount;
 } sema_stmt_block_t;
 
 typedef struct sema_stmt_break_t
@@ -254,7 +258,7 @@ typedef struct metac_sema_statement_t
 
 #define SEMA_DECLARATION_HEADER \
     DECLARATION_HEADER \
-    struct metac_sema_declaration_t* Parent;
+    metac_node_header_t* Parent;
 
 
 #define SEMA_TYPE_HEADER \
@@ -275,7 +279,7 @@ typedef struct sema_decl_variable_t
 {
     SEMA_DECLARATION_HEADER
 
-    metac_type_index_t* VarType;
+    metac_type_index_t VarType;
 
     metac_identifier_ptr_t VarIdentifier;
 
@@ -296,16 +300,6 @@ typedef struct sema_decl_field_t
 } sema_decl_field_t;
 
 
-typedef struct sema_decl_parameter_t
-{
-    SEMA_DECLARATION_HEADER
-
-    metac_type_index_t* Type;
-
-    metac_identifier_ptr_t Identifier;
-} sema_decl_parameter_t;
-
-
 typedef struct sema_decl_function_t
 {
     SEMA_DECLARATION_HEADER
@@ -316,7 +310,7 @@ typedef struct sema_decl_function_t
 
     metac_type_index_t ReturnType;
 
-    sema_decl_parameter_t* Parameters;
+    sema_decl_variable_t* Parameters;
 
     uint32_t ParameterCount;
 
@@ -384,7 +378,7 @@ typedef struct sema_decl_type_struct_t
 
     metac_identifier_ptr_t Identifier;
 
-    struct sema_decl_field_t* Fields;
+    struct metac_aggregate_field_t* Fields;
 
     uint32_t FieldCount;
 } sema_decl_type_struct_t;

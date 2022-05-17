@@ -11,4 +11,4 @@ fi
 
 $CC repl.c ../metac_parser_obj.c ../metac_semantic_obj.c \
     -I.. -DACCEL=$ACCEL \
-    -g3 -Os -lm -march=native -mtune=native -o repl $@
+    -g3 -Os -lm -march=native -mtune=native -o repl  $@

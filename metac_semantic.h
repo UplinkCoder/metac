@@ -7,13 +7,27 @@
 //TODO get rid of exp_eval after testing
 #include "repl/exp_eval.h"
 
+#ifndef AT
+#  define AT(...)
+#endif
+
+typedef struct metac_sema_decl_state_t
+{
+    sema_decl_variable_t* CurrentVariables;
+    uint32_t CurrentVariableSize;
+    uint32_t CurrentVariableCapacity;
+
+    // uint32_t CurrentOffset;
+} metac_sema_decl_state_t;
 
 typedef struct metac_semantic_state_t
 {
     metac_identifier_table_t SemanticIdentifierTable;
     metac_identifier_table_t* ParserIdentifierTable;
 
-    metac_sema_declaration_t* currentDeclaration;
+    // has state such as the current stack offset and the like
+    // to layout variables
+    AT(transient) metac_sema_decl_state_t* CurrentDeclarationState;
 
     metac_scope_t* CurrentScope;
 

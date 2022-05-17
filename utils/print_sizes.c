@@ -2,6 +2,7 @@
 
 #include "metac_lexer.h"
 #include "metac_parser.h"
+#include "metac_sematree.h"
 
 void main()
 {
@@ -13,7 +14,7 @@ void main()
     printf("sizeof(metac_lexer_t): %d\n", (int) sizeof(metac_lexer_t));
     printf("sizeof(scope_kind_t): %d\n", (int) sizeof(scope_kind_t));
     printf("sizeof(metac_location_t): %d\n", (int) sizeof(metac_location_t));
-
+    printf("sizeof(sema_decl_function_t): %d\n", (int) sizeof(sema_decl_function_t));
 
 #if defined(IDENTIFIER_TABLE)
     printf("sizeof(metac_identifier_table_t): %d\n", (int) sizeof(metac_identifier_table_t));

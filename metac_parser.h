@@ -57,10 +57,15 @@ typedef struct metac_parser_t
     uint32_t DefineCount;
     uint32_t DefineCapacity;
 
+    stmt_block_t* CurrentBlockStatement;
+
     metac_dot_printer_t* DotPrinter;
 
     metac_define_t inlineDefines[8];
 
+    stmt_block_t** BlockStatementStack;
+    uint32_t BlockStatementStackSize;
+    uint32_t BlockStatementStackCapacity;
 } metac_parser_t;
 
 extern metac_parser_t g_lineParser;

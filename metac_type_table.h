@@ -18,7 +18,7 @@ typedef struct metac_type_struct_slot_t
     uint32_t HashKey;
 
     uint32_t fieldCount;
-    metac_struct_field_t* fields;
+    // metac_aggregate_field_t* fields;
 } metac_type_struct_slot_t;
 
 typedef struct metac_type_ptr_slot_t
@@ -92,4 +92,6 @@ metac_type_index_t MetaCTypeTable_GetOrAddArrayType(METAC_TYPE_TABLE_T(array)* t
                                                     metac_type_array_slot_t* key);
 */
 //void MetaCTypeTable_
+
+void TypeTableInitImpl(metac_type_table_t* table, const uint32_t sizeof_slot, metac_type_index_kind_t kind);
 #endif
