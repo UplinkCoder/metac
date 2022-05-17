@@ -1450,7 +1450,7 @@ metac_declaration_t* MetaCParser_ParseDeclaration(metac_parser_t* self, metac_de
          type = MetaCParser_ParseTypeDeclaration(self, parent, 0);
          if (((tokenType == tok_kw_struct) | (tokenType == tok_kw_union)))
          {
-             result = type;
+             result = (metac_declaration_t*)type;
          }
     }
 
