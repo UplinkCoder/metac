@@ -754,9 +754,6 @@ LcontinueLexnig:
 #elif ACCEL == ACCEL_TABLE
                     token.IdentifierPtr =
                         GetOrAddIdentifier(&self->IdentifierTable, token.IdentifierKey, identifierBegin, identifierLength);
-#elif ACCEL == ACCEL_TREE
-                    token.IdentifierPtr =
-                        GetOrAddIdentifier(&self->IdentifierTree, token.IdentifierKey, identifierBegin, identifierLength);
 #else
 #   error ("Unkown ACCELERATOR")
 #endif
@@ -932,8 +929,6 @@ LcontinueLexnig:
                 token.Key = STRING_KEY(stringHash, stringLength);
 #if ACCEL == ACCEL_TABLE
                 token.StringPtr = GetOrAddIdentifier(&self->StringTable, token.Key, stringBegin, stringLength);
-#elif ACCEL == ACCEL_TREE
-                token.StringPtr = GetOrAddIdentifier(&self->StringTree, token.Key, stringBegin, stringLength);
 #else
                 token.String = stringBegin;
 #endif

@@ -81,8 +81,6 @@ typedef struct metac_scope_lru_t
 {
     /// has the lower 15 bit of the id hashes
     /// contained in the LRU
-    /// the upper 4 bit sigifiy if the Identifier came from the parent
-    /// and therefore may be overwritten
     uint64_t LRUContentHashes;
     metac_scope_lru_slot_t Slots[4];
 } metac_scope_lru_t;

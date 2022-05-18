@@ -339,13 +339,15 @@ metac_type_aggregate_field_t* AllocAggregateFields(sema_type_aggregate_t* aggreg
         case type_struct:
         {
             REALLOC_BOILERPLATE(_newSemaStructFields)
-            result = _newSemaStructFields_mem + POST_ADD(_newSemaStructFields_size, fieldCount);
+            result = _newSemaStructFields_mem +
+                POST_ADD(_newSemaStructFields_size, fieldCount);
             aggregateIndex = aggregate - _newSemaStructs_mem;
         } break;
         case type_union:
         {
             REALLOC_BOILERPLATE(_newSemaUnionFields)
-            result = _newSemaUnionFields_mem + POST_ADD(_newSemaUnionFields_size, fieldCount);
+            result = _newSemaUnionFields_mem +
+                POST_ADD(_newSemaUnionFields_size, fieldCount);
             aggregateIndex = aggregate - _newSemaUnions_mem;
         } break;
         case type_class:

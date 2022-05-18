@@ -58,7 +58,7 @@ static inline void ParseFile(metac_parser_t* parser,
     }
 
     printf("Parsed %u declarations\n", declarationSize);
-    
+
     if (result != 0)
     {
         result->Capacity = ALIGN4(declarationSize);
@@ -173,7 +173,7 @@ int main(int argc, const char* argv[])
         metac_parser_t parser;
         MetaCParser_InitFromLexer(&parser, &lexer);
 
-        ParseFile(&parser, arg, 0);
+        // ParseFile(&parser, arg, 0);
 
         metac_identifier_table_slot_t firstEntry = {0};
 

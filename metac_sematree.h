@@ -284,21 +284,7 @@ typedef struct sema_decl_variable_t
     metac_identifier_ptr_t VarIdentifier;
 
     metac_sema_expression_t* VarInitExpression;
-
 } sema_decl_variable_t;
-
-
-typedef struct sema_decl_field_t
-{
-    SEMA_DECLARATION_HEADER
-
-    struct metac_scope_t* Scope;
-
-    sema_decl_variable_t Field;
-
-    struct sema_decl_field_t* Next;
-} sema_decl_field_t;
-
 
 typedef struct sema_decl_function_t
 {

@@ -270,7 +270,7 @@ void MetaCSemantic_doParameterSemantic(metac_semantic_state_t* self,
     result->VarType = MetaCSemantic_doTypeSemantic(self, param->Type);
     result->VarInitExpression = 0;
 }
-
+#include "cache/crc32.c"
 sema_decl_function_t* MetaCSemantic_doFunctionSemantic(metac_semantic_state_t* self,
                                                        decl_function_t* func)
 {
@@ -293,6 +293,7 @@ sema_decl_function_t* MetaCSemantic_doFunctionSemantic(metac_semantic_state_t* s
         MetaCSemantic_doParameterSemantic(self, f,
                                           params + i,
                                           currentParam);
+
         currentParam = currentParam->Next;
     }
 
@@ -300,6 +301,20 @@ sema_decl_function_t* MetaCSemantic_doFunctionSemantic(metac_semantic_state_t* s
     metac_scope_parent_t Parent = {SCOPE_PARENT_V(scope_parent_function, FunctionIndex(f))};
 
     f->Scope = MetaCScope_PushScope(self->CurrentScope, Parent);
+    // now we have to add the parameters to the scope.
+    for(uint32_t i = 0;
+        i < func->ParameterCount;
+        i++)
+    {
+        //TODO we cannot hash parameter and variable names all the time
+        char* idChars = self->ParserIdentifierTable->StringMemory +
+                        (params[i].VarIdentifier.v - 4);
+        uint32_t idLen = strlen(idChars);
+        uint32_t key   = IDENTIFIER_KEY(crc32c(~0, idChars, idLen), idLen);
+
+        MetaCScope_RegisterIdentifier(self, key, params[i].VarIdentifier, params[i]);
+
+    }
 
     f->FunctionBody = (sema_stmt_block_t*)
         MetaCSemantic_doStatementSemantic(self, (metac_statement_t*)func->FunctionBody);
@@ -592,7 +607,7 @@ metac_sema_expression_t* MetaCSemantic_doExprSemantic(metac_semantic_state_t* se
             if (IsExpressionNode(node->Kind))
             {
                 result = (metac_sema_expression_t*) node;
-                if (node->Kind == exp_identifier)
+                if (node->Kind == (metac_expression_kind_t)exp_identifier)
                 {
                     fprintf(stderr, "Identifier lookup failed\n");
                 }
