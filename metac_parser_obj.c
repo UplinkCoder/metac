@@ -3,6 +3,7 @@
 #else
 #  include "compat.h"
 #  include "metac_lexer.h"
+#  include "crc32c.c"
 #  include "metac_alloc_node.c"
 #  include "metac_parser.c"
 #  include "metac_printer.c"

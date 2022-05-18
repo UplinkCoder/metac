@@ -6,7 +6,7 @@
 #include <string.h>
 #include <stdio.h>
 
-#include "cache/crc32.c"
+#include "crc32c.h"
 
 static inline metac_token_enum_t MetaCLexFixedLengthToken(const char _chrs[3])
 {

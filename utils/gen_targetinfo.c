@@ -80,7 +80,7 @@ uint32_t StaticAlign(metac_type_kind_t Kind)
 int main(int argc, const char* argv[])
 {
     printf("#ifndef _DEFAULT_TARGET_INFO_H_\n");
-    printf("#define _DEFAULT_TARGET_INFO_H_\n";
+    printf("#define _DEFAULT_TARGET_INFO_H_\n");
 
     printf("#include \"metac_target_info.h\"\n\n");
     printf("static const metac_target_info_t default_target_info = {\n");

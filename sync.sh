@@ -8,6 +8,7 @@ if [ -d $DST ]; then
        endian.h stdint_msvc.h compat.h int_to_str.c \
        sync.sh sync_from.sh \
        gen_code.bat gen_code.sh run_tests.sh run_tests.bat \
+       crc32c.c crc32c.h \
        metac_lexer.c metac_lexer.h metac_parser.c metac_parser.h \
        metac_alloc_node.c metac_alloc_node.h \
        metac_parsetree.h \
@@ -44,13 +45,13 @@ if [ -d $DST ]; then
 
     mkdir -p $DST/cache
     cp cache/cached_tree.c cache/cached_tree.h \
-       cache/crc32.c cache/serialize_tree.c \
+       cache/serialize_tree.c \
        $DST/cache
 
     mkdir -p $DST/utils
     cp utils/gen_metac_match_keyword.c utils/metac_count_token_length.c \
        utils/identifier_hash.c utils/print_sizes.c utils/rec_bisect.c \
-       utils/read_file.c utils/read_table.c \
+       utils/read_file.c utils/read_table.c utils/gen_targetinfo.c \
        $DST/utils
 
     mkdir -p $DST/repl

@@ -1,5 +1,5 @@
 #include "../compat.h"
-#include "../cache/crc32.c"
+#include "../crc32c.c"
 #include "../metac_lexer.h"
 #include "../metac_identifier_table.h"
 

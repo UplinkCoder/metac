@@ -22,41 +22,29 @@ static uint32_t _nodeCounter = 64;
 
 void MetaCSemantic_Init(metac_semantic_state_t* self, metac_parser_t* parser)
 {
-    TypeTableInitImpl((metac_type_table_t*)&self->ArrayTypeTable,
-                      sizeof(metac_type_array_slot_t),
-                      type_index_array);
+#define INIT_TYPE_TABLE(TYPE_NAME, MEMBER_NAME, INDEX_KIND) \
+    TypeTableInitImpl((metac_type_table_t*)&self->MEMBER_NAME, \
+                      sizeof(metac_type_ ## TYPE_NAME ## _slot_t), \
+                      type_index_## INDEX_KIND);
 
-    TypeTableInitImpl((metac_type_table_t*)&self->StructTypeTable,
-                      sizeof(metac_type_aggregate_slot_t),
-                      type_index_struct);
-
-    TypeTableInitImpl((metac_type_table_t*)&self->PtrTypeTable,
-                      sizeof(metac_type_ptr_slot_t),
-                      type_index_ptr);
+    FOREACH_TYPE_TABLE(INIT_TYPE_TABLE)
 
     IdentifierTableInit(&self->SemanticIdentifierTable);
     self->ParserIdentifierTable = &parser->IdentifierTable;
 
-    self->ExpressionStackCapacity = 64;
-    self->ExpressionStack = malloc(
-        sizeof(metac_sema_expression_t) * self->ExpressionStackCapacity);
-    self->ExpressionStackSize = 0;
-
-    self->ScopeStackCapacity = 64;
-    self->ScopeStack = malloc(
-        sizeof(metac_scope_t) * self->ExpressionStackCapacity);
-    self->ScopeStackSize = 0;
-
+    self->CurrentScope = 0;
     self->CurrentDeclarationState = 0;
 
     MetaCPrinter_Init(&self->Printer, &self->SemanticIdentifierTable, &parser->StringTable);
 }
 
+#define POP_SCOPE(SCOPE) \
+    SCOPE = SCOPE->Parent;
+
 metac_sema_statement_t* MetaCSemantic_doStatementSemantic(metac_semantic_state_t* self,
                                                           metac_statement_t* stmt)
 {
     metac_sema_statement_t* result;
-
     switch (stmt->StmtKind)
     {
         case stmt_exp:
@@ -68,10 +56,35 @@ metac_sema_statement_t* MetaCSemantic_doStatementSemantic(metac_semantic_state_t
 
         case stmt_block:
         {
-            sema_stmt_block_t* ssb = AllocNewSemaStatement(stmt_block, &result);
-            metac_scope_parent_t parent = {SCOPE_PARENT_V(scope_parent_stmt, StatementIndex(ssb))};
+            stmt_block_t* blockStatement = (stmt_block_t*) stmt;
+            uint32_t statementCount = blockStatement->StatementCount;
+            sema_stmt_block_t* semaBlockStatement =
+                AllocNewSemaStatement(stmt_block, &result);
+
+            metac_scope_parent_t parent = {SCOPE_PARENT_V(scope_parent_stmt,
+                                           BlockStatementIndex(semaBlockStatement))};
+
             self->CurrentScope = MetaCScope_PushScope(self->CurrentScope, parent);
-            //for(int i = 0; i < ssb->Body.)
+            metac_statement_t* currentStatement = blockStatement->Body;
+            for(int i = 0;
+                i < statementCount;
+                i++)
+            {
+                ((&semaBlockStatement->Body)[i]) =
+                    MetaCSemantic_doStatementSemantic(self, currentStatement);
+                currentStatement = currentStatement->Next;
+            }
+            POP_SCOPE(self->CurrentScope);
+        } break;
+        case stmt_return:
+        {
+            stmt_return_t* returnStatement = (stmt_return_t*) stmt;
+            sema_stmt_return_t* semaReturnStatement =
+                AllocNewSemaStatement(stmt_return, &result);
+
+            metac_sema_expression_t* returnValue =
+                MetaCSemantic_doExprSemantic(self, returnStatement->Expression);
+            semaReturnStatement->Expression = returnValue;
         } break;
     }
 
@@ -270,7 +283,8 @@ void MetaCSemantic_doParameterSemantic(metac_semantic_state_t* self,
     result->VarType = MetaCSemantic_doTypeSemantic(self, param->Type);
     result->VarInitExpression = 0;
 }
-#include "cache/crc32.c"
+#include "crc32c.h"
+
 sema_decl_function_t* MetaCSemantic_doFunctionSemantic(metac_semantic_state_t* self,
                                                        decl_function_t* func)
 {
@@ -300,8 +314,10 @@ sema_decl_function_t* MetaCSemantic_doFunctionSemantic(metac_semantic_state_t* s
     assert(currentParam == emptyPointer);
     metac_scope_parent_t Parent = {SCOPE_PARENT_V(scope_parent_function, FunctionIndex(f))};
 
-    f->Scope = MetaCScope_PushScope(self->CurrentScope, Parent);
+    self->CurrentScope = f->Scope = MetaCScope_PushScope(self->CurrentScope, Parent);
     // now we have to add the parameters to the scope.
+    sema_decl_variable_t p3[3] = { f->Parameters[0], f->Parameters[1], f->Parameters[2] };
+
     for(uint32_t i = 0;
         i < func->ParameterCount;
         i++)
@@ -311,13 +327,20 @@ sema_decl_function_t* MetaCSemantic_doFunctionSemantic(metac_semantic_state_t* s
                         (params[i].VarIdentifier.v - 4);
         uint32_t idLen = strlen(idChars);
         uint32_t key   = IDENTIFIER_KEY(crc32c(~0, idChars, idLen), idLen);
+        metac_node_header_t* ptr = (metac_node_header_t*)(&f->Parameters[i]);
+        scope_insert_error_t result =
+            MetaCScope_RegisterIdentifier(f->Scope, params[i].VarIdentifier,
+                                          (metac_node_header_t*)(ptr));
+        assert(MetaCScope_LookupIdentifier(f->Scope, params[i].VarIdentifier)
+                == params + i);
 
-        MetaCScope_RegisterIdentifier(self, key, params[i].VarIdentifier, params[i]);
 
     }
 
     f->FunctionBody = (sema_stmt_block_t*)
         MetaCSemantic_doStatementSemantic(self, (metac_statement_t*)func->FunctionBody);
+
+    POP_SCOPE(self->CurrentScope);
 
     return f;
 }
@@ -448,12 +471,12 @@ static inline const char* BasicTypeToChars(metac_type_index_t typeIndex)
 /// Returns _emptyNode to signifiy it could not be found
 /// a valid node otherwise
 metac_node_header_t* MetaCSemantic_LookupIdentifier(metac_semantic_state_t* self,
-                                                    uint32_t identifierKey,
                                                     metac_identifier_ptr_t identifierPtr)
 {
     metac_node_header_t* result = emptyNode;
+    metac_scope_t *currentScope = self->CurrentScope;
 #if 1
-    if (self->ScopeStackSize == 0 && self->declStore)
+    if (!currentScope && self->declStore)
     {
         metac_identifier_ptr_t dStoreIdPtr =
             FindMatchingIdentifier(&self->declStore->Table,
@@ -468,19 +491,16 @@ metac_node_header_t* MetaCSemantic_LookupIdentifier(metac_semantic_state_t* self
     else
 #endif
     {
-        assert(self->ScopeStackSize >= 1);
-        uint32_t StackTopIdx = self->ScopeStackSize;
-        //TODO do an LRU lookup first
-        while(StackTopIdx)
+        while(currentScope)
         {
-            metac_scope_t* currentScope = &self->ScopeStack[--StackTopIdx];
             metac_node_header_t* lookupResult =
-                MetaCScope_LookupIdentifier(currentScope, identifierKey, identifierPtr);
+                MetaCScope_LookupIdentifier(currentScope, identifierPtr);
             if (lookupResult)
             {
                 result = lookupResult;
                 break;
             }
+            POP_SCOPE(currentScope);
         }
     }
     return result;
@@ -602,7 +622,6 @@ metac_sema_expression_t* MetaCSemantic_doExprSemantic(metac_semantic_state_t* se
         {
             metac_node_header_t* node =
                 MetaCSemantic_LookupIdentifier(self,
-                                               result->IdentifierKey,
                                                result->IdentifierPtr);
             if (IsExpressionNode(node->Kind))
             {

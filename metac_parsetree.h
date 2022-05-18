@@ -18,6 +18,13 @@
     M(decl_typedef)
 
 #define FOREACH_DECL_KIND(M) \
+    M(decl_min) \
+    \
+    FOREACH_DECL_KIND_(M) \
+    \
+    M(decl_max)
+
+#define FOREACH_DECL_KIND_(M) \
     M(decl_variable) \
     M(decl_field) \
     M(decl_parameter) \
@@ -156,6 +163,9 @@
 #define DEFINE_NODE_MEMBERS(MEMB) \
     node_ ## MEMB,
 
+#pragma pack(push, 1)
+
+
 #if 1
 typedef enum metac_node_kind_t
 {
@@ -180,11 +190,6 @@ typedef enum scope_kind_t
 {
     scope_exit
 } scope_kind_t;
-
-typedef enum metac_declaration_kind_t
-{
-    FOREACH_DECL_KIND(DEFINE_MEMBERS)
-} metac_declaration_kind_t;
 
 typedef enum metac_expression_kind_t
 {
@@ -221,7 +226,6 @@ typedef struct exp_argument_t
     struct exp_argument_t* Next;
 } exp_argument_t;
 
-#pragma pack(push, 1)
 typedef struct metac_expression_t
 {
     EXPRESSION_HEADER
@@ -286,7 +290,6 @@ typedef struct metac_expression_t
         uint64_t ValueU64;
     };
 } metac_expression_t;
-#pragma pack(pop)
 
 typedef enum metac_statement_kind_t
 {
@@ -296,6 +299,16 @@ typedef enum metac_statement_kind_t
 
     stmt_max
 } metac_statement_kind_t;
+
+
+typedef enum metac_declaration_kind_t
+{
+    decl_min = stmt_max + 1,
+
+    FOREACH_DECL_KIND_(DEFINE_MEMBERS)
+
+    decl_max
+} metac_declaration_kind_t;
 
 #define STATEMENT_HEADER \
     metac_statement_kind_t StmtKind; \
@@ -607,6 +620,23 @@ typedef struct decl_type_struct_t
     uint32_t FieldCount;
 } decl_type_struct_t;
 
+/// this is not used, it only exits
+/// for tooling purposes
+typedef struct decl_type_union_t
+{
+    DECLARATION_HEADER
+
+    TYPE_HEADER
+
+    metac_identifier_ptr_t Identifier;
+
+    metac_identifier_ptr_t BaseIdentifier;
+
+    struct decl_field_t* Fields;
+
+    uint32_t FieldCount;
+} decl_type_union_t;
+
 typedef struct decl_typedef_t
 {
     DECLARATION_HEADER
@@ -633,5 +663,6 @@ typedef struct metac_declaration_t
     };
 
 } metac_declaration_t;
+#pragma pack(pop)
 
 #endif

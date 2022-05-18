@@ -27,7 +27,7 @@ void main()
     printf("sizeof(metac_expression_t): %d\n", (int) sizeof(metac_expression_t));
 
     printf("sizeof(metac_declaration_t): %d\n", (int) sizeof(metac_declaration_t));
-    FOREACH_DECL_KIND(PRINT_SIZE);
+    FOREACH_DECL_KIND_(PRINT_SIZE);
 
     printf("sizeof(metac_statement_t): %d\n", (int) sizeof(metac_statement_t));
     FOREACH_STMT_KIND_(PRINT_SIZE)

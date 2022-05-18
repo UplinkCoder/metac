@@ -35,7 +35,27 @@ typedef struct metac_scope_parent_t
     };
 } metac_scope_parent_t;
 
-#include "metac_sematree.h"
+#ifndef DEFINE_MEMBERS
+#define DEFINE_MEMBERS(M) \
+    M,
+#endif
+
+#define FOREACH_SCOPE_INSERT_ERROR(M) \
+    M(success) \
+    M(identifier_exists_already) \
+    M(table_full)
+
+
+typedef enum scope_insert_error_t
+{
+    FOREACH_SCOPE_INSERT_ERROR(DEFINE_MEMBERS)
+} scope_insert_error_t;
+
+#undef DEFINE_MEMBERS
+
+
+
+#include "metac_parsetree.h"
 
 
 #define SCOPE_PARENT_INDEX(PARENT_INDEX) \
@@ -57,7 +77,7 @@ typedef struct metac_scope_lru_slot_t
 {
     metac_identifier_ptr_t Ptr;
     /// Node may be 0
-    struct metac_node_header_t* Node;
+    metac_node_header_t* Node;
 } metac_scope_lru_slot_t;
 #pragma pack(pop)
 
@@ -88,17 +108,21 @@ typedef struct metac_scope_lru_t
 typedef struct metac_scope_t
 {
     uint32_t Serial;
-    metac_scope_parent_t Parent;
-    metac_scope_table_t ScopeTable;
+    metac_scope_parent_t Owner;
+    struct metac_scope_t* Parent;
 
+    metac_scope_table_t ScopeTable;
     metac_scope_lru_t LRU;
 } metac_scope_t;
 
 /// Returns 0 to keep looking upwards
 /// and a vaild pointer if it could be found
 struct metac_node_header_t* MetaCScope_LookupIdentifier(metac_scope_t* self,
-                                                        uint32_t identifierKey,
                                                         metac_identifier_ptr_t identifierPtr);
+/// Returns true on insertion and false if the table was full
+scope_insert_error_t MetaCScope_RegisterIdentifier(metac_scope_t* self,
+                                                   metac_identifier_ptr_t idPtr,
+                                                   metac_node_header_t* node);
 
 metac_scope_t* MetaCScope_PushScope(metac_scope_t* self, metac_scope_parent_t owner);
 #endif // _METAC_SCOPE_H_

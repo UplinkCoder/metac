@@ -5,7 +5,7 @@
 #include "../metac_printer.h"
 
 #include "../metac_semantic.h"
-#include "../cache/crc32.c"
+#include "../crc32c.h"
 //#include "../metac_eeP.c"
 #include "../3rd_party/linenoise/linenoise.c"
 #include "../int_to_str.c"

@@ -1,26 +1,104 @@
 #include "metac_scope.h"
+#include "crc32c.h"
+#include "metac_alloc_node.h"
 #undef SSE2
 
 #ifdef SSE2
 #  include <xmmintrin.h>
 #endif
 
-metac_scope_table_slot_t* MetaCScopeTable_Lookup(metac_scope_table_t* self,
-                                                 uint32_t idHash,
-                                                 metac_identifier_ptr_t idPtr)
+void MetaCScopeTable_Init(metac_scope_table_t* self)
 {
-
+    self->SlotCount_Log2 = 8;
+    const uint32_t maxSlots = (1 << self->SlotCount_Log2);
+    self->Slots = (metac_type_table_slot_t*) calloc(maxSlots, sizeof(metac_scope_table_slot_t));
+    self->SlotsUsed = 0;
 }
 
-void MetaCScope_RegisterIdentifier(metac_scope_t* self,
-                                   uint32_t idKey,
-                                   metac_identifier_ptr_t idPtr,
-                                   metac_node_header_t* node)
+metac_scope_table_slot_t* MetaCScopeTable_Lookup(metac_scope_table_t* self,
+                                                 metac_identifier_ptr_t idPtr)
+{
+    uint32_t hash = crc32c(~0, &idPtr.v, sizeof(idPtr.v));
+    const uint32_t slotIndexMask = ((1 << self->SlotCount_Log2) - 1);
+    const uint32_t initialSlotIndex = (hash & slotIndexMask);
+
+    for(
+        uint32_t slotIndex = initialSlotIndex;
+        (++slotIndex & slotIndexMask) != initialSlotIndex;
+    )
+    {
+        metac_scope_table_slot_t* slot =
+            &self->Slots[(slotIndex - 1) & slotIndexMask];
+        if (slot->Hash == hash && idPtr.v == slot->Ptr.v)
+        {
+            return slot;
+        }
+        else if (slot->Hash == 0)
+        {
+            break;
+        }
+    }
+
+    return 0;
+}
+#define existsPointer ((metac_scope_table_slot_t*) 2)
+#define fullPointer ((metac_scope_table_slot_t*) 1)
+
+metac_scope_table_slot_t* MetaCScopeTable_Insert(metac_scope_table_t* self,
+                                                 metac_identifier_ptr_t idPtr)
+{
+    uint32_t hash = crc32c(~0, &idPtr.v, sizeof(idPtr.v));
+    const uint32_t slotIndexMask = ((1 << self->SlotCount_Log2) - 1);
+    const uint32_t initialSlotIndex = (hash & slotIndexMask);
+
+
+    for(
+        uint32_t slotIndex = initialSlotIndex;
+        (++slotIndex & slotIndexMask) != initialSlotIndex;
+        //TODO change computation of next slot index
+    )
+    {
+        metac_scope_table_slot_t* slot =
+            &self->Slots[(slotIndex - 1) & slotIndexMask];
+        if (slot->Hash == 0)
+        {
+            self->SlotsUsed++;
+            slot->Hash = hash;
+            slot->Ptr = idPtr;
+
+            return slot;
+        }
+        else if (slot->Hash == hash && slot->Ptr.v == idPtr.v)
+        {
+            return existsPointer;
+        }
+    }
+
+    return fullPointer;
+}
+
+/// See scope_insert_error for return values
+scope_insert_error_t MetaCScope_RegisterIdentifier(metac_scope_t* self,
+                                                   metac_identifier_ptr_t idPtr,
+                                                   metac_node_header_t* node)
 {
     metac_scope_table_slot_t* slot =
-        MetaCScopeTable_Lookup(&self->ScopeTable, idKey, idPtr);
+        MetaCScopeTable_Insert(&self->ScopeTable, idPtr);
 
-    slot->Node = node;
+    if (slot == existsPointer)
+    {
+        return identifier_exists_already;
+    }
+    else if (slot == fullPointer)
+    {
+        return table_full;
+    }
+    else
+    {
+        slot->Node = node;
+
+        return success;
+    }
 }
 
 #ifndef _emptyPointer
@@ -75,7 +153,7 @@ void MetaCScope_PushLRU(metac_scope_lru_t* lru, uint16_t lw15, metac_scope_table
         s += 16;
     }
 }
- * 
+ *
  #ifdef _MSC_VER
 #include <intrin.h>
 
@@ -94,14 +172,14 @@ uint32_t __inline ctz( uint32_t value )
     }
 }
  */
- 
+
 /// Returns 0 to keep looking upwards
 /// and a vaild pointer if it could be found
 metac_node_header_t* MetaCScope_LookupIdentifier(metac_scope_t* self,
-                                                 uint32_t identifierKey,
                                                  metac_identifier_ptr_t identifierPtr)
 {
     metac_node_header_t* result = 0;
+    uint32_t identifierKey = crc32c(~0, &identifierPtr.v, sizeof(identifierPtr.v));
     // first do the LRU Lookup
     uint16_t lw15 = identifierKey & 0x7FFF;
 
@@ -128,7 +206,7 @@ metac_node_header_t* MetaCScope_LookupIdentifier(metac_scope_t* self,
 LtableLookup:
     {
         metac_scope_table_slot_t * slot =
-            MetaCScopeTable_Lookup(&self->ScopeTable, identifierKey, identifierPtr);
+            MetaCScopeTable_Lookup(&self->ScopeTable, identifierPtr);
         if (slot != 0)
         {
             result = slot->Node;
@@ -142,9 +220,9 @@ LtableLookup:
 
 metac_scope_t* MetaCScope_PushScope(metac_scope_t *self, metac_scope_parent_t scopeOwner)
 {
-    metac_scope_t* result = 0;
+    metac_scope_t* result = AllocNewScope(self, scopeOwner);
 
-
+    MetaCScopeTable_Init(&result->ScopeTable);
 
     return result;
 }

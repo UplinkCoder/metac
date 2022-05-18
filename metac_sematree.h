@@ -89,7 +89,6 @@ typedef struct metac_sema_expression_t
         uint64_t ValueU64;
     };
 } metac_sema_expression_t;
-#pragma pack(pop)
 
 #define SEMA_STATEMENT_HEADER \
     metac_statement_kind_t StmtKind; \
@@ -260,6 +259,10 @@ typedef struct metac_sema_statement_t
     DECLARATION_HEADER \
     metac_node_header_t* Parent;
 
+typedef struct sema_declaration_header_t
+{
+    SEMA_DECLARATION_HEADER
+} sema_declaration_header_t;
 
 #define SEMA_TYPE_HEADER \
     TYPE_HEADER \
@@ -398,7 +401,7 @@ typedef struct metac_sema_declaration_t
         struct {
             SEMA_DECLARATION_HEADER
         };
-
+        sema_declaration_header_t sema_declaration_header;
         sema_decl_typedef_t sema_decl_typedef;
         sema_decl_type_t sema_decl_type;
         sema_decl_type_ptr_t sema_decl_type_ptr;
@@ -408,5 +411,6 @@ typedef struct metac_sema_declaration_t
     };
 
 } metac_sema_declaration_t;
+#pragma pack(pop)
 
 #endif // _METAC_SEMATREE_H_

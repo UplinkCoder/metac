@@ -20,15 +20,15 @@ typedef struct metac_sema_decl_state_t
     // uint32_t CurrentOffset;
 } metac_sema_decl_state_t;
 
-#define DECLARE_TYPE_TABLE(TYPE_NAME, MEMBER_NAME) \
+#define DECLARE_TYPE_TABLE(TYPE_NAME, MEMBER_NAME, INDEX_KIND) \
     METAC_TYPE_TABLE_T(TYPE_NAME) MEMBER_NAME;
 
 #define FOREACH_TYPE_TABLE(M) \
-    M(enum,   EnumTypeTable) \
-    M(array, ArrayTypeTable) \
-    M(aggregate, StructTypeTable) \
-    M(ptr, PtrTypeTable) \
-    M(aggregate, UnionTypeTable)
+    M(enum,   EnumTypeTable, enum) \
+    M(array, ArrayTypeTable, array) \
+    M(aggregate, StructTypeTable, struct) \
+    M(ptr, PtrTypeTable, ptr) \
+    M(aggregate, UnionTypeTable, union)
 
 typedef struct metac_semantic_state_t
 {
@@ -40,10 +40,6 @@ typedef struct metac_semantic_state_t
     AT(transient) metac_sema_decl_state_t* CurrentDeclarationState;
 
     metac_scope_t* CurrentScope;
-
-    metac_scope_t* ScopeStack;
-    uint32_t ScopeStackSize;
-    uint32_t ScopeStackCapacity;
 
     // metac_type_table_t* TypeTable;
     FOREACH_TYPE_TABLE(DECLARE_TYPE_TABLE)
@@ -83,5 +79,4 @@ metac_type_index_t MetaCSemantic_doTypeSemantic(metac_semantic_state_t* self,
 /// Returns _emptyNode to signifiy it could not be found
 /// a valid node otherwise
 metac_node_header_t* MetaCSemantic_LookupIdentifier(metac_semantic_state_t* self,
-                                                    uint32_t identifierKey,
                                                     metac_identifier_ptr_t identifierPtr);

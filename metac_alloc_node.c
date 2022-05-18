@@ -103,6 +103,7 @@ noinline void _newMemRealloc(void** memP, uint32_t* capacityP, const uint32_t el
     M(sema_type_aggregate_t, _newSemaUnions) \
     M(metac_type_aggregate_field_t, _newSemaUnionFields) \
     M(metac_sema_statement_t, _newSemaStatements) \
+    M(sema_stmt_block_t, _newSemaBlockStatements) \
     M(metac_scope_t, _newScopes)
 
 
@@ -245,7 +246,8 @@ metac_scope_t* AllocNewScope(metac_scope_t* parent, metac_scope_parent_t owner)
     {
         result = _newScopes_mem + INC(_newScopes_size);
         result->Serial = INC(_nodeCounter);
-        result->Parent = owner;
+        result->Owner = owner;
+        result->Parent = parent;
     }
 
     return result;
@@ -291,6 +293,7 @@ sema_decl_variable_t* AllocFunctionParameters(sema_decl_function_t* func,
             i < parameterCount;
             i++)
         {
+            (result + i)->DeclKind = decl_parameter;
             (result + i)->Serial = INC(_nodeCounter);
         }
 
@@ -385,5 +388,38 @@ metac_sema_statement_t* AllocNewSemaStatement_(metac_statement_kind_t kind,
         // result->TypeIndex.v = 0;
     }
 
+    *result_ptr = result;
+
     return result;
+}
+
+sema_stmt_block_t* AllocNewSemaBlockStatement(sema_stmt_block_t* Parent, uint32_t statementCount,
+                                              void** result_ptr)
+{
+    sema_stmt_block_t* result = 0;
+
+    REALLOC_BOILERPLATE(_newSemaBlockStatements)
+
+    {
+        uint32_t pointersSize = statementCount * sizeof(sema_stmt_block_t*);
+        uint32_t sizeInBlockStatements =
+            (pointersSize + sizeof(*_newSemaBlockStatements_mem)) /
+            sizeof(*_newSemaBlockStatements_mem);
+
+        result = _newSemaBlockStatements_mem + POST_ADD(_newSemaBlockStatements_size,
+                                                        sizeInBlockStatements);
+        // result->Parent = 0;
+
+        result->Serial = INC(_nodeCounter);
+        result->Body = (metac_sema_statement_t*)(result + 1);
+        // result->TypeIndex.v = 0;
+    }
+    (*result_ptr) = result;
+
+    return result;
+}
+
+uint32_t BlockStatementIndex(sema_stmt_block_t* blockstmt)
+{
+    return blockstmt - _newSemaBlockStatements_mem;
 }
