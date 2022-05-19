@@ -1528,9 +1528,83 @@ LnextToken:
 
     return result;
 }
+
+decl_parameter_list_t ParseParamterList(metac_parser_t* self)
+{
+    decl_parameter_list_t result = {0, emptyPointer};
+    uint32_t parameterCount = 0;
+    decl_parameter_t* dummy;
+    decl_parameter_t** nextParam = &result.List;
+
+    while (!MetaCParser_PeekMatch(self, tok_rParen, true))
+    {
+        assert((*nextParam) == emptyPointer);
+
+        decl_parameter_t* param;
+        AllocNewDeclaration(decl_parameter, &param);
+        parameterCount++;
+        (*nextParam) = param;
+
+        param->Type = MetaCParser_ParseTypeDeclaration(self, &dummy, 0);
+
+        param->Identifier = empty_identifier;
+        if (MetaCParser_PeekMatch(self, tok_identifier, 1))
+        {
+            metac_token_t* nameToken = MetaCParser_Match(self, tok_identifier);
+            param->Identifier = RegisterIdentifier(self, nameToken);
+
+            // follow parameter
+            while(MetaCParser_PeekMatch(self, tok_lBracket, true))
+            {
+                param->Type = (decl_type_t*)ParseArraySuffix(self, param->Type);
+            }
+        }
+
+        nextParam = &param->Next;
+        (*nextParam) = (decl_parameter_t*) _emptyPointer;
+
+        if (MetaCParser_PeekMatch(self, tok_comma, true))
+        {
+            MetaCParser_Match(self, tok_comma);
+        }
+        else
+        {
+            assert(MetaCParser_PeekMatch(self, tok_rParen, true));
+        }
+    }
+    MetaCParser_Match(self, tok_rParen);
+    result.ParameterCount = parameterCount;
+
+    return result;
+}
+
 static stmt_block_t* MetaCParser_ParseBlockStatement(metac_parser_t* self,
                                                      metac_statement_t* parent,
                                                      metac_statement_t* prev);
+
+decl_function_t* ParseFunctionDeclaration(metac_parser_t* self, decl_type_t* type)
+{
+    decl_function_t result;
+
+    metac_token_t* id = MetaCParser_Match(self, tok_identifier);
+    metac_identifier_ptr_t identifier = RegisterIdentifier(self, id);
+
+    MetaCParser_Match(self, tok_lParen);
+    decl_function_t* funcDecl = AllocNewDeclaration(decl_function, &result);
+    funcDecl->ReturnType = type;
+    funcDecl->Identifier = identifier;
+    funcDecl->FunctionBody = (stmt_block_t*) _emptyPointer;
+    decl_parameter_list_t parameterList = ParseParamterList(self);
+    funcDecl->Parameters = parameterList.List;
+    funcDecl->ParameterCount = parameterList.ParameterCount;
+
+    if (MetaCParser_PeekMatch(self, tok_lBrace, true))
+    {
+        funcDecl->FunctionBody = MetaCParser_ParseBlockStatement(self, 0, 0);
+    }
+
+    return funcDecl;
+}
 
 metac_declaration_t* MetaCParser_ParseDeclaration(metac_parser_t* self, metac_declaration_t* parent)
 {
@@ -1581,72 +1655,59 @@ metac_declaration_t* MetaCParser_ParseDeclaration(metac_parser_t* self, metac_de
 
     if (type)
     {
-        if (MetaCParser_PeekMatch(self, tok_identifier, 1))
+        if (MetaCParser_PeekMatch(self, tok_lParen, true))
         {
-            metac_token_t* id = MetaCParser_Match(self, tok_identifier);
-            assert(id);
-            metac_identifier_ptr_t identifier = RegisterIdentifier(self, id);
-
-            // id paren ... it's a function :D
-            if (MetaCParser_PeekMatch(self, tok_lParen, true))
+            // this might be a function pointer
+            MetaCParser_Match(self, tok_lParen);
+            decl_variable_t* fPtrVar;
+            self->OpenParens++;
+            if (MetaCParser_PeekMatch(self, tok_star, true))
             {
-                MetaCParser_Match(self, tok_lParen);
-                decl_function_t* funcDecl = AllocNewDeclaration(decl_function, &result);
-                uint32_t parameterCount = 0;
-                funcDecl->ReturnType = type;
-                funcDecl->Identifier = identifier;
-				funcDecl->Parameters = (decl_parameter_t*) _emptyPointer;
-
-                decl_parameter_t** nextParam = &funcDecl->Parameters;
-
-                while (!MetaCParser_PeekMatch(self, tok_rParen, true))
+                MetaCParser_Match(self, tok_star);
+                // this is quite likely a function pointer
+                metac_token_t* fPtrid = MetaCParser_PeekToken(self, 1);
+                if (fPtrid->TokenType == tok_identifier)
                 {
-                    assert((*nextParam) == emptyPointer);
+                    MetaCParser_Match(self, tok_identifier);
+                    // this would be the function pointer name then
+                    fPtrVar = AllocNewDeclaration(decl_variable, &result);
+                    fPtrVar->VarInitExpression = _emptyPointer;
 
-                    decl_parameter_t* param;
-                    AllocNewDeclaration(decl_parameter, &param);
-                    parameterCount++;
-                    (*nextParam) = param;
+                    fPtrVar->VarIdentifier = RegisterIdentifier(self, fPtrid);
+                    MetaCParser_Match(self, tok_rParen);
+                    self->OpenParens--;
+                    // we eat the paren before we do the parameterList
+                    //TODO maybe paramter list parsing should eat both parens
+                    MetaCParser_Match(self, tok_lParen);
+                    decl_type_t* returnType = type;
+                    decl_parameter_list_t paramterList =
+                        ParseParamterList(self);
 
-                    param->Type = MetaCParser_ParseTypeDeclaration(self, result, 0);
+                    decl_type_functiontype_t* functionType =
+                        AllocNewDeclaration(decl_type_functiontype, &fPtrVar->VarType);
 
-                    param->Identifier = empty_identifier;
-                    if (MetaCParser_PeekMatch(self, tok_identifier, 1))
-                    {
-                        metac_token_t* nameToken = MetaCParser_Match(self, tok_identifier);
-                        param->Identifier = RegisterIdentifier(self, nameToken);
+                    functionType->ReturnType = returnType;
+                    functionType->Parameters = paramterList.List;
+                    functionType->ParameterCount = paramterList.ParameterCount;
 
-                        // follow parameter
-                        while(MetaCParser_PeekMatch(self, tok_lBracket, true))
-                        {
-                            param->Type = (decl_type_t*)ParseArraySuffix(self, param->Type);
-                        }
-                    }
+                    fPtrVar->VarType = functionType;
 
-                    nextParam = &param->Next;
-                    (*nextParam) = (decl_parameter_t*) _emptyPointer;
-
-                    if (MetaCParser_PeekMatch(self, tok_comma, true))
-                    {
-                        MetaCParser_Match(self, tok_comma);
-                    }
-                    else
-                    {
-                        assert(MetaCParser_PeekMatch(self, tok_rParen, true));
-                    }
                 }
-                MetaCParser_Match(self, tok_rParen);
-                funcDecl->ParameterCount = parameterCount;
-                funcDecl->FunctionBody = (stmt_block_t*) _emptyPointer;
-
-                if (MetaCParser_PeekMatch(self, tok_lBrace, true))
-                {
-                    funcDecl->FunctionBody = MetaCParser_ParseBlockStatement(self, 0, 0);
-                }
+            }
+        }
+        else if (MetaCParser_PeekMatch(self, tok_identifier, 1))
+        {
+            metac_token_t* afterId = MetaCParser_PeekToken(self, 2);
+            if (afterId->TokenType == tok_lParen)
+            {
+                decl_function_t* funcDecl = ParseFunctionDeclaration(self, type);
+                result = (metac_declaration_t*) funcDecl;
             }
             else
             {
                 decl_variable_t* varDecl = AllocNewDeclaration(decl_variable, &result);
+                metac_token_t* idToken = MetaCParser_Match(self, tok_identifier);
+                metac_identifier_ptr_t identifier = RegisterIdentifier(self, idToken);
 //            varDecl.LocationIdx =
 //                MetaCLocationStorage_StartLoc(&parser.locationStorage,
 //                    MetaCLocationStorage_StartLine(&parser.lexer.locationStorage, type.LocationIdx));

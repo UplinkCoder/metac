@@ -539,6 +539,11 @@ typedef struct decl_parameter_t
     struct decl_parameter_t* Next;
 } decl_parameter_t;
 
+typedef struct decl_parameter_list_t
+{
+    uint32_t ParameterCount;
+    decl_parameter_t* List;
+} decl_parameter_list_t;
 
 typedef struct decl_function_t
 {
@@ -590,8 +595,12 @@ typedef struct decl_type_functiontype_t
 
     TYPE_HEADER
 
-    decl_type_t ReturnType;
+    decl_type_t* ReturnType;
 
+    /// this may or may not include identifiers
+    decl_parameter_t* Parameters;
+
+    uint32_t ParameterCount;
 } decl_type_functiontype_t;
 
 typedef struct decl_type_array_t

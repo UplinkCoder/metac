@@ -156,6 +156,32 @@ static inline void PrintI64(metac_printer_t* self, int64_t value)
     PrintString(self, result, length);
 }
 
+static inline void PrintType(metac_printer_t* self, decl_type_t* type);
+
+
+static inline void PrintParameterList(metac_printer_t* self,
+                                     decl_parameter_t* Parameters)
+{
+    PrintToken(self, tok_lParen);
+
+    for(decl_parameter_t* param = Parameters;
+        param != emptyPointer;
+        param = param->Next)
+    {
+        PrintType(self, param->Type);
+        if (param->Identifier.v != empty_identifier.v)
+        {
+            PrintSpace(self);
+            PrintIdentifier(self, param->Identifier);
+        }
+        if (param->Next != emptyPointer)
+            PrintString(self, ", ", 2);
+    }
+
+    PrintToken(self, tok_rParen);
+}
+
+
 static inline void PrintType(metac_printer_t* self, decl_type_t* type)
 {
     switch(type->DeclKind)
@@ -222,6 +248,16 @@ static inline void PrintType(metac_printer_t* self, decl_type_t* type)
             PrintIdentifier(self, structType->Identifier);
         }
         break;
+        case decl_type_functiontype:
+        {
+            decl_type_functiontype_t *funcType = (decl_type_functiontype_t*) type;
+            PrintType(self, funcType->ReturnType);
+            PrintSpace(self);
+            PrintChar(self, '(');
+            PrintChar(self, '*');
+            PrintString(self, "function) ", sizeof("function) ") - 1);
+            PrintParameterList(self, funcType->Parameters);
+        } break;
         default : assert(0);
     }
 }
@@ -370,6 +406,8 @@ static inline void PrintStatement(metac_printer_t* self, metac_statement_t* stmt
     }
 }
 
+
+
 static inline void PrintDeclaration(metac_printer_t* self,
                                     metac_declaration_t* decl,
                                     uint32_t level)
@@ -455,23 +493,7 @@ static inline void PrintDeclaration(metac_printer_t* self,
             PrintType(self, function_->ReturnType);
             PrintSpace(self);
             PrintIdentifier(self, function_->Identifier);
-            PrintToken(self, tok_lParen);
-
-            for(decl_parameter_t* param = function_->Parameters;
-                param != emptyPointer;
-                param = param->Next)
-            {
-                PrintType(self, param->Type);
-                if (param->Identifier.v != empty_identifier.v)
-                {
-                    PrintSpace(self);
-                    PrintIdentifier(self, param->Identifier);
-                }
-                if (param->Next != emptyPointer)
-                    PrintString(self, ", ", 2);
-            }
-
-            PrintToken(self, tok_rParen);
+            PrintParameterList(self, function_->Parameters);
 
             if (function_->FunctionBody != _emptyPointer)
             {

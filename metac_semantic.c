@@ -287,27 +287,27 @@ sema_decl_function_t* MetaCSemantic_doFunctionSemantic(metac_semantic_state_t* s
 
         currentParam = currentParam->Next;
     }
-
     assert(currentParam == emptyPointer);
+
+    if (func->FunctionBody == emptyPointer)
+    {
+        return f;
+    }
+
     metac_scope_parent_t Parent = {SCOPE_PARENT_V(scope_parent_function, FunctionIndex(f))};
 
     self->CurrentScope = f->Scope = MetaCScope_PushScope(self->CurrentScope, Parent);
     // now we have to add the parameters to the scope.
-    sema_decl_variable_t p3[3] = { f->Parameters[0], f->Parameters[1], f->Parameters[2] };
 
     for(uint32_t i = 0;
         i < func->ParameterCount;
         i++)
     {
         //TODO we cannot hash parameter and variable names all the time
-        char* idChars = self->ParserIdentifierTable->StringMemory +
-                        (params[i].VarIdentifier.v - 4);
-        uint32_t idLen = strlen(idChars);
-        uint32_t key   = IDENTIFIER_KEY(crc32c(~0, idChars, idLen), idLen);
         metac_node_header_t* ptr = (metac_node_header_t*)(&f->Parameters[i]);
         scope_insert_error_t result =
             MetaCScope_RegisterIdentifier(f->Scope, params[i].VarIdentifier,
-                                          (metac_node_header_t*)(ptr));
+                                          ptr);
         assert(MetaCScope_LookupIdentifier(f->Scope, params[i].VarIdentifier)
                 == params + i);
 
