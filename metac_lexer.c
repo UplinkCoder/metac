@@ -341,6 +341,7 @@ static uint32_t MetaCStaticTokenLength(metac_token_enum_t t)
         case tok_kw_extern   : return 6;
         case tok_kw_for      : return 3;
         case tok_kw_sizeof   : return 6;
+        case tok_kw_size_t   : return 6;
         case tok_kw_goto     : return 4;
 
         case tok_kw_scope    : return 5;
@@ -1159,6 +1160,8 @@ void test_lexer()
         "short",
         "int",
         "long",
+
+        "size_t",
 
         "float",
         "double",
