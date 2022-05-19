@@ -615,7 +615,8 @@ static inline void PrintExpression(metac_printer_t* self, metac_expression_t* ex
         PrintString(self, op, strlen(op));
     }
     else if (exp->Kind == exp_inject || exp->Kind == exp_eject
-          || exp->Kind == exp_typeof || exp->Kind == exp_assert)
+          || exp->Kind == exp_typeof || exp->Kind == exp_assert
+          || exp->Kind == exp_unary_dot)
     {
         {
             const char* op = 0;
@@ -627,6 +628,8 @@ static inline void PrintExpression(metac_printer_t* self, metac_expression_t* ex
                 op = "typeof";
             else if (exp->Kind == exp_assert)
                 op = "assert";
+            else if (exp->Kind == exp_unary_dot)
+                op = ".";
 
             assert(op);
 

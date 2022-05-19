@@ -592,7 +592,7 @@ uint32_t OpToPrecedence(metac_expression_kind_t exp)
     {
         return 16;
     }
-    else if (exp == exp_umin)
+    else if (exp == exp_umin || exp == exp_unary_dot)
     {
         return 17;
     }
@@ -825,8 +825,8 @@ metac_expression_t* MetaCParser_ParseUnaryExpression(metac_parser_t* self)
     if (tokenType == tok_dot)
     {
         MetaCParser_Match(self, tok_dot);
-        result = AllocNewExpression(exp_dot);
-        result->E1 = MetaCParser_ParseExpression(self, expr_flags_none, 0);
+        result = AllocNewExpression(exp_unary_dot);
+        result->E1 = MetaCParser_ParseExpression(self, expr_flags_unary, 0);
         result->Hash = Mix(
             crc32c(~0, ".", sizeof(".") - 1),
             result->E1->Hash
@@ -1222,7 +1222,7 @@ metac_expression_t* MetaCParser_ParseExpression(metac_parser_t* self,
             goto LreturnExp;
 
         if ((eflags & expr_flags_unary))
-            min_prec = 14;
+            goto LreturnExp;
 
         if (IsBinaryOperator(tokenType))
         {
