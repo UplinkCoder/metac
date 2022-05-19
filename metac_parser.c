@@ -59,6 +59,8 @@ void MetaCParser_Init(metac_parser_t* self)
         malloc(sizeof(stmt_block_t**) * self->BlockStatementStackCapacity);
 
     self->OpenParens = 0;
+    self->SpecialNamePtr_Compiler.v = 0;
+
 #ifndef NO_DOT_PRINTER
     self->DotPrinter = (metac_dot_printer_t*)malloc(sizeof(metac_dot_printer_t));
     MetaCDotPrinter_Init(self->DotPrinter, &self->IdentifierTable);
@@ -817,6 +819,61 @@ metac_expression_t* MetaCParser_ParsePostfixExpression(metac_parser_t* self,
 }
 decl_type_t* MetaCParser_ParseTypeDeclaration(metac_parser_t* self, metac_declaration_t* parent, metac_declaration_t* prev);
 
+static inline metac_expression_t* ParseDotCompilerExpression(metac_parser_t* self)
+{
+    return 0;
+}
+
+static inline uint32_t PtrVOnMatch(metac_parser_t* self,
+                                   metac_identifier_ptr_t ptr,
+                                   const char* matchStr,
+                                   uint32_t matchLen)
+{
+    const char* idChars = IdentifierPtrToCharPtr(&self->IdentifierTable,
+                                                 ptr);
+    return ((!memcmp(idChars, matchStr, matchLen)) ? ptr.v : 0);
+}
+
+
+static inline metac_expression_t* ParseUnaryDotExpression(metac_parser_t* self)
+{
+#define compiler_key 0x8481e0
+    metac_expression_t* result = 0;
+
+    metac_token_t* peek;
+    peek = MetaCParser_PeekToken(self, 1);
+    if (peek && peek->TokenType == tok_identifier)
+    {
+        switch(peek->IdentifierKey)
+        {
+            case compiler_key:
+            {
+                if (UNLIKELY(self->SpecialNamePtr_Compiler.v == 0))
+                {
+                    const uint32_t compilerPtrV =
+                        PtrVOnMatch(self, peek->IdentifierPtr, "compiler", 8);
+                    if(compilerPtrV)
+                        self->SpecialNamePtr_Compiler.v = compilerPtrV;
+                }
+
+                if (self->SpecialNamePtr_Compiler.v == peek->IdentifierPtr.v)
+                    result = ParseDotCompilerExpression(self);
+            } break;
+        }
+    }
+
+    if (!result)
+    {
+        result = AllocNewExpression(exp_unary_dot);
+        result->Hash = Mix(
+            crc32c(~0, ".", sizeof(".") - 1),
+            result->E1->Hash
+        );
+    }
+
+    return result;
+}
+
 metac_expression_t* MetaCParser_ParseUnaryExpression(metac_parser_t* self)
 {
     metac_expression_t* result = 0;
@@ -829,12 +886,7 @@ metac_expression_t* MetaCParser_ParseUnaryExpression(metac_parser_t* self)
     if (tokenType == tok_dot)
     {
         MetaCParser_Match(self, tok_dot);
-        result = AllocNewExpression(exp_unary_dot);
-        result->E1 = MetaCParser_ParseExpression(self, expr_flags_unary, 0);
-        result->Hash = Mix(
-            crc32c(~0, ".", sizeof(".") - 1),
-            result->E1->Hash
-        );
+        result = ParseUnaryDotExpression(self);
     }
     else if (tokenType == tok_kw_eject)
     {

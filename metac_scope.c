@@ -11,7 +11,7 @@ void MetaCScopeTable_Init(metac_scope_table_t* self)
 {
     self->SlotCount_Log2 = 8;
     const uint32_t maxSlots = (1 << self->SlotCount_Log2);
-    self->Slots = (metac_type_table_slot_t*) calloc(maxSlots, sizeof(metac_scope_table_slot_t));
+    self->Slots = (metac_scope_table_slot_t*) calloc(maxSlots, sizeof(metac_scope_table_slot_t));
     self->SlotsUsed = 0;
 }
 

@@ -80,6 +80,7 @@ metac_sema_statement_t* MetaCSemantic_doStatementSemantic(metac_semantic_state_t
             }
             POP_SCOPE(self->CurrentScope);
         } break;
+
         case stmt_return:
         {
             stmt_return_t* returnStatement = (stmt_return_t*) stmt;

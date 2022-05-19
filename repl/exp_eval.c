@@ -12,7 +12,7 @@ bool IsBinaryExp(metac_expression_kind_t k);
 const char* MetaCExpressionKind_toChars(metac_expression_kind_t k);
 
 static inline BCValue* GetValueFromVariableStore(variable_store_t* vstore,
-                                                 metac_expression_t* identifierExp)
+                                                 metac_sema_expression_t* identifierExp)
 {
     uint32_t idKey = identifierExp->IdentifierKey;
     metac_identifier_ptr_t idPtr = identifierExp->IdentifierPtr;
@@ -51,7 +51,7 @@ metac_identifier_ptr_t FindMatchingIdentifier(metac_identifier_table_t* searchTa
 }
 
 void VariableStore_SetValueI32(variable_store_t* vstore,
-                               metac_expression_t* identifierExp,
+                               metac_sema_expression_t* identifierExp,
                                int32_t value)
 {
     uint32_t idKey = identifierExp->IdentifierKey;

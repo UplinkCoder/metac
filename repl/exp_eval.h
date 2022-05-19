@@ -56,7 +56,7 @@ metac_identifier_ptr_t FindMatchingIdentifier(metac_identifier_table_t* searchTa
 typedef struct ReadI32_Ctx
 {
     variable_store_t* vstore;
-    metac_expression_t* exp;
+    metac_sema_expression_t* exp;
 } ReadI32_Ctx;
 
 extern ReadI32_Ctx* _ReadContexts;

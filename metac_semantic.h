@@ -32,6 +32,7 @@ typedef struct metac_sema_decl_state_t
 
 typedef struct metac_semantic_state_t
 {
+    bool initialized;
     metac_identifier_table_t SemanticIdentifierTable;
     metac_identifier_table_t* ParserIdentifierTable;
 

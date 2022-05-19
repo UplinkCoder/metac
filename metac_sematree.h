@@ -278,9 +278,19 @@ typedef struct sema_decl_type_t
     metac_identifier_ptr_t TypeIdentifier;
 } sema_decl_type_t;
 
+enum metac_variable_flags_t
+{
+    variable_none          = (1 <<  0),
+    variable_is_parameter  = (1 <<  1),
+    variable_is_local      = (1 <<  2),
+    variable_address_taken = (1 <<  3),
+} metac_variable_flags_t;
+
 typedef struct sema_decl_variable_t
 {
     SEMA_DECLARATION_HEADER
+
+    uint32_t VarFlags;
 
     metac_type_index_t VarType;
 

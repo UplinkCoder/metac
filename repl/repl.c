@@ -364,14 +364,26 @@ LnextLine:
                         if (assignExp->Kind != exp_assign)
                         {
                             fprintf(stderr, "You must write an expression of the from identifier = value");
+                            goto LnextLine;
+                        }
+
+                        static metac_semantic_state_t sema = {0};
+                        MetaCSemantic_Init(&sema, &g_lineParser);
+                        sema.declStore = &dstore;
+                        metac_sema_expression_t* ae =
+                            MetaCSemantic_doExprSemantic(&sema, assignExp);
+                        if (ae)
+                        {
+                            assert(ae->E1->Kind == exp_identifier);
+                            assert(ae->E2->Kind == exp_signed_integer);
+
+                            VariableStore_SetValueI32(&vstore, ae->E1, (int32_t)ae->E2->ValueI64);
                         }
                         else
                         {
-                            assert(assignExp->E1->Kind == exp_identifier);
-                            assert(assignExp->E2->Kind == exp_signed_integer);
-
-                            VariableStore_SetValueI32(&vstore, assignExp->E1, (int32_t)assignExp->E2->ValueI64);
+                            fprintf(stderr, "Semantic on assign exp failed\n");
                         }
+                        // MetaCSemantic_Free(&sema);
                         goto LnextLine;
                     }
                     else

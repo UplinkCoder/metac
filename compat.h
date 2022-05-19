@@ -32,6 +32,14 @@ typedef unsigned char _Bool;
 #  endif
 #endif
 
+#if defined(__GNUC__)
+#  define UNLIKELY(X) \
+    __builtin_expect((X), 0)
+#else
+#  define UNLIKELY(X) (X)
+#endif
+
+
 #ifdef __cplusplus
 #  define EXTERN_C extern "C"
 #else
