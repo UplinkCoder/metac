@@ -1,6 +1,6 @@
 #include "../compat.h"
 #include "../utils/read_file.c"
-#include "../cache/crc32.c"
+#include "../crc32c.h"
 #include "../metac_parser_obj.c"
 //#include "../3rd_party/tracyC.h"
 
@@ -45,14 +45,16 @@ static inline void ParseFile(metac_parser_t* parser,
     while(parser->CurrentTokenIndex < parser->Lexer->TokenSize)
     {
         declarations[declarationSize++] = MetaCParser_ParseDeclaration(parser, 0);
-        printf("Parsed %u tokens\n", parser->CurrentTokenIndex);
+        // printf("Parsed %u tokens\n", parser->CurrentTokenIndex);
         metac_token_t* lastToken = MetaCParser_PeekToken(parser, 1);
+#if 0
         const char* str =
             MetaCPrinter_PrintDeclaration(&printer,
                 declarations[declarationSize - 1]
         );
         printf("%s\n", str);
         MetaCPrinter_Reset(&printer);
+#endif
         if (!lastToken || lastToken->TokenType == tok_eof)
             break;
     }
@@ -173,7 +175,7 @@ int main(int argc, const char* argv[])
         metac_parser_t parser;
         MetaCParser_InitFromLexer(&parser, &lexer);
 
-        // ParseFile(&parser, arg, 0);
+        ParseFile(&parser, arg, 0);
 
         metac_identifier_table_slot_t firstEntry = {0};
 

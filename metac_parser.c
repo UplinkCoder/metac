@@ -629,6 +629,7 @@ static inline bool IsTypeToken(metac_token_enum_t tokenType)
            (   tokenType == tok_kw_const
             || (tokenType >= tok_kw_auto && tokenType <= tok_kw_double)
             || tokenType == tok_kw_unsigned
+            || tokenType == tok_kw_signed
             || tokenType == tok_star
             || tokenType == tok_kw_struct
             || tokenType == tok_kw_enum
@@ -1273,6 +1274,7 @@ static inline bool IsDeclType(metac_declaration_t* decl)
 
 #define U32(VAR) \
 	(*(uint32_t*)(&VAR))
+static decl_type_array_t* ParseArraySuffix(metac_parser_t* self, decl_type_t* type);
 
 decl_type_t* MetaCParser_ParseTypeDeclaration(metac_parser_t* self, metac_declaration_t* parent, metac_declaration_t* prev)
 {
@@ -1321,6 +1323,11 @@ LnextToken:
         else if (tokenType == tok_kw_unsigned)
         {
             U32(typeModifiers) |= typemod_unsigned;
+            goto LnextToken;
+        }
+        else if (tokenType == tok_kw_signed)
+        {
+            //TODO mark signed
             goto LnextToken;
         }
         else if (tokenType == tok_star)
@@ -1385,7 +1392,11 @@ LnextToken:
                         return ErrorTypeDeclaration();
 
                     field->Field.VarIdentifier = RegisterIdentifier(self, memberName);
-
+                    if (MetaCParser_PeekMatch(self, tok_lBracket, 1))
+                    {
+                        field->Field.VarType =
+                            ParseArraySuffix(self, field->Field.VarType);
+                    }
                     MetaCParser_Match(self, tok_semicolon);
                     nextMemberPtr = &field->Next;
                     struct_->FieldCount++;
@@ -1421,7 +1432,6 @@ LnextToken:
 
     return result;
 }
-static decl_type_array_t* ParseArraySuffix(metac_parser_t* self, decl_type_t* type);
 static stmt_block_t* MetaCParser_ParseBlockStatement(metac_parser_t* self,
                                                      metac_statement_t* parent,
                                                      metac_statement_t* prev);
