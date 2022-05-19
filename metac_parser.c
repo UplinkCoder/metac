@@ -494,18 +494,18 @@ bool MetaCParser_PeekMatch(metac_parser_t* self, metac_token_enum_t expectedType
     return result;
 }
 
-bool IsPostfixOperator(metac_token_enum_t t)
+static inline bool IsPostfixOperator(metac_token_enum_t t)
 {
     return (t == tok_plusplus || t == tok_minusminus);
 }
 
-bool IsBinaryOperator(metac_token_enum_t t)
+static inline bool IsBinaryOperator(metac_token_enum_t t)
 {
     return ((t >= FIRST_BINARY_TOKEN(TOK_SELF) && t <= LAST_BINARY_TOKEN(TOK_SELF))
             || t == tok_lParen || t == tok_lBracket);
 }
 
-uint32_t Mix(uint32_t a, uint32_t b)
+static inline uint32_t Mix(uint32_t a, uint32_t b)
 {
   return (a ^ b) + 0x9e3779b9 + (a << 6) + (a >> 2);
 
@@ -529,7 +529,7 @@ typedef enum precedence_level_t
     prec_max
 } precedence_level_t;
 
-uint32_t OpToPrecedence(metac_expression_kind_t exp)
+static inline uint32_t OpToPrecedence(metac_expression_kind_t exp)
 {
     if (exp == exp_comma)
     {
@@ -608,7 +608,7 @@ uint32_t OpToPrecedence(metac_expression_kind_t exp)
     return 0;
 }
 
-bool IsPrimaryExpressionToken(metac_token_enum_t tokenType)
+static inline bool IsPrimaryExpressionToken(metac_token_enum_t tokenType)
 {
     switch(tokenType)
     {
