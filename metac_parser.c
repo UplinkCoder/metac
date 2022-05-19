@@ -320,12 +320,21 @@ metac_token_t* MetaCParser_Match_(metac_parser_t* self, metac_token_enum_t type,
     metac_token_enum_t got = (token ? token->TokenType : tok_eof);
     if (got != type)
     {
-        metac_location_t loc = self->Lexer->LocationStorage.Locations[token->LocationId - 4];
+        if (got != tok_eof)
+        {
+            metac_location_t loc = self->Lexer->LocationStorage.Locations[token->LocationId - 4];
 
-        printf("[%s:%u] Expected: %s -- Got: %s {line: %u: col: %u}\n",
-            filename, lineNumber,
-            MetaCTokenEnum_toChars(type), MetaCTokenEnum_toChars(got),
-            loc.StartLine, loc.StartColumn);
+            printf("[%s:%u] Expected: %s -- Got: %s {line: %u: col: %u}\n",
+                filename, lineNumber,
+                MetaCTokenEnum_toChars(type), MetaCTokenEnum_toChars(got),
+                loc.StartLine, loc.StartColumn);
+        }
+        else
+        {
+            printf("[%s:%u] Expected: %s -- Got: End of file\n",
+                filename, lineNumber,
+                MetaCTokenEnum_toChars(type));
+        }
     }
     return token;
 }
@@ -821,6 +830,15 @@ decl_type_t* MetaCParser_ParseTypeDeclaration(metac_parser_t* self, metac_declar
 
 static inline metac_expression_t* ParseDotCompilerExpression(metac_parser_t* self)
 {
+    metac_expression_t* result = 0;
+    MetaCParser_Match(self, tok_dot);
+    metac_token_t* peek;
+    peek = MetaCParser_PeekToken(self, 1);
+    if (!peek)
+    {
+        fprintf(stderr, "Expected . expression after '.compiler'\n");
+    }
+
     return 0;
 }
 
@@ -848,16 +866,28 @@ static inline metac_expression_t* ParseUnaryDotExpression(metac_parser_t* self)
         {
             case compiler_key:
             {
+                metac_identifier_ptr_t identifierPtr =
+                    RegisterIdentifier(self, peek);
+                printf("Probably saw '.compiler'\n");
                 if (UNLIKELY(self->SpecialNamePtr_Compiler.v == 0))
                 {
                     const uint32_t compilerPtrV =
-                        PtrVOnMatch(self, peek->IdentifierPtr, "compiler", 8);
+                        PtrVOnMatch(self, identifierPtr, "compiler", 8);
                     if(compilerPtrV)
                         self->SpecialNamePtr_Compiler.v = compilerPtrV;
                 }
+#if 0
 
-                if (self->SpecialNamePtr_Compiler.v == peek->IdentifierPtr.v)
+                printf("SpecialNamePtr_Compiler: %u\n",
+                    self->SpecialNamePtr_Compiler.v);
+                printf("identifierPtr.v: %u\n",
+                    identifierPtr.v);
+#endif
+                if (self->SpecialNamePtr_Compiler.v == identifierPtr.v)
+                {
+                    MetaCParser_Match(self, tok_identifier);
                     result = ParseDotCompilerExpression(self);
+                }
             } break;
         }
     }
@@ -865,6 +895,7 @@ static inline metac_expression_t* ParseUnaryDotExpression(metac_parser_t* self)
     if (!result)
     {
         result = AllocNewExpression(exp_unary_dot);
+        result->E1 = MetaCParser_ParseExpression(self, expr_flags_unary, 0);
         result->Hash = Mix(
             crc32c(~0, ".", sizeof(".") - 1),
             result->E1->Hash
@@ -1024,11 +1055,14 @@ metac_expression_t* MetaCParser_ParseUnaryExpression(metac_parser_t* self)
     }
     else
     {
-        metac_location_t location =
-            self->Lexer->LocationStorage.Locations[currentToken->LocationId - 4];
-        fprintf(stderr, "line: %d col: %d\n", location.StartLine, location.StartColumn);
+        if (tokenType != tok_eof)
+        {
+            metac_location_t location =
+                self->Lexer->LocationStorage.Locations[currentToken->LocationId - 4];
+            fprintf(stderr, "line: %d col: %d\n", location.StartLine, location.StartColumn);
+        }
         fprintf(stderr, "Unexpected Token: %s\n", MetaCTokenEnum_toChars(tokenType));
-        assert(0);
+ //       assert(0);
     }
 
     metac_token_t* peek_post = MetaCParser_PeekToken(self, 1);
