@@ -192,16 +192,34 @@ typedef enum scope_kind_t
     scope_exit
 } scope_kind_t;
 
-typedef enum metac_expression_kind_t
-{
-    FOREACH_EXP(DEFINE_MEMBERS)
-} metac_expression_kind_t;
-
 #define EXP_SELF(EXP) \
     EXP
 
 #define BIN_MEMBERS(MEMB) \
     bin_ ## MEMB,
+
+typedef enum metac_expression_kind_t
+{
+    FOREACH_EXP(DEFINE_MEMBERS)
+} metac_expression_kind_t;
+
+typedef enum metac_statement_kind_t
+{
+    stmt_min = exp_max + 1,
+
+    FOREACH_STMT_KIND_(DEFINE_MEMBERS)
+
+    stmt_max
+} metac_statement_kind_t;
+
+typedef enum metac_declaration_kind_t
+{
+    decl_min = stmt_max + 1,
+
+    FOREACH_DECL_KIND_(DEFINE_MEMBERS)
+
+    decl_max
+} metac_declaration_kind_t;
 
 typedef enum metac_binary_expression_kind_t
 {
@@ -292,24 +310,6 @@ typedef struct metac_expression_t
     };
 } metac_expression_t;
 
-typedef enum metac_statement_kind_t
-{
-    stmt_min = exp_max + 1,
-
-    FOREACH_STMT_KIND_(DEFINE_MEMBERS)
-
-    stmt_max
-} metac_statement_kind_t;
-
-
-typedef enum metac_declaration_kind_t
-{
-    decl_min = stmt_max + 1,
-
-    FOREACH_DECL_KIND_(DEFINE_MEMBERS)
-
-    decl_max
-} metac_declaration_kind_t;
 
 #define STATEMENT_HEADER \
     metac_statement_kind_t StmtKind; \
