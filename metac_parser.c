@@ -1399,7 +1399,7 @@ LnextToken:
                     field->Field.VarIdentifier = RegisterIdentifier(self, memberName);
                     if (MetaCParser_PeekMatch(self, tok_lBracket, 1))
                     {
-                        field->Field.VarType =
+                        field->Field.VarType = (decl_type_t*)
                             ParseArraySuffix(self, field->Field.VarType);
                     }
                     MetaCParser_Match(self, tok_semicolon);

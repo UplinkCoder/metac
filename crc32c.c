@@ -32,12 +32,9 @@ uint32_t crc32c(uint32_t crc, const void* s, const uint32_t len_p);
     ((CRC) ^ 0xFFFFFFFF)
 #define INITIAL_CRC32C ((uint32_t)0xFFFFFFFF)
 
-#pragma once
-
 // implementation
-
 #ifndef NO_CRC32C_TABLE
-static const unsigned int crc32Table[256] = {
+const unsigned int crc32Table[256] = {
     0x00000000U, 0xF26B8303U, 0xE13B70F7U, 0x1350F3F4U,
     0xC79A971FU, 0x35F1141CU, 0x26A1E7E8U, 0xD4CA64EBU,
     0x8AD958CFU, 0x78B2DBCCU, 0x6BE22838U, 0x9989AB3BU,

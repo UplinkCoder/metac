@@ -114,7 +114,7 @@ int main(int argc, const char* argv[])
     }
     printf("\n  },\n");
     printf("  /*PtrSize*/\n");
-    printf("  %u\n", sizeof(void*));
+    printf("  %u\n", (unsigned int)sizeof(void*));
 
     printf("};\n");
     printf("#endif // _DEFAULT_TARGET_INFO_H_\n");

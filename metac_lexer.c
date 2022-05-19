@@ -337,6 +337,7 @@ static uint32_t MetaCStaticTokenLength(metac_token_enum_t t)
         case tok_kw_signed   : return 6;
         case tok_kw_unsigned : return 8;
         case tok_kw_volatile : return 8;
+        case tok_kw___shared : return 8;
         case tok_kw_extern   : return 6;
         case tok_kw_for      : return 3;
         case tok_kw_sizeof   : return 6;
@@ -1166,6 +1167,7 @@ void test_lexer()
         "unsigned",
         "const",
         "volatile",
+        "__shared",
         "extern",
 
         "for",
