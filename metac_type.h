@@ -93,6 +93,8 @@ typedef enum metac_type_kind_t
     type_short,
     type_int,
     type_long,
+    type_size_t,
+
     type_float,
     type_double,
 //TO HERE

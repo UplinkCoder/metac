@@ -22,6 +22,7 @@ if [ -d $DST ]; then
        metac_thread.c metac_thread.h \
        metac_parser_obj.c metac_semantic_obj.c \
        metac_target_info.c metac_target_info.h \
+       metac_default_target_info.h \
        metac.fpg TODO \
        $DST
 

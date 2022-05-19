@@ -119,6 +119,7 @@ typedef struct metac_lexer_state_t
     M(tok_kw_short) \
     M(tok_kw_int) \
     M(tok_kw_long) \
+    M(tok_kw_size_t) \
     M(tok_kw_float) \
     M(tok_kw_double) \
     \

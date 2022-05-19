@@ -2,7 +2,7 @@
 #include <assert.h>
 #include "metac_alloc_node.h"
 #include "metac_target_info.h"
-#include "generated/default_target_info.h"
+#include "metac_default_target_info.h"
 
 #define AT(...)
 
@@ -28,6 +28,10 @@ void MetaCSemantic_Init(metac_semantic_state_t* self, metac_parser_t* parser)
                       type_index_## INDEX_KIND);
 
     FOREACH_TYPE_TABLE(INIT_TYPE_TABLE)
+
+    self->ExpressionStackCapacity = 64;
+    self->ExpressionStackSize = 0;
+    self->ExpressionStack = calloc(sizeof(metac_expression_t), self->ExpressionStackCapacity);
 
     IdentifierTableInit(&self->SemanticIdentifierTable);
     self->ParserIdentifierTable = &parser->IdentifierTable;
@@ -139,54 +143,26 @@ bool isAggregateType(metac_type_kind_t TypeKind)
 	(*(uint32_t*)(&VAR))
 #endif
 /// Returns size in byte or INVALID_SIZE on error
-uint32_t MetaCSemantic_getTypeSize(metac_semantic_state_t* self,
+uint32_t MetaCSemantic_GetTypeSize(metac_semantic_state_t* self,
                                    metac_type_index_t typeIndex)
 {
     uint32_t result = INVALID_SIZE;
+
     if (TYPE_INDEX_KIND(typeIndex) == type_index_basic)
     {
-        if ((TYPE_INDEX_INDEX(typeIndex) >= type_unsigned_char)
-         && (TYPE_INDEX_INDEX(typeIndex) <= type_unsigned_int))
-        {
-            U32(typeIndex) -=
-                ((uint32_t)type_char - (uint32_t)type_unsigned_char);
-        }
+        uint32_t idx = TYPE_INDEX_INDEX(typeIndex);
 
-        switch((metac_type_kind_t)TYPE_INDEX_INDEX(typeIndex))
+        if ((idx >= type_unsigned_char)
+         && (idx <= type_unsigned_long))
         {
-        case type_void:
-            result = 0;
-            break;
-        case type_bool:
-            result = 1;
-            break;
-        case type_char:
-            result = 1;
-            break;
-        case type_short:
-            result = 2;
-            break;
-        case type_int:
-            result = 4;
-            break;
-        case type_long:
-            //TODO have this configureable
-            //FIXME
-            result = 4;
-            break;
-        case type_float:
-            result = 4;
-            break;
-        case type_double:
-            result = 8;
-            break;
-        case type_long_long:
-            result = 8;
-            break;
-        case type_unsigned_long_long:
-            result = 8;
-            break;
+            idx -= ((uint32_t)type_char - (uint32_t)type_unsigned_char);
         }
+        else if (idx == type_unsigned_long_long)
+        {
+            idx = type_long_long;
+        }
+        result =
+            MetaCTargetInfo_GetBasicSize(&default_target_info, (basic_type_kind_t) idx);
     }
     else
     {
@@ -229,7 +205,7 @@ metac_type_index_t MetaCSemantic_doTypeSemantic(metac_semantic_state_t* self,
                 {
                     metac_type_index_t fieldTypeIndex =
                         MetaCSemantic_doTypeSemantic(self, declField->Field.VarType);
-                    uint32_t size = MetaCSemantic_getTypeSize(self, fieldTypeIndex);
+                    uint32_t size = MetaCSemantic_GetTypeSize(self, fieldTypeIndex);
                     if (size > alignment)
                         alignment = size;
                     if (size < alignment)
@@ -359,6 +335,8 @@ metac_sema_declaration_t* MetaCSemantic_doDeclSemantic(metac_semantic_state_t* s
                 MetaCSemantic_doFunctionSemantic(self, f);
 
         } break;
+        case decl_parameter:
+            assert(0);
         case decl_variable:
         {
             decl_variable_t* v = cast(decl_variable_t*) decl;
@@ -438,6 +416,8 @@ static inline const char* BasicTypeToChars(metac_type_index_t typeIndex)
             return "int";
         case type_long :
             return "long";
+        case type_size_t:
+            return "size_t";
         case type_long_long:
             return "long long";
 
@@ -618,6 +598,15 @@ metac_sema_expression_t* MetaCSemantic_doExprSemantic(metac_semantic_state_t* se
         case exp_signed_integer :
             result->TypeIndex = MetaCSemantic_GetTypeIndex(self, type_int, emptyPointer);
         break;
+        case exp_sizeof:
+        {
+            uint32_t size = -1;
+            metac_type_index_t type = MetaCSemantic_doTypeSemantic(self, expr->SizeofType);
+            size = MetaCSemantic_GetTypeSize(self, type);
+            result->TypeIndex.v = TYPE_INDEX_V(type_index_basic, type_size_t);
+            result->Kind = exp_signed_integer;
+            result->ValueU64 = size;
+        } break;
         case exp_identifier:
         {
             metac_node_header_t* node =

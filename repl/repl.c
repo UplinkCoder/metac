@@ -276,10 +276,21 @@ LnextLine:
                 exp =
                     MetaCParser_ParseExpressionFromString(line);
 
-                metac_expression_t result = evalWithVariables(exp, &vstore, &dstore);
+                metac_semantic_state_t sema;
+                MetaCSemantic_Init(&sema, &g_lineParser);
+                sema.declStore = &dstore;
+                metac_sema_expression_t* result =
+                    MetaCSemantic_doExprSemantic(&sema, exp);
+
+                metac_expression_t printExpStorage;
+
+                metac_sema_expression_t eval_exp = evalWithVariables(result, &vstore, &dstore);
+                printExpStorage.ValueU64 = eval_exp.ValueU64;
+                printExpStorage.Kind = eval_exp.Kind;
+                result = &eval_exp;
 
                 const char* str = MetaCPrinter_PrintExpression(&printer, exp);
-                const char* result_str = MetaCPrinter_PrintExpression(&printer, &result);
+                const char* result_str = MetaCPrinter_PrintExpression(&printer, &printExpStorage);
 
                 printf("%s = %s\n", str, result_str);
                 MetaCPrinter_Reset(&printer);

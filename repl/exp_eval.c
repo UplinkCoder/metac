@@ -86,7 +86,7 @@ uint32_t _ReadContextSize;
 uint32_t _ReadContextCapacity;
 
 static inline void WalkTree(void* c, BCValue* result,
-                            metac_expression_t* e,
+                            metac_sema_expression_t* e,
                             variable_store_t* vstore,
                             declaration_store_t* dstore);
 
@@ -112,7 +112,7 @@ static inline void WalkTree(void* c, BCValue* result,
 */
 
 static inline void WalkTree(void* c, BCValue* result,
-                            metac_expression_t* e,
+                            metac_sema_expression_t* e,
                             variable_store_t* vstore,
                             declaration_store_t* dstore)
 {
@@ -288,9 +288,9 @@ static inline void WalkTree(void* c, BCValue* result,
     BCGen_interface.destroyTemporary(c, lhs);
 }
 
-metac_expression_t evalWithVariables(metac_expression_t* e,
-                                     variable_store_t* vstore,
-                                     declaration_store_t* dstore)
+metac_sema_expression_t evalWithVariables(metac_sema_expression_t* e,
+                                          variable_store_t* vstore,
+                                          declaration_store_t* dstore)
 {
     void* c;
     BCGen_interface.new_instance(&c);
@@ -313,7 +313,7 @@ metac_expression_t evalWithVariables(metac_expression_t* e,
 
     BCValue res = BCGen_interface.run(c, fIdx, 0, 0);
 
-    metac_expression_t result;
+    metac_sema_expression_t result;
     result.Kind = exp_signed_integer;
     result.ValueI64 = res.imm64.imm64;
 

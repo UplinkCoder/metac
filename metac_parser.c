@@ -1322,6 +1322,11 @@ LnextToken:
                     MetaCParser_Match(self, tok_kw_long);
                     type->TypeKind = type_long_long;
                 }
+                else if (MetaCParser_PeekMatch(self, tok_kw_double, 1))
+                {
+                    MetaCParser_Match(self, tok_kw_double);
+                    type->TypeKind = type_long_double;
+                }
             }
             break;
         }

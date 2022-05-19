@@ -45,7 +45,7 @@ typedef struct variable_store_t
 
 void VariableStore_Init(variable_store_t* self);
 
-metac_expression_t evalWithVariables(metac_expression_t* e,
+metac_sema_expression_t evalWithVariables(metac_sema_expression_t* e,
                                      variable_store_t* vars,
                                      declaration_store_t* dstore);
 
