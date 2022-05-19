@@ -66,6 +66,8 @@ typedef struct metac_parser_t
     stmt_block_t** BlockStatementStack;
     uint32_t BlockStatementStackSize;
     uint32_t BlockStatementStackCapacity;
+
+    uint32_t OpenParens;
 } metac_parser_t;
 
 extern metac_parser_t g_lineParser;

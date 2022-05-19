@@ -58,6 +58,7 @@ void MetaCParser_Init(metac_parser_t* self)
     self->BlockStatementStack = (stmt_block_t**)
         malloc(sizeof(stmt_block_t**) * self->BlockStatementStackCapacity);
 
+    self->OpenParens = 0;
 #ifndef NO_DOT_PRINTER
     self->DotPrinter = (metac_dot_printer_t*)malloc(sizeof(metac_dot_printer_t));
     MetaCDotPrinter_Init(self->DotPrinter, &self->IdentifierTable);
@@ -763,6 +764,7 @@ metac_expression_t* MetaCParser_ParsePrimaryExpression(metac_parser_t* self)
     }
     else if (tokenType == tok_lParen)
     {
+        self->OpenParens++;
         MetaCParser_Match(self, tok_lParen);
         result = AllocNewExpression(exp_paren);
         {
@@ -773,6 +775,7 @@ metac_expression_t* MetaCParser_ParsePrimaryExpression(metac_parser_t* self)
         result->Hash = Mix(crc32c(~0, "()", 2), result->E1->Hash);
         //PushOperand(result);
         MetaCParser_Match(self, tok_rParen);
+        self->OpenParens--;
         //PopOperator(exp_paren);
     }
     else
@@ -1066,6 +1069,7 @@ metac_expression_t* MetaCParser_ParseBinaryExpression(metac_parser_t* self,
     }
     else if (peekTokenType == tok_lParen)
     {
+        self->OpenParens++;
         MetaCParser_Match(self, tok_lParen);
         metac_expression_t* E1 = left;
         assert(peekToken);
@@ -1094,6 +1098,7 @@ metac_expression_t* MetaCParser_ParseBinaryExpression(metac_parser_t* self,
                 }
             }
             MetaCParser_Match(self, tok_rParen);
+            self->OpenParens--;
         }
         result = AllocNewExpression(exp_call);
         result->E1 = E1;
