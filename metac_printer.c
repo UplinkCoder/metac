@@ -406,7 +406,38 @@ static inline void PrintStatement(metac_printer_t* self, metac_statement_t* stmt
     }
 }
 
+static inline void PrintVariable(metac_printer_t* self,
+                                 decl_variable_t* variable)
+{
+    if (variable->VarType->DeclKind == decl_type_functiontype)
+    {
+        decl_type_functiontype_t *funcType =
+            (decl_type_functiontype_t*) variable->VarType;
 
+        PrintType(self, funcType->ReturnType);
+        PrintSpace(self);
+        PrintChar(self, '(');
+        PrintChar(self, '*');
+        PrintIdentifier(self, variable->VarIdentifier);
+        PrintChar(self, ')');
+        PrintSpace(self);
+        PrintParameterList(self, funcType->Parameters);
+    }
+    else
+    {
+        PrintType(self, variable->VarType);
+        PrintSpace(self);
+        PrintIdentifier(self, variable->VarIdentifier);
+    }
+
+    if (variable->VarInitExpression != _emptyPointer)
+    {
+        PrintSpace(self);
+        PrintToken(self, tok_assign);
+        PrintSpace(self);
+        PrintExpression(self, variable->VarInitExpression);
+    }
+}
 
 static inline void PrintDeclaration(metac_printer_t* self,
                                     metac_declaration_t* decl,
@@ -468,24 +499,12 @@ static inline void PrintDeclaration(metac_printer_t* self,
         case decl_field :
         {
             decl_field_t* field = (decl_field_t*) decl;
-            PrintType(self, field->Field.VarType);
-            PrintSpace(self);
-            PrintIdentifier(self, field->Field.VarIdentifier);
-
+            PrintVariable(self, field->Field);
         } break;
         case decl_variable:
         {
             decl_variable_t* variable = (decl_variable_t*) decl;
-            PrintType(self, variable->VarType);
-            PrintSpace(self);
-            PrintIdentifier(self, variable->VarIdentifier);
-            if (variable->VarInitExpression != _emptyPointer)
-            {
-                PrintSpace(self);
-                PrintToken(self, tok_assign);
-                PrintSpace(self);
-                PrintExpression(self, variable->VarInitExpression);
-            }
+            PrintVariable(self, variable);
         } break;
         case decl_function:
         {

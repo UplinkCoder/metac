@@ -522,7 +522,7 @@ typedef struct decl_field_t
 {
     DECLARATION_HEADER
 
-    decl_variable_t Field;
+    decl_variable_t* Field;
 
     struct decl_field_t* Next;
 } decl_field_t;

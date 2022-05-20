@@ -1478,22 +1478,15 @@ LnextToken:
                 while(!MetaCParser_PeekMatch(self, tok_rBrace, 1))
                 {
                     decl_field_t* field =
-                        AllocNewDeclaration(decl_field, (metac_declaration_t**)nextMemberPtr);
+                        AllocNewDeclaration(decl_field, (metac_declaration_t**)
+                                            nextMemberPtr);
                     field->Next = 0;
-                    field->Field.VarType = MetaCParser_ParseTypeDeclaration(self, (metac_declaration_t*)result, 0);
-                    assert(IsDeclType((metac_declaration_t*)field->Field.VarType));
+                    metac_declaration_t *decl =
+                        MetaCParser_ParseDeclaration(self, result);
+                    assert(decl->DeclKind == decl_variable);
+                    field->Field = (decl_variable_t*)decl;
 
-                    metac_token_t* memberName = MetaCParser_Match(self, tok_identifier);
-                    if (!field->Field.VarType || !memberName || memberName->TokenType != tok_identifier)
-                        return ErrorTypeDeclaration();
-
-                    field->Field.VarIdentifier = RegisterIdentifier(self, memberName);
-                    if (MetaCParser_PeekMatch(self, tok_lBracket, 1))
-                    {
-                        field->Field.VarType = (decl_type_t*)
-                            ParseArraySuffix(self, field->Field.VarType);
-                    }
-                    MetaCParser_Match(self, tok_semicolon);
+                    // MetaCParser_Match(self, tok_semicolon);
                     nextMemberPtr = &field->Next;
                     struct_->FieldCount++;
                 }
@@ -1691,7 +1684,6 @@ metac_declaration_t* MetaCParser_ParseDeclaration(metac_parser_t* self, metac_de
                     functionType->ParameterCount = paramterList.ParameterCount;
 
                     fPtrVar->VarType = functionType;
-
                 }
             }
         }

@@ -191,8 +191,8 @@ metac_type_index_t MetaCSemantic_doTypeSemantic(metac_semantic_state_t* self,
         metac_type_aggregate_field_t* semaFields =
             AllocAggregateFields(semaAgg, typeKind, agg->FieldCount);
 
-        metac_type_aggregate_field_t* onePastLast =
-            semaFields + agg->FieldCount;
+        metac_type_aggregate_field_t* lastField =
+            semaFields + (agg->FieldCount ? agg->FieldCount - 1 : 0);
         switch(typeKind)
         {
             case type_struct:
@@ -201,17 +201,17 @@ metac_type_index_t MetaCSemantic_doTypeSemantic(metac_semantic_state_t* self,
                 uint32_t currentFieldOffset = 0;
                 uint32_t alignment = 1;
                 for(metac_type_aggregate_field_t* semaField = semaFields;
-                    semaField < onePastLast;
+                    semaField <= lastField;
                     semaField++)
                 {
                     metac_type_index_t fieldTypeIndex =
-                        MetaCSemantic_doTypeSemantic(self, declField->Field.VarType);
+                        MetaCSemantic_doTypeSemantic(self, declField->Field->VarType);
                     uint32_t size = MetaCSemantic_GetTypeSize(self, fieldTypeIndex);
-                    if (size > alignment)
-                        alignment = size;
-                    if (size < alignment)
-                        size = alignment;
                     assert(size != INVALID_SIZE);
+                    if (semaField < lastField)
+                    {
+                        // printf("We would alignment stuff here");
+                    }
                     semaField->Offset = currentFieldOffset;
                     currentFieldOffset += size;
                     declField = declField->Next;
