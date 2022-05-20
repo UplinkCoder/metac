@@ -17,14 +17,14 @@
 #define LAST_DECL_TYPE(M) \
     M(decl_typedef)
 
-#define FOREACH_DECL_KIND(M) \
+#define FOREACH_DECL_KIND_(M) \
     M(decl_min) \
     \
-    FOREACH_DECL_KIND_(M) \
+    FOREACH_DECL_KIND(M) \
     \
     M(decl_max)
 
-#define FOREACH_DECL_KIND_(M) \
+#define FOREACH_DECL_KIND(M) \
     M(decl_variable) \
     M(decl_field) \
     M(decl_parameter) \
@@ -125,17 +125,19 @@
     M(exp_addr_or_and) \
     M(exp_ptr_or_mul) \
     \
+    M(exp_dot_compiler) \
+    \
     M(exp_max)
 
 
-#define FOREACH_STMT_KIND(M) \
+#define FOREACH_STMT_KIND_(M) \
     M(stmt_min) \
     \
-    FOREACH_STMT_KIND_(M) \
+    FOREACH_STMT_KIND(M) \
     \
     M(stmt_max)
 
-#define FOREACH_STMT_KIND_(M) \
+#define FOREACH_STMT_KIND(M) \
     M(stmt_block) \
     M(stmt_if) \
     M(stmt_switch) \
@@ -157,8 +159,8 @@
 
 #define FOREACH_NODE_KIND(M) \
     FOREACH_EXP(M) \
-    FOREACH_STMT_KIND(M) \
-    FOREACH_DECL_KIND(M) \
+    FOREACH_STMT_KIND_(M) \
+    FOREACH_DECL_KIND_(M) \
     M(max)
 
 #define DEFINE_NODE_MEMBERS(MEMB) \
@@ -207,7 +209,7 @@ typedef enum metac_statement_kind_t
 {
     stmt_min = exp_max + 1,
 
-    FOREACH_STMT_KIND_(DEFINE_MEMBERS)
+    FOREACH_STMT_KIND(DEFINE_MEMBERS)
 
     stmt_max
 } metac_statement_kind_t;
@@ -216,7 +218,7 @@ typedef enum metac_declaration_kind_t
 {
     decl_min = stmt_max + 1,
 
-    FOREACH_DECL_KIND_(DEFINE_MEMBERS)
+    FOREACH_DECL_KIND(DEFINE_MEMBERS)
 
     decl_max
 } metac_declaration_kind_t;
@@ -447,6 +449,8 @@ typedef struct stmt_do_while_t
     struct metac_statement_t* Body;
 } stmt_do_while_t;
 
+#define MEMBER(KIND) \
+    KIND##_t KIND;
 typedef struct metac_statement_t
 {
     union // switch(Kind)
@@ -455,23 +459,7 @@ typedef struct metac_statement_t
             STATEMENT_HEADER
         };
 
-        // invalid case stmt_max, stmt_invalid :
-        // case stmt_if :
-        stmt_if_t stmt_if;
-        // case stmt_exp :
-        stmt_exp_t stmt_exp;
-        // case stmt_block :
-        stmt_block_t stmt_block;
-        // case stmt_label :
-        stmt_label_t stmt_label;
-        // case stmt_goto :
-        stmt_goto_t stmt_goto;
-        // case stmt_yield :
-        stmt_yield_t stmt_yield;
-        // case stmt_return :
-        stmt_return_t stmt_return;
-        // case stmt_decl :
-        stmt_decl_t stmt_decl;
+        FOREACH_STMT_KIND(MEMBER);
     };
 } metac_statement_t;
 
@@ -663,15 +651,9 @@ typedef struct metac_declaration_t
             DECLARATION_HEADER
         };
 
-        decl_variable_t decl_variable;
-        decl_typedef_t decl_typedef;
-        decl_type_t decl_type;
-        decl_type_ptr_t decl_type_ptr;
-        decl_function_t decl_function;
-        decl_type_array_t decl_type_array;
-        decl_type_struct_t decl_type_struct;
+        FOREACH_DECL_KIND(MEMBER)
     };
-
+#undef MEMBER
 } metac_declaration_t;
 #pragma pack(pop)
 

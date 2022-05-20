@@ -838,8 +838,13 @@ static inline metac_expression_t* ParseDotCompilerExpression(metac_parser_t* sel
     {
         fprintf(stderr, "Expected . expression after '.compiler'\n");
     }
+    else
+    {
+        result = AllocNewExpression(exp_dot_compiler);
+        result->E1 = MetaCParser_ParseExpression(self, expr_flags_none, 0);
+    }
 
-    return 0;
+    return result;
 }
 
 static inline uint32_t PtrVOnMatch(metac_parser_t* self,

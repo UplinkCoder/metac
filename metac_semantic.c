@@ -599,6 +599,9 @@ metac_sema_expression_t* MetaCSemantic_doExprSemantic(metac_semantic_state_t* se
         case exp_signed_integer :
             result->TypeIndex = MetaCSemantic_GetTypeIndex(self, type_int, emptyPointer);
         break;
+        case exp_dot_compiler:
+        {
+        } break;
         case exp_sizeof:
         {
             uint32_t size = -1;
