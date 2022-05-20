@@ -256,8 +256,8 @@ void MetaCSemantic_doParameterSemantic(metac_semantic_state_t* self,
 {
     uint32_t paramIndex = result - func->Parameters;
 
-    result->VarIdentifier = param->Identifier;
-    result->VarType = MetaCSemantic_doTypeSemantic(self, param->Type);
+    result->VarIdentifier = param->Parameter->VarIdentifier;
+    result->VarType = MetaCSemantic_doTypeSemantic(self, param->Parameter->VarType);
     result->VarInitExpression = 0;
 }
 #include "crc32c.h"
@@ -566,6 +566,8 @@ bool MetaCSemantic_CanHaveAddress(metac_semantic_state_t* self,
 #define offsetof(st, m) \
     ((size_t)((char *)&((st *)0)->m - (char *)0))
 
+const char* MetaCExpressionKind_toChars(metac_expression_kind_t);
+
 metac_sema_expression_t* MetaCSemantic_doExprSemantic(metac_semantic_state_t* self,
                                                       metac_expression_t* expr)
 {
@@ -601,6 +603,13 @@ metac_sema_expression_t* MetaCSemantic_doExprSemantic(metac_semantic_state_t* se
         break;
         case exp_dot_compiler:
         {
+            if (expr->E1->Kind != exp_call)
+            {
+                fprintf(stderr, "Only calls are supported not %s\n",
+                    MetaCExpressionKind_toChars(expr->E1->Kind));
+                break;
+            }
+            // CompilerInterface_Call(
         } break;
         case exp_sizeof:
         {

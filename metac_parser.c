@@ -60,6 +60,8 @@ void MetaCParser_Init(metac_parser_t* self)
 
     self->OpenParens = 0;
     self->SpecialNamePtr_Compiler.v = 0;
+    self->SpecialNamePtr_Context.v = 0;
+    self->SpecialNamePtr_Target.v = 0;
 
 #ifndef NO_DOT_PRINTER
     self->DotPrinter = (metac_dot_printer_t*)malloc(sizeof(metac_dot_printer_t));
@@ -828,7 +830,8 @@ metac_expression_t* MetaCParser_ParsePostfixExpression(metac_parser_t* self,
 }
 decl_type_t* MetaCParser_ParseTypeDeclaration(metac_parser_t* self, metac_declaration_t* parent, metac_declaration_t* prev);
 
-static inline metac_expression_t* ParseDotCompilerExpression(metac_parser_t* self)
+static inline metac_expression_t* ParseDotSpecialExpression(metac_parser_t* self,
+                                                            metac_expression_kind_t k)
 {
     metac_expression_t* result = 0;
     MetaCParser_Match(self, tok_dot);
@@ -836,11 +839,11 @@ static inline metac_expression_t* ParseDotCompilerExpression(metac_parser_t* sel
     peek = MetaCParser_PeekToken(self, 1);
     if (!peek)
     {
-        fprintf(stderr, "Expected . expression after '.compiler'\n");
+        fprintf(stderr, "Expected . expression after '.special'\n");
     }
     else
     {
-        result = AllocNewExpression(exp_dot_compiler);
+        result = AllocNewExpression(k);
         result->E1 = MetaCParser_ParseExpression(self, expr_flags_none, 0);
     }
 
@@ -860,7 +863,6 @@ static inline uint32_t PtrVOnMatch(metac_parser_t* self,
 
 static inline metac_expression_t* ParseUnaryDotExpression(metac_parser_t* self)
 {
-#define compiler_key 0x8481e0
     metac_expression_t* result = 0;
 
     metac_token_t* peek;
@@ -869,11 +871,11 @@ static inline metac_expression_t* ParseUnaryDotExpression(metac_parser_t* self)
     {
         switch(peek->IdentifierKey)
         {
+#define compiler_key 0x8481e0
             case compiler_key:
             {
                 metac_identifier_ptr_t identifierPtr =
                     RegisterIdentifier(self, peek);
-                printf("Probably saw '.compiler'\n");
                 if (UNLIKELY(self->SpecialNamePtr_Compiler.v == 0))
                 {
                     const uint32_t compilerPtrV =
@@ -881,17 +883,49 @@ static inline metac_expression_t* ParseUnaryDotExpression(metac_parser_t* self)
                     if(compilerPtrV)
                         self->SpecialNamePtr_Compiler.v = compilerPtrV;
                 }
-#if 0
 
-                printf("SpecialNamePtr_Compiler: %u\n",
-                    self->SpecialNamePtr_Compiler.v);
-                printf("identifierPtr.v: %u\n",
-                    identifierPtr.v);
-#endif
                 if (self->SpecialNamePtr_Compiler.v == identifierPtr.v)
                 {
                     MetaCParser_Match(self, tok_identifier);
-                    result = ParseDotCompilerExpression(self);
+                    result = ParseDotSpecialExpression(self, exp_dot_compiler);
+                }
+            } break;
+#define context_key 0x7a2a7f
+            case context_key:
+            {
+                metac_identifier_ptr_t identifierPtr =
+                    RegisterIdentifier(self, peek);
+                if (UNLIKELY(self->SpecialNamePtr_Context.v == 0))
+                {
+                    const uint32_t compilerPtrV =
+                        PtrVOnMatch(self, identifierPtr, "context", 7);
+                    if(compilerPtrV)
+                        self->SpecialNamePtr_Context.v = compilerPtrV;
+                }
+
+                if (self->SpecialNamePtr_Context.v == identifierPtr.v)
+                {
+                    MetaCParser_Match(self, tok_identifier);
+                    result = ParseDotSpecialExpression(self, exp_dot_context);
+                }
+            } break;
+#define target_key 0x63a0c4
+            case target_key:
+            {
+                metac_identifier_ptr_t identifierPtr =
+                    RegisterIdentifier(self, peek);
+                if (UNLIKELY(self->SpecialNamePtr_Target.v == 0))
+                {
+                    const uint32_t compilerPtrV =
+                        PtrVOnMatch(self, identifierPtr, "target", 6);
+                    if(compilerPtrV)
+                        self->SpecialNamePtr_Compiler.v = compilerPtrV;
+                }
+
+                if (self->SpecialNamePtr_Compiler.v == identifierPtr.v)
+                {
+                    MetaCParser_Match(self, tok_identifier);
+                    result = ParseDotSpecialExpression(self, exp_dot_target);
                 }
             } break;
         }
@@ -1543,21 +1577,16 @@ decl_parameter_list_t ParseParamterList(metac_parser_t* self)
         parameterCount++;
         (*nextParam) = param;
 
-        param->Type = MetaCParser_ParseTypeDeclaration(self, &dummy, 0);
-
-        param->Identifier = empty_identifier;
-        if (MetaCParser_PeekMatch(self, tok_identifier, 1))
+        metac_declaration_t* decl =
+            MetaCParser_ParseDeclaration(self, 0);
+        if (decl->DeclKind == decl_variable)
         {
-            metac_token_t* nameToken = MetaCParser_Match(self, tok_identifier);
-            param->Identifier = RegisterIdentifier(self, nameToken);
-
-            // follow parameter
-            while(MetaCParser_PeekMatch(self, tok_lBracket, true))
-            {
-                param->Type = (decl_type_t*)ParseArraySuffix(self, param->Type);
-            }
+            param->Parameter = decl;
         }
-
+        else
+        {
+            fprintf(stderr, "Couldn't parse Parameter\n");
+        }
         nextParam = &param->Next;
         (*nextParam) = (decl_parameter_t*) _emptyPointer;
 

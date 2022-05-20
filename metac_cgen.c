@@ -17,7 +17,7 @@ int GenerateFunctionCode(metac_codegen_function_t* cgfunction, void* c)
         p = p->Next)
     {
         const char* name = IdentifierPtrToCharPtr(&g_lineParser.IdentifierTable,
-                                                  p->Identifier);
+                                                  p->Parameter->VarIdentifier);
         BCGen_interface.genParameter(c, BCType_i32, name);
     }
     int result = BCGen_interface.beginFunction(c, 0, "func");

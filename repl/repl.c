@@ -3,8 +3,9 @@
 #include "../metac_lexer.h"
 #include "../metac_parser.h"
 #include "../metac_printer.h"
-
 #include "../metac_semantic.h"
+#include "../metac_compiler_interface.h"
+
 #include "../crc32c.h"
 //#include "../metac_eeP.c"
 #include "../3rd_party/linenoise/linenoise.c"

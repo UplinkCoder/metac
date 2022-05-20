@@ -70,6 +70,8 @@ typedef struct metac_parser_t
     uint32_t OpenParens;
 
     metac_identifier_ptr_t SpecialNamePtr_Compiler;
+    metac_identifier_ptr_t SpecialNamePtr_Context;
+    metac_identifier_ptr_t SpecialNamePtr_Target;
 } metac_parser_t;
 
 extern metac_parser_t g_lineParser;

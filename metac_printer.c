@@ -157,7 +157,41 @@ static inline void PrintI64(metac_printer_t* self, int64_t value)
 }
 
 static inline void PrintType(metac_printer_t* self, decl_type_t* type);
+static inline void PrintParameterList(metac_printer_t* self,
+                                     decl_parameter_t* Parameters);
 
+static inline void PrintVariable(metac_printer_t* self,
+                                 decl_variable_t* variable)
+{
+    if (variable->VarType->DeclKind == decl_type_functiontype)
+    {
+        decl_type_functiontype_t *funcType =
+            (decl_type_functiontype_t*) variable->VarType;
+
+        PrintType(self, funcType->ReturnType);
+        PrintSpace(self);
+        PrintChar(self, '(');
+        PrintChar(self, '*');
+        PrintIdentifier(self, variable->VarIdentifier);
+        PrintChar(self, ')');
+        PrintSpace(self);
+        PrintParameterList(self, funcType->Parameters);
+    }
+    else
+    {
+        PrintType(self, variable->VarType);
+        PrintSpace(self);
+        PrintIdentifier(self, variable->VarIdentifier);
+    }
+
+    if (variable->VarInitExpression != _emptyPointer)
+    {
+        PrintSpace(self);
+        PrintToken(self, tok_assign);
+        PrintSpace(self);
+        PrintExpression(self, variable->VarInitExpression);
+    }
+}
 
 static inline void PrintParameterList(metac_printer_t* self,
                                      decl_parameter_t* Parameters)
@@ -168,12 +202,7 @@ static inline void PrintParameterList(metac_printer_t* self,
         param != emptyPointer;
         param = param->Next)
     {
-        PrintType(self, param->Type);
-        if (param->Identifier.v != empty_identifier.v)
-        {
-            PrintSpace(self);
-            PrintIdentifier(self, param->Identifier);
-        }
+        PrintVariable(self, param->Parameter);
         if (param->Next != emptyPointer)
             PrintString(self, ", ", 2);
     }
@@ -403,39 +432,6 @@ static inline void PrintStatement(metac_printer_t* self, metac_statement_t* stmt
                 //MetaCStatementKind_toChars(stmt->StmtKind));
             assert(0);
         }
-    }
-}
-
-static inline void PrintVariable(metac_printer_t* self,
-                                 decl_variable_t* variable)
-{
-    if (variable->VarType->DeclKind == decl_type_functiontype)
-    {
-        decl_type_functiontype_t *funcType =
-            (decl_type_functiontype_t*) variable->VarType;
-
-        PrintType(self, funcType->ReturnType);
-        PrintSpace(self);
-        PrintChar(self, '(');
-        PrintChar(self, '*');
-        PrintIdentifier(self, variable->VarIdentifier);
-        PrintChar(self, ')');
-        PrintSpace(self);
-        PrintParameterList(self, funcType->Parameters);
-    }
-    else
-    {
-        PrintType(self, variable->VarType);
-        PrintSpace(self);
-        PrintIdentifier(self, variable->VarIdentifier);
-    }
-
-    if (variable->VarInitExpression != _emptyPointer)
-    {
-        PrintSpace(self);
-        PrintToken(self, tok_assign);
-        PrintSpace(self);
-        PrintExpression(self, variable->VarInitExpression);
     }
 }
 

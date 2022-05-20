@@ -126,6 +126,8 @@
     M(exp_ptr_or_mul) \
     \
     M(exp_dot_compiler) \
+    M(exp_dot_context) \
+    M(exp_dot_target) \
     \
     M(exp_max)
 
@@ -520,9 +522,7 @@ typedef struct decl_parameter_t
 {
     DECLARATION_HEADER
 
-    decl_type_t* Type;
-
-    metac_identifier_ptr_t Identifier;
+    decl_variable_t* Parameter;
 
     struct decl_parameter_t* Next;
 } decl_parameter_t;
