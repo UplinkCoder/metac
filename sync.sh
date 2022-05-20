@@ -9,6 +9,7 @@ if [ -d $DST ]; then
        sync.sh sync_from.sh \
        gen_code.bat gen_code.sh run_tests.sh run_tests.bat \
        crc32c.c crc32c.h \
+       bsr.h \
        metac_lexer.c metac_lexer.h metac_parser.c metac_parser.h \
        metac_alloc_node.c metac_alloc_node.h \
        metac_parsetree.h \

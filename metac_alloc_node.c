@@ -170,6 +170,19 @@ metac_expression_t* AllocNewExpression(metac_expression_kind_t kind)
     return result;
 }
 
+uint32_t StructIndex(sema_type_aggregate_t* struct_)
+{
+    uint32_t result = (struct_ - _newSemaStructs_mem);
+    return result;
+}
+
+uint32_t UnionIndex(sema_type_aggregate_t* union_)
+{
+    uint32_t result = (union_ - _newSemaUnions_mem);
+    return result;
+}
+
+
 uint32_t FunctionIndex(sema_decl_function_t* func)
 {
     uint32_t result = (func - _newSemaFunc_mem);
@@ -302,7 +315,7 @@ sema_decl_variable_t* AllocFunctionParameters(sema_decl_function_t* func,
     return result;
 }
 
-sema_type_aggregate_t* AllocNewAggregate(metac_type_kind_t kind)
+sema_type_aggregate_t* AllocNewAggregate(metac_type_kind_t kind, decl_type_struct_t* agg)
 {
     sema_type_aggregate_t* result = 0;
 
@@ -369,6 +382,8 @@ metac_type_aggregate_field_t* AllocAggregateFields(sema_type_aggregate_t* aggreg
         }
 
     }
+
+    aggregate->Fields = result;
 
     return result;
 }

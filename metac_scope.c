@@ -7,13 +7,21 @@
 #  include <xmmintrin.h>
 #endif
 
-void MetaCScopeTable_Init(metac_scope_table_t* self)
+#include "bsr.h"
+
+void MetaCScopeTable_InitN(metac_scope_table_t* self, uint32_t nMembers)
 {
-    self->SlotCount_Log2 = 8;
+    self->SlotCount_Log2 = LOG2(nMembers);
     const uint32_t maxSlots = (1 << self->SlotCount_Log2);
     self->Slots = (metac_scope_table_slot_t*) calloc(maxSlots, sizeof(metac_scope_table_slot_t));
     self->SlotsUsed = 0;
 }
+
+void MetaCScopeTable_Init(metac_scope_table_t* self)
+{
+    MetaCScopeTable_InitN(self, 255);
+}
+
 
 metac_scope_table_slot_t* MetaCScopeTable_Lookup(metac_scope_table_t* self,
                                                  metac_identifier_ptr_t idPtr)
@@ -226,4 +234,28 @@ metac_scope_t* MetaCScope_PushScope(metac_scope_t *self, metac_scope_parent_t sc
 
     return result;
 }
+
+metac_scope_t* MetaCScope_PushAggregateScope(metac_scope_t *self, sema_type_aggregate_t* agg)
+{
+    metac_declaration_kind_t aggregateKind = agg->DeclKind;
+    metac_scope_parent_t scopeOwner;
+
+    switch(aggregateKind)
+    {
+        case decl_type_struct:
+            scopeOwner.v = SCOPE_PARENT_V(scope_parent_struct, StructIndex(agg));
+        break;
+        case decl_type_union:
+            scopeOwner.v = SCOPE_PARENT_V(scope_parent_union, UnionIndex(agg));
+        break;
+        default: assert(0);
+    }
+
+    metac_scope_t* result = AllocNewScope(self, scopeOwner);
+
+    MetaCScopeTable_InitN(&result->ScopeTable, agg->FieldCount);
+
+    return result;
+}
+
 #undef _emptyPointer

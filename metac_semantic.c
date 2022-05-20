@@ -165,10 +165,109 @@ uint32_t MetaCSemantic_GetTypeSize(metac_semantic_state_t* self,
         result =
             MetaCTargetInfo_GetBasicSize(&default_target_info, (basic_type_kind_t) idx);
     }
+    else if (TYPE_INDEX_INDEX(typeIndex) == type_index_ptr)
+    {
+        result = default_target_info.PtrSize;
+    }
     else
     {
         assert(0);
     }
+
+    return result;
+}
+
+uint32_t MetaCSemantic_GetTypeAlignment(metac_semantic_state_t* self,
+                                    metac_type_index_t typeIndex)
+{
+    uint32_t result = INVALID_SIZE;
+
+    if (TYPE_INDEX_KIND(typeIndex) == type_index_basic)
+    {
+        uint32_t idx = TYPE_INDEX_INDEX(typeIndex);
+
+        if ((idx >= type_unsigned_char)
+         && (idx <= type_unsigned_long))
+        {
+            idx -= ((uint32_t)type_char - (uint32_t)type_unsigned_char);
+        }
+        else if (idx == type_unsigned_long_long)
+        {
+            idx = type_long_long;
+        }
+        result =
+            MetaCTargetInfo_GetBasicAlign(&default_target_info, (basic_type_kind_t) idx);
+    }
+    else
+    {
+        assert(0);
+    }
+
+    return result;
+}
+
+static inline uint32_t Align(uint32_t size, uint32_t alignment)
+{
+    assert(alignment >= 1);
+    uint32_t alignmentMinusOne = (alignment - 1);
+    uint32_t alignSize = (size + alignmentMinusOne);
+    uint32_t alignMask = ~(alignmentMinusOne);
+    return (alignSize & alignMask);
+}
+
+bool MetaCSemantic_ComputeStructLayoutPopulateScope(metac_semantic_state_t* self,
+                                                    decl_type_struct_t* agg,
+                                                    sema_type_aggregate_t* semaAgg)
+{
+    bool result = true;
+
+    assert(semaAgg->Fields && semaAgg->Fields != emptyPointer);
+
+    uint32_t currentFieldOffset = 0;
+    uint32_t alignment = 1;
+
+    metac_type_aggregate_field_t* onePastLast =
+        semaAgg->Fields + semaAgg->FieldCount;
+    decl_field_t* declField = agg->Fields;
+
+    // first determine all the types which will determine the sizes;
+    for(metac_type_aggregate_field_t* semaField = semaAgg->Fields;
+        semaField < onePastLast;
+        semaField++)
+    {
+        semaField->Identifier = declField->Field->VarIdentifier;
+
+        semaField->Type =
+            MetaCSemantic_doTypeSemantic(self, declField->Field->VarType);
+        declField = declField->Next;
+    }
+    uint32_t maxAlignment = MetaCSemantic_GetTypeAlignment(self, semaAgg->Fields->Type);
+
+    for(metac_type_aggregate_field_t* semaField = semaAgg->Fields;
+        semaField < onePastLast;
+        semaField++)
+    {
+        uint32_t alignedSize = MetaCSemantic_GetTypeSize(self, semaField->Type);
+        assert(alignedSize != INVALID_SIZE);
+        if (semaField < (onePastLast - 1))
+        {
+            metac_type_aggregate_field_t *nextField = semaField + 1;
+            uint32_t requestedAligment =
+                MetaCSemantic_GetTypeAlignment(self, nextField->Type);
+            if (requestedAligment > maxAlignment)
+                maxAlignment = requestedAligment;
+            alignedSize = Align(alignedSize, requestedAligment);
+            assert(((currentFieldOffset + alignedSize) % requestedAligment) == 0);
+        }
+        semaField->Offset = currentFieldOffset;
+        MetaCScope_RegisterIdentifier(semaAgg->Scope,
+                                      semaField->Identifier,
+                                      semaField);
+        currentFieldOffset += alignedSize;
+    }
+
+    result =                                                                                                           -
+    fprintf(stderr, "sizeof(struct) = %u\n", currentFieldOffset);//DEBUG
 
     return result;
 }
@@ -187,36 +286,21 @@ metac_type_index_t MetaCSemantic_doTypeSemantic(metac_semantic_state_t* self,
     else if (isAggregateType(typeKind))
     {
         decl_type_struct_t* agg = (decl_type_struct_t*) type;
-        sema_type_aggregate_t* semaAgg = AllocNewAggregate(typeKind);
+        sema_type_aggregate_t* semaAgg = AllocNewAggregate(typeKind, agg);
+        semaAgg->FieldCount = agg->FieldCount;
+
         metac_type_aggregate_field_t* semaFields =
             AllocAggregateFields(semaAgg, typeKind, agg->FieldCount);
+        semaAgg->Fields = semaFields;
 
-        metac_type_aggregate_field_t* lastField =
-            semaFields + (agg->FieldCount ? agg->FieldCount - 1 : 0);
+        self->CurrentScope =
+            semaAgg->Scope = MetaCScope_PushAggregateScope(self->CurrentScope, agg);
+
         switch(typeKind)
         {
             case type_struct:
             {
-                decl_field_t* declField = agg->Fields;
-                uint32_t currentFieldOffset = 0;
-                uint32_t alignment = 1;
-                for(metac_type_aggregate_field_t* semaField = semaFields;
-                    semaField <= lastField;
-                    semaField++)
-                {
-                    metac_type_index_t fieldTypeIndex =
-                        MetaCSemantic_doTypeSemantic(self, declField->Field->VarType);
-                    uint32_t size = MetaCSemantic_GetTypeSize(self, fieldTypeIndex);
-                    assert(size != INVALID_SIZE);
-                    if (semaField < lastField)
-                    {
-                        // printf("We would alignment stuff here");
-                    }
-                    semaField->Offset = currentFieldOffset;
-                    currentFieldOffset += size;
-                    declField = declField->Next;
-                }
-                fprintf(stderr, "sizeof(struct) = %u\n", currentFieldOffset);//DEBUG
+                MetaCSemantic_ComputeStructLayoutPopulateScope(self, agg, semaAgg);
             } break;
 
             case type_union:
@@ -233,6 +317,8 @@ metac_type_index_t MetaCSemantic_doTypeSemantic(metac_semantic_state_t* self,
             default: assert(0);
 
         }
+
+        POP_SCOPE(self->CurrentScope);
     }
     else if (type->TypeIdentifier.v)
     {

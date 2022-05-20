@@ -299,6 +299,7 @@ typedef struct sema_decl_variable_t
     metac_sema_expression_t* VarInitExpression;
 } sema_decl_variable_t;
 
+/// ParameterCount is gotten from TypeIndex;
 typedef struct sema_decl_function_t
 {
     SEMA_DECLARATION_HEADER
@@ -306,14 +307,9 @@ typedef struct sema_decl_function_t
     metac_type_index_t TypeIndex;
 
     struct metac_scope_t* Scope;
-
-    metac_type_index_t ReturnType;
+    metac_identifier_ptr_t Identifier;
 
     sema_decl_variable_t* Parameters;
-
-    uint32_t ParameterCount;
-
-    metac_identifier_ptr_t Identifier;
 
     sema_stmt_block_t* FunctionBody;
 } sema_decl_function_t;
@@ -378,7 +374,9 @@ typedef struct sema_type_aggregate_t
 
     metac_identifier_ptr_t Identifier;
 
-    struct metac_aggregate_field_t* Fields;
+    metac_scope_t* Scope;
+
+    metac_type_aggregate_field_t* Fields;
 
     uint32_t FieldCount;
 } sema_type_aggregate_t;

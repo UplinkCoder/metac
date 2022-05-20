@@ -172,26 +172,7 @@ metac_identifier_ptr_t GetOrAddIdentifier(metac_identifier_table_t* table,
     return result;
 }
 
-#define LOG2(X) \
-    (BSR(X) + 1)
-
-#define NEXTPOW2(X) \
-    (1 << LOG2(X))
-
-#if defined(_MSC_VER)
-    unsigned long BSR(uint32_t x)
-    {
-        unsigned long result;
-        _BitScanReverse(&result, x);
-        return result;
-	}
-#elif defined(__TINYC__)
-#  include "3rd_party/bsr.c"
-#else
-#  define BSR(X) \
-    (__builtin_clz(X) ^ 31)
-#endif
-
+#include "bsr.h"
 #define slot_t metac_identifier_table_slot_t
 
 void InsertSlot(slot_t* slots, slot_t slot, const uint32_t slotIndexMask)
@@ -360,6 +341,7 @@ metac_identifier_table_slot_t* findFirstEntry(metac_identifier_table_t* table)
 
     return 0;
 }
+
 void WriteTable(metac_identifier_table_t* table, const char* filename, uint32_t lengthShift, const char* comment)
 {
     // printf("Writing Table with %u entires\n", table->SlotsUsed);

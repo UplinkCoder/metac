@@ -5,7 +5,6 @@
 
 struct metac_sema_declaration_t;
 
-
 typedef enum metac_scope_parent_kind_t
 {
     scope_parent_unknown   = 0x0,
@@ -14,13 +13,16 @@ typedef enum metac_scope_parent_kind_t
     scope_parent_module    = 0x1,
 
     scope_parent_function  = 0x2,
-    scope_parent_aggregate = 0x3,
+    scope_parent_struct    = 0x3,
     scope_parent_stmt      = 0x4,
 
-    scope_parent_extended  = 0x6,
-    scope_parent_invalid  = 0x7
+    scope_parent_union     = 0x5,
+
+    scope_parent_extended  = 0x7,
 
     // unused range 9-D 9, A, B, C, D
+    scope_parent_invalid  = 0xF
+
 } metac_scope_parent_kind_t;
 
 
@@ -29,8 +31,8 @@ typedef struct metac_scope_parent_t
     union {
         uint32_t v;
         struct {
-            uint32_t Index : 29;
-            metac_scope_parent_kind_t Kind : 3;
+            uint32_t Index : 28;
+            metac_scope_parent_kind_t Kind : 4;
         };
     };
 } metac_scope_parent_t;
@@ -59,13 +61,13 @@ typedef enum scope_insert_error_t
 
 
 #define SCOPE_PARENT_INDEX(PARENT_INDEX) \
-    ((PARENT_INDEX).v & 0x1fffffff)
+    ((PARENT_INDEX).v & 0xfffffff)
 
 #define SCOPE_PARENT_KIND(PARENT_INDEX) \
-    ((metac_sema_parent_kind_t)((PARENT_INDEX).v >> 29))
+    ((metac_sema_parent_kind_t)((PARENT_INDEX).v >> 28))
 
 #define SCOPE_PARENT_V(KIND, INDEX) \
-    ((uint32_t)(((KIND) << 29) | (INDEX)))
+    ((uint32_t)(((KIND) << 28) | (INDEX)))
 
 typedef struct metac_scope_ptr_t
 {

@@ -6,22 +6,24 @@
 
 typedef enum metac_type_index_kind_t
 {
-    type_index_unknown  = 0,
+    type_index_unknown  = 0x0,
 
-    type_index_basic    = 1,
+    type_index_basic    = 0x1,
 
-    type_index_enum     = 2,
+    type_index_enum     = 0x2,
 
-    type_index_ptr      = 3,
-    type_index_array    = 4,
+    type_index_ptr      = 0x3,
+    type_index_array    = 0x4,
 
-    type_index_struct   = 5,
-    type_index_union    = 6,
-    type_index_class    = 7,
+    type_index_struct   = 0x5,
+    type_index_union    = 0x6,
+    type_index_class    = 0x7,
 
-    type_index_map      = 8,
+    type_index_map      = 0x8,
 
-    // unused range 9-D 9, A, B, C, D
+    type_index_function = 0x9,
+
+    // unused range A-D A, B, C, D
 
     type_index_extended = 0xE,
     type_index_invalid  = 0xF
