@@ -448,8 +448,8 @@ void MetaCLexerInit(metac_lexer_t* self)
     self->LocationStorage.Locations = self->inlineLocations;
 
 #ifdef ACCEL
-    ACCEL_INIT(*self, Identifier);
-    ACCEL_INIT(*self, String);
+    ACCEL_INIT(*self, Identifier, IDENTIFIER_LENGTH_SHIFT);
+    ACCEL_INIT(*self, String, STRING_LENGTH_SHIFT);
 #endif
 }
 metac_lexer_state_t MetaCLexerStateFromString(uint32_t sourceId,
@@ -755,7 +755,7 @@ LcontinueLexnig:
                 token.Identifier = identifierBegin;
 #elif ACCEL == ACCEL_TABLE
                     token.IdentifierPtr =
-                        GetOrAddIdentifier(&self->IdentifierTable, token.IdentifierKey, identifierBegin, identifierLength);
+                        GetOrAddIdentifier(&self->IdentifierTable, token.IdentifierKey, identifierBegin);
 #else
 #   error ("Unkown ACCELERATOR")
 #endif
@@ -930,7 +930,7 @@ LcontinueLexnig:
 
                 token.Key = STRING_KEY(stringHash, stringLength);
 #if ACCEL == ACCEL_TABLE
-                token.StringPtr = GetOrAddIdentifier(&self->StringTable, token.Key, stringBegin, stringLength);
+                token.StringPtr = GetOrAddIdentifier(&self->StringTable, token.Key, stringBegin);
 #else
                 token.String = stringBegin;
 #endif

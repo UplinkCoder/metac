@@ -155,6 +155,16 @@ if (PREFIX ## _capacity <= PREFIX ## _size) \
         ); \
     }
 
+/// TODO: lock during realloc
+#define REALLOC_N_BOILERPLATE(PREFIX, N) \
+if (PREFIX ## _capacity <= (PREFIX ## _size + (N))) \
+    { \
+        _newMemRealloc( \
+            (void**)&  PREFIX ## _mem, \
+            &PREFIX## _capacity, \
+            sizeof(* PREFIX ## _mem) \
+        ); \
+    }
 metac_expression_t* AllocNewExpression(metac_expression_kind_t kind)
 {
     metac_expression_t* result = 0;
@@ -293,12 +303,25 @@ sema_decl_function_t* AllocNewSemaFunction(decl_function_t* func)
 #endif
 
 
+sema_decl_variable_t* AllocNewSemaVariable()
+{
+    sema_decl_variable_t* result = 0;
+    REALLOC_BOILERPLATE(_newSemaVariables)
+
+    result = _newSemaVariables_mem + INC(_newSemaVariables_size);
+
+    result->DeclKind = decl_variable;
+    result->Serial = INC(_nodeCounter);
+
+    return result;
+}
+
 sema_decl_variable_t* AllocFunctionParameters(sema_decl_function_t* func,
                                               uint32_t parameterCount)
 {
     sema_decl_variable_t* result = 0;
 
-    REALLOC_BOILERPLATE(_newSemaVariables)
+    REALLOC_N_BOILERPLATE(_newSemaVariables, parameterCount)
 
     {
         result = _newSemaVariables_mem + POST_ADD(_newSemaVariables_size, parameterCount);

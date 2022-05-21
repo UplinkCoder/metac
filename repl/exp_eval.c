@@ -20,7 +20,7 @@ static inline BCValue* GetValueFromVariableStore(variable_store_t* vstore,
     const char* idChars = IdentifierPtrToCharPtr(&g_lineParser.IdentifierTable, idPtr);
 
     metac_identifier_ptr_t vstoreId
-        = GetOrAddIdentifier(&vstore->Table, idKey, idChars, length);
+        = GetOrAddIdentifier(&vstore->Table, idKey, idChars);
 
     for(int i = 0;
         i < vstore->VariableSize;
@@ -59,7 +59,7 @@ void VariableStore_SetValueI32(variable_store_t* vstore,
     uint32_t length = LENGTH_FROM_IDENTIFIER_KEY(idKey);
     const char* idChars = IdentifierPtrToCharPtr(&g_lineParser.IdentifierTable, idPtr);
     metac_identifier_ptr_t vstoreId
-        = GetOrAddIdentifier(&vstore->Table, idKey, idChars, length);
+        = GetOrAddIdentifier(&vstore->Table, idKey, idChars);
 
     BCValue* v = GetValueFromVariableStore(vstore, identifierExp);
     if (!v)
@@ -327,7 +327,7 @@ void VariableStore_Init(variable_store_t* self)
     self->Variables = (variable_t*)
         malloc(sizeof(variable_t) * self->VariableCapacity);
 
-    IdentifierTableInit(&self->Table);
+    IdentifierTableInit(&self->Table, IDENTIFIER_LENGTH_SHIFT);
 }
 
 void DeclarationStore_Init(declaration_store_t* self)
@@ -337,7 +337,7 @@ void DeclarationStore_Init(declaration_store_t* self)
     self->Declarations = (stored_declaration_t*)
         malloc(sizeof(stored_declaration_t) * self->DeclarationCapacity);
 
-    IdentifierTableInit(&self->Table);
+    IdentifierTableInit(&self->Table, IDENTIFIER_LENGTH_SHIFT);
 }
 
 metac_identifier_ptr_t IdentifierPtrFromDecl(metac_declaration_t* decl)

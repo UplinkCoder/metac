@@ -24,6 +24,7 @@ metac_sema_expression_t* AllocNewSemaExpression(metac_expression_t* expr);
 
 sema_decl_function_t* AllocNewSemaFunction(decl_function_t* func);
 
+sema_decl_variable_t* AllocNewSemaVariable();
 sema_decl_variable_t* AllocFunctionParameters(sema_decl_function_t* func,
                                               uint32_t parameterCount);
 
@@ -49,3 +50,5 @@ metac_scope_t* AllocNewScope(metac_scope_t* parent, metac_scope_parent_t owner);
 uint32_t StatementIndex_(metac_sema_statement_t* stmt);
 uint32_t FunctionIndex(sema_decl_function_t* func);
 uint32_t BlockStatementIndex(sema_stmt_block_t* blockstmt);
+uint32_t StructIndex(sema_type_aggregate_t* struct_);
+uint32_t UnionIndex(sema_type_aggregate_t* union_);

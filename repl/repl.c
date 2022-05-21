@@ -55,6 +55,9 @@ void PrintHelp(void)
        "      :p for preprocessor mode\n"
        "      :q to quit\n");
 }
+
+#include "../utils/read_file.c"
+
 int main(int argc, const char* argv[])
 {
     const char* line;
@@ -71,9 +74,28 @@ int main(int argc, const char* argv[])
     metac_lexer_t lexer;
     MetaCLexerInit(&lexer);
 
+    decl_type_struct_t* compiler_struct = 0;
+/*
+    read_result_t fCompilterInterface =
+        ReadFileAndZeroTerminate("metac_compiler_interface.h");
+    if (!fCompilterInterface.FileContent0)
+        fCompilterInterface =
+        ReadFileAndZeroTerminate("../metac_compiler_interface.h");
+
+    if (fCompilterInterface.FileContent0)
+    {
+
+        compiler_struct =
+            MetaCParser_ParseDeclarationFromString(fCompilterInterface.FileContent0);
+    }
+
+*/
     PrintHelp();
     linenoiseHistoryLoad(".repl_history");
     const char* promt_;
+
+    // make sure we know our special keywords
+    LineLexerInit();
 
     metac_printer_t printer;
     MetaCPrinter_Init(&printer,
@@ -340,7 +362,7 @@ LnextLine:
                     uint32_t idHash = crc32c(~0, idChars, length);
                     uint32_t idKey = IDENTIFIER_KEY(idHash, length);
                     metac_identifier_ptr_t dstoreId
-                        = GetOrAddIdentifier(&dstore.Table, idKey, idChars, length);
+                        = GetOrAddIdentifier(&dstore.Table, idKey, idChars);
 
                     if (decl->DeclKind == decl_function)
                     {

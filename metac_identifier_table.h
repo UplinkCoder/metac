@@ -5,20 +5,26 @@
 #define IDENTIFIER_KEY(HASH, LENGTH) \
     ( ((uint32_t)(HASH & 0xFFFFF)) | (((uint32_t)(LENGTH)) << 20) )
 
-#define LENGTH_FROM_IDENTIFIER_KEY(KEY) \
-    ( (KEY) >> 20 )
-
 #define STRING_KEY(HASH, LENGTH) \
     ( (uint32_t)((HASH) & 0xFFF) | (((uint32_t)(LENGTH)) << 12) )
 
 #define CHAR_KEY(HASH, LENGTH) \
     ( (uint32_t)((HASH) & 0xFFFFFFF) | (((uint32_t)(LENGTH)) << 28) )
 
+#define IDENTIFIER_LENGTH_SHIFT 20
+
+#define STRING_LENGTH_SHIFT 12
+
+#define CHAR_LENGTH_SHIFT 28
+
+#define LENGTH_FROM_IDENTIFIER_KEY(KEY) \
+    ( (KEY) >> IDENTIFIER_LENGTH_SHIFT )
+
 #define LENGTH_FROM_STRING_KEY(KEY) \
-    ( (KEY) >> 12 )
+    ( (KEY) >> STRING_LENGTH_SHIFT )
 
 #define LENGTH_FROM_CHAR_KEY(KEY) \
-    ( (KEY) >> 28 )
+    ( (KEY) >> CHAR_LENGTH_SHIFT )
 
 typedef struct metac_identifier_ptr_t
 {
@@ -49,6 +55,7 @@ typedef struct metac_identifier_table_t
     uint32_t SlotCount_Log2;
     uint32_t SlotsUsed;
 
+    uint32_t LengthShift;
     uint32_t MaxDisplacement;
 } metac_identifier_table_t;
 
@@ -67,11 +74,11 @@ typedef struct identifier_table_file_header_t
 } identifier_table_file_header_t;
 #pragma pack(pop)
 
-void IdentifierTableInit(metac_identifier_table_t* table);
+void IdentifierTableInit(metac_identifier_table_t* table, uint32_t lengthShift);
 
 metac_identifier_ptr_t GetOrAddIdentifier(metac_identifier_table_t* table,
                                           uint32_t identifierKey,
-                                          const char* identifier, uint32_t length);
+                                          const char* identifier);
 
 metac_identifier_ptr_t IsIdentifierInTable(metac_identifier_table_t* table, uint32_t key,
                                            const char* idChars);

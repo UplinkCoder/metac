@@ -49,6 +49,8 @@ typedef struct metac_semantic_state_t
     uint32_t ExpressionStackSize;
     uint32_t ExpressionStackCapacity;
 
+    sema_type_aggregate_t* CompilerInterface;
+
     // TODO remove this member when testing is done!
     declaration_store_t* declStore;
 

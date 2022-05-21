@@ -121,6 +121,7 @@
     M(exp_index) \
     M(exp_call) \
     M(exp_argument) \
+    M(exp_type) \
     \
     M(exp_addr_or_and) \
     M(exp_ptr_or_mul) \
@@ -278,6 +279,10 @@ typedef struct metac_expression_t
         struct {
             struct metac_expression_t* CastExp;
             struct decl_type_t* CastType;
+        };
+        // case exp_type:
+        struct {
+            struct decl_type_t* TypeExp;
         };
 
         // case exp_argument:
@@ -461,7 +466,7 @@ typedef struct metac_statement_t
             STATEMENT_HEADER
         };
 
-        FOREACH_STMT_KIND(MEMBER);
+        FOREACH_STMT_KIND(MEMBER)
     };
 } metac_statement_t;
 
@@ -573,7 +578,13 @@ typedef struct decl_type_enum_t
 
     TYPE_HEADER
 
+    metac_identifier_ptr_t Identifier;
+
     decl_enum_member_t* Members;
+
+    uint32_t MemberCount;
+
+    decl_type_t* BaseType;
 
 } decl_type_enum_t;
 

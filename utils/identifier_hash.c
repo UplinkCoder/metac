@@ -1,6 +1,7 @@
 #include "../compat.h"
 #include "../crc32c.c"
 #include "../metac_lexer.h"
+#include "../metac_identifier_table.h"
 #include <stdio.h>
 #include <string.h>
 

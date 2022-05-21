@@ -41,7 +41,7 @@ const char* IdentifierPtrToCharPtr(metac_identifier_table_t* table,
     return table->StringMemory + (ptr.v - 4);
 }
 
-void IdentifierTableInit(metac_identifier_table_t* table)
+void IdentifierTableInit(metac_identifier_table_t* table, uint32_t lengthShift)
 {
     table->SlotCount_Log2 = 13;
     const uint32_t maxSlots = (1 << table->SlotCount_Log2);
@@ -50,15 +50,17 @@ void IdentifierTableInit(metac_identifier_table_t* table)
     table->StringMemoryCapacity = 32768 * 8;
     table->StringMemorySize = 0;
     table->SlotsUsed = 0;
+    table->LengthShift = lengthShift;
     table->MaxDisplacement = 0;
 }
 
 #define ALIGN4(N) (((N) + 3) & ~3)
 metac_identifier_ptr_t GetOrAddIdentifier(metac_identifier_table_t* table,
                                           uint32_t identifierKey,
-                                          const char* identifier, uint32_t length)
+                                          const char* identifier)
 {
     TracyCZone(ctx, true);
+    uint32_t length = (identifierKey >> table->LengthShift);
 
     metac_identifier_ptr_t result = {0};
     metac_identifier_ptr_t insertPtr;

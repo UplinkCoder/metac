@@ -9,6 +9,6 @@ typedef struct metac_compiler_t
 
     void (*message)(const char* str);
     void (*error)(const char* str);
-    
+
     void (*RegisterLogCallback)(void (*LogCb)(const char* msg, void* context), void* context);
 } metac_compiler_t;

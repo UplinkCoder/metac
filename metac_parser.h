@@ -29,6 +29,7 @@ typedef enum parse_expression_flags_t
     expr_flags_none,
     expr_flags_call = (1 << 0),
     expr_flags_unary = (1 << 1),
+    expr_flags_enum = (1 << 2),
 } parse_expression_flags_t;
 
 
@@ -72,6 +73,7 @@ typedef struct metac_parser_t
     metac_identifier_ptr_t SpecialNamePtr_Compiler;
     metac_identifier_ptr_t SpecialNamePtr_Context;
     metac_identifier_ptr_t SpecialNamePtr_Target;
+    metac_identifier_ptr_t SpecialNamePtr_Type;
 } metac_parser_t;
 
 extern metac_parser_t g_lineParser;

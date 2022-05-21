@@ -85,6 +85,7 @@ typedef enum metac_type_kind_t
     type_enum,
 
     type_typedef,
+    type_functiontype,
 
     type_auto,
 // DoNT CHANGE THE ORDER FROM HERE

@@ -13,6 +13,33 @@
     EXPRESSION_HEADER \
     metac_type_index_t TypeIndex;
 
+typedef enum metac_storage_kind_t
+{
+    storage_unknown = 0,
+
+    storage_stack,
+    storage_register,
+
+    storage_thread_local,
+    storage_task_local,
+
+    storage_static,
+    storage_static_thread_local,
+    storage_static_task_local,
+
+
+    storage_invalid = 0xE,
+} metac_storage_kind_t;
+
+typedef struct metac_storage_location_t
+{
+    uint32_t v;
+    union {
+        uint32_t Offset : 28;
+        metac_storage_kind_t Kind : 4;
+    };
+} metac_storage_location_t;
+
 typedef struct exp_sema_argument_t
 {
     struct metac_sema_expression_t* Expression;
@@ -297,6 +324,8 @@ typedef struct sema_decl_variable_t
     metac_identifier_ptr_t VarIdentifier;
 
     metac_sema_expression_t* VarInitExpression;
+
+    metac_storage_location_t Storage;
 } sema_decl_variable_t;
 
 /// ParameterCount is gotten from TypeIndex;

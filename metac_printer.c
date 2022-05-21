@@ -194,7 +194,7 @@ static inline void PrintVariable(metac_printer_t* self,
 }
 
 static inline void PrintParameterList(metac_printer_t* self,
-                                     decl_parameter_t* Parameters)
+                                      decl_parameter_t* Parameters)
 {
     PrintToken(self, tok_lParen);
 
@@ -202,9 +202,16 @@ static inline void PrintParameterList(metac_printer_t* self,
         param != emptyPointer;
         param = param->Next)
     {
-        PrintVariable(self, param->Parameter);
+        if (param->Parameter->VarIdentifier.v != empty_identifier.v)
+        {
+            PrintVariable(self, param->Parameter);
+        }
+        else
+        {
+            PrintType(self, param->Parameter->VarType);
+        }
         if (param->Next != emptyPointer)
-            PrintString(self, ", ", 2);
+                PrintString(self, ", ", 2);
     }
 
     PrintToken(self, tok_rParen);
@@ -435,6 +442,28 @@ static inline void PrintStatement(metac_printer_t* self, metac_statement_t* stmt
     }
 }
 
+static inline metac_token_enum_t AggToken(metac_declaration_kind_t declKind)
+{
+    metac_token_enum_t result;
+
+    if (declKind == decl_type_struct)
+    {
+        result = tok_kw_struct;
+    } else if (declKind == decl_type_union)
+    {
+        result = tok_kw_union;
+    }/* else if (declKind == decl_class)
+    //{
+
+    }*/
+    else
+    {
+        assert(0);
+    }
+
+    return result;
+}
+
 static inline void PrintDeclaration(metac_printer_t* self,
                                     metac_declaration_t* decl,
                                     uint32_t level)
@@ -443,10 +472,61 @@ static inline void PrintDeclaration(metac_printer_t* self,
 
     switch (decl->DeclKind)
     {
+        case decl_type_enum:
+        {
+            decl_type_enum_t* enum_ = (decl_type_enum_t*) decl;
+            PrintString(self, "enum", sizeof("enum") - 1);
+            PrintSpace(self);
+            PrintI64(self, enum_->MemberCount);
+            if (enum_->Identifier.v != empty_identifier.v)
+            {
+                PrintIdentifier(self, enum_->Identifier);
+                PrintSpace(self);
+            }
+            PrintSpace(self);
+            PrintToken(self, tok_lBrace);
+            ++level;
+            ++self->IndentLevel;
+            decl_enum_member_t* member = enum_->Members;
+            if (enum_->MemberCount)
+            {
+                PrintNewline(self);
+                PrintIndent(self);
+            }
+            else
+            {
+                PrintSpace(self);
+            }
+            for(uint32_t memberIndex = 0;
+                memberIndex < enum_->MemberCount;
+                memberIndex++)
+            {
+                PrintIdentifier(self, member->Name);
+                if (member->Value != _emptyPointer)
+                {
+                    PrintSpace(self);
+                    PrintChar(self, '=');
+                    PrintSpace(self);
+                    PrintExpression(self, member->Value);
+                }
+                if (member->Next != _emptyPointer)
+                {
+                    PrintChar(self, ',');
+                    PrintNewline(self);
+                    PrintIndent(self);
+                }
+                member = member->Next;
+            }
+            --self->IndentLevel;
+            --level;
+            PrintIndent(self);
+            PrintNewline(self);
+            PrintToken(self, tok_rBrace);
+        } break;
         case decl_typedef:
         {
             decl_typedef_t* typdef = (decl_typedef_t*) decl;
-            printf("typedef ");
+            PrintString(self, "typedef ", sizeof("typedef ") - 1);
             level++;
             PrintDeclaration(self, (metac_declaration_t*)typdef->Type, level);
             PrintIdentifier(self, typdef->Identifier);
@@ -456,10 +536,11 @@ static inline void PrintDeclaration(metac_printer_t* self,
         {
             PrintType(self, (decl_type_t*) decl);
         }  break;
+        case decl_type_union :
         case decl_type_struct :
         {
             decl_type_struct_t* struct_ = (decl_type_struct_t*) decl;
-            PrintKeyword(self, tok_kw_struct);
+            PrintKeyword(self, AggToken(decl->DeclKind));
             if (struct_->Identifier.v != empty_identifier.v)
             {
                 PrintSpace(self);
@@ -467,20 +548,24 @@ static inline void PrintDeclaration(metac_printer_t* self,
             }
             PrintSpace(self);
             PrintToken(self, tok_lBrace);
-            PrintNewline(self);
             ++level;
             ++self->IndentLevel;
+            PrintNewline(self);
+            PrintIndent(self);
             decl_field_t* f = struct_->Fields;
             for(uint32_t memberIndex = 0;
                 memberIndex < struct_->FieldCount;
                 memberIndex++)
             {
                 PrintDeclaration(self, (metac_declaration_t*)f, level);
-                PrintNewline(self);
+                //PrintChar(self, ';');
+                if (f->Next && f->Next != _emptyPointer)
+                    PrintIndent(self);
                 f = f->Next;
             }
             --self->IndentLevel;
             --level;
+            //PrintNewline(self);
             PrintIndent(self);
             PrintToken(self, tok_rBrace);
             if (self->IndentLevel)
@@ -517,7 +602,7 @@ static inline void PrintDeclaration(metac_printer_t* self,
             }
         } break;
     }
-    if (!printSemicolon) PrintChar(self, ';');
+    if (!!printSemicolon) PrintChar(self, ';');
     PrintNewline(self);
 }
 
@@ -532,6 +617,12 @@ static inline void PrintExpression(metac_printer_t* self, metac_expression_t* ex
 
         if (!IsBinaryExp(exp->E1->Kind))
             PrintChar(self, ')');
+    }
+    else if (exp->Kind == exp_type)
+    {
+        PrintChar(self, '(');
+        PrintType(self, exp->TypeExp);
+        PrintChar(self, ')');
     }
     else if (exp->Kind == exp_identifier)
     {
@@ -604,7 +695,7 @@ static inline void PrintExpression(metac_printer_t* self, metac_expression_t* ex
     {
         PrintKeyword(self, tok_kw_sizeof);
         PrintToken(self, tok_lParen);
-        PrintType(self, exp->SizeofType);
+        PrintExpression(self, exp->E1);
         PrintToken(self, tok_rParen);
     }
     else if (exp->Kind == exp_addr || exp->Kind == exp_ptr

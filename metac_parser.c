@@ -1,6 +1,8 @@
 #ifndef _METAC_PARSER_C_
 #define _METAC_PARSER_C_
 
+#define TYPE_EXP
+
 #ifndef ACCEL
 #  error "You must compile the parser with ACCEL set"
 #  error "Known values are ACCEL_TABLE and ACCEL_TREE"
@@ -43,11 +45,32 @@ bool IsExpressionNode(metac_node_kind_t Kind)
     return ((Kind > node_exp_invalid) & (Kind < node_exp_max));
 }
 
+#define compiler_key 0x8481e0
+#define context_key 0x7a2a7f
+#define target_key 0x63a0c4
+#define type_key 0x40869f
+
+static inline void InitSpecialIdentifier(metac_parser_t* self)
+{
+    self->SpecialNamePtr_Compiler =
+        GetOrAddIdentifier(&self->IdentifierTable, compiler_key, "compiler");
+
+    self->SpecialNamePtr_Context =
+        GetOrAddIdentifier(&self->IdentifierTable, context_key, "context");
+
+    self->SpecialNamePtr_Target =
+        GetOrAddIdentifier(&self->IdentifierTable, target_key, "target");
+
+    self->SpecialNamePtr_Type =
+        GetOrAddIdentifier(&self->IdentifierTable, type_key, "type");
+}
+
+
 void MetaCParser_Init(metac_parser_t* self)
 {
     self->CurrentTokenIndex = 0;
-    IdentifierTableInit(&self->IdentifierTable);
-    IdentifierTableInit(&self->StringTable);
+    IdentifierTableInit(&self->IdentifierTable, IDENTIFIER_LENGTH_SHIFT);
+    IdentifierTableInit(&self->StringTable, STRING_LENGTH_SHIFT);
     self->Defines = self->inlineDefines;
     self->DefineCount = 0;
     self->DefineCapacity = ARRAY_SIZE(self->inlineDefines);
@@ -59,10 +82,8 @@ void MetaCParser_Init(metac_parser_t* self)
         malloc(sizeof(stmt_block_t**) * self->BlockStatementStackCapacity);
 
     self->OpenParens = 0;
-    self->SpecialNamePtr_Compiler.v = 0;
-    self->SpecialNamePtr_Context.v = 0;
-    self->SpecialNamePtr_Target.v = 0;
 
+    InitSpecialIdentifier(self);
 #ifndef NO_DOT_PRINTER
     self->DotPrinter = (metac_dot_printer_t*)malloc(sizeof(metac_dot_printer_t));
     MetaCDotPrinter_Init(self->DotPrinter, &self->IdentifierTable);
@@ -91,8 +112,7 @@ metac_identifier_ptr_t RegisterIdentifier(metac_parser_t* self,
 
     uint32_t identifierKey = token->IdentifierKey;
     return GetOrAddIdentifier(MEMBER_SUFFIX(&self->Identifier),
-                              identifierKey, identifierString,
-                              LENGTH_FROM_IDENTIFIER_KEY(identifierKey));
+                              identifierKey, identifierString);
 }
 
 metac_identifier_ptr_t RegisterString(metac_parser_t* self,
@@ -105,8 +125,7 @@ metac_identifier_ptr_t RegisterString(metac_parser_t* self,
         );
         uint32_t stringKey = token->StringKey;
         return GetOrAddIdentifier(MEMBER_SUFFIX(&self->String),
-                                  stringKey, string,
-                                  LENGTH_FROM_STRING_KEY(stringKey));
+                                  stringKey, string);
 }
 
 void AddDefine(metac_parser_t* self, metac_token_t* token, uint32_t nParameters)
@@ -621,22 +640,6 @@ static inline uint32_t OpToPrecedence(metac_expression_kind_t exp)
     assert(0);
     return 0;
 }
-
-static inline bool IsPrimaryExpressionToken(metac_token_enum_t tokenType)
-{
-    switch(tokenType)
-    {
-    case tok_lParen:
-    case tok_uint:
-    case tok_string:
-    case tok_char:
-    case tok_identifier:
-        return true;
-    default:
-        return false;
-    }
-}
-
 static inline bool IsTypeToken(metac_token_enum_t tokenType)
 {
     bool  result =
@@ -650,6 +653,25 @@ static inline bool IsTypeToken(metac_token_enum_t tokenType)
             || tokenType == tok_kw_union
             || tokenType == tok_identifier );
     return result;
+}
+
+static inline bool IsPrimaryExpressionToken(metac_token_enum_t tokenType)
+{
+#ifdef TYPE_EXP
+    if (IsTypeToken(tokenType))
+        return true;
+#endif
+    switch(tokenType)
+    {
+    case tok_lParen:
+    case tok_uint:
+    case tok_string:
+    case tok_char:
+    case tok_identifier:
+        return true;
+    default:
+        return false;
+    }
 }
 
 static inline bool IsPunctuationToken(metac_token_enum_t tok)
@@ -725,7 +747,16 @@ metac_expression_t* MetaCParser_ParsePrimaryExpression(metac_parser_t* self)
     metac_token_t* currentToken = MetaCParser_PeekToken(self, 1);
     metac_token_enum_t tokenType =
         (currentToken ? currentToken->TokenType : tok_eof);
-
+#ifdef TYPE_EXP
+    if (tokenType != tok_identifier && IsTypeToken(tokenType))
+    {
+        decl_type_t* type =
+            MetaCParser_ParseTypeDeclaration(self, 0, 0);
+        result = AllocNewExpression(exp_type);
+        result->TypeExp = type;
+    }
+    else
+#endif
     if (tokenType == tok_lParen && CouldBeCast(self, tokenType))
     {
         // Not implemented right now
@@ -871,58 +902,31 @@ static inline metac_expression_t* ParseUnaryDotExpression(metac_parser_t* self)
     {
         switch(peek->IdentifierKey)
         {
-#define compiler_key 0x8481e0
             case compiler_key:
             {
                 metac_identifier_ptr_t identifierPtr =
                     RegisterIdentifier(self, peek);
-                if (UNLIKELY(self->SpecialNamePtr_Compiler.v == 0))
-                {
-                    const uint32_t compilerPtrV =
-                        PtrVOnMatch(self, identifierPtr, "compiler", 8);
-                    if(compilerPtrV)
-                        self->SpecialNamePtr_Compiler.v = compilerPtrV;
-                }
-
                 if (self->SpecialNamePtr_Compiler.v == identifierPtr.v)
                 {
                     MetaCParser_Match(self, tok_identifier);
                     result = ParseDotSpecialExpression(self, exp_dot_compiler);
                 }
             } break;
-#define context_key 0x7a2a7f
             case context_key:
             {
                 metac_identifier_ptr_t identifierPtr =
                     RegisterIdentifier(self, peek);
-                if (UNLIKELY(self->SpecialNamePtr_Context.v == 0))
-                {
-                    const uint32_t compilerPtrV =
-                        PtrVOnMatch(self, identifierPtr, "context", 7);
-                    if(compilerPtrV)
-                        self->SpecialNamePtr_Context.v = compilerPtrV;
-                }
-
                 if (self->SpecialNamePtr_Context.v == identifierPtr.v)
                 {
                     MetaCParser_Match(self, tok_identifier);
                     result = ParseDotSpecialExpression(self, exp_dot_context);
                 }
             } break;
-#define target_key 0x63a0c4
             case target_key:
             {
                 metac_identifier_ptr_t identifierPtr =
                     RegisterIdentifier(self, peek);
-                if (UNLIKELY(self->SpecialNamePtr_Target.v == 0))
-                {
-                    const uint32_t compilerPtrV =
-                        PtrVOnMatch(self, identifierPtr, "target", 6);
-                    if(compilerPtrV)
-                        self->SpecialNamePtr_Compiler.v = compilerPtrV;
-                }
-
-                if (self->SpecialNamePtr_Compiler.v == identifierPtr.v)
+                if (self->SpecialNamePtr_Target.v == identifierPtr.v)
                 {
                     MetaCParser_Match(self, tok_identifier);
                     result = ParseDotSpecialExpression(self, exp_dot_target);
@@ -1011,7 +1015,7 @@ metac_expression_t* MetaCParser_ParseUnaryExpression(metac_parser_t* self)
             wasParen = true;
             MetaCParser_Match(self, tok_lParen);
         }
-        result->SizeofType = MetaCParser_ParseTypeDeclaration(self, 0, 0);
+        result->E1 = MetaCParser_ParseExpression(self, expr_flags_none, 0);
         if (wasParen)
         {
             MetaCParser_Match(self, tok_rParen);
@@ -1349,7 +1353,7 @@ metac_expression_t* MetaCParser_ParseExpression(metac_parser_t* self,
 
         tokenType = peekNext->TokenType;
         //within a call we must not treat a comma as a binary expression
-        if ((eflags & expr_flags_call) && tokenType == tok_comma)
+        if ((eflags & (expr_flags_call | expr_flags_enum)) && tokenType == tok_comma)
             goto LreturnExp;
 
         if ((eflags & expr_flags_unary))
@@ -1429,6 +1433,10 @@ LnextToken:
             type->TypeKind = type_identifier;
             type->TypeIdentifier = RegisterIdentifier(self, currentToken);
             U32(type->TypeModifiers) |= typeModifiers;
+            if (type->TypeIdentifier.v == self->SpecialNamePtr_Type.v)
+            {
+                type->TypeKind = type_type;
+            }
             break;
         }
         if (tokenType == tok_kw_const)
@@ -1519,9 +1527,9 @@ LnextToken:
                     decl_field_t* field =
                         AllocNewDeclaration(decl_field, (metac_declaration_t**)
                                             nextMemberPtr);
-                    field->Next = 0;
+                    field->Next = _emptyPointer;
                     metac_declaration_t *decl =
-                        MetaCParser_ParseDeclaration(self, result);
+                        MetaCParser_ParseDeclaration(self, struct_);
                     assert(decl->DeclKind == decl_variable);
                     field->Field = (decl_variable_t*)decl;
 
@@ -1539,6 +1547,63 @@ LnextToken:
         }
         else if (tokenType == tok_kw_enum)
         {
+            decl_type_enum_t* enum_ = AllocNewDeclaration(decl_type_enum, &result);
+
+            if (MetaCParser_PeekMatch(self, tok_identifier, 1))
+            {
+                metac_token_t* structName = MetaCParser_NextToken(self);
+                enum_->Identifier = RegisterIdentifier(self, structName);
+            }
+            else
+            {
+                enum_->Identifier = empty_identifier;
+            }
+
+            if (MetaCParser_PeekMatch(self, tok_colon, 1))
+            {
+                MetaCParser_Match(self, tok_colon);
+                enum_->BaseType =
+                    MetaCParser_ParseTypeDeclaration(self, 0, 0);
+            }
+
+            if (MetaCParser_PeekMatch(self, tok_lBrace, 1))
+            {
+                MetaCParser_Match(self, tok_lBrace);
+                decl_enum_member_t **nextMemberPtr = &enum_->Members;
+                uint32_t memberCount = 0;
+
+                while(!MetaCParser_PeekMatch(self, tok_rBrace, 1))
+                {
+                    memberCount++;
+                    decl_enum_member_t* member =
+                        AllocNewDeclaration(decl_enum_member, (metac_declaration_t**)
+                                            nextMemberPtr);
+                    member->Next = _emptyPointer;
+                    metac_token_t* idToken = MetaCParser_Match(self, tok_identifier);
+                    member->Name = RegisterIdentifier(self, idToken);
+                    metac_token_t* afterName = MetaCParser_PeekToken(self, 1);
+                    if (afterName
+                         && ((afterName->TokenType == tok_comma)
+                          | (afterName->TokenType == tok_rBrace)))
+                    {
+                        member->Value = emptyPointer;
+                        if (afterName->TokenType == tok_rBrace)
+                            break;
+                    }
+                    else
+                    {
+                        MetaCParser_Match(self, tok_assign);
+                        member->Value = MetaCParser_ParseExpression(self, expr_flags_enum, 0);
+                    }
+                    metac_token_t* afterMember = MetaCParser_PeekToken(self, 1);
+                    if (afterMember->TokenType != tok_rBrace)
+                        MetaCParser_Match(self, tok_comma);
+                    nextMemberPtr = &member->Next;
+                }
+                MetaCParser_Match(self, tok_rBrace);
+                enum_->MemberCount = memberCount;
+            }
+            break;
         }
     }
 
@@ -1559,6 +1624,12 @@ LnextToken:
     }
 
     return result;
+}
+
+bool IsTypeDecl(metac_declaration_kind_t kind)
+{
+    return ((kind >= FIRST_DECL_TYPE(TOK_SELF))
+          & (kind <= LAST_DECL_TYPE(TOK_SELF)));
 }
 
 decl_parameter_list_t ParseParamterList(metac_parser_t* self)
@@ -1582,6 +1653,12 @@ decl_parameter_list_t ParseParamterList(metac_parser_t* self)
         if (decl->DeclKind == decl_variable)
         {
             param->Parameter = decl;
+        }
+        else if (IsTypeDecl(decl->DeclKind))
+        {
+            AllocNewDeclaration(decl_variable, &param->Parameter);
+            param->Parameter->VarType = (decl_type_t*)decl;
+            param->Parameter->VarIdentifier = empty_identifier;
         }
         else
         {
@@ -1655,10 +1732,8 @@ metac_declaration_t* MetaCParser_ParseDeclaration(metac_parser_t* self, metac_de
     if (IsTypeToken(tokenType))
     {
          type = MetaCParser_ParseTypeDeclaration(self, parent, 0);
-         if (((tokenType == tok_kw_struct) | (tokenType == tok_kw_union)))
-         {
-             result = (metac_declaration_t*)type;
-         }
+         result = (metac_declaration_t*)type;
+
     }
 
     if (tokenType == tok_kw_typedef)
@@ -1724,7 +1799,7 @@ metac_declaration_t* MetaCParser_ParseDeclaration(metac_parser_t* self, metac_de
         else if (MetaCParser_PeekMatch(self, tok_identifier, 1))
         {
             metac_token_t* afterId = MetaCParser_PeekToken(self, 2);
-            if (afterId->TokenType == tok_lParen)
+            if (afterId && afterId->TokenType == tok_lParen)
             {
                 decl_function_t* funcDecl = ParseFunctionDeclaration(self, type);
                 result = (metac_declaration_t*) funcDecl;
@@ -2062,14 +2137,17 @@ metac_parser_t g_lineParser = { &g_lineLexer };
 
 void LineLexerInit(void)
 {
+    if (g_lineParser.SpecialNamePtr_Compiler.v == 0)
+        InitSpecialIdentifier(&g_lineParser);
+
     g_lineParser.CurrentTokenIndex = 0;
     g_lineLexer.TokenSize = 0;
     g_lineLexer.LocationStorage.LocationSize = 0;
 
-    ACCEL_INIT(g_lineLexer, Identifier);
-    ACCEL_INIT(g_lineLexer, String);
-    ACCEL_INIT(g_lineParser, Identifier);
-    ACCEL_INIT(g_lineParser, String);
+    ACCEL_INIT(g_lineLexer, Identifier, IDENTIFIER_LENGTH_SHIFT);
+    ACCEL_INIT(g_lineLexer, String, STRING_LENGTH_SHIFT);
+    ACCEL_INIT(g_lineParser, Identifier, IDENTIFIER_LENGTH_SHIFT);
+    ACCEL_INIT(g_lineParser, String, STRING_LENGTH_SHIFT);
 
     if (!g_lineParser.BlockStatementStack)
     {

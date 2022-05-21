@@ -14,7 +14,7 @@
 #  define MEMBER_INFIX(P, S) P ## Table # S
 #  define ACCELERATOR "Table"
 #  define ACCEL_SUFFIX Table
-#  define ACCEL_INIT(A, B) IdentifierTableInit(&((A).B ## Table))
+#  define ACCEL_INIT(A, B, C) IdentifierTableInit(&((A).B ## Table), C)
 # else
 #  error "Unknown ACCEL value"
 # endif
