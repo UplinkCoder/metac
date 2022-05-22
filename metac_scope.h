@@ -120,8 +120,10 @@ typedef struct metac_scope_t
 
 /// Returns 0 to keep looking upwards
 /// and a vaild pointer if it could be found
-struct metac_node_header_t* MetaCScope_LookupIdentifier(metac_scope_t* self,
-                                                        metac_identifier_ptr_t identifierPtr);
+metac_node_header_t* MetaCScope_LookupIdentifier(metac_scope_t* self,
+                                                 uint32_t idPtrHash,
+                                                 metac_identifier_ptr_t identifierPtr);
+
 /// Returns true on insertion and false if the table was full
 scope_insert_error_t MetaCScope_RegisterIdentifier(metac_scope_t* self,
                                                    metac_identifier_ptr_t idPtr,

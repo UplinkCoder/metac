@@ -24,11 +24,11 @@ void MetaCScopeTable_Init(metac_scope_table_t* self)
 
 
 metac_scope_table_slot_t* MetaCScopeTable_Lookup(metac_scope_table_t* self,
+                                                 const uint32_t idPtrHash,
                                                  metac_identifier_ptr_t idPtr)
 {
-    uint32_t hash = crc32c(~0, &idPtr.v, sizeof(idPtr.v));
     const uint32_t slotIndexMask = ((1 << self->SlotCount_Log2) - 1);
-    const uint32_t initialSlotIndex = (hash & slotIndexMask);
+    const uint32_t initialSlotIndex = (idPtrHash & slotIndexMask);
 
     for(
         uint32_t slotIndex = initialSlotIndex;
@@ -37,7 +37,7 @@ metac_scope_table_slot_t* MetaCScopeTable_Lookup(metac_scope_table_t* self,
     {
         metac_scope_table_slot_t* slot =
             &self->Slots[(slotIndex - 1) & slotIndexMask];
-        if (slot->Hash == hash && idPtr.v == slot->Ptr.v)
+        if (slot->Hash == idPtrHash && idPtr.v == slot->Ptr.v)
         {
             return slot;
         }
@@ -184,12 +184,13 @@ uint32_t __inline ctz( uint32_t value )
 /// Returns 0 to keep looking upwards
 /// and a vaild pointer if it could be found
 metac_node_header_t* MetaCScope_LookupIdentifier(metac_scope_t* self,
+                                                 uint32_t idPtrHash,
                                                  metac_identifier_ptr_t identifierPtr)
 {
     metac_node_header_t* result = 0;
     {
         metac_scope_table_slot_t * slot =
-            MetaCScopeTable_Lookup(&self->ScopeTable, identifierPtr);
+            MetaCScopeTable_Lookup(&self->ScopeTable, idPtrHash, identifierPtr);
         if (slot != 0)
         {
             result = slot->Node;
@@ -204,29 +205,6 @@ metac_scope_t* MetaCScope_PushScope(metac_scope_t *self, metac_scope_parent_t sc
     metac_scope_t* result = AllocNewScope(self, scopeOwner);
 
     MetaCScopeTable_Init(&result->ScopeTable);
-
-    return result;
-}
-
-metac_scope_t* MetaCScope_PushAggregateScope(metac_scope_t *self, sema_type_aggregate_t* agg)
-{
-    metac_declaration_kind_t aggregateKind = agg->DeclKind;
-    metac_scope_parent_t scopeOwner;
-
-    switch(aggregateKind)
-    {
-        case decl_type_struct:
-            scopeOwner.v = SCOPE_PARENT_V(scope_parent_struct, StructIndex(agg));
-        break;
-        case decl_type_union:
-            scopeOwner.v = SCOPE_PARENT_V(scope_parent_union, UnionIndex(agg));
-        break;
-        default: assert(0);
-    }
-
-    metac_scope_t* result = AllocNewScope(self, scopeOwner);
-
-    MetaCScopeTable_InitN(&result->ScopeTable, agg->FieldCount);
 
     return result;
 }

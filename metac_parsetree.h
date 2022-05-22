@@ -186,6 +186,7 @@ typedef struct metac_node_header_t
     uint32_t Serial;
 } metac_node_header_t;
 #endif
+typedef metac_node_header_t metac_node_t;
 
 #undef DEFINE_NODE_MEMBERS
 

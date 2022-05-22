@@ -40,11 +40,11 @@ typedef struct metac_storage_location_t
     };
 } metac_storage_location_t;
 
-typedef struct exp_sema_argument_t
+typedef struct sema_exp_argument_list_t
 {
-    struct metac_sema_expression_t* Expression;
-    struct exp_sema_argument_t* Next;
-} exp_sema_argument_t;
+    struct metac_sema_expression_t* Arguments;
+    uint32_t ArgumentCount;
+} sema_exp_argument_list_t;
 
 typedef struct metac_sema_expression_header_t
 {
@@ -66,16 +66,10 @@ typedef struct metac_sema_expression_t
             struct metac_sema_expression_t* _E1;
             struct metac_sema_expression_t* E2;
         };
+        // case exp_sizeof:
         // case  exp_inject, exp_eject, exp_assert, exp_outerParen, exp_outer :
         struct {
             struct metac_sema_expression_t* E1;
-        };
-        // case exp_sizeof:
-        struct {
-            union {
-                // struct metac_sema_expression_t* SizeofExp;
-                struct metac_type_index_t SizeofType;
-            };
         };
         // case exp_cast:
         struct {
@@ -84,7 +78,13 @@ typedef struct metac_sema_expression_t
         };
 
         // case exp_argument:
-        exp_sema_argument_t* arguments;
+        struct {
+            sema_exp_argument_list_t* ArgumentList;
+        };
+        // case variable_exp:
+        struct {
+            struct sema_decl_variable_t* Variable;
+        };
         // case identifier_exp :
         struct {
             uint32_t IdentifierKey;
@@ -438,7 +438,7 @@ typedef struct metac_sema_declaration_t
         struct {
             SEMA_DECLARATION_HEADER
         };
-        sema_declaration_header_t sema_declaration_header;
+        sema_decl_variable_t sema_decl_variable;
         sema_decl_typedef_t sema_decl_typedef;
         sema_decl_type_t sema_decl_type;
         sema_decl_type_ptr_t sema_decl_type_ptr;

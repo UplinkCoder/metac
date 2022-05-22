@@ -1,3 +1,4 @@
+#include "metac_semantic_lru.h"
 #include "metac_parsetree.h"
 #include "metac_parser.h"
 #include "metac_type_table.h"
@@ -40,7 +41,9 @@ typedef struct metac_semantic_state_t
     // to layout variables
     AT(transient) metac_sema_decl_state_t* CurrentDeclarationState;
 
-    metac_scope_t* CurrentScope;
+    AT(transient) metac_scope_t* CurrentScope;
+
+    metac_semantic_lru_t LRU;
 
     // metac_type_table_t* TypeTable;
     FOREACH_TYPE_TABLE(DECLARE_TYPE_TABLE)

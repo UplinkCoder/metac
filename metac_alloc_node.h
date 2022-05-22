@@ -33,7 +33,6 @@ sema_type_aggregate_t* AllocNewAggregate(metac_type_kind_t kind, decl_type_struc
 metac_type_aggregate_field_t* AllocAggregateFields(sema_type_aggregate_t* aggregate,
                                                    metac_type_kind_t kind,
                                                    uint32_t fieldCount);
-
 #define AllocNewSemaStatement(KIND, RESULT_PTR) \
     (sema_ ## KIND ## _t*) AllocNewSemaStatement_(KIND, sizeof(sema_ ## KIND ##_t), ((void**)(RESULT_PTR)))
 
@@ -47,8 +46,8 @@ metac_scope_t* AllocNewScope(metac_scope_t* parent, metac_scope_parent_t owner);
 
 #define StatementIndex(STMT) StatementIndex_((metac_sema_statement_t*)STMT)
 
-uint32_t StatementIndex_(metac_sema_statement_t* stmt);
 uint32_t FunctionIndex(sema_decl_function_t* func);
-uint32_t BlockStatementIndex(sema_stmt_block_t* blockstmt);
 uint32_t StructIndex(sema_type_aggregate_t* struct_);
+uint32_t StatementIndex_(metac_sema_statement_t* stmt);
+uint32_t BlockStatementIndex(sema_stmt_block_t* blockstmt);
 uint32_t UnionIndex(sema_type_aggregate_t* union_);
