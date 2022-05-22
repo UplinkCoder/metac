@@ -29,6 +29,7 @@ static const metac_target_info_t default_target_info =
     .AlignmentDouble = _Alignof(double),
     .AlignmentLongLong = _Alignof(long long),
     .AlignmentLongDouble = _Alignof(long double),
+
     .PtrSize = sizeof(void*),
     .AlignmentChar = _Alignof(char)
 };
