@@ -16,6 +16,7 @@
 
 extern bool g_exernalIdentifierTable;
 extern metac_lexer_t g_lineLexer;
+extern void LineLexerInit();
 
 metac_statement_t* MetaCParser_ParseStatementFromString(const char* str);
 metac_declaration_t* MetaCParser_ParseDeclarationFromString(const char* str);
@@ -79,11 +80,12 @@ int main(int argc, const char* argv[])
         (metac_token_t*)malloc(128 * sizeof(metac_token_t));
     g_lineLexer.TokenCapacity = 128;
     g_lineLexer.LocationStorage.Locations =
-        (metac_token_t*)malloc(128 * sizeof(metac_location_t));
+        (metac_location_t*)malloc(128 * sizeof(metac_location_t));
     g_lineLexer.LocationStorage.LocationCapacity = 128;
 //    decl_type_struct_t* compiler_struct = 0;
 
-    sema_type_aggregate_t* compilerStruct = 0;
+    decl_type_struct_t* compilerStruct = 0;
+
     read_result_t fCompilterInterface =
         ReadFileAndZeroTerminate("metac_compiler_interface.h");
     if (!fCompilterInterface.FileContent0)
@@ -91,17 +93,14 @@ int main(int argc, const char* argv[])
         ReadFileAndZeroTerminate("../metac_compiler_interface.h");
 
     metac_semantic_state_t sema;
-    MetaCSemantic_Init(&sema, &g_lineParser);
 
     if (fCompilterInterface.FileContent0)
     {
-        decl_type_struct_t* compilerStruct_ = 0;
-        compilerStruct_ =
-            MetaCParser_ParseDeclarationFromString(fCompilterInterface.FileContent0);
-
-        compilerStruct = MetaCSemantic_doDeclSemantic(&sema, compilerStruct_);
-        //compiler_struct =
+        compilerStruct = (decl_type_struct_t*)
+            MetaCParser_ParseDeclarationFromString(
+                fCompilterInterface.FileContent0);
     }
+    MetaCSemantic_Init(&sema, &g_lineParser, compilerStruct);
 
 
     PrintHelp();
@@ -173,7 +172,7 @@ LswitchMode:
     while(0)
     {
 LnextLine:
-        linenoiseFree(line);
+        linenoiseFree((void*)line);
     }
     while ((line = linenoise(promt_)))
     {
@@ -194,7 +193,7 @@ LnextLine:
                 if (!fd)
                 {
                     perror("loading file failed");
-                    printf("cwd: %s\n", get_current_dir_name());
+                    // printf("cwd: %s\n", get_current_dir_name());
                 }
                 else
                 {
@@ -406,8 +405,6 @@ LnextLine:
                             goto LnextLine;
                         }
 
-                        static metac_semantic_state_t sema = {0};
-                        MetaCSemantic_Init(&sema, &g_lineParser);
                         sema.declStore = &dstore;
                         metac_sema_expression_t* ae =
                             MetaCSemantic_doExprSemantic(&sema, assignExp);
@@ -457,9 +454,6 @@ LnextLine:
                     printf("decl = %s\n", MetaCPrinter_PrintDeclaration(&printer, decl));
                 else
                     printf("Couldn't parse Declaration\n");
-
-                metac_semantic_state_t sema;
-                MetaCSemantic_Init(&sema, &g_lineParser);
 
                 metac_sema_declaration_t* ds =
                     MetaCSemantic_doDeclSemantic(&sema, decl);

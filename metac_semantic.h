@@ -65,22 +65,47 @@ typedef struct metac_semantic_state_t
 
 void RegisterType(metac_semantic_state_t* state, decl_type_t* type);
 const char* TypeToChars(metac_semantic_state_t* self, metac_type_index_t typeIndex);
-void MetaCSemantic_Init(metac_semantic_state_t* self, metac_parser_t* parser);
+void MetaCSemantic_Init(metac_semantic_state_t* self,
+                        metac_parser_t* parser,
+                        decl_type_struct_t* compilerStruct);
 
 void MetaCSemantic_PushExpr(metac_semantic_state_t* self, metac_sema_expression_t* expr);
 void MetaCSemantic_PopExpr(metac_semantic_state_t* self,  metac_sema_expression_t* expr);
 
-metac_sema_expression_t* MetaCSemantic_doExprSemantic(metac_semantic_state_t* self,
-                                                      metac_expression_t* expr);
+#define MetaCSemantic_doExprSemantic(SELF, NODE) \
+    MetaCSemantic_doExprSemantic_(SELF, ((metac_expression_t*)(NODE)), \
+                                  __FUNCTION__, __LINE__)
 
-metac_sema_statement_t* MetaCSemantic_doStatementSemantic(metac_semantic_state_t* self,
-                                                          metac_statement_t* stmt);
+metac_sema_expression_t* MetaCSemantic_doExprSemantic_(metac_semantic_state_t* self,
+                                                       metac_expression_t* expr,
+                                                       const char* callFun,
+                                                       uint32_t callLine);
 
-metac_sema_declaration_t* MetaCSemantic_doDeclSemantic(metac_semantic_state_t* self,
-                                                       metac_declaration_t* decl);
+#define MetaCSemantic_doStatementSemantic(SELF, NODE) \
+    MetaCSemantic_doStatementSemantic_(SELF, ((metac_statement_t*)(NODE)), \
+                                       __FUNCTION__, __LINE__)
 
-metac_type_index_t MetaCSemantic_doTypeSemantic(metac_semantic_state_t* self,
-                                                decl_type_t* type);
+metac_sema_statement_t* MetaCSemantic_doStatementSemantic_(metac_semantic_state_t* self,
+                                                           metac_statement_t* stmt,
+                                                           const char* callFun,
+                                                           uint32_t callLine);
+
+#define MetaCSemantic_doDeclSemantic(SELF, NODE) \
+    MetaCSemantic_doDeclSemantic_(SELF, ((metac_declaration_t*)(NODE)), \
+                                  __FUNCTION__, __LINE__)
+
+metac_sema_declaration_t* MetaCSemantic_doDeclSemantic_(metac_semantic_state_t* self,
+                                                        metac_declaration_t* decl,
+                                                        const char* callFun,
+                                                        uint32_t callLine);
+
+#define MetaCSemantic_doTypeSemantic(SELF, NODE) \
+    MetaCSemantic_doTypeSemantic_(SELF, ((decl_type_t*)(NODE)), \
+                                  __FUNCTION__, __LINE__)
+
+metac_type_index_t MetaCSemantic_doTypeSemantic_(metac_semantic_state_t* self,
+                                                decl_type_t* type,
+                                                const char* callFun, uint32_t callLine);
 
 /// Returns _emptyNode to signifiy it could not be found
 /// a valid node otherwise

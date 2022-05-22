@@ -200,7 +200,7 @@ metac_identifier_ptr_t IsIdentifierInTable(metac_identifier_table_t* table,
                                            const char* idChars)
 {
     metac_identifier_ptr_t result = {0};
-    
+
     const uint32_t slotIndexMask = ((1 << table->SlotCount_Log2) - 1);
     const uint32_t initialSlotIndex = (key & slotIndexMask);
     // TracyCPlot("TargetIndex", initialSlotIndex);
@@ -216,7 +216,7 @@ metac_identifier_ptr_t IsIdentifierInTable(metac_identifier_table_t* table,
             return result;
         if (slot.HashKey == key)
         {
-            bool matches = 
+            bool matches =
                 !memcmp(IdentifierPtrToCharPtr(table, slot.Ptr), idChars,
                         LENGTH_FROM_IDENTIFIER_KEY(key));
             if (matches)
@@ -227,6 +227,7 @@ metac_identifier_ptr_t IsIdentifierInTable(metac_identifier_table_t* table,
         }
     }
     assert(0);
+    return (metac_identifier_ptr_t){0};
 }
 
 
@@ -252,6 +253,7 @@ metac_identifier_table_slot_t* IdentifierTableLookup(
             return table->Slots + lookupIdx;
     }
     assert(0);
+    return 0;
 }
 
 bool IsInTable(metac_identifier_table_t* table,

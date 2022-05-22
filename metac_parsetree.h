@@ -123,6 +123,8 @@
     M(exp_argument) \
     M(exp_type) \
     \
+    M(exp_variable) \
+    \
     M(exp_addr_or_and) \
     M(exp_ptr_or_mul) \
     \
