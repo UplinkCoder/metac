@@ -37,8 +37,6 @@ const void* _emptyPointer = (const void*)0x1;
 
 void _newMemRealloc(void** memP, uint32_t* capacity, const uint32_t elementSize);
 const char* MetaCExpressionKind_toChars(metac_expression_kind_t type);
-#define ARRAY_SIZE(A) \
-     ((unsigned int)(sizeof((A)) / sizeof((A)[0])))
 
 bool IsExpressionNode(metac_node_kind_t Kind)
 {
@@ -532,8 +530,12 @@ static inline bool IsPostfixOperator(metac_token_enum_t t)
     return (t == tok_plusplus || t == tok_minusminus);
 }
 
-static inline bool IsBinaryOperator(metac_token_enum_t t)
+static inline bool IsBinaryOperator(metac_token_enum_t t, parse_expression_flags_t flags)
 {
+    if ((flags & expr_flags_call) != 0
+     && (t == tok_comma))
+        return false;
+
     return ((t >= FIRST_BINARY_TOKEN(TOK_SELF) && t <= LAST_BINARY_TOKEN(TOK_SELF))
             || t == tok_lParen || t == tok_lBracket);
 }
@@ -1166,6 +1168,7 @@ static void PopOpStack()
 }
 
 metac_expression_t* MetaCParser_ParseBinaryExpression(metac_parser_t* self,
+                                                      parse_expression_flags_t eflags,
                                                       metac_expression_t* left,
                                                       uint32_t min_prec)
 {
@@ -1192,7 +1195,7 @@ metac_expression_t* MetaCParser_ParseBinaryExpression(metac_parser_t* self,
         metac_expression_t* E1 = left;
         result = AllocNewExpression(exp_index);
         result->E1 = E1;
-        result->E2 = MetaCParser_ParseExpression(self, expr_flags_none, 0);
+        result->E2 = MetaCParser_ParseExpression(self, eflags, 0);
 
         MetaCParser_Match(self, tok_rBracket);
     }
@@ -1221,7 +1224,7 @@ metac_expression_t* MetaCParser_ParseBinaryExpression(metac_parser_t* self,
                 {
                     MetaCParser_Match(self, tok_comma);
                 }
-                else
+                else if (MetaCParser_PeekMatch(self, tok_rParen, 1))
                 {
                     break;
                 }
@@ -1235,7 +1238,7 @@ metac_expression_t* MetaCParser_ParseBinaryExpression(metac_parser_t* self,
 
         //PopOperator(exp_call);
     }
-    else if (IsBinaryOperator(peekTokenType))
+    else if (IsBinaryOperator(peekTokenType, eflags))
     {
 #if 0
         while (IsBinaryOperator(peekTokenType))
@@ -1279,7 +1282,7 @@ metac_expression_t* MetaCParser_ParseBinaryExpression(metac_parser_t* self,
         metac_expression_kind_t exp_left;
         metac_expression_kind_t exp_right;
 
-        while(IsBinaryOperator(peekTokenType)
+        while(IsBinaryOperator(peekTokenType, eflags)
            && OpToPrecedence(BinExpTypeFromTokenType(peekTokenType)) >= min_prec)
         {
             exp_right = BinExpTypeFromTokenType(peekTokenType);
@@ -1288,11 +1291,11 @@ metac_expression_t* MetaCParser_ParseBinaryExpression(metac_parser_t* self,
             metac_expression_t* rhs = MetaCParser_ParseUnaryExpression(self);
             peekToken = MetaCParser_PeekToken(self, 1);
             peekTokenType = (peekToken ? peekToken->TokenType : tok_eof);
-            while(IsBinaryOperator(peekTokenType)
+            while(IsBinaryOperator(peekTokenType, eflags)
                && opPrecedence <
                   OpToPrecedence(BinExpTypeFromTokenType(peekTokenType)))
             {
-                rhs = MetaCParser_ParseBinaryExpression(self, rhs, opPrecedence + 0);
+                rhs = MetaCParser_ParseBinaryExpression(self, eflags, rhs, opPrecedence + 0);
                 peekToken = MetaCParser_PeekToken(self, 1);
                 peekTokenType = (peekToken ? peekToken->TokenType : tok_eof);
             }
@@ -1341,7 +1344,7 @@ metac_expression_t* MetaCParser_ParseExpression(metac_parser_t* self,
     }
     else
     {
-        result = MetaCParser_ParseBinaryExpression(self, prev, 0);
+        result = MetaCParser_ParseBinaryExpression(self, eflags, prev, 0);
     }
 
 //    printf("TokenType: %s\n", MetaCTokenEnum_toChars(tokenType));
@@ -1359,13 +1362,13 @@ metac_expression_t* MetaCParser_ParseExpression(metac_parser_t* self,
         if ((eflags & expr_flags_unary))
             goto LreturnExp;
 
-        if (IsBinaryOperator(tokenType))
+        if (IsBinaryOperator(tokenType, eflags))
         {
             //uint32_t prec = OpToPrecedence(BinExpTypeFromTokenType(tokenType));
             uint32_t prec = OpToPrecedence(result->Kind);
             if (prec < min_prec)
                 return result;
-            result = MetaCParser_ParseBinaryExpression(self, result, min_prec);
+            result = MetaCParser_ParseBinaryExpression(self, eflags, result, min_prec);
         }
         else if (IsPostfixOperator(tokenType))
         {
@@ -1373,11 +1376,11 @@ metac_expression_t* MetaCParser_ParseExpression(metac_parser_t* self,
         }
         else if (peekNext->TokenType == tok_lParen)
         {
-            result = MetaCParser_ParseBinaryExpression(self, result, OpToPrecedence(exp_call));
+            result = MetaCParser_ParseBinaryExpression(self, eflags, result, OpToPrecedence(exp_call));
         }
         else if (tokenType == tok_lBracket)
         {
-            result = MetaCParser_ParseBinaryExpression(self, result, OpToPrecedence(exp_index));
+            result = MetaCParser_ParseBinaryExpression(self, eflags, result, OpToPrecedence(exp_index));
         }
         else if (tokenType == tok_rBracket || tokenType == tok_rParen)
         {
@@ -1732,7 +1735,10 @@ metac_declaration_t* MetaCParser_ParseDeclaration(metac_parser_t* self, metac_de
     if (IsTypeToken(tokenType))
     {
          type = MetaCParser_ParseTypeDeclaration(self, parent, 0);
-         result = (metac_declaration_t*)type;
+         if (tokenType == tok_kw_struct || tokenType == tok_kw_union)
+         {
+            result = (metac_declaration_t*)type;
+         }
 
     }
 

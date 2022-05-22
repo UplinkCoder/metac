@@ -101,6 +101,7 @@ int main(int argc, const char* argv[])
                 fCompilterInterface.FileContent0);
     }
     MetaCSemantic_Init(&sema, &g_lineParser, compilerStruct);
+    MetaCSemantic_PushScope(&sema, scope_parent_module, 0);
 
 
     PrintHelp();
@@ -368,7 +369,7 @@ LnextLine:
 
                     if (idPtr.v == 0)
                     {
-                        fprintf(stderr, "declation could not be handled only functions are supported for now\n");
+                        fprintf(stderr, "declaration could not be handled only functions are supported for now\n");
                         goto LnextLine;
                     }
 
@@ -410,7 +411,10 @@ LnextLine:
                             MetaCSemantic_doExprSemantic(&sema, assignExp);
                         if (ae)
                         {
-                            assert(ae->E1->Kind == exp_identifier);
+                            if (ae->E1->Kind == exp_identifier)
+                            {
+                                assert(0);
+                            }
                             assert(ae->E2->Kind == exp_signed_integer);
 
                             VariableStore_SetValueI32(&vstore, ae->E1, (int32_t)ae->E2->ValueI64);

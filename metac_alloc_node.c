@@ -219,8 +219,9 @@ metac_declaration_t* AllocNewDeclaration_(metac_declaration_kind_t kind, size_t 
         (*result_ptr) = result = _newDecl_mem + INC(_newDecl_size);
         result->DeclKind = kind;
         result->Serial = INC(_nodeCounter);
-        memset(&result->Serial, 0, nodeSize - offsetof(metac_declaration_t, Serial));
+        memset(&result->Serial + 1, 0, nodeSize - offsetof(metac_declaration_t, Serial));
     }
+    result->AllocLine = line;
 
     return result;
 }
@@ -251,12 +252,12 @@ metac_sema_expression_t* AllocNewSemaExpression(metac_expression_t* expr)
         result = _newSemaExp_mem + INC(_newSemaExp_size);
         (*(metac_expression_header_t*) result) = (*(metac_expression_header_t*) expr);
 
-        result->Serial = INC(_nodeCounter);
         result->TypeIndex.v = 0;
         memcpy(
                ((char*)result) + sizeof(metac_sema_expression_header_t),
                ((char*)expr) + sizeof(metac_expression_header_t),
                sizeof(metac_expression_t) - sizeof(metac_expression_header_t));
+        result->Serial = INC(_nodeCounter);
     }
 
     return result;
@@ -305,16 +306,18 @@ sema_decl_function_t* AllocNewSemaFunction(decl_function_t* func)
     (__builtin_atomic_fetch_add(&v, b))
 #endif
 
-
-sema_decl_variable_t* AllocNewSemaVariable()
+sema_decl_variable_t* AllocNewSemaVariable(decl_variable_t* decl, void ** result_ptr)
 {
     sema_decl_variable_t* result = 0;
     REALLOC_BOILERPLATE(_newSemaVariables)
 
     result = _newSemaVariables_mem + INC(_newSemaVariables_size);
+    (*result_ptr) = result;
 
     result->DeclKind = decl_variable;
     result->Serial = INC(_nodeCounter);
+    decl->LocationIdx = result->LocationIdx;
+
 
     return result;
 }

@@ -64,7 +64,10 @@ metac_scope_t* MetaCSemantic_PushScope(metac_semantic_state_t* self,
         assert(0);
 
     case scope_parent_module :
-        assert(0);
+    //FIXME TODO this is not how it should be;
+    // we should allocate module structures and so on
+        scopeParentIndex = (uint32_t) parentNode;
+    break;
     case scope_parent_function :
         scopeParentIndex = FunctionIndex((sema_decl_function_t*)parentNode);
     break;
@@ -269,6 +272,69 @@ uint32_t MetaCSemantic_GetTypeAlignment(metac_semantic_state_t* self,
     return result;
 }
 
+#ifndef _emptyPointer
+#define _emptyPointer (void*)0x1
+#define emptyNode (metac_node_t*) _emptyPointer
+#endif
+
+#ifdef SSE2
+/// taken from https://github.com/AuburnSounds/intel-intrinsics/blob/master/source/inteli/emmintrin.d
+/// Thanks Guillaume!
+static inline uint32_t _mm_movemask_epi16( __m128i a )
+{
+    return _mm_movemask_epi8(_mm_packs_epi16(a, _mm_setzero_si128()));
+}
+#endif
+
+#include "crc32c.h"
+scope_insert_error_t MetaCSemantic_RegisterInScope(metac_semantic_state_t* self,
+                                                   metac_identifier_ptr_t idPtr,
+                                                   metac_node_t* node)
+{
+    scope_insert_error_t result = no_scope;
+    uint32_t idPtrHash = crc32c(~0, &idPtr.v, sizeof(idPtr.v));
+    // first search for keys that might clash
+    // and remove them from the LRU hashes
+    uint16_t hash12 = idPtrHash & 0xFFF0;
+    int16x8_t hashes;
+
+#ifdef SSE2
+    hashes.XMM = _mm_load_si128((__m128i*) self->LRU.LRUContentHashes.E);
+#else
+    hashes = self->LRU.LRUContentHashes;
+#endif
+
+#ifdef SSE2
+    const __m128i key = _mm_set1_epi16(hash16);
+    const __m128i keyMask = _mm_set1_epi16(0xF);
+    // mask out the scope_hash so we only compare keys
+    // TODO can we make this store conditinal or would
+    // the additional movemask make this slower?
+    __m128i masked = _mm_andnot_si128(keyMask, hashes.XMM);
+    __m128i cmp = _mm_cmpeq_epi16(masked, key);
+    // clear out all the LRU hash entires where the key matched
+    __m128i cleaned = _mm_andnot_si128(cmp, hashes.XMM);
+
+    _mm_store_si128((__m128i*) self->LRU.LRUContentHashes.E, cleaned);
+#else
+    bool needsStore = false;
+    for(int i = 0; i < ARRAY_SIZE(hashes.E); i++)
+    {
+        if ((hashes.E[i] & 0xFFF0) == hash12)
+        {
+            needsStore |= true;
+            hashes.E[i] = 0;
+        }
+    }
+    if (needsStore)
+        self->LRU.LRUContentHashes = hashes;
+#endif
+    if (self->CurrentScope != 0)
+        result = MetaCScope_RegisterIdentifier(self->CurrentScope, idPtr, node);
+
+    return result;
+}
+
 static inline uint32_t Align(uint32_t size, uint32_t alignment)
 {
     assert(alignment >= 1);
@@ -420,8 +486,6 @@ metac_type_index_t MetaCSemantic_doTypeSemantic_(metac_semantic_state_t* self,
     return result;
 }
 
-#include "crc32c.h"
-
 sema_decl_function_t* MetaCSemantic_doFunctionSemantic(metac_semantic_state_t* self,
                                                        decl_function_t* func)
 {
@@ -506,11 +570,19 @@ metac_sema_declaration_t* MetaCSemantic_doDeclSemantic_(metac_semantic_state_t* 
         case decl_variable:
         {
             decl_variable_t* v = cast(decl_variable_t*) decl;
-            sema_decl_variable_t* var = AllocNewSemaVariable(&result);
-            var->LocationIdx = v->LocationIdx;
-            var->VarIdentifier = v->VarIdentifier;
+            sema_decl_variable_t* var = AllocNewSemaVariable(v, &result);
             var->TypeIndex = MetaCSemantic_doTypeSemantic(self, v->VarType);
-            //TODO Register in scope?
+            if (v->VarInitExpression != emptyNode)
+            {
+                var->VarInitExpression = MetaCSemantic_doExprSemantic(self, v->VarInitExpression);
+            }
+            else
+            {
+                var->VarInitExpression = emptyNode;
+            }
+            //TODO RegisterIdentifier
+            var->VarIdentifier = v->VarIdentifier;
+            MetaCSemantic_RegisterInScope(self, var->VarIdentifier, var);
         } break;
         case decl_type_struct:
             ((decl_type_t*)decl)->TypeKind = type_struct;
@@ -615,62 +687,68 @@ static inline const char* BasicTypeToChars(metac_type_index_t typeIndex)
     }
     return 0;
 }
-#ifndef _emptyPointer
-#define _emptyPointer (void*)0x1
-#define emptyNode (metac_node_t*) _emptyPointer
-#endif
 
-
-/// Returns _emptyNode to signifiy it could not be found
-/// a valid node otherwise
-metac_node_t* MetaCSemantic_LookupIdentifier(metac_semantic_state_t* self,
-                                                    metac_identifier_ptr_t identifierPtr)
+/// retruns an emptyNode in case it couldn't be found in the cache
+metac_node_t* MetaCSemantic_LRU_LookupIdentifier(metac_semantic_state_t* self,
+                                                 uint32_t idPtrHash,
+                                                 metac_identifier_ptr_t idPtr)
 {
+    uint32_t mask = 0;
+    int16x8_t hashes;
 
-    metac_node_t* result = 0;
-    uint32_t idPtrHash = crc32c(~0, &identifierPtr.v, sizeof(identifierPtr.v));
-/*
-    // first do the LRU Lookup
-    uint16_t lw15 = identifierKey & 0x7FFF;
+    metac_node_t* result = emptyNode;
+#ifdef SSE2
+    hashes.XMM = _mm_load_si128((__m128i*) self->LRU.LRUContentHashes.E);
+#else
+    hashes = self->LRU.LRUContentHashes;
+#endif
+    uint16_t hash12 = idPtrHash & 0xFFF0;
 
     uint32_t startSearch = 0;
 
 #ifdef SSE2
-    __m128i keyMask = _mm_set1_epi16(lw15);
-    __m128i lruHashes = (__m128i)_mm_loadu_pd(&self->LRU.LRUContentHashes);
-    __m128i cmp = _mm_cmpeq_epi16(keyMask, lruHashes);
-    uint32_t searchResult = _mm_movemask_epi8(cmp);
+    __m128i key = _mm_set1_epi16(hash12);
+     const __m128i keyMask = _mm_set1_epi16(0xF);
+    // mask out the scope_hash so we only compare keys
+    __m128i masked = _mm_andnot_si128(keyMask, hashes.XMM);
+    __m128i cmp = _mm_cmpeq_epi16(masked, key);
+    uint32_t searchResult = _mm_movemask_epi16(cmp);
     if (searchResult == 0)
         goto LtableLookup;
-    startSearch = __builtin_ffs(searchResult);
+#else
+    for(int i = 0; i < ARRAY_SIZE(hashes.E); i++)
+    {
+        if ((hashes.E[i] & 0xFFF0) == hash12)
+        {
+            mask |= (1 << i);
+        }
+    }
 #endif
 
-    for(int i = startSearch; i < 4; i++)
+    while(mask)
     {
-        if (((self->LRU.LRUContentHashes >> (16 * i)) & 0x7FFF) == lw15)
+        const uint32_t i = __builtin_ffs(mask);
+        // remove the bit we are going to check
+        mask &= ~(i << i);
+        if (self->LRU.Slots[i].Ptr.v == idPtr.v)
         {
-            if (self->LRU.Slots[i].Ptr.v == identifierPtr.v)
-                return self->LRU.Slots[i].Node;
+            result = self->LRU.Slots[i].Node;
+            break;
         }
     }
-*/
+    return result;
+}
+
+/// Returns _emptyNode to signifiy it could not be found
+/// a valid node otherwise
+metac_node_t* MetaCSemantic_LookupIdentifier(metac_semantic_state_t* self,
+                                             metac_identifier_ptr_t identifierPtr)
+{
+
+    metac_node_t* result = emptyNode;
+    uint32_t idPtrHash = crc32c(~0, &identifierPtr.v, sizeof(identifierPtr.v));
+
     metac_scope_t *currentScope = self->CurrentScope;
-#if 1
-    if (!currentScope && self->declStore)
-    {
-        metac_identifier_ptr_t dStoreIdPtr =
-            FindMatchingIdentifier(&self->declStore->Table,
-                                   self->ParserIdentifierTable,
-                                   identifierPtr);
-        if (dStoreIdPtr.v)
-        {
-            metac_declaration_t* decl =
-                DeclarationStore_GetDecl(self->declStore, dStoreIdPtr);
-            result = (metac_node_t*)decl;
-        }
-    }
-    else
-#endif
     {
         while(currentScope)
         {
@@ -684,6 +762,7 @@ metac_node_t* MetaCSemantic_LookupIdentifier(metac_semantic_state_t* self,
             currentScope = currentScope->Parent;
         }
     }
+
     return result;
 }
 
@@ -781,8 +860,8 @@ metac_sema_expression_t* MetaCSemantic_doExprSemantic_(metac_semantic_state_t* s
     {
         MetaCSemantic_PushExpr(self, result);
 
-        MetaCSemantic_doExprSemantic(self, expr->E1);
-        MetaCSemantic_doExprSemantic(self, expr->E2);
+        result->E1 = MetaCSemantic_doExprSemantic(self, expr->E1);
+        result->E2 = MetaCSemantic_doExprSemantic(self, expr->E2);
 
         MetaCSemantic_PopExpr(self, result);
     }
@@ -813,7 +892,7 @@ metac_sema_expression_t* MetaCSemantic_doExprSemantic_(metac_semantic_state_t* s
             }
             metac_expression_t* call = expr->E1;
             metac_expression_t* fn = call->E1;
-            exp_argument_t* args = call->E2->arguments;
+            exp_argument_t* args = (call->E2 != emptyNode ? call->E2->ArgumentList : emptyNode);
 
 
             printf("Type(fn) %s\n", MetaCExpressionKind_toChars(fn->Kind));
@@ -854,10 +933,11 @@ metac_sema_expression_t* MetaCSemantic_doExprSemantic_(metac_semantic_state_t* s
             }
             else
             {
-                result = (metac_sema_expression_t*) node;
                 if (node->Kind == (metac_expression_kind_t)exp_identifier)
+                {
                     fprintf(stderr, "we should not be retured an identifier\n");
-                if (node->Kind == decl_variable)
+                }
+                if (node->Kind == node_decl_variable)
                 {
                     metac_sema_declaration_t* sd =
                         MetaCSemantic_doDeclSemantic(self, (metac_declaration_t*)node);
@@ -870,6 +950,7 @@ metac_sema_expression_t* MetaCSemantic_doExprSemantic_(metac_semantic_state_t* s
                             (sema_decl_variable_t*) sd;
                         result->Kind = exp_variable;
                         result->TypeIndex = variable->TypeIndex;
+                        result->Variable = variable;
                     }
                 }
             }

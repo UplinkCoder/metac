@@ -227,7 +227,8 @@ metac_identifier_ptr_t IsIdentifierInTable(metac_identifier_table_t* table,
         }
     }
     assert(0);
-    return (metac_identifier_ptr_t){0};
+
+    return result;
 }
 
 

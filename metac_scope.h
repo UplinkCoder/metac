@@ -46,7 +46,8 @@ typedef struct metac_scope_parent_t
 #define FOREACH_SCOPE_INSERT_ERROR(M) \
     M(success) \
     M(identifier_exists_already) \
-    M(table_full)
+    M(table_full) \
+    M(no_scope)
 
 
 typedef enum scope_insert_error_t

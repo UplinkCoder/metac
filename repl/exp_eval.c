@@ -11,17 +11,40 @@ bool IsBinaryExp(metac_expression_kind_t k);
 
 const char* MetaCExpressionKind_toChars(metac_expression_kind_t k);
 
-static inline BCValue* GetValueFromVariableStore(variable_store_t* vstore,
-                                                 metac_sema_expression_t* identifierExp)
+metac_identifier_ptr_t FindMatchingIdentifier(metac_identifier_table_t* searchTable,
+                                              metac_identifier_table_t* sourceTable,
+                                              metac_identifier_ptr_t sourcePtr)
 {
-    uint32_t idKey = identifierExp->IdentifierKey;
-    metac_identifier_ptr_t idPtr = identifierExp->IdentifierPtr;
-    uint32_t length = LENGTH_FROM_IDENTIFIER_KEY(idKey);
-    const char* idChars = IdentifierPtrToCharPtr(&g_lineParser.IdentifierTable, idPtr);
+    const char* idChars = IdentifierPtrToCharPtr(sourceTable, sourcePtr);
+    uint32_t idLength = strlen(idChars);
+    uint32_t idHash = crc32c(~0, idChars, idLength);
+    uint32_t idKey = IDENTIFIER_KEY(idHash, idLength);
 
-    metac_identifier_ptr_t vstoreId
-        = GetOrAddIdentifier(&vstore->Table, idKey, idChars);
+    metac_identifier_ptr_t result = IsIdentifierInTable(searchTable, idKey, idChars);
 
+    if (result.v == 0)
+        assert(0);
+
+    return result;
+}
+
+
+static inline metac_identifier_ptr_t GetVStoreID(variable_store_t* vstore,
+                                                 metac_sema_expression_t* varExp)
+{
+    assert(varExp->Kind == exp_variable);
+    sema_decl_variable_t* var = varExp->Variable;
+
+    metac_identifier_ptr_t vstoreId =
+        FindMatchingIdentifier(&vstore->Table,
+                           &g_lineParser.IdentifierTable,
+                           var->VarIdentifier);
+    return vstoreId;
+}
+
+static inline BCValue* GetValueFromVariableStore(variable_store_t* vstore,
+                                                 metac_identifier_ptr_t vstoreId)
+{
     for(int i = 0;
         i < vstore->VariableSize;
         i++)
@@ -36,43 +59,21 @@ static inline BCValue* GetValueFromVariableStore(variable_store_t* vstore,
     return 0;
 }
 
-metac_identifier_ptr_t FindMatchingIdentifier(metac_identifier_table_t* searchTable,
-                                              metac_identifier_table_t* sourceTable,
-                                              metac_identifier_ptr_t sourcePtr)
-{
-    const char* idChars = IdentifierPtrToCharPtr(sourceTable, sourcePtr);
-    uint32_t idLength = strlen(idChars);
-    uint32_t idHash = crc32c(~0, idChars, idLength);
-    uint32_t idKey = IDENTIFIER_KEY(idHash, idLength);
-
-    metac_identifier_ptr_t result = IsIdentifierInTable(searchTable, idKey, idChars);
-
-    return result;
-}
 
 void VariableStore_SetValueI32(variable_store_t* vstore,
-                               metac_sema_expression_t* identifierExp,
+                               metac_sema_expression_t* varExp,
                                int32_t value)
 {
-    uint32_t idKey = identifierExp->IdentifierKey;
-    metac_identifier_ptr_t idPtr = identifierExp->IdentifierPtr;
-    uint32_t length = LENGTH_FROM_IDENTIFIER_KEY(idKey);
-    const char* idChars = IdentifierPtrToCharPtr(&g_lineParser.IdentifierTable, idPtr);
-    metac_identifier_ptr_t vstoreId
-        = GetOrAddIdentifier(&vstore->Table, idKey, idChars);
+    assert(varExp->Kind == exp_variable);
 
-    BCValue* v = GetValueFromVariableStore(vstore, identifierExp);
+    metac_identifier_ptr_t vstoreId = GetVStoreID(vstore, varExp);
+    BCValue* v = GetValueFromVariableStore(vstore, vstoreId);
     if (!v)
     {
         v = (BCValue*)malloc(sizeof(BCValue));
         vstore->Variables[vstore->VariableSize++] = (variable_t){ vstoreId, v };
     }
-    else
-    {
-        fprintf(stderr, "overwriting stored version of %s\n", idChars);
-    }
     *v = imm32(value);
-
 }
 
 void ReadI32_cb (uint32_t value, void* userCtx)
@@ -147,12 +148,10 @@ static inline void WalkTree(void* c, BCValue* result,
 
         case exp_assign:
         {
-            assert(e->E1->Kind == exp_identifier);
-            metac_identifier_ptr_t idPtr = e->E1->IdentifierPtr;
-            metac_identifier_ptr_t dStoreIdPtr =
-                FindMatchingIdentifier(&dstore->Table,
-                                       &g_lineParser.IdentifierTable,
-                                       idPtr);
+            assert(e->E1->Kind == exp_variable);
+
+            //metac_identifier_ptr_t idPtr = e->E1->Variable->VarIdentifier;
+            //metac_identifier_ptr_t vStorePtr = GetVStoreID(vstore, e->E1);
             BCGen_interface.Set(c, lhs, rhs);
             BCGen_interface.Set(c, result, lhs);
         } break;
@@ -196,8 +195,14 @@ static inline void WalkTree(void* c, BCValue* result,
             BCGen_interface.Xor3(c, result, lhs, rhs);
         } break;
         case exp_identifier:
+            assert(0);
+
+        case exp_variable:
         {
-            BCValue* v = GetValueFromVariableStore(vstore, e);
+
+            metac_identifier_ptr_t vstoreId =
+                GetVStoreID(vstore, e);
+            BCValue* v = GetValueFromVariableStore(vstore, vstoreId);
             if (v)
             {
                 BCGen_interface.Set(c, result, v);
@@ -206,7 +211,7 @@ static inline void WalkTree(void* c, BCValue* result,
             {
                 fprintf(stderr, "Variable %s not in variable store\n",
                                 IdentifierPtrToCharPtr(&vstore->Table,
-                                                       e->IdentifierPtr));
+                                                       vstoreId));
             }
         } break;
         case exp_paren:
@@ -236,7 +241,7 @@ static inline void WalkTree(void* c, BCValue* result,
             BCGen_interface.Set(c, result, lhs);
             BCValue one = imm32(1);
             BCGen_interface.Add3(c, lhs, lhs, &one);
-            if (e->E1->Kind == exp_identifier)
+            if (e->E1->Kind == exp_variable)
             {
                 assert(_ReadContextSize < _ReadContextCapacity);
                 ReadI32_Ctx* userCtx = &_ReadContexts[_ReadContextSize++];

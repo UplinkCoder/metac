@@ -289,7 +289,7 @@ typedef struct metac_expression_t
         };
 
         // case exp_argument:
-        exp_argument_t* arguments;
+        exp_argument_t* ArgumentList;
         // case identifier_exp :
         struct {
             uint32_t IdentifierKey;
@@ -477,7 +477,8 @@ typedef struct metac_statement_t
     metac_declaration_kind_t DeclKind; \
     uint32_t LocationIdx; \
     uint32_t Hash; \
-    uint32_t Serial;
+    uint32_t Serial; \
+    uint32_t AllocLine;
 
 typedef enum metac_type_modifiers
 {

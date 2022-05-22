@@ -1,5 +1,9 @@
 #define cast(T) (T)
 
+
+#define ARRAY_SIZE(A) \
+     ((unsigned int)(sizeof((A)) / sizeof((A)[0])))
+
 #if !defined(_MSC_VER)
 #  define noinline volatile __attribute__ ((noinline))
 #else
