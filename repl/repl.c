@@ -15,6 +15,7 @@
 #include "../metac_type_table.h"
 
 extern bool g_exernalIdentifierTable;
+extern metac_lexer_t g_lineLexer;
 
 metac_statement_t* MetaCParser_ParseStatementFromString(const char* str);
 metac_declaration_t* MetaCParser_ParseDeclarationFromString(const char* str);
@@ -66,7 +67,7 @@ int main(int argc, const char* argv[])
     void* freePtr = 0;
     uint32_t srcBufferLength = 0;
 
-    parse_mode_t parseMode = parse_mode_token;
+    parse_mode_t parseMode = parse_mode_ee;
     metac_lexer_state_t repl_state;
     repl_state.Position = 0;
     repl_state.Line = 1;
@@ -74,22 +75,35 @@ int main(int argc, const char* argv[])
     metac_lexer_t lexer;
     MetaCLexerInit(&lexer);
 
-    decl_type_struct_t* compiler_struct = 0;
-/*
+    g_lineLexer.Tokens =
+        (metac_token_t*)malloc(128 * sizeof(metac_token_t));
+    g_lineLexer.TokenCapacity = 128;
+    g_lineLexer.LocationStorage.Locations =
+        (metac_token_t*)malloc(128 * sizeof(metac_location_t));
+    g_lineLexer.LocationStorage.LocationCapacity = 128;
+//    decl_type_struct_t* compiler_struct = 0;
+
+    sema_type_aggregate_t* compilerStruct = 0;
     read_result_t fCompilterInterface =
         ReadFileAndZeroTerminate("metac_compiler_interface.h");
     if (!fCompilterInterface.FileContent0)
         fCompilterInterface =
         ReadFileAndZeroTerminate("../metac_compiler_interface.h");
 
+    metac_semantic_state_t sema;
+    MetaCSemantic_Init(&sema, &g_lineParser);
+
     if (fCompilterInterface.FileContent0)
     {
-
-        compiler_struct =
+        decl_type_struct_t* compilerStruct_ = 0;
+        compilerStruct_ =
             MetaCParser_ParseDeclarationFromString(fCompilterInterface.FileContent0);
+
+        compilerStruct = MetaCSemantic_doDeclSemantic(&sema, compilerStruct_);
+        //compiler_struct =
     }
 
-*/
+
     PrintHelp();
     linenoiseHistoryLoad(".repl_history");
     const char* promt_;
@@ -154,7 +168,13 @@ LswitchMode:
         break;
     }
 
+    // while(0) makes sure we can only call free
+    // in the case we jumped to the LnextLine label
+    while(0)
+    {
 LnextLine:
+        linenoiseFree(line);
+    }
     while ((line = linenoise(promt_)))
     {
         linenoiseHistoryAdd(line);
@@ -299,8 +319,6 @@ LnextLine:
                 exp =
                     MetaCParser_ParseExpressionFromString(line);
 
-                metac_semantic_state_t sema;
-                MetaCSemantic_Init(&sema, &g_lineParser);
                 sema.declStore = &dstore;
                 metac_sema_expression_t* result =
                     MetaCSemantic_doExprSemantic(&sema, exp);
@@ -328,8 +346,6 @@ LnextLine:
                     MetaCParser_ParseExpressionFromString(line);
 
                 const char* str = MetaCPrinter_PrintExpression(&printer, exp);
-                metac_semantic_state_t sema;
-                MetaCSemantic_Init(&sema, &g_lineParser);
                 sema.declStore = &dstore;
                 metac_sema_expression_t* result =
                     MetaCSemantic_doExprSemantic(&sema, exp);

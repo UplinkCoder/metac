@@ -187,31 +187,6 @@ metac_node_header_t* MetaCScope_LookupIdentifier(metac_scope_t* self,
                                                  metac_identifier_ptr_t identifierPtr)
 {
     metac_node_header_t* result = 0;
-    uint32_t identifierKey = crc32c(~0, &identifierPtr.v, sizeof(identifierPtr.v));
-    // first do the LRU Lookup
-    uint16_t lw15 = identifierKey & 0x7FFF;
-
-    uint32_t startSearch = 0;
-
-#ifdef SSE2
-    __m128i keyMask = _mm_set1_epi16(lw15);
-    __m128i lruHashes = (__m128i)_mm_loadu_pd(&self->LRU.LRUContentHashes);
-    __m128i cmp = _mm_cmpeq_epi16(keyMask, lruHashes);
-    uint32_t searchResult = _mm_movemask_epi8(cmp);
-    if (searchResult == 0)
-        goto LtableLookup;
-    startSearch = __builtin_ffs(searchResult);
-#endif
-
-    for(int i = startSearch; i < 4; i++)
-    {
-        if (((self->LRU.LRUContentHashes >> (16 * i)) & 0x7FFF) == lw15)
-        {
-            if (self->LRU.Slots[i].Ptr.v == identifierPtr.v)
-                return self->LRU.Slots[i].Node;
-        }
-    }
-LtableLookup:
     {
         metac_scope_table_slot_t * slot =
             MetaCScopeTable_Lookup(&self->ScopeTable, identifierPtr);
@@ -219,8 +194,6 @@ LtableLookup:
         {
             result = slot->Node;
             assert(result != 0);
-
-            MetaCScope_PushLRU(&self->LRU, lw15, slot);
         }
     }
     return result;

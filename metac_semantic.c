@@ -362,23 +362,6 @@ metac_type_index_t MetaCSemantic_doTypeSemantic(metac_semantic_state_t* self,
     return result;
 }
 
-void MetaCSemantic_doParameterSemantic(metac_semantic_state_t* self,
-                                       sema_decl_function_t* func,
-                                       sema_decl_variable_t *result,
-                                       decl_parameter_t* param)
-{
-    uint32_t paramIndex = result - func->Parameters;
-    metac_storage_location_t prevLocation = {0};
-    if (paramIndex)
-        prevLocation = (func->Parameters + (paramIndex - 1))->Storage;
-
-    result->VarIdentifier = param->Parameter->VarIdentifier;
-    result->VarType = MetaCSemantic_doTypeSemantic(self, param->Parameter->VarType);
-    uint32_t paramSize = MetaCSemantic_GetTypeSize(self, result->VarType);
-    //TODO FIXME Bad! the register size is not nessesiarily the PtrSize
-
-    result->VarInitExpression = 0;
-}
 #include "crc32c.h"
 
 sema_decl_function_t* MetaCSemantic_doFunctionSemantic(metac_semantic_state_t* self,
@@ -400,12 +383,16 @@ sema_decl_function_t* MetaCSemantic_doFunctionSemantic(metac_semantic_state_t* s
         i < func->ParameterCount;
         i++)
     {
-        MetaCSemantic_doParameterSemantic(self, f,
-                                          params + i,
-                                          currentParam);
-
+        // let's do the parameter semantic inline
+        // as we have an easier time if we know at which
+        // param we are and how many follow
+        f->Parameters[i].VarFlags |= variable_is_parameter;
+        f->Parameters[i].TypeIndex =
+            MetaCSemantic_doTypeSemantic(self,
+                                         currentParam->Parameter->VarType);
         currentParam = currentParam->Next;
     }
+    // now we should know the sizes
     assert(currentParam == emptyPointer);
 
     if (func->FunctionBody == emptyPointer)
@@ -415,7 +402,8 @@ sema_decl_function_t* MetaCSemantic_doFunctionSemantic(metac_semantic_state_t* s
 
     metac_scope_parent_t Parent = {SCOPE_PARENT_V(scope_parent_function, FunctionIndex(f))};
 
-    self->CurrentScope = f->Scope = MetaCScope_PushScope(self->CurrentScope, Parent);
+    f->Scope = MetaCSemantic_PushScope(self->CurrentScope,
+                                       scope_parent_function, f);
     // now we have to add the parameters to the scope.
 
     for(uint32_t i = 0;
@@ -429,8 +417,6 @@ sema_decl_function_t* MetaCSemantic_doFunctionSemantic(metac_semantic_state_t* s
                                           ptr);
         assert(MetaCScope_LookupIdentifier(f->Scope, params[i].VarIdentifier)
                 == params + i);
-
-
     }
 
     f->FunctionBody = (sema_stmt_block_t*)
@@ -577,7 +563,34 @@ static inline const char* BasicTypeToChars(metac_type_index_t typeIndex)
 metac_node_header_t* MetaCSemantic_LookupIdentifier(metac_semantic_state_t* self,
                                                     metac_identifier_ptr_t identifierPtr)
 {
-    metac_node_header_t* result = emptyNode;
+
+    metac_node_header_t* result = 0;
+/*
+    uint32_t identifierKey = crc32c(~0, &identifierPtr.v, sizeof(identifierPtr.v));
+    // first do the LRU Lookup
+    uint16_t lw15 = identifierKey & 0x7FFF;
+
+    uint32_t startSearch = 0;
+
+#ifdef SSE2
+    __m128i keyMask = _mm_set1_epi16(lw15);
+    __m128i lruHashes = (__m128i)_mm_loadu_pd(&self->LRU.LRUContentHashes);
+    __m128i cmp = _mm_cmpeq_epi16(keyMask, lruHashes);
+    uint32_t searchResult = _mm_movemask_epi8(cmp);
+    if (searchResult == 0)
+        goto LtableLookup;
+    startSearch = __builtin_ffs(searchResult);
+#endif
+
+    for(int i = startSearch; i < 4; i++)
+    {
+        if (((self->LRU.LRUContentHashes >> (16 * i)) & 0x7FFF) == lw15)
+        {
+            if (self->LRU.Slots[i].Ptr.v == identifierPtr.v)
+                return self->LRU.Slots[i].Node;
+        }
+    }
+*/
     metac_scope_t *currentScope = self->CurrentScope;
 #if 1
     if (!currentScope && self->declStore)
@@ -598,7 +611,7 @@ metac_node_header_t* MetaCSemantic_LookupIdentifier(metac_semantic_state_t* self
     {
         while(currentScope)
         {
-            metac_node_header_t* lookupResult =
+          metac_node_header_t* lookupResult =
                 MetaCScope_LookupIdentifier(currentScope, identifierPtr);
             if (lookupResult)
             {
@@ -737,6 +750,8 @@ metac_sema_expression_t* MetaCSemantic_doExprSemantic(metac_semantic_state_t* se
             metac_expression_t* fn = call->E1;
             exp_argument_t* args = call->E2->arguments;
 
+
+            printf("Type(fn) %s\n", MetaCExpressionKind_toChars(fn->Kind));
             printf("call: %s\n", MetaCPrinter_PrintExpression(&self->Printer, call));
 
             for(int memberIdx = 0;

@@ -9,8 +9,11 @@
 #ifndef EMPTY_POINTER_VALUE
 #  define EMPTY_POINTER_VALUE (0x1)
 #endif
-#define offsetof(st, m) \
-    ((size_t)((char *)&((st *)0)->m - (char *)0))
+
+#ifndef offsetof
+  #define offsetof(st, m) \
+      ((size_t)((char *)&((st *)0)->m - (char *)0))
+#endif
 /*
 #define CHUNK_MAX_IN_BYTES ((65536 * 4) - 1);
 
@@ -325,7 +328,7 @@ sema_decl_variable_t* AllocFunctionParameters(sema_decl_function_t* func,
 
     {
         result = _newSemaVariables_mem + POST_ADD(_newSemaVariables_size, parameterCount);
-        for(int i = 0;
+        for(uint32_t i = 0;
             i < parameterCount;
             i++)
         {
@@ -396,7 +399,7 @@ metac_type_aggregate_field_t* AllocAggregateFields(sema_type_aggregate_t* aggreg
     }
 
     {
-        for(int i = 0;
+        for(uint32_t i = 0;
             i < fieldCount;
             i++)
         {

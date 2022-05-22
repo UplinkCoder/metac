@@ -184,7 +184,7 @@ metac_token_t* MetaCParser_NextToken(metac_parser_t* self)
             metac_define_t* matchingDefine = 0;
 
             const uint32_t idKey = result->IdentifierKey;
-            for(int defineIdx = 0;
+            for(uint32_t defineIdx = 0;
                 defineIdx < self->DefineCount;
                 defineIdx++)
             {
@@ -1527,9 +1527,9 @@ LnextToken:
                     decl_field_t* field =
                         AllocNewDeclaration(decl_field, (metac_declaration_t**)
                                             nextMemberPtr);
-                    field->Next = _emptyPointer;
+                    field->Next = (decl_field_t*)_emptyPointer;
                     metac_declaration_t *decl =
-                        MetaCParser_ParseDeclaration(self, struct_);
+                        (metac_declaration_t*)MetaCParser_ParseDeclaration(self, (metac_declaration_t*)struct_);
                     assert(decl->DeclKind == decl_variable);
                     field->Field = (decl_variable_t*)decl;
 
@@ -1578,7 +1578,7 @@ LnextToken:
                     decl_enum_member_t* member =
                         AllocNewDeclaration(decl_enum_member, (metac_declaration_t**)
                                             nextMemberPtr);
-                    member->Next = _emptyPointer;
+                    member->Next = (decl_enum_member_t*) _emptyPointer;
                     metac_token_t* idToken = MetaCParser_Match(self, tok_identifier);
                     member->Name = RegisterIdentifier(self, idToken);
                     metac_token_t* afterName = MetaCParser_PeekToken(self, 1);
@@ -1586,7 +1586,7 @@ LnextToken:
                          && ((afterName->TokenType == tok_comma)
                           | (afterName->TokenType == tok_rBrace)))
                     {
-                        member->Value = emptyPointer;
+                        member->Value = (metac_expression_t*)emptyPointer;
                         if (afterName->TokenType == tok_rBrace)
                             break;
                     }
@@ -1634,7 +1634,7 @@ bool IsTypeDecl(metac_declaration_kind_t kind)
 
 decl_parameter_list_t ParseParamterList(metac_parser_t* self)
 {
-    decl_parameter_list_t result = {0, emptyPointer};
+    decl_parameter_list_t result = {0, (decl_parameter_t*)emptyPointer};
     uint32_t parameterCount = 0;
     decl_parameter_t* dummy;
     decl_parameter_t** nextParam = &result.List;
@@ -1652,7 +1652,7 @@ decl_parameter_list_t ParseParamterList(metac_parser_t* self)
             MetaCParser_ParseDeclaration(self, 0);
         if (decl->DeclKind == decl_variable)
         {
-            param->Parameter = decl;
+			param->Parameter = (decl_variable_t*)decl;
         }
         else if (IsTypeDecl(decl->DeclKind))
         {
@@ -1773,7 +1773,7 @@ metac_declaration_t* MetaCParser_ParseDeclaration(metac_parser_t* self, metac_de
                     MetaCParser_Match(self, tok_identifier);
                     // this would be the function pointer name then
                     fPtrVar = AllocNewDeclaration(decl_variable, &result);
-                    fPtrVar->VarInitExpression = _emptyPointer;
+                    fPtrVar->VarInitExpression = (metac_expression_t*)emptyPointer;
 
                     fPtrVar->VarIdentifier = RegisterIdentifier(self, fPtrid);
                     MetaCParser_Match(self, tok_rParen);
@@ -1792,7 +1792,7 @@ metac_declaration_t* MetaCParser_ParseDeclaration(metac_parser_t* self, metac_de
                     functionType->Parameters = paramterList.List;
                     functionType->ParameterCount = paramterList.ParameterCount;
 
-                    fPtrVar->VarType = functionType;
+                    fPtrVar->VarType = (decl_type_t*)functionType;
                 }
             }
         }
@@ -2128,7 +2128,7 @@ static stmt_block_t* MetaCParser_ParseBlockStatement(metac_parser_t* self,
     return result;
 }
 /// static lexer for using in the g_lineParser
-static metac_lexer_t g_lineLexer = {
+metac_lexer_t g_lineLexer = {
     g_lineLexer.inlineTokens,     0, ARRAY_SIZE(g_lineLexer.inlineTokens),
     {g_lineLexer.inlineLocations, 0, ARRAY_SIZE(g_lineLexer.inlineLocations)}
 };
@@ -2166,7 +2166,7 @@ void LineLexerInit(void)
 
 metac_expression_t* MetaCParser_ParseExpressionFromString(const char* exp)
 {
-    assert(g_lineLexer.TokenCapacity == ARRAY_SIZE(g_lineLexer.inlineTokens));
+    // assert(g_lineLexer.TokenCapacity == ARRAY_SIZE(g_lineLexer.inlineTokens));
     LineLexerInit();
     LexString(&g_lineLexer, exp);
 
@@ -2177,7 +2177,7 @@ metac_expression_t* MetaCParser_ParseExpressionFromString(const char* exp)
 
 metac_statement_t* MetaCParser_ParseStatementFromString(const char* stmt)
 {
-    assert(g_lineLexer.TokenCapacity == ARRAY_SIZE(g_lineLexer.inlineTokens));
+    // assert(g_lineLexer.TokenCapacity == ARRAY_SIZE(g_lineLexer.inlineTokens));
     LineLexerInit();
     LexString(&g_lineLexer, stmt);
 
@@ -2188,7 +2188,7 @@ metac_statement_t* MetaCParser_ParseStatementFromString(const char* stmt)
 
 metac_declaration_t* MetaCParser_ParseDeclarationFromString(const char* decl)
 {
-    assert(g_lineLexer.TokenCapacity == ARRAY_SIZE(g_lineLexer.inlineTokens));
+    // assert(g_lineLexer.TokenCapacity == ARRAY_SIZE(g_lineLexer.inlineTokens));
     LineLexerInit();
     LexString(&g_lineLexer, decl);
 

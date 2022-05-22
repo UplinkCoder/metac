@@ -14,9 +14,10 @@ typedef enum metac_scope_parent_kind_t
 
     scope_parent_function  = 0x2,
     scope_parent_struct    = 0x3,
-    scope_parent_stmt      = 0x4,
+    scope_parent_statement = 0x4,
+    scope_parent_block     = 0x5,
 
-    scope_parent_union     = 0x5,
+    scope_parent_union     = 0x6,
 
     scope_parent_extended  = 0x7,
 

@@ -319,7 +319,7 @@ typedef struct sema_decl_variable_t
 
     uint32_t VarFlags;
 
-    metac_type_index_t VarType;
+    metac_type_index_t TypeIndex;
 
     metac_identifier_ptr_t VarIdentifier;
 
