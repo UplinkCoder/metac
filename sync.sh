@@ -9,7 +9,7 @@ if [ -d $DST ]; then
        sync.sh sync_from.sh \
        gen_code.bat gen_code.sh run_tests.sh run_tests.bat \
        crc32c.c crc32c.h \
-       bsr.h \
+       bsr.h bsf.h \
        metac_lexer.c metac_lexer.h metac_parser.c metac_parser.h \
        metac_alloc_node.c metac_alloc_node.h \
        metac_parsetree.h \
@@ -32,7 +32,7 @@ if [ -d $DST ]; then
     chmod +x $DST/gen_code.sh $DST/sync_from.sh $DST/sync.sh $DST/run_tests.sh
 
     mkdir -p $DST/3rd_party
-    cp 3rd_party/bsr.c \
+    cp 3rd_party/bsr.c 3rd_party/bsf.c \
        $DST/3rd_party
 
     mkdir -p $DST/$TRACY_DIR
