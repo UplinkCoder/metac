@@ -10,13 +10,13 @@
 #  define noinline
 #endif
 
-#ifdef _WIN32
+#if defined(_MSC_VER)
 #  include "stdint_msvc.h"
 #  include <malloc.h>
-#define alloca _alloca
-# ifndef __cplusplus
-#  error "win32 compile only works in c++ mode ... use /TP"
-# endif
+#  define alloca _alloca
+#  ifndef __cplusplus
+#    error "win32 compile only works in c++ mode ... use /TP"
+#  endif
 #else
 #  include <stdint.h>
 #  include <alloca.h>

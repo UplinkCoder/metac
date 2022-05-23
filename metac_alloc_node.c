@@ -467,3 +467,4 @@ uint32_t BlockStatementIndex(sema_stmt_block_t* blockstmt)
 {
     return blockstmt - _newSemaBlockStatements_mem;
 }
+#undef offsetof
