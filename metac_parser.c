@@ -2143,9 +2143,6 @@ metac_parser_t g_lineParser = { &g_lineLexer };
 
 void LineLexerInit(void)
 {
-    if (g_lineParser.SpecialNamePtr_Compiler.v == 0)
-        InitSpecialIdentifier(&g_lineParser);
-
     g_lineParser.CurrentTokenIndex = 0;
     g_lineLexer.TokenSize = 0;
     g_lineLexer.LocationStorage.LocationSize = 0;
@@ -2154,6 +2151,9 @@ void LineLexerInit(void)
     ACCEL_INIT(g_lineLexer, String, STRING_LENGTH_SHIFT);
     ACCEL_INIT(g_lineParser, Identifier, IDENTIFIER_LENGTH_SHIFT);
     ACCEL_INIT(g_lineParser, String, STRING_LENGTH_SHIFT);
+
+    if (g_lineParser.SpecialNamePtr_Compiler.v == 0)
+        InitSpecialIdentifier(&g_lineParser);
 
     if (!g_lineParser.BlockStatementStack)
     {
