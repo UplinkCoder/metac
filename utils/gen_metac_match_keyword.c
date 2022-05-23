@@ -3,6 +3,8 @@
 #include "../metac_lexer.h"
 #include "../metac_identifier_table.h"
 
+#include "kw_macros.h"
+
 const char* C4Macros =
 "#define C4(A, B, C, D) \\\n"
 "    ((uint32_t)(A | B << 8 | C << 16 | D << 24)) \n"
@@ -78,31 +80,9 @@ void WriteCmp(const char* kw, uint32_t kw_len)
 
 void WriteMatchFunction(void)
 {
-#define KW_PREFIX \
-    "tok_kw_"
-
-#define KW_PREFIX_LEN \
-    (sizeof(KW_PREFIX) - 1)
-
-#define KW_LEN(KW) \
-    ((unsigned int)(sizeof(#KW) - sizeof(KW_PREFIX)))
-
-#define KW_CRC32C(KW) \
-    ( crc32c(~0, #KW + KW_PREFIX_LEN, KW_LEN(KW)) )
-
-#define KW_KEY(KW) \
-    ( IDENTIFIER_KEY(KW_CRC32C(KW), KW_LEN(KW)) )
-
-#define KW_STR(KW) \
-    #KW + KW_PREFIX_LEN
-
     printf("%s\n", C4Macros);
 
-#define KW_WRITE_DEFINE(KW) \
-    printf("#define %s_key 0x%x\n", \
-        KW_STR(KW), KW_KEY(KW));
-
-    FOREACH_KEYWORD_TOKEN(KW_WRITE_DEFINE)
+    printf("#include \"metac_keyword_keys.h\"\n");
 
     printf("\n\n");
     printf("#if !defined(__TINYC__) && !defined(_MSC_VER)\n");
