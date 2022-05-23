@@ -472,7 +472,7 @@ metac_type_index_t MetaCSemantic_doTypeSemantic_(metac_semantic_state_t* self,
     {
         // printf("Type: %s\n", IdentifierPtrToCharPtr(self->ParserIdentifierTable, type->TypeIdentifier));
         metac_node_t* node =
-            (metac_node_t*)MetaCSemantic_LookupIdentifier(self, type->TypeIdentifier);
+            MetaCSemantic_LookupIdentifier(self, type->TypeIdentifier);
         if (node->Kind == decl_variable)
         {
 
