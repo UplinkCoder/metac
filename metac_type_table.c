@@ -1,6 +1,6 @@
 #ifndef _METAC_TYPE_TABLE_C_
 #define _METAC_TYPE_TABLE_C_
-
+#include <assert.h>
 #include "metac_type_table.h"
 #include <string.h>
 #include <stdlib.h>
@@ -46,18 +46,18 @@ metac_type_index_t MetaCTypeTable_GetOrAddTypeImpl(metac_type_table_t* table,
     )
     {
         metac_type_table_slot_t* slot = (metac_type_table_slot_t*)
-        (((char*)table->Slots) + 
+        (((char*)table->Slots) +
             ((slotIndex - 1) & slotIndexMask) * keySize);
 
         if (slot->HashKey == hash)
         {
             if (memcmp(((char*)&slot->HashKey) + sizeof(slot->HashKey),
-                        ((char*)key) + sizeof(hash), 
+                        ((char*)key) + sizeof(hash),
                         keyTrailingSize)
                 == 0)
             {
-                int32_t abs_index = ((void*)slot) - ((void*)table->Slots);
-                result.Index = abs_index / sizeof(void*);
+                int32_t abs_index = ((char*)slot) - ((char*)table->Slots);
+                result.Index = abs_index / sizeof(char*);
                 assert(result.Index < (1 << 27));
                 result.Kind = table->Kind;
                 break;
@@ -76,7 +76,7 @@ metac_type_index_t MetaCTypeTable_GetOrAddTypeImpl(metac_type_table_t* table,
             do {
                 //assert(table->KeyMemorySize + ALIGN4(keySize)
                 //       < table->KeyMemoryCapacity);
-                int32_t abs_index = ((void*)slot) - ((void*)table->Slots);
+                int32_t abs_index = ((char*)slot) - ((char*)table->Slots);
                 result.v = TYPE_INDEX_V(table->Kind, abs_index / (keySize));
                 // Compare xchange here
 #ifdef ATOMIC
@@ -84,7 +84,7 @@ metac_type_index_t MetaCTypeTable_GetOrAddTypeImpl(metac_type_table_t* table,
                 {
                     // we tried to cmp_xchg and failed ...
                     // this can mean another thread beat us to it or it can mean
-                    // that 
+                    // that
                 }
                 newValue = hash;
             } while(!__atomic_compare_exchange(&slot->HashKey, &expected, &newValue,
@@ -97,7 +97,7 @@ metac_type_index_t MetaCTypeTable_GetOrAddTypeImpl(metac_type_table_t* table,
             } while (false);
 #endif
 
-            memcpy(((void*)slot) + sizeof(slot->HashKey), ((void*)key) + sizeof(hash), keyTrailingSize);
+            memcpy(((char*)slot) + sizeof(slot->HashKey), ((char*)key) + sizeof(hash), keyTrailingSize);
             break;
         }
         continue;

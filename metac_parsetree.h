@@ -189,6 +189,8 @@ typedef struct metac_node_header_t
 } metac_node_header_t;
 #endif
 typedef metac_node_header_t metac_node_t;
+#define METAC_NODE(N) \
+	(*(metac_node_t**)(&N))
 
 #undef DEFINE_NODE_MEMBERS
 

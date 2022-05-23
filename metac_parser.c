@@ -2227,7 +2227,6 @@ const char* MetaCExpressionKind_toChars(metac_expression_kind_t type)
 #include "metac_printer.h"
 
 #  ifdef TEST_PARSER
-#include "metac_printer.c"
 void TestParseExprssion(void)
 {
     metac_printer_t printer;

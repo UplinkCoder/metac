@@ -24,7 +24,7 @@ metac_sema_expression_t* AllocNewSemaExpression(metac_expression_t* expr);
 
 sema_decl_function_t* AllocNewSemaFunction(decl_function_t* func);
 
-sema_decl_variable_t* AllocNewSemaVariable(decl_variable_t *decl, void ** result_ptr);
+sema_decl_variable_t* AllocNewSemaVariable(decl_variable_t *decl, metac_sema_declaration_t ** result_ptr);
 
 sema_decl_variable_t* AllocFunctionParameters(sema_decl_function_t* func,
                                               uint32_t parameterCount);

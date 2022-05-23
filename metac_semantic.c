@@ -3,6 +3,7 @@
 #include "metac_alloc_node.h"
 #include "metac_target_info.h"
 #include "metac_default_target_info.h"
+#include "bsf.h"
 
 #define AT(...)
 
@@ -31,7 +32,8 @@ void MetaCSemantic_Init(metac_semantic_state_t* self, metac_parser_t* parser,
 
     self->ExpressionStackCapacity = 64;
     self->ExpressionStackSize = 0;
-    self->ExpressionStack = calloc(sizeof(metac_expression_t), self->ExpressionStackCapacity);
+    self->ExpressionStack = (metac_sema_expression_t*) 
+		calloc(sizeof(metac_sema_expression_t), self->ExpressionStackCapacity);
 
     IdentifierTableInit(&self->SemanticIdentifierTable, IDENTIFIER_LENGTH_SHIFT);
     self->ParserIdentifierTable = &parser->IdentifierTable;
@@ -424,7 +426,7 @@ metac_type_index_t MetaCSemantic_doTypeSemantic_(metac_semantic_state_t* self,
             AllocAggregateFields(semaAgg, typeKind, agg->FieldCount);
         semaAgg->Fields = semaFields;
 
-        metac_scope_parent_kind_t scopeKind = 0;
+        metac_scope_parent_kind_t scopeKind = scope_parent_invalid;
         switch(typeKind)
         {
             case decl_type_struct:
@@ -436,7 +438,7 @@ metac_type_index_t MetaCSemantic_doTypeSemantic_(metac_semantic_state_t* self,
             default: assert(0);
         }
 
-        semaAgg->Scope = MetaCSemantic_PushScope(self, scopeKind, (metac_node_t*)semaAgg);
+        semaAgg->Scope = MetaCSemantic_PushScope(self, scopeKind, METAC_NODE(semaAgg));
 
         switch(typeKind)
         {
@@ -470,7 +472,7 @@ metac_type_index_t MetaCSemantic_doTypeSemantic_(metac_semantic_state_t* self,
     {
         // printf("Type: %s\n", IdentifierPtrToCharPtr(self->ParserIdentifierTable, type->TypeIdentifier));
         metac_node_t* node =
-            MetaCSemantic_LookupIdentifier(self, type->TypeIdentifier);
+            (metac_node_t*)MetaCSemantic_LookupIdentifier(self, type->TypeIdentifier);
         if (node->Kind == decl_variable)
         {
 
@@ -572,17 +574,17 @@ metac_sema_declaration_t* MetaCSemantic_doDeclSemantic_(metac_semantic_state_t* 
             decl_variable_t* v = cast(decl_variable_t*) decl;
             sema_decl_variable_t* var = AllocNewSemaVariable(v, &result);
             var->TypeIndex = MetaCSemantic_doTypeSemantic(self, v->VarType);
-            if (v->VarInitExpression != emptyNode)
+            if (METAC_NODE(v->VarInitExpression) != emptyNode)
             {
                 var->VarInitExpression = MetaCSemantic_doExprSemantic(self, v->VarInitExpression);
             }
             else
             {
-                var->VarInitExpression = emptyNode;
+                METAC_NODE(var->VarInitExpression) = emptyNode;
             }
             //TODO RegisterIdentifier
             var->VarIdentifier = v->VarIdentifier;
-            MetaCSemantic_RegisterInScope(self, var->VarIdentifier, var);
+            MetaCSemantic_RegisterInScope(self, var->VarIdentifier, METAC_NODE(var));
         } break;
         case decl_type_struct:
             ((decl_type_t*)decl)->TypeKind = type_struct;
@@ -727,7 +729,7 @@ metac_node_t* MetaCSemantic_LRU_LookupIdentifier(metac_semantic_state_t* self,
 
     while(mask)
     {
-        const uint32_t i = __builtin_ffs(mask);
+        const uint32_t i = BSF(mask);
         // remove the bit we are going to check
         mask &= ~(i << i);
         if (self->LRU.Slots[i].Ptr.v == idPtr.v)
@@ -872,15 +874,15 @@ metac_sema_expression_t* MetaCSemantic_doExprSemantic_(metac_semantic_state_t* s
             assert(0);
 
         case exp_char :
-            result->TypeIndex = MetaCSemantic_GetTypeIndex(self, type_char, emptyPointer);
+            result->TypeIndex = MetaCSemantic_GetTypeIndex(self, type_char, (decl_type_t*)emptyPointer);
         break;
         case exp_string :
             result->TypeIndex = MetaCSemantic_GetArrayTypeOf(self,
-                MetaCSemantic_GetTypeIndex(self, type_char, emptyPointer),
+                MetaCSemantic_GetTypeIndex(self, type_char, (decl_type_t*)emptyPointer),
                 LENGTH_FROM_STRING_KEY(expr->StringKey));
         break;
         case exp_signed_integer :
-            result->TypeIndex = MetaCSemantic_GetTypeIndex(self, type_int, emptyPointer);
+            result->TypeIndex = MetaCSemantic_GetTypeIndex(self, type_int, (decl_type_t*)emptyPointer);
         break;
         case exp_dot_compiler:
         {
@@ -892,7 +894,7 @@ metac_sema_expression_t* MetaCSemantic_doExprSemantic_(metac_semantic_state_t* s
             }
             metac_expression_t* call = expr->E1;
             metac_expression_t* fn = call->E1;
-            exp_argument_t* args = (call->E2 != emptyNode ? call->E2->ArgumentList : emptyNode);
+            exp_argument_t* args = (METAC_NODE(call->E2) != emptyNode ? call->E2->ArgumentList : (exp_argument_t*)emptyNode);
 
 
             printf("Type(fn) %s\n", MetaCExpressionKind_toChars(fn->Kind));

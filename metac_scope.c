@@ -126,7 +126,7 @@ void MetaCScope_PushLRU(metac_scope_lru_t* lru, uint16_t lw15, metac_scope_table
     oldContent[3] = LRUContentHashs >> (15 * 3) & 0x7FFF;
 #endif
 
-    LRUContentHashes = (((LRUContentHashes << 15) | lw15) & ((1LLU << (15 * 4)) - 1));
+    LRUContentHashes = (((LRUContentHashes << 15) | lw15) & ((1ULL << (15 * 4)) - 1));
 
 #if 0
     uint16_t newContent[4];
@@ -144,7 +144,7 @@ void MetaCScope_PushLRU(metac_scope_lru_t* lru, uint16_t lw15, metac_scope_table
     lru->Slots[2] = lru->Slots[1];
     lru->Slots[1] = lru->Slots[0];
 #endif
-    lru->Slots[0] = (metac_scope_lru_slot_t){slot->Ptr, slot->Node};
+//    lru->Slots[0] = (metac_scope_lru_slot_t){slot->Ptr, slot->Node};
 }
 /*
  * const char *ssechr(const char *s, char ch)

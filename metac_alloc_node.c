@@ -306,13 +306,13 @@ sema_decl_function_t* AllocNewSemaFunction(decl_function_t* func)
     (__builtin_atomic_fetch_add(&v, b))
 #endif
 
-sema_decl_variable_t* AllocNewSemaVariable(decl_variable_t* decl, void ** result_ptr)
+sema_decl_variable_t* AllocNewSemaVariable(decl_variable_t* decl, metac_sema_declaration_t** result_ptr)
 {
     sema_decl_variable_t* result = 0;
     REALLOC_BOILERPLATE(_newSemaVariables)
 
     result = _newSemaVariables_mem + INC(_newSemaVariables_size);
-    (*result_ptr) = result;
+    (*result_ptr) = (metac_sema_declaration_t*)result;
 
     result->DeclKind = decl_variable;
     result->Serial = INC(_nodeCounter);

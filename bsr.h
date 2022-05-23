@@ -7,6 +7,7 @@
     (1 << LOG2(X))
 
 #if defined(_MSC_VER)
+#include <intrin.h>
     unsigned long BSR(uint32_t x)
     {
         unsigned long result;
