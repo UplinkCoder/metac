@@ -4,6 +4,7 @@
 #include "../metac_parser.h"
 #include "../metac_printer.h"
 #include "../metac_semantic.h"
+#include "../metac_driver.h"
 #include "../metac_compiler_interface.h"
 #include "../bsr.h"
 #include "../crc32c.h"
@@ -96,9 +97,32 @@ int main(int argc, const char* argv[])
 
     if (fCompilterInterface.FileContent0)
     {
-        compilerStruct = (decl_type_struct_t*)
-            MetaCParser_ParseDeclarationFromString(
-                fCompilterInterface.FileContent0);
+        metac_lexer_t tmpLexer;
+        metac_parser_t tmpParser;
+        LexFile(&tmpLexer, "metac_compiler_interface.h",
+                fCompilterInterface.FileContent0,
+                fCompilterInterface.FileLength);
+
+        MetaCParser_InitFromLexer(&tmpParser, &tmpLexer);
+
+        DeclarationArray decls = {0};
+
+        ParseFile(&tmpParser, "metac_compiler_interface.h", &decls);
+
+        for(int i = 0;
+            i < decls.Length;
+            i++)
+        {
+            metac_declaration_t* decl = decls.Ptr[i];
+            if (decl->DeclKind == decl_type_struct)
+            {
+                decl_type_struct_t* struct_ = (decl_type_struct_t*) decl;
+
+                printf("found struct : '%s'\n",
+                    IdentifierPtrToCharPtr(&tmpParser.IdentifierTable, struct_->Identifier));
+            }
+        }
+        // MetaCParser_MergeIdentifierTable(&g_lineParser, &tmpParser);
     }
     MetaCSemantic_Init(&sema, &g_lineParser, compilerStruct);
     MetaCSemantic_PushScope(&sema, scope_parent_module, 0);

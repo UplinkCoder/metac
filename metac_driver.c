@@ -6,14 +6,10 @@
 #include "crc32c.h"
 #include <stdlib.h>
 
-typedef struct DeclarationArray
-{
-    metac_declaration_t** Ptr;
-    uint32_t Length;
-    uint32_t Capacity;
-} DeclarationArray;
-
-
+bool errored = false;
+#ifndef ALIGN4
+#  define ALIGN4(N) (((N) + 3) & ~3)
+#endif
 static inline uint32_t EstimateNumberOfTokens(uint32_t length)
 {
     uint32_t aligned_length = (length + 16) & ~15;
@@ -21,12 +17,10 @@ static inline uint32_t EstimateNumberOfTokens(uint32_t length)
     return (((uint32_t) token_estimate) + 128) & ~127;
 }
 
-bool errored = false;
-
 /// Note text is expected to end with a '\0' character
-static inline void LexFile(metac_lexer_t* lexer,
-                           const char* path,
-                           const char* text, uint32_t length)
+void LexFile(metac_lexer_t* lexer,
+             const char* path,
+             const char* text, uint32_t length)
 {
     if (length)
     {
@@ -77,11 +71,11 @@ static inline void LexFile(metac_lexer_t* lexer,
 }
 
 
-static inline void ParseFile(metac_parser_t* parser,
-                             const char* path,
-                             DeclarationArray* result)
+void ParseFile(metac_parser_t* parser,
+               const char* path,
+               DeclarationArray* result)
 {
-#if 0
+#if DRIVER_PRINT_DECLS
     metac_printer_t printer;
 
     MetaCPrinter_Init(&printer,
@@ -90,7 +84,7 @@ static inline void ParseFile(metac_parser_t* parser,
     );
 #endif
     uint32_t declarationSize = 0;
-    uint32_t declarationCapacity = 1024;
+    uint32_t declarationCapacity = 256;
 
     metac_declaration_t** declarations =
         (metac_declaration_t**)
@@ -102,7 +96,7 @@ static inline void ParseFile(metac_parser_t* parser,
         declarations[declarationSize++] = MetaCParser_ParseDeclaration(parser, 0);
         // printf("Parsed %u tokens\n", parser->CurrentTokenIndex);
         metac_token_t* lastToken = MetaCParser_PeekToken(parser, 1);
-#if 0
+#if DRIVER_PRINT_DECLS
         const char* str =
             MetaCPrinter_PrintDeclaration(&printer,
                 declarations[declarationSize - 1]
@@ -116,8 +110,11 @@ static inline void ParseFile(metac_parser_t* parser,
 
     if (result != 0)
     {
-        result->Capacity = ALIGN4(declarationSize);
-        result->Ptr = (metac_declaration_t**)calloc(result->Capacity, sizeof(metac_declaration_t*));
+        if (result->Capacity < declarationSize)
+        {
+            result->Capacity = ALIGN4(declarationSize);
+            result->Ptr = (metac_declaration_t**)calloc(result->Capacity, sizeof(metac_declaration_t*));
+        }
         result->Length = declarationSize;
         memcpy(result->Ptr, declarations, declarationSize * sizeof(metac_declaration_t));
         free(declarations);
@@ -126,3 +123,4 @@ static inline void ParseFile(metac_parser_t* parser,
 
 #ifdef DRIVER_MAIN
 #endif
+#undef ALIGN4
