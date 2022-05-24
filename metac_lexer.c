@@ -452,6 +452,22 @@ void MetaCLexer_Init(metac_lexer_t* self)
     ACCEL_INIT(*self, String, STRING_LENGTH_SHIFT);
 #endif
 }
+
+void MetaCLexer_Free(metac_lexer_t* self)
+{
+#ifdef ACCEL
+    IdentifierTable_Free(&self->IdentifierTable);
+    IdentifierTable_Free(&self->StringTable);
+#endif
+    if (self->LocationStorage.Locations != self->inlineLocations)
+        free(self->LocationStorage.Locations);
+    if (self->Tokens != self->inlineTokens)
+        free(self->Tokens);
+
+    *self = (metac_lexer_t) {0};
+    self = 0;
+}
+
 metac_lexer_state_t MetaCLexerStateFromString(uint32_t sourceId,
                                               const char* str)
 {

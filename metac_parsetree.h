@@ -164,9 +164,8 @@
 
 #define FOREACH_NODE_KIND(M) \
     FOREACH_EXP(M) \
-    FOREACH_STMT_KIND_(M) \
-    FOREACH_DECL_KIND_(M) \
-    M(max)
+    FOREACH_STMT_KIND(M) \
+    FOREACH_DECL_KIND(M) \
 
 #define DEFINE_NODE_MEMBERS(MEMB) \
     node_ ## MEMB,
@@ -178,6 +177,7 @@
 typedef enum metac_node_kind_t
 {
     FOREACH_NODE_KIND(DEFINE_NODE_MEMBERS)
+    node_max
 } metac_node_kind_t;
 
 typedef struct metac_node_header_t

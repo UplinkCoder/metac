@@ -33,7 +33,7 @@ void MetaCSemantic_Init(metac_semantic_state_t* self, metac_parser_t* parser,
     self->ExpressionStackCapacity = 64;
     self->ExpressionStackSize = 0;
     self->ExpressionStack = (metac_sema_expression_t*)
-		calloc(sizeof(metac_sema_expression_t), self->ExpressionStackCapacity);
+        calloc(sizeof(metac_sema_expression_t), self->ExpressionStackCapacity);
 
     IdentifierTableInit(&self->SemanticIdentifierTable, IDENTIFIER_LENGTH_SHIFT);
     self->ParserIdentifierTable = &parser->IdentifierTable;
@@ -205,7 +205,7 @@ bool IsPointerType(metac_type_kind_t TypeKind)
 #define INVALID_SIZE ((uint32_t)-1)
 #ifndef U32
 #define U32(VAR) \
-	(*(uint32_t*)(&VAR))
+    (*(uint32_t*)(&VAR))
 #endif
 /// Returns size in byte or INVALID_SIZE on error
 uint32_t MetaCSemantic_GetTypeSize(metac_semantic_state_t* self,

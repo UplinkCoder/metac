@@ -88,6 +88,15 @@ void MetaCParser_Init(metac_parser_t* self)
 #endif
 }
 
+void MetaCParser_Free(metac_parser_t* self)
+{
+    IdentifierTable_Free(&self->IdentifierTable);
+    IdentifierTable_Free(&self->StringTable);
+    free(self->BlockStatementStack);
+    *self = (metac_parser_t) {0};
+    self = 0;
+}
+
 void MetaCParser_InitFromLexer(metac_parser_t* self, metac_lexer_t* lexer)
 {
     self->Lexer = lexer;
@@ -1410,7 +1419,7 @@ static inline bool IsDeclType(metac_declaration_t* decl)
     (decl_type_t*)0
 
 #define U32(VAR) \
-	(*(uint32_t*)(&VAR))
+    (*(uint32_t*)(&VAR))
 static decl_type_array_t* ParseArraySuffix(metac_parser_t* self, decl_type_t* type);
 
 decl_type_t* MetaCParser_ParseTypeDeclaration(metac_parser_t* self, metac_declaration_t* parent, metac_declaration_t* prev)
@@ -1655,7 +1664,7 @@ decl_parameter_list_t ParseParamterList(metac_parser_t* self)
             MetaCParser_ParseDeclaration(self, 0);
         if (decl->DeclKind == decl_variable)
         {
-			param->Parameter = (decl_variable_t*)decl;
+            param->Parameter = (decl_variable_t*)decl;
         }
         else if (IsTypeDecl(decl->DeclKind))
         {
@@ -1719,7 +1728,7 @@ metac_declaration_t* MetaCParser_ParseDeclaration(metac_parser_t* self, metac_de
     metac_token_enum_t tokenType =
         (currentToken ? currentToken->TokenType : tok_invalid);
 
-	metac_declaration_t* result = 0;
+    metac_declaration_t* result = 0;
     bool isStatic = false;
 
     decl_type_t* type = 0;
@@ -1845,7 +1854,7 @@ LendDecl:
     if (MetaCParser_PeekMatch(self, tok_semicolon, true))
         MetaCParser_Match(self, tok_semicolon);
 
-	return result;
+    return result;
 }
 
 static decl_type_array_t* ParseArraySuffix(metac_parser_t* self, decl_type_t* type)
@@ -2059,7 +2068,7 @@ LdoneWithStatement:
 }
 
 static inline void MetaCParser_PushBlockStatement(metac_parser_t* self,
-												  stmt_block_t* stmt)
+                                                  stmt_block_t* stmt)
 {
     self->CurrentBlockStatement =
         self->BlockStatementStack[self->BlockStatementStackSize++] = stmt;
@@ -2217,6 +2226,23 @@ const char* MetaCExpressionKind_toChars(metac_expression_kind_t type)
     switch(type)
     {
         FOREACH_EXP(CASE_MACRO)
+    }
+
+    return result;
+
+#undef CASE_MACRO
+}
+
+const char* MetaCNodeKind_toChars(metac_node_kind_t type)
+{
+    const char* result = 0;
+
+#define CASE_MACRO(NODE_TYPE) \
+    case NODE_TYPE : {result = #NODE_TYPE;} break;
+
+    switch(type)
+    {
+        FOREACH_NODE_KIND(CASE_MACRO)
     }
 
     return result;

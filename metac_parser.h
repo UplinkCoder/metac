@@ -88,5 +88,7 @@ uint32_t MetaCParser_HowMuchLookahead(metac_parser_t* self);
 metac_expression_t* MetaCParser_ParseExpression(metac_parser_t* self, parse_expression_flags_t flags, metac_expression_t* prev);
 metac_expression_t* MetaCParser_ParseExpressionFromString(const char* exp);
 metac_declaration_t* MetaCParser_ParseDeclaration(metac_parser_t* self, metac_declaration_t* parent);
+
+const char* MetaCNodeKind_toChars(metac_node_kind_t type);
 #endif // ifndef ACCEL
 #endif

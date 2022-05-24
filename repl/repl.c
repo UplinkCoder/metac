@@ -69,12 +69,43 @@ typedef struct identifier_translation_context_t
     metac_identifier_table_t* DstTable;
 } identifier_translation_context_t;
 
+static inline void TranslateIdentifier(metac_identifier_table_t* DstTable,
+                         const metac_identifier_table_t* SrcTable,
+                         metac_identifier_ptr_t* IdPtrP)
+{
+    assert(IdPtrP->v);
+    const char* idChars = IdentifierPtrToCharPtr((metac_identifier_table_t*)SrcTable, *IdPtrP);
+    const uint32_t idKey = crc32c(~0, idChars, strlen(idChars));
 
-int TranslateIdentifiers(metac_node_t* node, void* ctx)
+    metac_identifier_ptr_t NewPtr =
+        GetOrAddIdentifier(DstTable, idKey, idChars);
+    IdPtrP->v = NewPtr.v;
+}
+
+static inline int TranslateIdentifiers(metac_node_t* node, void* ctx)
 {
     identifier_translation_context_t* context =
         (identifier_translation_context_t*) ctx;
     assert(crc32c(~0, __FUNCTION__, strlen(__FUNCTION__) == context->FunctionKey));
+
+    const metac_identifier_table_t* SrcTable = context->SrcTable;
+    metac_identifier_table_t* DstTable = context->DstTable;
+
+    switch(node->Kind)
+    {
+        case decl_variable:
+        {
+            decl_variable_t* variable = (decl_variable_t*) node;
+            TranslateIdentifier(DstTable, SrcTable, &variable->VarIdentifier);
+        } break;
+        case decl_type:
+        {
+            decl_type_t* type = (decl_type_t*) node;
+            if (type->TypeIdentifier.v)
+                TranslateIdentifier(DstTable, SrcTable, &type->TypeIdentifier);
+        } break;
+        default : break;
+    }
 
     return 0;
 }
@@ -102,7 +133,6 @@ int main(int argc, const char* argv[])
     g_lineLexer.LocationStorage.Locations =
         (metac_location_t*)malloc(128 * sizeof(metac_location_t));
     g_lineLexer.LocationStorage.LocationCapacity = 128;
-//    decl_type_struct_t* compiler_struct = 0;
 
     decl_type_struct_t* compilerStruct = 0;
 
@@ -141,10 +171,11 @@ int main(int argc, const char* argv[])
             metac_identifier_ptr_t printIdentifier = {0};
 
             metac_declaration_t* decl = decls.Ptr[i];
+
             if (decl->DeclKind == decl_typedef)
             {
                 decl_typedef_t* typedef_ = (decl_typedef_t*) decl;
-                if (typedef_->Type->TypeKind == type_struct)
+                if (typedef_->Type->DeclKind == decl_type_struct)
                 {
                     decl_type_struct_t* structPtr = (decl_type_struct_t*)typedef_->Type;
                     if (structPtr->Identifier.v == empty_identifier.v)
@@ -167,13 +198,17 @@ int main(int argc, const char* argv[])
 
                 identifier_translation_context_t translationContext = {
                     crc32c(~0, "TranslateIdentifiers", sizeof("TranslateIdentifiers") - 1),
-                    &tmpLexer.IdentifierTable,
+                    &tmpParser.IdentifierTable,
                     &g_lineParser.IdentifierTable
                 };
+
                 MetaCDeclaration_Walk(decl, TranslateIdentifiers, (void*) &translationContext);
             }
         }
+        MetaCParser_Free(&tmpParser);
+        MetaCLexer_Free(&tmpLexer);
     }
+
     MetaCSemantic_Init(&sema, &g_lineParser, compilerStruct);
     MetaCSemantic_PushScope(&sema, scope_parent_module, 0);
 
