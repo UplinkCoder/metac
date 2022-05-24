@@ -32,7 +32,7 @@ void MetaCSemantic_Init(metac_semantic_state_t* self, metac_parser_t* parser,
 
     self->ExpressionStackCapacity = 64;
     self->ExpressionStackSize = 0;
-    self->ExpressionStack = (metac_sema_expression_t*) 
+    self->ExpressionStack = (metac_sema_expression_t*)
 		calloc(sizeof(metac_sema_expression_t), self->ExpressionStackCapacity);
 
     IdentifierTableInit(&self->SemanticIdentifierTable, IDENTIFIER_LENGTH_SHIFT);
@@ -429,10 +429,10 @@ metac_type_index_t MetaCSemantic_doTypeSemantic_(metac_semantic_state_t* self,
         metac_scope_parent_kind_t scopeKind = scope_parent_invalid;
         switch(typeKind)
         {
-            case decl_type_struct:
+            case type_struct:
                 scopeKind = scope_parent_struct;
             break;
-            case decl_type_union:
+            case type_union:
                 scopeKind = scope_parent_union;
             break;
             default: assert(0);
@@ -527,22 +527,23 @@ sema_decl_function_t* MetaCSemantic_doFunctionSemantic(metac_semantic_state_t* s
     metac_scope_parent_t Parent = {SCOPE_PARENT_V(scope_parent_function, FunctionIndex(f))};
 
     f->Scope = MetaCSemantic_PushScope(self, scope_parent_function, (metac_node_t*)f);
-    // now we have to add the parameters to the scope.
+    // now we compute the position on the stack and Register them in the scope.
+
+    uint32_t frameOffset = 0;
 
     for(uint32_t i = 0;
         i < func->ParameterCount;
         i++)
     {
-        //TODO we cannot hash parameter and variable names all the time
         metac_node_t* ptr = (metac_node_t*)(&f->Parameters[i]);
-        uint32_t idPtrHash = crc32c(~0, &(params[i].VarIdentifier), 4);
+        params[i].Storage.v = STORAGE_V(storage_stack, frameOffset);
+        frameOffset += Align(MetaCSemantic_GetTypeSize(self, params[i].TypeIndex), 4);
+
         scope_insert_error_t result =
             MetaCScope_RegisterIdentifier(f->Scope, params[i].VarIdentifier,
                                           ptr);
-        assert(MetaCScope_LookupIdentifier(f->Scope, idPtrHash, params[i].VarIdentifier)
-                == (metac_node_t*)(params + i));
     }
-
+    self->FrameOffset = frameOffset;
     f->FunctionBody = (sema_stmt_block_t*)
         MetaCSemantic_doStatementSemantic(self, func->FunctionBody);
 

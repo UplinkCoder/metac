@@ -319,7 +319,6 @@ LnextLine:
                 exp =
                     MetaCParser_ParseExpressionFromString(line);
 
-                sema.declStore = &dstore;
                 metac_sema_expression_t* result =
                     MetaCSemantic_doExprSemantic(&sema, exp);
 
@@ -346,7 +345,6 @@ LnextLine:
                     MetaCParser_ParseExpressionFromString(line);
 
                 const char* str = MetaCPrinter_PrintExpression(&printer, exp);
-                sema.declStore = &dstore;
                 metac_sema_expression_t* result =
                     MetaCSemantic_doExprSemantic(&sema, exp);
 
@@ -406,7 +404,6 @@ LnextLine:
                             goto LnextLine;
                         }
 
-                        sema.declStore = &dstore;
                         metac_sema_expression_t* ae =
                             MetaCSemantic_doExprSemantic(&sema, assignExp);
                         if (ae)

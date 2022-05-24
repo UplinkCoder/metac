@@ -25,6 +25,7 @@ if [ -d $DST ]; then
        metac_parser_obj.c metac_semantic_obj.c \
        metac_target_info.c metac_target_info.h \
        metac_default_target_info.h \
+       metac_driver.c metac_driver.h \
        metac_compiler_interface.h \
        metac.fpg TODO \
        $DST
@@ -49,11 +50,11 @@ if [ -d $DST ]; then
 
     mkdir -p $DST/cache
     cp cache/cached_tree.c cache/cached_tree.h \
-       cache/serialize_tree.c \
        $DST/cache
 
     mkdir -p $DST/utils
-    cp utils/gen_metac_match_keyword.c utils/metac_count_token_length.c \
+    cp utils/kw_macros.h utils/gen_metac_keyword_keys.c \
+       utils/gen_metac_match_keyword.c utils/metac_count_token_length.c \
        utils/identifier_hash.c utils/print_sizes.c utils/rec_bisect.c \
        utils/read_file.c utils/read_table.c utils/gen_targetinfo.c \
        $DST/utils

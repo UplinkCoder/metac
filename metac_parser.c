@@ -289,7 +289,7 @@ LexpectedIdent:
     return result;
 }
 
-static inline uint32_t MetaCParser_HowMuchLookahead(metac_parser_t* self)
+uint32_t MetaCParser_HowMuchLookahead(metac_parser_t* self)
 {
     return (self->Lexer->TokenSize - self->CurrentTokenIndex);
 }

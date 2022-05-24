@@ -40,6 +40,9 @@ typedef struct metac_storage_location_t
     };
 } metac_storage_location_t;
 
+#define STORAGE_V(KIND, OFFSET) \
+    (((KIND) << 28) | (OFFSET))
+
 typedef struct sema_exp_argument_list_t
 {
     struct metac_sema_expression_t* Arguments;

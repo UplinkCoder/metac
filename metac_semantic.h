@@ -54,8 +54,8 @@ typedef struct metac_semantic_state_t
 
     sema_type_aggregate_t* CompilerInterface;
 
-    // TODO remove this member when testing is done!
-    declaration_store_t* declStore;
+    AT(valid_if, CurrentScope->Parent.Owner.Kind == scope_parent_function)
+    uint32_t FrameOffset;
 
     metac_printer_t Printer;
 } metac_semantic_state_t;
