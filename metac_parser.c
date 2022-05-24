@@ -2142,6 +2142,7 @@ static stmt_block_t* MetaCParser_ParseBlockStatement(metac_parser_t* self,
 
     return result;
 }
+
 /// static lexer for using in the g_lineParser
 metac_lexer_t g_lineLexer = {
     g_lineLexer.inlineTokens,     0, ARRAY_SIZE(g_lineLexer.inlineTokens),
@@ -2163,6 +2164,7 @@ void LineLexerInit(void)
 
     if (g_lineParser.SpecialNamePtr_Compiler.v == 0)
         InitSpecialIdentifier(&g_lineParser);
+
 
     if (!g_lineParser.BlockStatementStack)
     {

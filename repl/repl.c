@@ -203,6 +203,7 @@ int main(int argc, const char* argv[])
                 };
 
                 MetaCDeclaration_Walk(decl, TranslateIdentifiers, (void*) &translationContext);
+                compilerStruct = decl;
             }
         }
         MetaCParser_Free(&tmpParser);
@@ -222,6 +223,9 @@ int main(int argc, const char* argv[])
     MetaCPrinter_Init(&printer,
         &g_lineParser.IdentifierTable,
         &g_lineParser.StringTable);
+
+    printf("Transfered decl: %s\n",
+        MetaCPrinter_PrintDeclaration(&printer, compilerStruct));
 
     metac_dot_printer_t dot_printer;
     MetaCDotPrinter_Init(&dot_printer, &g_lineParser.IdentifierTable);

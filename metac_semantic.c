@@ -849,7 +849,17 @@ bool MetaCSemantic_CanHaveAddress(metac_semantic_state_t* self,
     ((size_t)((char *)&((st *)0)->m - (char *)0))
 
 const char* MetaCExpressionKind_toChars(metac_expression_kind_t);
-
+///TODO FIXME
+/// this is not nearly complete!
+metac_type_index_t MetaCSemantic_CommonSubtype(metac_semantic_state_t* self,
+                                               metac_type_index_t a,
+                                               metac_type_index_t b)
+{
+    if (a.v == b.v)
+        return a;
+    else
+        return (metac_type_index_t){-1};
+}
 metac_sema_expression_t* MetaCSemantic_doExprSemantic_(metac_semantic_state_t* self,
                                                        metac_expression_t* expr,
                                                        const char* callFun,
@@ -874,6 +884,10 @@ metac_sema_expression_t* MetaCSemantic_doExprSemantic_(metac_semantic_state_t* s
         case exp_invalid:
             assert(0);
 
+        case exp_add:
+            result->TypeIndex =
+                MetaCSemantic_CommonSubtype(self, result->E1->TypeIndex, result->E2->TypeIndex);
+        break;
         case exp_char :
             result->TypeIndex = MetaCSemantic_GetTypeIndex(self, type_char, (decl_type_t*)emptyPointer);
         break;
@@ -919,7 +933,8 @@ metac_sema_expression_t* MetaCSemantic_doExprSemantic_(metac_semantic_state_t* s
             uint32_t size = -1;
             metac_sema_expression_t* e1 =
                 MetaCSemantic_doExprSemantic(self, expr->E1);
-            metac_type_index_t typeIndex;
+            if (e1->TypeIndex.v != 0 && e1->TypeIndex.v != -1)
+                size = MetaCSemantic_GetTypeSize(self, e1->TypeIndex);
 
             result->TypeIndex.v = TYPE_INDEX_V(type_index_basic, type_size_t);
             result->Kind = exp_signed_integer;
