@@ -12,7 +12,7 @@ if [ -d $DST ]; then
        bsr.h bsf.h \
        metac_lexer.c metac_lexer.h metac_parser.c metac_parser.h \
        metac_alloc_node.c metac_alloc_node.h \
-       metac_parsetree.h \
+       metac_parsetree.c metac_parsetree.h \
        metac_printer.c metac_printer.h metac_cgen.c metac_cgen.h \
        metac_dot_printer.c metac_dot_printer.h \
        metac_sematree.h \

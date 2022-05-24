@@ -116,7 +116,7 @@ void ParseFile(metac_parser_t* parser,
             result->Ptr = (metac_declaration_t**)calloc(result->Capacity, sizeof(metac_declaration_t*));
         }
         result->Length = declarationSize;
-        memcpy(result->Ptr, declarations, declarationSize * sizeof(metac_declaration_t));
+        memcpy(result->Ptr, declarations, declarationSize * sizeof(metac_declaration_t*));
         free(declarations);
     }
 }

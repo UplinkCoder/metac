@@ -44,7 +44,7 @@ int main(int argc, const char* argv[])
         }
         printf("arg: %s\n", arg);
         metac_lexer_t lexer;
-        MetaCLexerInit(&lexer);
+        MetaCLexer_Init(&lexer);
 
         read_result_t readResult = ReadFileAndZeroTerminate(arg);
 

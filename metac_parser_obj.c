@@ -6,6 +6,7 @@
 #  include "crc32c.c"
 #  include "metac_alloc_node.c"
 #  include "metac_parser.c"
+#  include "metac_parsetree.c"
 #  include "metac_printer.c"
 #  include "metac_dot_printer.c"
 #endif

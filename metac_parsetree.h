@@ -674,4 +674,16 @@ typedef struct metac_declaration_t
 } metac_declaration_t;
 #pragma pack(pop)
 
+typedef int (*walker_function_t) (metac_node_t* node, void * ctx);
+
+#ifdef NDEBUG
+#  define MetaCDeclaration_Walk(DECL, FUNC, CTX) \
+      MetaCDeclaration_Walk_Real(DECL, FUNC, CTX)
+#else
+  int MetaCDeclaration_Walk_Debug(metac_declaration_t* decl, const char* fn_name, walker_function_t walker_fn, void* ctx);
+#  define MetaCDeclaration_Walk(DECL, FUNC, CTX) \
+      MetaCDeclaration_Walk_Debug(DECL, #FUNC, FUNC, CTX)
+#endif
+int MetaCDeclaration_Walk_Real(metac_declaration_t* decl, walker_function_t walker_fn, void* ctx);
+
 #endif

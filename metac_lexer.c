@@ -436,7 +436,7 @@ uint32_t MetaCTokenLength(metac_token_t token)
 
 
 
-void MetaCLexerInit(metac_lexer_t* self)
+void MetaCLexer_Init(metac_lexer_t* self)
 {
     self->TokenSize = 0;
     self->TokenCapacity =

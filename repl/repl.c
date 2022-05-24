@@ -1,6 +1,7 @@
 #ifdef ACCEL
 #include "../compat.h"
 #include "../metac_lexer.h"
+#include "../metac_parsetree.h"
 #include "../metac_parser.h"
 #include "../metac_printer.h"
 #include "../metac_semantic.h"
@@ -61,6 +62,23 @@ void PrintHelp(void)
 
 #include "../utils/read_file.c"
 
+typedef struct identifier_translation_context_t
+{
+    const uint32_t FunctionKey;
+    const metac_identifier_table_t* SrcTable;
+    metac_identifier_table_t* DstTable;
+} identifier_translation_context_t;
+
+
+int TranslateIdentifiers(metac_node_t* node, void* ctx)
+{
+    identifier_translation_context_t* context =
+        (identifier_translation_context_t*) ctx;
+    assert(crc32c(~0, __FUNCTION__, strlen(__FUNCTION__) == context->FunctionKey));
+
+    return 0;
+}
+
 int main(int argc, const char* argv[])
 {
     const char* line;
@@ -74,8 +92,9 @@ int main(int argc, const char* argv[])
     repl_state.Position = 0;
     repl_state.Line = 1;
     repl_state.Column = 1;
+
     metac_lexer_t lexer;
-    MetaCLexerInit(&lexer);
+    MetaCLexer_Init(&lexer);
 
     g_lineLexer.Tokens =
         (metac_token_t*)malloc(128 * sizeof(metac_token_t));
@@ -94,35 +113,66 @@ int main(int argc, const char* argv[])
         ReadFileAndZeroTerminate("../metac_compiler_interface.h");
 
     metac_semantic_state_t sema;
+    // make sure we know our special identifiers
+    LineLexerInit();
 
     if (fCompilterInterface.FileContent0)
     {
         metac_lexer_t tmpLexer;
-        metac_parser_t tmpParser;
+
+        MetaCLexer_Init(&tmpLexer);
+
         LexFile(&tmpLexer, "metac_compiler_interface.h",
                 fCompilterInterface.FileContent0,
                 fCompilterInterface.FileLength);
 
+        metac_parser_t tmpParser;
         MetaCParser_InitFromLexer(&tmpParser, &tmpLexer);
 
         DeclarationArray decls = {0};
 
         ParseFile(&tmpParser, "metac_compiler_interface.h", &decls);
+        decl_type_struct_t synStruct = {0};
 
         for(int i = 0;
             i < decls.Length;
             i++)
         {
+            metac_identifier_ptr_t printIdentifier = {0};
+
             metac_declaration_t* decl = decls.Ptr[i];
+            if (decl->DeclKind == decl_typedef)
+            {
+                decl_typedef_t* typedef_ = (decl_typedef_t*) decl;
+                if (typedef_->Type->TypeKind == type_struct)
+                {
+                    decl_type_struct_t* structPtr = (decl_type_struct_t*)typedef_->Type;
+                    if (structPtr->Identifier.v == empty_identifier.v)
+                    {
+                        printIdentifier = typedef_->Identifier;
+                    }
+                    decl = (metac_declaration_t*)typedef_->Type;
+                }
+            }
+
             if (decl->DeclKind == decl_type_struct)
             {
                 decl_type_struct_t* struct_ = (decl_type_struct_t*) decl;
-
+                if (struct_->Identifier.v != empty_identifier.v)
+                {
+                    printIdentifier = struct_->Identifier;
+                }
                 printf("found struct : '%s'\n",
-                    IdentifierPtrToCharPtr(&tmpParser.IdentifierTable, struct_->Identifier));
+                    IdentifierPtrToCharPtr(&tmpParser.IdentifierTable, printIdentifier));
+
+                identifier_translation_context_t translationContext = {
+                    crc32c(~0, "TranslateIdentifiers", sizeof("TranslateIdentifiers") - 1),
+                    &tmpLexer.IdentifierTable,
+                    &g_lineParser.IdentifierTable
+                };
+                MetaCDeclaration_Walk(decl, TranslateIdentifiers, (void*) &translationContext);
             }
         }
-        // MetaCParser_MergeIdentifierTable(&g_lineParser, &tmpParser);
     }
     MetaCSemantic_Init(&sema, &g_lineParser, compilerStruct);
     MetaCSemantic_PushScope(&sema, scope_parent_module, 0);
@@ -132,8 +182,6 @@ int main(int argc, const char* argv[])
     linenoiseHistoryLoad(".repl_history");
     const char* promt_;
 
-    // make sure we know our special keywords
-    LineLexerInit();
 
     metac_printer_t printer;
     MetaCPrinter_Init(&printer,
