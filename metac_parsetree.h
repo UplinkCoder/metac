@@ -167,32 +167,11 @@
     FOREACH_STMT_KIND(M) \
     FOREACH_DECL_KIND(M) \
 
-#define DEFINE_NODE_MEMBERS(MEMB) \
-    node_ ## MEMB,
 
 #pragma pack(push, 1)
 
-
-#if 1
-typedef enum metac_node_kind_t
-{
-    FOREACH_NODE_KIND(DEFINE_NODE_MEMBERS)
-    node_max
-} metac_node_kind_t;
-
-typedef struct metac_node_header_t
-{
-    metac_node_kind_t Kind;
-    uint32_t LocationIdx;
-    uint32_t Hash;
-    uint32_t Serial;
-} metac_node_header_t;
-#endif
-typedef metac_node_header_t metac_node_t;
-#define METAC_NODE(N) \
-	(*(metac_node_t**)(&N))
-
-#undef DEFINE_NODE_MEMBERS
+#define DEFINE_NODE_MEMBERS(MEMB) \
+    node_ ## MEMB = MEMB,
 
 #define DEFINE_MEMBERS(MEMBER) \
     MEMBER,
@@ -230,6 +209,26 @@ typedef enum metac_declaration_kind_t
 
     decl_max
 } metac_declaration_kind_t;
+
+typedef enum metac_node_kind_t
+{
+    FOREACH_NODE_KIND(DEFINE_NODE_MEMBERS)
+    node_max
+} metac_node_kind_t;
+
+#undef DEFINE_NODE_MEMBERS
+
+typedef struct metac_node_header_t
+{
+    metac_node_kind_t Kind;
+    uint32_t LocationIdx;
+    uint32_t Hash;
+    uint32_t Serial;
+} metac_node_header_t;
+
+typedef metac_node_header_t* metac_node_t;
+#define METAC_NODE(N) \
+	(*(metac_node_t*)(&N))
 
 typedef enum metac_binary_expression_kind_t
 {

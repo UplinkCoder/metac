@@ -32,7 +32,7 @@ typedef struct metac_type_aggregate_slot_t
 typedef struct metac_type_functiontype_slot_t
 {
     uint32_t HashKey;
-    
+
     metac_type_index_t Type;
 } metac_type_functiontype_slot_t;
 
@@ -51,6 +51,13 @@ typedef struct metac_type_array_slot_t
     metac_type_index_t ElementTypeIndex;
     uint32_t Dimension;
 } metac_type_array_slot_t;
+
+typedef struct metac_type_typedef_slot_t
+{
+    uint32_t HashKey;
+
+    metac_type_index_t ElementTypeIndex;
+} metac_type_typedef_slot_t;
 
 typedef struct  metac_type_table_t
 {
@@ -87,7 +94,8 @@ typedef struct  METAC_TYPE_TABLE_T(SLOT_TYPE) \
     M(array) \
     M(aggregate) \
     M(ptr) \
-    M(functiontype)
+    M(functiontype) \
+    M(typedef)
 
 FOREACH_TABLE_SLOT_TYPE(METAC_TYPE_TABLE_T_DEF)
 
@@ -98,7 +106,8 @@ FOREACH_TABLE_SLOT_TYPE(METAC_TYPE_TABLE_T_DEF)
     M(aggregate, Struct) \
     M(aggregate, Union) \
     M(ptr, Ptr) \
-    M(functiontype, Function)
+    M(functiontype, Function) \
+    M(typedef, Typedef)
 
 #define DECLARE_GET_OR_ADD(TYPE_NAME, MEMBER_NAME) \
     metac_type_index_t MetaCTypeTable_GetOrAdd ## MEMBER_NAME ## Type \

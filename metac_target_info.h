@@ -23,28 +23,28 @@ typedef enum basic_type_kind_t
 
 typedef struct metac_target_info_t
 {
-    uint8_t SizeBool;
-    uint8_t SizeShort;
-    uint8_t SizeInt;
-    uint8_t SizeLong;
-    uint8_t SizeSizeT;
-    uint8_t SizeFloat;
-    uint8_t SizeDouble;
-    uint8_t SizeLongLong;
-    uint8_t SizeLongDouble;
+    const uint8_t SizeBool;
+    const uint8_t SizeShort;
+    const uint8_t SizeInt;
+    const uint8_t SizeLong;
+    const uint8_t SizeSizeT;
+    const uint8_t SizeFloat;
+    const uint8_t SizeDouble;
+    const uint8_t SizeLongLong;
+    const uint8_t SizeLongDouble;
 
-    uint8_t AlignmentBool;
-    uint8_t AlignmentShort;
-    uint8_t AlignmentInt;
-    uint8_t AlignmentLong;
-    uint8_t AlignmentSizeT;
-    uint8_t AlignmentFloat;
-    uint8_t AlignmentDouble;
-    uint8_t AlignmentLongLong;
-    uint8_t AlignmentLongDouble;
+    const uint8_t AlignmentBool;
+    const uint8_t AlignmentShort;
+    const uint8_t AlignmentInt;
+    const uint8_t AlignmentLong;
+    const uint8_t AlignmentSizeT;
+    const uint8_t AlignmentFloat;
+    const uint8_t AlignmentDouble;
+    const uint8_t AlignmentLongLong;
+    const uint8_t AlignmentLongDouble;
     
-    uint8_t PtrSize;
-    uint8_t AlignmentChar;
+    const uint8_t PtrSize;
+    const uint8_t AlignmentChar;
 } metac_target_info_t;
 
 

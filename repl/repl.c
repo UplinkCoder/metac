@@ -7,6 +7,7 @@
 #include "../metac_semantic.h"
 #include "../metac_driver.h"
 #include "../metac_compiler_interface.h"
+#include "../metac_type_table.h"
 #include "../bsr.h"
 #include "../crc32c.h"
 //#include "../metac_eeP.c"
@@ -82,7 +83,7 @@ static inline void TranslateIdentifier(metac_identifier_table_t* DstTable,
     IdPtrP->v = NewPtr.v;
 }
 
-static inline int TranslateIdentifiers(metac_node_t* node, void* ctx)
+static inline int TranslateIdentifiers(metac_node_t node, void* ctx)
 {
     identifier_translation_context_t* context =
         (identifier_translation_context_t*) ctx;
@@ -108,6 +109,37 @@ static inline int TranslateIdentifiers(metac_node_t* node, void* ctx)
     }
 
     return 0;
+}
+
+typedef struct gather_typedefs_context_t
+{
+    const uint32_t FunctionKey;
+    const metac_identifier_table_t* IdentifierTable;
+    METAC_TYPE_TABLE_T(typedef)* typedefs;
+} gather_typedefs_context_t;
+
+static inline int GatherTypedefs(metac_node_t node, void* ctx)
+{
+    gather_typedefs_context_t* context =
+        (gather_typedefs_context_t*) ctx;
+    assert(crc32c(~0, __FUNCTION__, strlen(__FUNCTION__) == context->FunctionKey));
+
+    if (node->Kind == decl_typedef)
+    {
+        decl_typedef_t* typedef_ = (decl_typedef_t*) node;
+        metac_identifier_ptr_t typedefId = typedef_->Identifier;
+        printf("found a typedef: %s\n", IdentifierPtrToCharPtr(context->IdentifierTable, typedefId));
+        uint32_t hash = 0;
+        METAC_TYPE_TABLE_KEY_T(typedef) typedefKey = { hash };
+
+        metac_type_index_t typdefIdx =
+            MetaCTypeTable_GetOrAddTypedefType(context->typedefs,
+                                           hash, &typedefKey);
+    }
+    else
+    {
+        printf("Not a typedef: %s\n", MetaCNodeKind_toChars(node->Kind));
+    }
 }
 
 int main(int argc, const char* argv[])
@@ -164,6 +196,13 @@ int main(int argc, const char* argv[])
         ParseFile(&tmpParser, "metac_compiler_interface.h", &decls);
         decl_type_struct_t synStruct = {0};
 
+        METAC_TYPE_TABLE_T(typedef) typedefTable;
+        gather_typedefs_context_t gatherContext = {
+            crc32c(~0, "GatherTypedefs", sizeof("GatherTypedefs") - 1),
+            &tmpParser.IdentifierTable,
+            &typedefTable
+        };
+
         for(int i = 0;
             i < decls.Length;
             i++)
@@ -171,6 +210,8 @@ int main(int argc, const char* argv[])
             metac_identifier_ptr_t printIdentifier = {0};
 
             metac_declaration_t* decl = decls.Ptr[i];
+
+            MetaCDeclaration_Walk(decl, GatherTypedefs, &gatherContext);
 
             if (decl->DeclKind == decl_typedef)
             {
@@ -203,12 +244,22 @@ int main(int argc, const char* argv[])
                 };
 
                 MetaCDeclaration_Walk(decl, TranslateIdentifiers, (void*) &translationContext);
+
                 compilerStruct = decl;
             }
         }
         MetaCParser_Free(&tmpParser);
         MetaCLexer_Free(&tmpLexer);
     }
+
+    metac_printer_t printer;
+    MetaCPrinter_Init(&printer,
+        &g_lineParser.IdentifierTable,
+        &g_lineParser.StringTable);
+
+    printf("Transfered decl: %s\n",
+        MetaCPrinter_PrintDeclaration(&printer, compilerStruct));
+
 
     MetaCSemantic_Init(&sema, &g_lineParser, compilerStruct);
     MetaCSemantic_PushScope(&sema, scope_parent_module, 0);
@@ -219,13 +270,6 @@ int main(int argc, const char* argv[])
     const char* promt_;
 
 
-    metac_printer_t printer;
-    MetaCPrinter_Init(&printer,
-        &g_lineParser.IdentifierTable,
-        &g_lineParser.StringTable);
-
-    printf("Transfered decl: %s\n",
-        MetaCPrinter_PrintDeclaration(&printer, compilerStruct));
 
     metac_dot_printer_t dot_printer;
     MetaCDotPrinter_Init(&dot_printer, &g_lineParser.IdentifierTable);

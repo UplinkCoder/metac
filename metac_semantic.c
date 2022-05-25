@@ -56,7 +56,7 @@ void MetaCSemantic_PopScope(metac_semantic_state_t* self)
 
 metac_scope_t* MetaCSemantic_PushScope(metac_semantic_state_t* self,
                                        metac_scope_parent_kind_t parentKind,
-                                       metac_node_t* parentNode)
+                                       metac_node_t parentNode)
 {
     metac_scope_parent_t scopeParent;
     uint32_t scopeParentIndex = 0;
@@ -122,7 +122,7 @@ metac_sema_statement_t* MetaCSemantic_doStatementSemantic_(metac_semantic_state_
 
             MetaCSemantic_PushScope(self,
                                     scope_parent_block,
-                                    (metac_node_t*)semaBlockStatement);
+                                    (metac_node_t)semaBlockStatement);
 
             metac_statement_t* currentStatement = blockStatement->Body;
             for(int i = 0;
@@ -278,7 +278,7 @@ uint32_t MetaCSemantic_GetTypeAlignment(metac_semantic_state_t* self,
 
 #ifndef _emptyPointer
 #define _emptyPointer (void*)0x1
-#define emptyNode (metac_node_t*) _emptyPointer
+#define emptyNode (metac_node_t) _emptyPointer
 #endif
 
 #ifdef SSE2
@@ -293,7 +293,7 @@ static inline uint32_t _mm_movemask_epi16( __m128i a )
 #include "crc32c.h"
 scope_insert_error_t MetaCSemantic_RegisterInScope(metac_semantic_state_t* self,
                                                    metac_identifier_ptr_t idPtr,
-                                                   metac_node_t* node)
+                                                   metac_node_t node)
 {
     scope_insert_error_t result = no_scope;
     uint32_t idPtrHash = crc32c(~0, &idPtr.v, sizeof(idPtr.v));
@@ -395,7 +395,7 @@ bool MetaCSemantic_ComputeStructLayoutPopulateScope(metac_semantic_state_t* self
         semaField->Offset = currentFieldOffset;
         MetaCScope_RegisterIdentifier(semaAgg->Scope,
                                       semaField->Identifier,
-                                      (metac_node_t*)semaField);
+                                      (metac_node_t)semaField);
         currentFieldOffset += alignedSize;
     }
 
@@ -504,7 +504,7 @@ metac_type_index_t MetaCSemantic_doTypeSemantic_(metac_semantic_state_t* self,
         printf("MetaCNodeKind_toChars: %s\n", MetaCNodeKind_toChars(type->DeclKind));
         printf("TypeIdentifier: %s\n",
             IdentifierPtrToCharPtr(self->ParserIdentifierTable, type->TypeIdentifier));
-        metac_node_t* node =
+        metac_node_t node =
             MetaCSemantic_LookupIdentifier(self, type->TypeIdentifier);
 
         {
@@ -561,7 +561,7 @@ sema_decl_function_t* MetaCSemantic_doFunctionSemantic(metac_semantic_state_t* s
 
     metac_scope_parent_t Parent = {SCOPE_PARENT_V(scope_parent_function, FunctionIndex(f))};
 
-    f->Scope = MetaCSemantic_PushScope(self, scope_parent_function, (metac_node_t*)f);
+    f->Scope = MetaCSemantic_PushScope(self, scope_parent_function, (metac_node_t)f);
     // now we compute the position on the stack and Register them in the scope.
 
     uint32_t frameOffset = 0;
@@ -570,7 +570,7 @@ sema_decl_function_t* MetaCSemantic_doFunctionSemantic(metac_semantic_state_t* s
         i < func->ParameterCount;
         i++)
     {
-        metac_node_t* ptr = (metac_node_t*)(&f->Parameters[i]);
+        metac_node_t ptr = (metac_node_t)(&f->Parameters[i]);
         params[i].Storage.v = STORAGE_V(storage_stack, frameOffset);
         frameOffset += Align(MetaCSemantic_GetTypeSize(self, params[i].TypeIndex), 4);
 
@@ -587,7 +587,7 @@ sema_decl_function_t* MetaCSemantic_doFunctionSemantic(metac_semantic_state_t* s
     return f;
 }
 
-metac_node_t* NodeFromTypeIndex(metac_type_index_t typeIndex)
+metac_node_t NodeFromTypeIndex(metac_type_index_t typeIndex)
 {
     switch(TYPE_INDEX_KIND(typeIndex))
     {
@@ -659,7 +659,7 @@ metac_sema_declaration_t* MetaCSemantic_doDeclSemantic_(metac_semantic_state_t* 
                 MetaCSemantic_doTypeSemantic(self, (decl_type_t*)decl);
                 if (declId.v != 0 && declId.v != -1)
             {
-                metac_node_t* node =
+                metac_node_t node =
                     NodeFromTypeIndex(type_index);
                 MetaCSemantic_RegisterInScope(self, declId, node);
             }
@@ -754,14 +754,14 @@ static inline const char* BasicTypeToChars(metac_type_index_t typeIndex)
 }
 
 /// retruns an emptyNode in case it couldn't be found in the cache
-metac_node_t* MetaCSemantic_LRU_LookupIdentifier(metac_semantic_state_t* self,
+metac_node_t MetaCSemantic_LRU_LookupIdentifier(metac_semantic_state_t* self,
                                                  uint32_t idPtrHash,
                                                  metac_identifier_ptr_t idPtr)
 {
     uint32_t mask = 0;
     int16x8_t hashes;
 
-    metac_node_t* result = emptyNode;
+    metac_node_t result = emptyNode;
 #ifdef SSE2
     hashes.XMM = _mm_load_si128((__m128i*) self->LRU.LRUContentHashes.E);
 #else
@@ -806,18 +806,18 @@ metac_node_t* MetaCSemantic_LRU_LookupIdentifier(metac_semantic_state_t* self,
 
 /// Returns _emptyNode to signifiy it could not be found
 /// a valid node otherwise
-metac_node_t* MetaCSemantic_LookupIdentifier(metac_semantic_state_t* self,
+metac_node_t MetaCSemantic_LookupIdentifier(metac_semantic_state_t* self,
                                              metac_identifier_ptr_t identifierPtr)
 {
 
-    metac_node_t* result = emptyNode;
+    metac_node_t result = emptyNode;
     uint32_t idPtrHash = crc32c(~0, &identifierPtr.v, sizeof(identifierPtr.v));
 
     metac_scope_t *currentScope = self->CurrentScope;
     {
         while(currentScope)
         {
-          metac_node_t* lookupResult =
+          metac_node_t lookupResult =
                 MetaCScope_LookupIdentifier(currentScope, idPtrHash, identifierPtr);
             if (lookupResult)
             {
@@ -911,7 +911,6 @@ bool MetaCSemantic_CanHaveAddress(metac_semantic_state_t* self,
     ((size_t)((char *)&((st *)0)->m - (char *)0))
 
 const char* MetaCExpressionKind_toChars(metac_expression_kind_t);
-
 ///TODO FIXME
 /// this is not nearly complete!
 metac_type_index_t MetaCSemantic_CommonSubtype(metac_semantic_state_t* self,
@@ -923,7 +922,6 @@ metac_type_index_t MetaCSemantic_CommonSubtype(metac_semantic_state_t* self,
     else
         return (metac_type_index_t){-1};
 }
-
 metac_sema_expression_t* MetaCSemantic_doExprSemantic_(metac_semantic_state_t* self,
                                                        metac_expression_t* expr,
                                                        const char* callFun,
@@ -975,6 +973,7 @@ metac_sema_expression_t* MetaCSemantic_doExprSemantic_(metac_semantic_state_t* s
             metac_expression_t* fn = call->E1;
             exp_argument_t* args = (METAC_NODE(call->E2) != emptyNode ? call->E2->ArgumentList : (exp_argument_t*)emptyNode);
 
+
             printf("Type(fn) %s\n", MetaCExpressionKind_toChars(fn->Kind));
             printf("call: %s\n", MetaCPrinter_PrintExpression(&self->Printer, call));
 
@@ -982,6 +981,7 @@ metac_sema_expression_t* MetaCSemantic_doExprSemantic_(metac_semantic_state_t* s
                 memberIdx < self->CompilerInterface->FieldCount;
                 memberIdx)
             {
+
 
             }
             // CompilerInterface_Call(
@@ -1004,7 +1004,7 @@ metac_sema_expression_t* MetaCSemantic_doExprSemantic_(metac_semantic_state_t* s
         } break;
         case exp_identifier:
         {
-            metac_node_t* node =
+            metac_node_t node =
                 MetaCSemantic_LookupIdentifier(self,
                                                result->IdentifierPtr);
             if (node == emptyPointer)

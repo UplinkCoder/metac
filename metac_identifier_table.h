@@ -91,7 +91,7 @@ metac_identifier_table_slot_t* IdentifierTableLookup(
             uint32_t key, metac_identifier_ptr_t value);
 
 
-const char* IdentifierPtrToCharPtr(metac_identifier_table_t* table,
+const char* IdentifierPtrToCharPtr(const metac_identifier_table_t* table,
                                    metac_identifier_ptr_t ptr);
 
 metac_identifier_table_t ReadTable(const char* filename);

@@ -34,7 +34,7 @@ static inline bool IsFilled(metac_identifier_table_slot_t slot)
     return slot.HashKey != 0;
 }
 
-const char* IdentifierPtrToCharPtr(metac_identifier_table_t* table,
+const char* IdentifierPtrToCharPtr(const metac_identifier_table_t* table,
                                    metac_identifier_ptr_t ptr)
 {
     assert(ptr.v);
