@@ -29,6 +29,8 @@ sema_decl_variable_t* AllocNewSemaVariable(decl_variable_t *decl, metac_sema_dec
 sema_decl_variable_t* AllocFunctionParameters(sema_decl_function_t* func,
                                               uint32_t parameterCount);
 
+sema_decl_type_t* AllocNewSemaType(metac_type_index_t typeIndex);
+
 sema_type_aggregate_t* AllocNewAggregate(metac_type_kind_t kind, decl_type_struct_t* decl);
 
 metac_type_aggregate_field_t* AllocAggregateFields(sema_type_aggregate_t* aggregate,

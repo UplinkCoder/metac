@@ -25,11 +25,13 @@ typedef struct metac_sema_decl_state_t
     METAC_TYPE_TABLE_T(TYPE_NAME) MEMBER_NAME;
 
 #define FOREACH_TYPE_TABLE(M) \
-    M(enum,   EnumTypeTable, enum) \
-    M(array, ArrayTypeTable, array) \
-    M(aggregate, StructTypeTable, struct) \
-    M(ptr, PtrTypeTable, ptr) \
-    M(aggregate, UnionTypeTable, union)
+    M(enum,         EnumTypeTable,             enum) \
+    M(array,        ArrayTypeTable,           array) \
+    M(aggregate,    StructTypeTable,         struct) \
+    M(ptr,          PtrTypeTable,               ptr) \
+    M(aggregate,    UnionTypeTable,           union) \
+    M(typedef,      TypedefTypeTable,       typedef) \
+    M(functiontype, FunctionTypeTable, functiontype)
 
 typedef struct metac_semantic_state_t
 {

@@ -124,6 +124,7 @@ typedef struct gather_typedefs_context_t
 {
     const uint32_t FunctionKey;
     const metac_identifier_table_t* IdentifierTable;
+    metac_semantic_state_t* sema;
     METAC_TYPE_TABLE_T(typedef)* typedefs;
 } gather_typedefs_context_t;
 
@@ -133,22 +134,23 @@ static inline int GatherTypedefs(metac_node_t node, void* ctx)
         (gather_typedefs_context_t*) ctx;
     assert(crc32c(~0, __FUNCTION__, strlen(__FUNCTION__) == context->FunctionKey));
 
-    if (node->Kind == node_decl_typedef)
+    if (node->Kind == node_decl_type_typedef)
     {
-        decl_typedef_t* typedef_ = (decl_typedef_t*) node;
+        decl_type_typedef_t* typedef_ = (decl_type_typedef_t*) node;
         metac_identifier_ptr_t typedefId = typedef_->Identifier;
         printf("found a typedef: %s\n", IdentifierPtrToCharPtr(context->IdentifierTable, typedefId));
-        uint32_t hash = 0;
-        METAC_TYPE_TABLE_KEY_T(typedef) typedefKey = { hash };
 
-        metac_type_index_t typdefIdx =
-            MetaCTypeTable_GetOrAddTypedefType(context->typedefs,
-                                           hash, &typedefKey);
+        metac_type_index_t typeIndex =
+            MetaCSemantic_doTypeSemantic(context->sema, node);
+
+        return 1;
     }
     else
     {
         printf("Not a typedef: %s\n", MetaCNodeKind_toChars(node->Kind));
     }
+
+    return 0;
 }
 
 int main(int argc, const char* argv[])
@@ -190,20 +192,24 @@ int main(int argc, const char* argv[])
     if (fCompilterInterface.FileContent0)
     {
         metac_lexer_t tmpLexer;
-
-        MetaCLexer_Init(&tmpLexer);
-
-        LexFile(&tmpLexer, "metac_compiler_interface.h",
-                fCompilterInterface.FileContent0,
-                fCompilterInterface.FileLength);
-
         metac_parser_t tmpParser;
-        MetaCParser_InitFromLexer(&tmpParser, &tmpLexer);
 
         DeclarationArray decls = {0};
+        {
+            MetaCLexer_Init(&tmpLexer);
 
-        ParseFile(&tmpParser, "metac_compiler_interface.h", &decls);
-        decl_type_struct_t synStruct = {0};
+            LexFile(&tmpLexer, "metac_compiler_interface.h",
+                    fCompilterInterface.FileContent0,
+                    fCompilterInterface.FileLength);
+
+            MetaCParser_InitFromLexer(&tmpParser, &tmpLexer);
+            ParseFile(&tmpParser, "metac_compiler_interface.h", &decls);
+        }
+        MetaCLexer_Free(&tmpLexer);
+
+        metac_semantic_state_t tmpSema;
+        MetaCSemantic_Init(&tmpSema, &tmpParser, 0);
+        MetaCSemantic_PushScope(&tmpSema, scope_parent_module, 0);
 
         METAC_TYPE_TABLE_T(typedef) typedefTable;
 
@@ -211,6 +217,7 @@ int main(int argc, const char* argv[])
         gather_typedefs_context_t gatherContext = {
             crc32c(~0, "GatherTypedefs", sizeof("GatherTypedefs") - 1),
             &tmpParser.IdentifierTable,
+            &tmpSema,
             &typedefTable
         };
 
@@ -224,9 +231,9 @@ int main(int argc, const char* argv[])
 
             MetaCDeclaration_Walk(decl, GatherTypedefs, &gatherContext);
 
-            if (decl->DeclKind == decl_typedef)
+            if (decl->DeclKind == decl_type_typedef)
             {
-                decl_typedef_t* typedef_ = (decl_typedef_t*) decl;
+                decl_type_typedef_t* typedef_ = (decl_type_typedef_t*) decl;
                 if (typedef_->Type->DeclKind == decl_type_struct)
                 {
                     decl_type_struct_t* structPtr = (decl_type_struct_t*)typedef_->Type;
@@ -260,7 +267,6 @@ int main(int argc, const char* argv[])
             }
         }
         MetaCParser_Free(&tmpParser);
-        MetaCLexer_Free(&tmpLexer);
     }
 
     metac_printer_t printer;

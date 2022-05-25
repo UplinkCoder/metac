@@ -32,8 +32,10 @@ typedef struct metac_type_aggregate_slot_t
 typedef struct metac_type_functiontype_slot_t
 {
     uint32_t HashKey;
+    metac_type_index_t ReturnType;
 
-    metac_type_index_t Type;
+    metac_type_index_t* ParameterTypes;
+    uint32_t ParameterTypeCount;
 } metac_type_functiontype_slot_t;
 
 typedef struct metac_type_ptr_slot_t

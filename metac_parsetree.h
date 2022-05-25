@@ -15,7 +15,7 @@
     M(decl_type)
 
 #define LAST_DECL_TYPE(M) \
-    M(decl_typedef)
+    M(decl_type_typedef)
 
 #define FOREACH_DECL_KIND_(M) \
     M(decl_min) \
@@ -651,14 +651,14 @@ typedef struct decl_type_union_t
     uint32_t FieldCount;
 } decl_type_union_t;
 
-typedef struct decl_typedef_t
+typedef struct decl_type_typedef_t
 {
     DECLARATION_HEADER
 
     decl_type_t* Type;
 
     metac_identifier_ptr_t Identifier;
-} decl_typedef_t;
+} decl_type_typedef_t;
 
 typedef struct metac_declaration_t
 {

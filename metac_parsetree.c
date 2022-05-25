@@ -13,15 +13,15 @@ int MetaCDeclaration_Walk_Debug(metac_declaration_t* decl, const char* fn_name, 
 int MetaCDeclaration_Walk_Real(metac_declaration_t* decl, walker_function_t walker_fn, void* ctx)
 {
 #define walker_fn(DECL, CTX) \
-    walker_fn((metac_node_t*) DECL, CTX)
+    walker_fn((metac_node_t) DECL, CTX)
 
 #define MetaCDeclaration_Walk_Real(DECL, FN, CTX) \
     MetaCDeclaration_Walk_Real((metac_declaration_t*) DECL, FN, CTX)
 
 #define emptyNode \
-    ((metac_node_t*) 0x1)
+    ((metac_node_t) 0x1)
 
-    if(((metac_node_t*)decl) == emptyNode)
+    if(((metac_node_t)decl) == emptyNode)
         return 0;
 
     int result = walker_fn(decl, ctx);
@@ -46,7 +46,7 @@ int MetaCDeclaration_Walk_Real(metac_declaration_t* decl, walker_function_t walk
         case decl_field:
         {
             decl_field_t* field = (decl_field_t*) decl;
-            while(((metac_node_t*)field) != emptyNode)
+            while(((metac_node_t)field) != emptyNode)
             {
                 result = MetaCDeclaration_Walk_Real(field->Field, walker_fn, ctx);
                 if (result)
@@ -57,7 +57,7 @@ int MetaCDeclaration_Walk_Real(metac_declaration_t* decl, walker_function_t walk
         case decl_parameter:
         {
             decl_parameter_t* parameter = (decl_parameter_t*) decl;
-            while(((metac_node_t*)parameter) != emptyNode)
+            while(((metac_node_t)parameter) != emptyNode)
             {
                 result = MetaCDeclaration_Walk_Real(parameter->Parameter, walker_fn, ctx);
                 if (result)
@@ -68,7 +68,7 @@ int MetaCDeclaration_Walk_Real(metac_declaration_t* decl, walker_function_t walk
         case decl_enum_member:
         {
             decl_enum_member_t* enum_member = (decl_enum_member_t*) decl;
-            while(((metac_node_t*)enum_member) != emptyNode)
+            while(((metac_node_t)enum_member) != emptyNode)
             {
                 result = walker_fn(enum_member, ctx);
                 if (result)
@@ -130,9 +130,9 @@ int MetaCDeclaration_Walk_Real(metac_declaration_t* decl, walker_function_t walk
             if (result)
                 return result;
         } break;
-        case decl_typedef:
+        case decl_type_typedef:
         {
-            decl_typedef_t* typedef_ = (decl_typedef_t*) decl;
+            decl_type_typedef_t* typedef_ = (decl_type_typedef_t*) decl;
             result = MetaCDeclaration_Walk_Real(typedef_->Type, walker_fn, ctx);
             if (result)
                 return result;

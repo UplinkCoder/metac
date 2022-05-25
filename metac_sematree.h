@@ -302,10 +302,8 @@ typedef struct sema_decl_type_t
 {
     SEMA_DECLARATION_HEADER
 
-    SEMA_TYPE_HEADER
-
     // only set if TypeKind == type_identifier
-    metac_identifier_ptr_t TypeIdentifier;
+    metac_type_index_t typeIndex;
 } sema_decl_type_t;
 
 enum metac_variable_flags_t
@@ -415,6 +413,10 @@ typedef struct sema_type_aggregate_t
     metac_type_aggregate_field_t* Fields;
 
     uint32_t FieldCount;
+
+    uint32_t Size;
+
+    uint32_t Alignment;
 } sema_type_aggregate_t;
 
 typedef struct sema_decl_type_union_t
@@ -430,14 +432,14 @@ typedef struct sema_decl_type_union_t
     uint32_t FieldCount;
 } sema_decl_type_union_t;
 
-typedef struct sema_decl_typedef_t
+typedef struct sema_decl_type_typedef_t
 {
     SEMA_DECLARATION_HEADER
 
-    metac_type_index_t* Type;
+    metac_type_index_t Type;
 
     metac_identifier_ptr_t Identifier;
-} sema_decl_typedef_t;
+} sema_decl_type_typedef_t;
 
 typedef struct metac_sema_declaration_t
 {
@@ -446,7 +448,7 @@ typedef struct metac_sema_declaration_t
             SEMA_DECLARATION_HEADER
         };
         sema_decl_variable_t sema_decl_variable;
-        sema_decl_typedef_t sema_decl_typedef;
+        sema_decl_type_typedef_t sema_decl_typedef;
         sema_decl_type_t sema_decl_type;
         sema_decl_type_ptr_t sema_decl_type_ptr;
         sema_decl_function_t sema_decl_function;

@@ -1757,7 +1757,7 @@ metac_declaration_t* MetaCParser_ParseDeclaration(metac_parser_t* self, metac_de
         currentToken = MetaCParser_PeekToken(self, 1);
             tokenType =
         (currentToken ? currentToken->TokenType : tok_invalid);
-        decl_typedef_t* typdef = AllocNewDeclaration(decl_typedef, &result);
+        decl_type_typedef_t* typdef = AllocNewDeclaration(decl_type_typedef, &result);
 
         typdef->Type = MetaCParser_ParseTypeDeclaration(self, (metac_declaration_t*) typdef, 0);
         metac_token_t* name = MetaCParser_Match(self, tok_identifier);

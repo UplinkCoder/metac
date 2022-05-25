@@ -107,7 +107,8 @@ noinline void _newMemRealloc(void** memP, uint32_t* capacityP, const uint32_t el
     M(metac_type_aggregate_field_t, _newSemaUnionFields) \
     M(metac_sema_statement_t, _newSemaStatements) \
     M(sema_stmt_block_t, _newSemaBlockStatements) \
-    M(metac_scope_t, _newScopes)
+    M(metac_scope_t, _newScopes) \
+    M(sema_decl_type_t, _newSemaTypes)
 
 
 #define FREELIST(PREFIX) \
@@ -393,7 +394,30 @@ sema_type_aggregate_t* AllocNewAggregate(metac_type_kind_t kind, decl_type_struc
         default: assert(0);
     }
 
+    result->DeclKind = agg->DeclKind;
+    result->LocationIdx = agg->LocationIdx;
     result->TypeKind = kind;
+    result->Serial = INC(_nodeCounter);
+
+    return result;
+}
+
+sema_decl_type_t* AllocNewSemaType(metac_type_index_t typeIndex)
+{
+    sema_decl_type_t* result = 0;
+
+    REALLOC_BOILERPLATE(_newSemaTypes);
+    result = _newSemaTypes_mem + INC(_newSemaTypes_size);
+
+    if (TYPE_INDEX_KIND(typeIndex) == type_index_typedef)
+    {
+        result->DeclKind = decl_type_typedef;
+    }
+    else
+    {
+        assert(0);
+    }
+    result->typeIndex = typeIndex;
     result->Serial = INC(_nodeCounter);
 
     return result;

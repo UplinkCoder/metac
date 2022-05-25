@@ -523,9 +523,9 @@ static inline void PrintDeclaration(metac_printer_t* self,
             PrintNewline(self);
             PrintToken(self, tok_rBrace);
         } break;
-        case decl_typedef:
+        case decl_type_typedef:
         {
-            decl_typedef_t* typdef = (decl_typedef_t*) decl;
+            decl_type_typedef_t* typdef = (decl_type_typedef_t*) decl;
             PrintString(self, "typedef ", sizeof("typedef ") - 1);
             level++;
             PrintDeclaration(self, (metac_declaration_t*)typdef->Type, level);
