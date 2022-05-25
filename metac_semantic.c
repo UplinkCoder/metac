@@ -518,7 +518,6 @@ metac_type_index_t MetaCSemantic_doTypeSemantic_(metac_semantic_state_t* self,
 
     }
 
-
     assert(result.v != 0);
     return result;
 }

@@ -92,6 +92,7 @@ static inline int TranslateIdentifiers(metac_node_t node, void* ctx)
     const metac_identifier_table_t* SrcTable = context->SrcTable;
     metac_identifier_table_t* DstTable = context->DstTable;
 
+
     switch(node->Kind)
     {
         case decl_variable:
@@ -102,9 +103,17 @@ static inline int TranslateIdentifiers(metac_node_t node, void* ctx)
         case decl_type:
         {
             decl_type_t* type = (decl_type_t*) node;
-            if (type->TypeIdentifier.v)
+            if (type->TypeIdentifier.v && type->TypeIdentifier.v != empty_identifier.v)
                 TranslateIdentifier(DstTable, SrcTable, &type->TypeIdentifier);
         } break;
+        case decl_type_struct:
+        {
+            decl_type_struct_t* struct_ = (decl_type_struct_t*) node;
+            if (struct_->BaseIdentifier.v != empty_identifier.v)
+                TranslateIdentifier(DstTable, SrcTable, &struct_->BaseIdentifier);
+            if (struct_->Identifier.v != empty_identifier.v)
+                TranslateIdentifier(DstTable, SrcTable, &struct_->Identifier);
+        }
         default : break;
     }
 
@@ -124,7 +133,7 @@ static inline int GatherTypedefs(metac_node_t node, void* ctx)
         (gather_typedefs_context_t*) ctx;
     assert(crc32c(~0, __FUNCTION__, strlen(__FUNCTION__) == context->FunctionKey));
 
-    if (node->Kind == decl_typedef)
+    if (node->Kind == node_decl_typedef)
     {
         decl_typedef_t* typedef_ = (decl_typedef_t*) node;
         metac_identifier_ptr_t typedefId = typedef_->Identifier;
@@ -197,6 +206,8 @@ int main(int argc, const char* argv[])
         decl_type_struct_t synStruct = {0};
 
         METAC_TYPE_TABLE_T(typedef) typedefTable;
+
+        TypeTableInitImpl((metac_type_table_t*)&typedefTable, sizeof(METAC_TYPE_TABLE_KEY_T(typedef)), type_index_typedef);
         gather_typedefs_context_t gatherContext = {
             crc32c(~0, "GatherTypedefs", sizeof("GatherTypedefs") - 1),
             &tmpParser.IdentifierTable,
@@ -245,7 +256,7 @@ int main(int argc, const char* argv[])
 
                 MetaCDeclaration_Walk(decl, TranslateIdentifiers, (void*) &translationContext);
 
-                compilerStruct = decl;
+                compilerStruct = struct_;
             }
         }
         MetaCParser_Free(&tmpParser);
@@ -256,14 +267,13 @@ int main(int argc, const char* argv[])
     MetaCPrinter_Init(&printer,
         &g_lineParser.IdentifierTable,
         &g_lineParser.StringTable);
-
+/*
     printf("Transfered decl: %s\n",
         MetaCPrinter_PrintDeclaration(&printer, compilerStruct));
-
+*/
 
     MetaCSemantic_Init(&sema, &g_lineParser, compilerStruct);
     MetaCSemantic_PushScope(&sema, scope_parent_module, 0);
-
 
     PrintHelp();
     linenoiseHistoryLoad(".repl_history");
