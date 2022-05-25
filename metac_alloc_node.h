@@ -52,3 +52,9 @@ uint32_t StructIndex(sema_type_aggregate_t* struct_);
 uint32_t StatementIndex_(metac_sema_statement_t* stmt);
 uint32_t BlockStatementIndex(sema_stmt_block_t* blockstmt);
 uint32_t UnionIndex(sema_type_aggregate_t* union_);
+
+sema_decl_function_t* FunctionPtr(uint32_t index);
+sema_type_aggregate_t* StructPtr(uint32_t index);
+metac_sema_statement_t* StatementPtr(uint32_t index);
+sema_stmt_block_t* BlockStatementPtr(uint32_t index);
+sema_type_aggregate_t* UnionPtr(uint32_t index);

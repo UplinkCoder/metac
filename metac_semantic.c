@@ -42,6 +42,8 @@ void MetaCSemantic_Init(metac_semantic_state_t* self, metac_parser_t* parser,
     self->CurrentDeclarationState = 0;
 
     MetaCPrinter_Init(&self->Printer, self->ParserIdentifierTable, &parser->StringTable);
+
+    self->CompilerInterface = MetaCSemantic_doDeclSemantic(self, compilerStruct);
 }
 
 void MetaCSemantic_PopScope(metac_semantic_state_t* self)
@@ -184,7 +186,7 @@ metac_type_index_t MetaCSemantic_GetTypeIndex(metac_semantic_state_t* state,
     return result;
 }
 
-bool IsAggregateType(metac_type_kind_t TypeKind)
+bool IsAggregateType(metac_declaration_kind_t TypeKind)
 {
     if (TypeKind == type_struct || TypeKind == type_union)
     {
@@ -193,9 +195,9 @@ bool IsAggregateType(metac_type_kind_t TypeKind)
     return false;
 }
 
-bool IsPointerType(metac_type_kind_t TypeKind)
+bool IsPointerType(metac_declaration_kind_t declKind)
 {
-    if (TypeKind == type_ptr || TypeKind == type_functiontype)
+    if (declKind == decl_type_ptr || declKind == decl_type_functiontype)
     {
         return true;
     }
@@ -416,6 +418,10 @@ metac_type_index_t MetaCSemantic_doTypeSemantic_(metac_semantic_state_t* self,
     {
         result = MetaCSemantic_GetTypeIndex(self, typeKind, type);
     }
+    else if (type->DeclKind == decl_typedef)
+    {
+
+    }
     else if (IsAggregateType(typeKind))
     {
         decl_type_struct_t* agg = (decl_type_struct_t*) type;
@@ -464,18 +470,47 @@ metac_type_index_t MetaCSemantic_doTypeSemantic_(metac_semantic_state_t* self,
 
         MetaCSemantic_PopScope(self);
     }
-    else if (IsPointerType(typeKind))
+    else if (IsPointerType(type->DeclKind))
     {
 
     }
+    else if (type->DeclKind == decl_type_functiontype)
+    {
+        decl_type_functiontype_t* functionType =
+            (decl_type_functiontype_t*) type;
+
+        metac_type_index_t returnTypeIndex =
+            MetaCSemantic_doTypeSemantic(self,
+                functionType->ReturnType);
+
+        uint32_t hash = crc32c(~0, &returnTypeIndex, sizeof(returnTypeIndex));
+
+        const uint32_t nParams = functionType->ParameterCount;
+        metac_type_index_t* parameterTypes =
+            malloc(sizeof(metac_type_index_t) * nParams);
+
+        for(uint32_t i = 0;
+            i < nParams;
+            i++)
+        {
+            parameterTypes[i] =
+                MetaCSemantic_doTypeSemantic(self, functionType->Parameters[i].Parameter->VarType);
+        }
+
+        hash = crc32c(hash, &parameterTypes, sizeof(*parameterTypes) * nParams);
+    }
     else if (type->TypeIdentifier.v)
     {
-        // printf("Type: %s\n", IdentifierPtrToCharPtr(self->ParserIdentifierTable, type->TypeIdentifier));
+        printf("MetaCNodeKind_toChars: %s\n", MetaCNodeKind_toChars(type->DeclKind));
+        printf("TypeIdentifier: %s\n",
+            IdentifierPtrToCharPtr(self->ParserIdentifierTable, type->TypeIdentifier));
         metac_node_t* node =
             MetaCSemantic_LookupIdentifier(self, type->TypeIdentifier);
-        if (node->Kind == decl_variable)
-        {
 
+        {
+            printf("Lookup: %s\n", ((node != emptyNode) ?
+                                       MetaCNodeKind_toChars(node->Kind) :
+                                       "empty"));
         }
     }
     else
@@ -484,7 +519,7 @@ metac_type_index_t MetaCSemantic_doTypeSemantic_(metac_semantic_state_t* self,
     }
 
 
-
+    assert(result.v != 0);
     return result;
 }
 
@@ -552,12 +587,25 @@ sema_decl_function_t* MetaCSemantic_doFunctionSemantic(metac_semantic_state_t* s
     return f;
 }
 
+metac_node_t* NodeFromTypeIndex(metac_type_index_t typeIndex)
+{
+    switch(TYPE_INDEX_KIND(typeIndex))
+    {
+        case type_struct:
+            return StructPtr(TYPE_INDEX_INDEX(typeIndex));
+        case type_union:
+            return UnionPtr(TYPE_INDEX_INDEX(typeIndex));
+
+    }
+}
+
 metac_sema_declaration_t* MetaCSemantic_doDeclSemantic_(metac_semantic_state_t* self,
                                                         metac_declaration_t* decl,
                                                         const char* callFun,
                                                         uint32_t callLine)
 {
     metac_sema_declaration_t* result = 0;
+    metac_identifier_ptr_t declId = {0};
 
     switch(decl->DeclKind)
     {
@@ -589,22 +637,36 @@ metac_sema_declaration_t* MetaCSemantic_doDeclSemantic_(metac_semantic_state_t* 
         } break;
         case decl_type_struct:
             ((decl_type_t*)decl)->TypeKind = type_struct;
+            declId = ((decl_type_struct_t*) decl)->Identifier;
             goto LdoTypeSemantic;
         case decl_type_union:
             ((decl_type_t*)decl)->TypeKind = type_union;
+            declId = ((decl_type_union_t*) decl)->Identifier;
             goto LdoTypeSemantic;
         case decl_type_array:
             ((decl_type_t*)decl)->TypeKind = type_array;
             goto LdoTypeSemantic;
         case decl_typedef:
             ((decl_type_t*)decl)->TypeKind = type_typedef;
-            goto LdoTypeSemantic;
+            declId = ((decl_typedef_t*) decl)->Identifier;
+        goto LdoTypeSemantic;
+        case decl_type_ptr:
+            ((decl_type_t*)decl)->TypeKind = type_ptr;
+        goto LdoTypeSemantic;
     LdoTypeSemantic:
         {
             metac_type_index_t type_index =
                 MetaCSemantic_doTypeSemantic(self, (decl_type_t*)decl);
+                if (declId.v != 0 && declId.v != -1)
+            {
+                metac_node_t* node =
+                    NodeFromTypeIndex(type_index);
+                MetaCSemantic_RegisterInScope(self, declId, node);
+            }
         } break;
     }
+
+
 
     return result;
 }
@@ -849,6 +911,7 @@ bool MetaCSemantic_CanHaveAddress(metac_semantic_state_t* self,
     ((size_t)((char *)&((st *)0)->m - (char *)0))
 
 const char* MetaCExpressionKind_toChars(metac_expression_kind_t);
+
 ///TODO FIXME
 /// this is not nearly complete!
 metac_type_index_t MetaCSemantic_CommonSubtype(metac_semantic_state_t* self,
@@ -860,6 +923,7 @@ metac_type_index_t MetaCSemantic_CommonSubtype(metac_semantic_state_t* self,
     else
         return (metac_type_index_t){-1};
 }
+
 metac_sema_expression_t* MetaCSemantic_doExprSemantic_(metac_semantic_state_t* self,
                                                        metac_expression_t* expr,
                                                        const char* callFun,
@@ -911,7 +975,6 @@ metac_sema_expression_t* MetaCSemantic_doExprSemantic_(metac_semantic_state_t* s
             metac_expression_t* fn = call->E1;
             exp_argument_t* args = (METAC_NODE(call->E2) != emptyNode ? call->E2->ArgumentList : (exp_argument_t*)emptyNode);
 
-
             printf("Type(fn) %s\n", MetaCExpressionKind_toChars(fn->Kind));
             printf("call: %s\n", MetaCPrinter_PrintExpression(&self->Printer, call));
 
@@ -919,7 +982,6 @@ metac_sema_expression_t* MetaCSemantic_doExprSemantic_(metac_semantic_state_t* s
                 memberIdx < self->CompilerInterface->FieldCount;
                 memberIdx)
             {
-
 
             }
             // CompilerInterface_Call(

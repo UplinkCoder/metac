@@ -209,6 +209,32 @@ uint32_t StatementIndex_(metac_sema_statement_t* stmt)
 }
 
 
+
+sema_type_aggregate_t* StructPtr(uint32_t index)
+{
+    sema_type_aggregate_t* result = (_newSemaStructs_mem + index);
+    return result;
+}
+
+sema_type_aggregate_t* UnionPtr(uint32_t index)
+{
+    sema_type_aggregate_t* result = (_newSemaUnions_mem + index);
+    return result;
+}
+
+
+sema_decl_function_t* FunctionPtr(uint32_t index)
+{
+    sema_decl_function_t* result = (_newSemaFunc_mem + index);
+    return result;
+}
+
+metac_sema_statement_t* StatementPtr(uint32_t index)
+{
+    metac_sema_statement_t* result = (_newSemaStatements_mem + index);
+    return result;
+}
+
 metac_declaration_t* AllocNewDeclaration_(metac_declaration_kind_t kind, size_t nodeSize, void** result_ptr, uint32_t line)
 {
     metac_declaration_t* result = 0;

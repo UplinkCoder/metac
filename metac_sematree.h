@@ -352,7 +352,7 @@ typedef struct sema_decl_type_ptr_t
 
     SEMA_TYPE_HEADER
 
-    metac_type_index_t* ElementType;
+    metac_type_index_t ElementType;
 } sema_decl_type_ptr_t;
 
 typedef struct sema_decl_enum_member_t
@@ -384,6 +384,10 @@ typedef struct sema_decl_type_functiontype_t
     SEMA_TYPE_HEADER
 
     metac_type_index_t ReturnType;
+
+    metac_type_index_t* ParameterTypes;
+
+    uint32_t ParameterTypeCount;
 } sema_decl_type_functiontype_t;
 
 typedef struct sema_decl_type_array_t
