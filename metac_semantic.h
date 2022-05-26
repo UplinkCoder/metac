@@ -45,16 +45,16 @@ typedef struct metac_semantic_state_t
 
     AT(transient) metac_scope_t* CurrentScope;
 
-    metac_semantic_lru_t LRU;
+    AT(transient) metac_semantic_lru_t LRU;
 
     // metac_type_table_t* TypeTable;
     FOREACH_TYPE_TABLE(DECLARE_TYPE_TABLE)
 
-    metac_sema_expression_t* ExpressionStack;
-    uint32_t ExpressionStackSize;
-    uint32_t ExpressionStackCapacity;
+    AT(transient) metac_sema_expression_t* ExpressionStack;
+    AT(transient) uint32_t ExpressionStackSize;
+    AT(transient) uint32_t ExpressionStackCapacity;
 
-    sema_type_aggregate_t* CompilerInterface;
+    metac_type_aggregate_t* CompilerInterface;
 
     AT(valid_if, CurrentScope->Parent.Owner.Kind == scope_parent_function)
     uint32_t FrameOffset;
@@ -69,7 +69,7 @@ void RegisterType(metac_semantic_state_t* state, decl_type_t* type);
 const char* TypeToChars(metac_semantic_state_t* self, metac_type_index_t typeIndex);
 void MetaCSemantic_Init(metac_semantic_state_t* self,
                         metac_parser_t* parser,
-                        decl_type_struct_t* compilerStruct);
+                        metac_type_aggregate_t* compilerStruct);
 
 void MetaCSemantic_PushExpr(metac_semantic_state_t* self, metac_sema_expression_t* expr);
 void MetaCSemantic_PopExpr(metac_semantic_state_t* self,  metac_sema_expression_t* expr);

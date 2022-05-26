@@ -5,7 +5,7 @@
 int MetaCDeclaration_Walk_Debug(metac_declaration_t* decl, const char* fn_name, walker_function_t walker_fn, void* ctx)
 {
     // make sure the context confusion cookie is set
-    assert((*(uint32_t*) ctx) == crc32c(~0, fn_name, strlen(fn_name)));
+    assert((*(uint32_t*) ctx) == crc32c_nozero(~0, fn_name, strlen(fn_name)));
 
     return MetaCDeclaration_Walk_Real(decl, walker_fn, ctx);
 }

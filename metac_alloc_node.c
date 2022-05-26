@@ -101,9 +101,9 @@ noinline void _newMemRealloc(void** memP, uint32_t* capacityP, const uint32_t el
     M(sema_decl_function_t, _newSemaFunc) \
     M(sema_decl_variable_t, _newSemaVariables) \
     M(sema_decl_type_enum_t, _newSemaEnums) \
-    M(sema_type_aggregate_t, _newSemaStructs) \
+    M(metac_type_aggregate_t, _newSemaStructs) \
     M(metac_type_aggregate_field_t, _newSemaStructFields) \
-    M(sema_type_aggregate_t, _newSemaUnions) \
+    M(metac_type_aggregate_t, _newSemaUnions) \
     M(metac_type_aggregate_field_t, _newSemaUnionFields) \
     M(metac_sema_statement_t, _newSemaStatements) \
     M(sema_stmt_block_t, _newSemaBlockStatements) \
@@ -184,13 +184,13 @@ metac_expression_t* AllocNewExpression(metac_expression_kind_t kind)
     return result;
 }
 
-uint32_t StructIndex(sema_type_aggregate_t* struct_)
+uint32_t StructIndex(metac_type_aggregate_t* struct_)
 {
     uint32_t result = (struct_ - _newSemaStructs_mem);
     return result;
 }
 
-uint32_t UnionIndex(sema_type_aggregate_t* union_)
+uint32_t UnionIndex(metac_type_aggregate_t* union_)
 {
     uint32_t result = (union_ - _newSemaUnions_mem);
     return result;
@@ -211,15 +211,15 @@ uint32_t StatementIndex_(metac_sema_statement_t* stmt)
 
 
 
-sema_type_aggregate_t* StructPtr(uint32_t index)
+metac_type_aggregate_t* StructPtr(uint32_t index)
 {
-    sema_type_aggregate_t* result = (_newSemaStructs_mem + index);
+    metac_type_aggregate_t* result = (_newSemaStructs_mem + index);
     return result;
 }
 
-sema_type_aggregate_t* UnionPtr(uint32_t index)
+metac_type_aggregate_t* UnionPtr(uint32_t index)
 {
-    sema_type_aggregate_t* result = (_newSemaUnions_mem + index);
+    metac_type_aggregate_t* result = (_newSemaUnions_mem + index);
     return result;
 }
 
@@ -371,9 +371,9 @@ sema_decl_variable_t* AllocFunctionParameters(sema_decl_function_t* func,
     return result;
 }
 
-sema_type_aggregate_t* AllocNewAggregate(metac_type_kind_t kind, decl_type_struct_t* agg)
+metac_type_aggregate_t* AllocNewAggregate(metac_type_kind_t kind, decl_type_struct_t* agg)
 {
-    sema_type_aggregate_t* result = 0;
+    metac_type_aggregate_t* result = 0;
 
     switch(kind)
     {
@@ -394,10 +394,10 @@ sema_type_aggregate_t* AllocNewAggregate(metac_type_kind_t kind, decl_type_struc
         default: assert(0);
     }
 
-    result->DeclKind = agg->DeclKind;
-    result->LocationIdx = agg->LocationIdx;
-    result->TypeKind = kind;
-    result->Serial = INC(_nodeCounter);
+    result->Header.Kind = agg->DeclKind;
+    result->Header.LocationIdx = agg->LocationIdx;
+    //result->TypeKind = kind;
+    result->Header.Serial = INC(_nodeCounter);
 
     return result;
 }
@@ -423,7 +423,7 @@ sema_decl_type_t* AllocNewSemaType(metac_type_index_t typeIndex)
     return result;
 }
 
-metac_type_aggregate_field_t* AllocAggregateFields(sema_type_aggregate_t* aggregate,
+metac_type_aggregate_field_t* AllocAggregateFields(metac_type_aggregate_t* aggregate,
                                                    metac_type_kind_t kind,
                                                    uint32_t fieldCount)
 {
@@ -456,7 +456,7 @@ metac_type_aggregate_field_t* AllocAggregateFields(sema_type_aggregate_t* aggreg
             i < fieldCount;
             i++)
         {
-            (result + i)->Serial = INC(_nodeCounter);
+            (result + i)->Header.Serial = INC(_nodeCounter);
             (result + i)->AggregateIndex = aggregateIndex;
         }
 

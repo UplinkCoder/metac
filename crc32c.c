@@ -26,7 +26,7 @@
 #endif
 // exports
 
-uint32_t crc32c(uint32_t crc, const void* s, const uint32_t len_p);
+uint32_t crc32c_nozero(uint32_t crc, const void* s, const uint32_t len_p);
 
 #define FINALIZE_CRC32C(CRC) \
     ((CRC) ^ 0xFFFFFFFF)
@@ -198,7 +198,7 @@ static inline uint32_t intrinsic_crc32c(uint32_t crc, const void* s, uint32_t le
 
 #endif
 
-uint32_t crc32c(uint32_t crc, const void* s, const uint32_t len_p)
+uint32_t crc32c_nozero(uint32_t crc, const void* s, const uint32_t len_p)
 {
     const uint32_t len = len_p;
     const uint8_t* p = (const uint8_t*) s;
@@ -207,7 +207,7 @@ uint32_t crc32c(uint32_t crc, const void* s, const uint32_t len_p)
 #else
     crc = singletable_crc32c(crc, p, len);
 #endif
-    return crc;
+    return crc ? crc : ~0;
 }
 
 inline uint32_t crc32c_byte(uint32_t crc, uint8_t byte)
@@ -221,7 +221,7 @@ inline uint32_t crc32c_byte(uint32_t crc, uint8_t byte)
 
 
 #define CRC32C_S(STRING) \
-    (crc32c(~(uint32_t)0, STRING, sizeof(STRING) - 1))
+    (crc32c_nozero(~(uint32_t)0, STRING, sizeof(STRING) - 1))
 
 #ifdef TEST_MAIN
 #include <assert.h>

@@ -17,7 +17,7 @@ metac_identifier_ptr_t FindMatchingIdentifier(metac_identifier_table_t* searchTa
 {
     const char* idChars = IdentifierPtrToCharPtr(sourceTable, sourcePtr);
     uint32_t idLength = strlen(idChars);
-    uint32_t idHash = crc32c(~0, idChars, idLength);
+    uint32_t idHash = crc32c_nozero(~0, idChars, idLength);
     uint32_t idKey = IDENTIFIER_KEY(idHash, idLength);
 
     metac_identifier_ptr_t result = IsIdentifierInTable(searchTable, idKey, idChars);

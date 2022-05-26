@@ -11,11 +11,13 @@ uint32_t UntangleInts(uint32_t tangled);
 typedef struct metac_type_table_slot_t
 {
     uint32_t HashKey;
+    metac_type_index_t TypeIndex;
 } metac_type_table_slot_t;
 
 typedef struct metac_type_enum_slot_t
 {
     uint32_t HashKey;
+    metac_type_index_t TypeIndex;
 
     uint32_t MemberCount;
     metac_enum_member_t* Members;
@@ -24,14 +26,17 @@ typedef struct metac_type_enum_slot_t
 typedef struct metac_type_aggregate_slot_t
 {
     uint32_t HashKey;
+    metac_type_index_t TypeIndex;
 
-    uint32_t fieldCount;
-    metac_type_aggregate_field_t* fields;
+    uint32_t FieldCount;
+    metac_type_aggregate_field_t* Fields;
 } metac_type_aggregate_slot_t;
 
 typedef struct metac_type_functiontype_slot_t
 {
     uint32_t HashKey;
+    metac_type_index_t TypeIndex;
+
     metac_type_index_t ReturnType;
 
     metac_type_index_t* ParameterTypes;
@@ -41,6 +46,7 @@ typedef struct metac_type_functiontype_slot_t
 typedef struct metac_type_ptr_slot_t
 {
     uint32_t HashKey;
+    metac_type_index_t TypeIndex;
 
     metac_type_index_t ElementTypeIndex;
 } metac_type_ptr_slot_t;
@@ -49,6 +55,7 @@ typedef struct metac_type_ptr_slot_t
 typedef struct metac_type_array_slot_t
 {
     uint32_t HashKey;
+    metac_type_index_t TypeIndex;
 
     metac_type_index_t ElementTypeIndex;
     uint32_t Dimension;
@@ -57,6 +64,7 @@ typedef struct metac_type_array_slot_t
 typedef struct metac_type_typedef_slot_t
 {
     uint32_t HashKey;
+    metac_type_index_t TypeIndex;
 
     metac_type_index_t ElementTypeIndex;
 } metac_type_typedef_slot_t;
@@ -114,7 +122,8 @@ FOREACH_TABLE_SLOT_TYPE(METAC_TYPE_TABLE_T_DEF)
 #define DECLARE_GET_OR_ADD(TYPE_NAME, MEMBER_NAME) \
     metac_type_index_t MetaCTypeTable_GetOrAdd ## MEMBER_NAME ## Type \
     (METAC_TYPE_TABLE_T(TYPE_NAME)* table, \
-     uint32_t hash, METAC_TYPE_TABLE_KEY_T(TYPE_NAME)* key);
+     METAC_TYPE_TABLE_KEY_T(TYPE_NAME)* key, \
+     metac_type_##TYPE_NAME##_t* type);
 
 FOREACH_TABLE_MEMBER(DECLARE_GET_OR_ADD)
 /*

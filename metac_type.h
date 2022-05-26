@@ -3,6 +3,8 @@
 
 #include "compat.h"
 #include "metac_identifier_table.h"
+#include "metac_scope.h"
+#include "metac_node.h"
 
 typedef enum metac_type_index_kind_t
 {
@@ -53,22 +55,50 @@ typedef struct metac_type_index_t
 
 #define ERROR_TYPE_INDEX_V -1
 
-typedef struct metac_type_aggregate_field_t
-{
-    uint32_t Hash;
+#define METAC_TYPE_HEADER \
+    metac_declaration_kind_t Kind; \
+    uint32_t LocationIdx; \
+    uint32_t Hash; \
     uint32_t Serial;
 
-    metac_type_index_t Type;
-    metac_identifier_ptr_t Identifier;
+typedef struct metac_type_header_t
+{
+    METAC_TYPE_HEADER
+} metac_type_header_t;
 
+typedef metac_type_header_t* metac_type_t;
+
+typedef struct metac_type_aggregate_field_t
+{
+    metac_type_header_t Header;
+
+    metac_type_index_t Type;
     uint32_t Offset;
+
+    metac_identifier_ptr_t Identifier;
     uint32_t AggregateIndex;
 } metac_type_aggregate_field_t;
 
+typedef struct metac_type_aggregate_t
+{
+    metac_type_header_t Header;
+
+    metac_identifier_ptr_t Identifier;
+
+    metac_scope_t* Scope;
+
+    metac_type_aggregate_field_t* Fields;
+
+    uint32_t FieldCount;
+
+    uint32_t Size;
+
+    uint32_t Alignment;
+} metac_type_aggregate_t;
+
 typedef struct metac_enum_member_t
 {
-    uint32_t Hash;
-    uint32_t Serial;
+    metac_type_header_t Header;
 
     metac_type_index_t Type;
     metac_identifier_ptr_t Identifier;
@@ -76,6 +106,52 @@ typedef struct metac_enum_member_t
     struct metac_sema_expression_t* Value;
 } metac_enum_member_t;
 
+typedef struct metac_type_enum_t
+{
+    metac_type_header_t Header;
+
+    metac_identifier_ptr_t Name;
+
+    metac_enum_member_t* Members;
+
+    uint32_t MemberCount;
+} metac_type_enum_t;
+
+typedef struct metac_type_array_t
+{
+    metac_type_header_t Header;
+
+    metac_type_index_t ElementType;
+
+    uint32_t Dim;
+} metac_type_array_t;
+
+typedef struct metac_type_ptr_t
+{
+    metac_type_header_t Header;
+
+    metac_type_index_t ElementType;
+} metac_type_ptr_t;
+
+typedef struct metac_type_functiontype_t
+{
+    metac_type_header_t Header;
+
+    metac_type_index_t ReturnType;
+
+    metac_type_index_t* ParameterTypes;
+
+    uint32_t ParameterTypeCount;
+} metac_type_functiontype_t;
+
+typedef struct metac_type_typedef_t
+{
+    metac_type_header_t Header;
+
+    metac_type_index_t Type;
+
+    metac_identifier_ptr_t Identifier;
+} metac_type_typedef_t;
 
 typedef enum metac_type_kind_t
 {

@@ -70,24 +70,27 @@ typedef struct identifier_translation_context_t
     metac_identifier_table_t* DstTable;
 } identifier_translation_context_t;
 
-static inline void TranslateIdentifier(metac_identifier_table_t* DstTable,
-                         const metac_identifier_table_t* SrcTable,
-                         metac_identifier_ptr_t* IdPtrP)
+static inline void TranslateIdentifier(metac_identifier_table_t* dstTable,
+                         const metac_identifier_table_t* srcTable,
+                         metac_identifier_ptr_t* idPtrP)
 {
-    assert(IdPtrP->v);
-    const char* idChars = IdentifierPtrToCharPtr((metac_identifier_table_t*)SrcTable, *IdPtrP);
-    const uint32_t idKey = crc32c(~0, idChars, strlen(idChars));
+    assert(idPtrP->v);
+    const char* idChars =
+        IdentifierPtrToCharPtr((metac_identifier_table_t*)srcTable, *idPtrP);
+    const uint32_t idLen = strlen(idChars);
+    const uint32_t idHash = crc32c_nozero(~0, idChars, idLen);
+    const uint32_t idKey = IDENTIFIER_KEY(idHash, idLen);
 
-    metac_identifier_ptr_t NewPtr =
-        GetOrAddIdentifier(DstTable, idKey, idChars);
-    IdPtrP->v = NewPtr.v;
+    metac_identifier_ptr_t newPtr =
+        GetOrAddIdentifier(dstTable, idKey, idChars);
+    idPtrP->v = newPtr.v;
 }
 
 static inline int TranslateIdentifiers(metac_node_t node, void* ctx)
 {
     identifier_translation_context_t* context =
         (identifier_translation_context_t*) ctx;
-    assert(crc32c(~0, __FUNCTION__, strlen(__FUNCTION__) == context->FunctionKey));
+    assert(crc32c_nozero(~0, __FUNCTION__, strlen(__FUNCTION__) == context->FunctionKey));
 
     const metac_identifier_table_t* SrcTable = context->SrcTable;
     metac_identifier_table_t* DstTable = context->DstTable;
@@ -120,34 +123,32 @@ static inline int TranslateIdentifiers(metac_node_t node, void* ctx)
     return 0;
 }
 
-typedef struct gather_typedefs_context_t
+typedef struct presemantic_context_t
 {
     const uint32_t FunctionKey;
-    const metac_identifier_table_t* IdentifierTable;
-    metac_semantic_state_t* sema;
-    METAC_TYPE_TABLE_T(typedef)* typedefs;
-} gather_typedefs_context_t;
+    metac_semantic_state_t* Sema;
+} presemantic_context_t;
 
-static inline int GatherTypedefs(metac_node_t node, void* ctx)
+static inline int Presemantic(metac_node_t node, void* ctx)
 {
-    gather_typedefs_context_t* context =
-        (gather_typedefs_context_t*) ctx;
-    assert(crc32c(~0, __FUNCTION__, strlen(__FUNCTION__) == context->FunctionKey));
+    presemantic_context_t* context =
+        (presemantic_context_t*) ctx;
+    assert(crc32c_nozero(~0, __FUNCTION__, strlen(__FUNCTION__) == context->FunctionKey));
 
     if (node->Kind == node_decl_type_typedef)
     {
         decl_type_typedef_t* typedef_ = (decl_type_typedef_t*) node;
         metac_identifier_ptr_t typedefId = typedef_->Identifier;
-        printf("found a typedef: %s\n", IdentifierPtrToCharPtr(context->IdentifierTable, typedefId));
+        //printf("found a typedef: %s\n", IdentifierPtrToCharPtr(context->Sema->ParserIdentifierTable, typedefId));
 
         metac_type_index_t typeIndex =
-            MetaCSemantic_doTypeSemantic(context->sema, node);
+            MetaCSemantic_doTypeSemantic(context->Sema, node);
 
         return 1;
     }
     else
     {
-        printf("Not a typedef: %s\n", MetaCNodeKind_toChars(node->Kind));
+        //printf("Not a typedef: %s\n", MetaCNodeKind_toChars(node->Kind));
     }
 
     return 0;
@@ -177,7 +178,7 @@ int main(int argc, const char* argv[])
         (metac_location_t*)malloc(128 * sizeof(metac_location_t));
     g_lineLexer.LocationStorage.LocationCapacity = 128;
 
-    decl_type_struct_t* compilerStruct = 0;
+    metac_type_aggregate_t* compilerStruct = 0;
 
     read_result_t fCompilterInterface =
         ReadFileAndZeroTerminate("metac_compiler_interface.h");
@@ -211,15 +212,20 @@ int main(int argc, const char* argv[])
         MetaCSemantic_Init(&tmpSema, &tmpParser, 0);
         MetaCSemantic_PushScope(&tmpSema, scope_parent_module, 0);
 
-        METAC_TYPE_TABLE_T(typedef) typedefTable;
-
-        TypeTableInitImpl((metac_type_table_t*)&typedefTable, sizeof(METAC_TYPE_TABLE_KEY_T(typedef)), type_index_typedef);
-        gather_typedefs_context_t gatherContext = {
-            crc32c(~0, "GatherTypedefs", sizeof("GatherTypedefs") - 1),
-            &tmpParser.IdentifierTable,
+        presemantic_context_t presemanticContext = {
+            crc32c_nozero(~0, "Presemantic", sizeof("Presemantic") - 1),
             &tmpSema,
-            &typedefTable
         };
+
+        for(int i = 0;
+            i < decls.Length;
+            i++)
+        {
+            MetaCDeclaration_Walk(decls.Ptr[i], Presemantic, &presemanticContext);
+        }
+
+        MetaCSemantic_Init(&sema, &g_lineParser, compilerStruct);
+        MetaCSemantic_PushScope(&sema, scope_parent_module, 1);
 
         for(int i = 0;
             i < decls.Length;
@@ -228,8 +234,6 @@ int main(int argc, const char* argv[])
             metac_identifier_ptr_t printIdentifier = {0};
 
             metac_declaration_t* decl = decls.Ptr[i];
-
-            MetaCDeclaration_Walk(decl, GatherTypedefs, &gatherContext);
 
             if (decl->DeclKind == decl_type_typedef)
             {
@@ -255,17 +259,12 @@ int main(int argc, const char* argv[])
                 printf("found struct : '%s'\n",
                     IdentifierPtrToCharPtr(&tmpParser.IdentifierTable, printIdentifier));
 
-                identifier_translation_context_t translationContext = {
-                    crc32c(~0, "TranslateIdentifiers", sizeof("TranslateIdentifiers") - 1),
-                    &tmpParser.IdentifierTable,
-                    &g_lineParser.IdentifierTable
-                };
-
-                MetaCDeclaration_Walk(decl, TranslateIdentifiers, (void*) &translationContext);
-
-                compilerStruct = struct_;
+                compilerStruct = MetaCSemantic_doDeclSemantic(&tmpSema, struct_);
             }
         }
+        MetaCSemantic_Handoff(&tmpSema, (metac_sema_declaration_t*)compilerStruct,
+                             &sema);
+        // FreeSema
         MetaCParser_Free(&tmpParser);
     }
 
@@ -278,8 +277,7 @@ int main(int argc, const char* argv[])
         MetaCPrinter_PrintDeclaration(&printer, compilerStruct));
 */
 
-    MetaCSemantic_Init(&sema, &g_lineParser, compilerStruct);
-    MetaCSemantic_PushScope(&sema, scope_parent_module, 0);
+    // only here can we destroy tmpSema
 
     PrintHelp();
     linenoiseHistoryLoad(".repl_history");
@@ -544,7 +542,7 @@ LnextLine:
 
                     const char* idChars = IdentifierPtrToCharPtr(&g_lineParser.IdentifierTable, idPtr);
                     const uint32_t length = strlen(idChars);
-                    uint32_t idHash = crc32c(~0, idChars, length);
+                    uint32_t idHash = crc32c_nozero(~0, idChars, length);
                     uint32_t idKey = IDENTIFIER_KEY(idHash, length);
                     metac_identifier_ptr_t dstoreId
                         = GetOrAddIdentifier(&dstore.Table, idKey, idChars);

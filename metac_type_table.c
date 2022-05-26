@@ -2,16 +2,19 @@
 #define _METAC_TYPE_TABLE_C_
 #include <assert.h>
 #include "metac_type_table.h"
+#include "metac_type.h"
 #include <string.h>
 #include <stdlib.h>
 
 #define GET_OR_ADD_TYPE_DEF(TYPE_NAME, MEMBER_NAME) \
 metac_type_index_t MetaCTypeTable_GetOrAdd ## MEMBER_NAME ## Type \
     (METAC_TYPE_TABLE_T(TYPE_NAME)* table, \
-     uint32_t hash, METAC_TYPE_TABLE_KEY_T(TYPE_NAME)* key) \
+     METAC_TYPE_TABLE_KEY_T(TYPE_NAME)* key, \
+     metac_type_##TYPE_NAME##_t* type) \
 { \
     metac_type_index_t result = \
-        MetaCTypeTable_GetOrAddTypeImpl((metac_type_table_t*)table, hash, (metac_type_table_slot_t*)key, (sizeof(*key) - sizeof(uint32_t))); \
+        MetaCTypeTable_GetOrAddTypeImpl((metac_type_table_t*)table, (metac_type_t*) type, \
+        (metac_type_table_slot_t*)key, (sizeof(*key) - sizeof(uint32_t))); \
     return result; \
 }
 
@@ -29,14 +32,14 @@ void TypeTableInitImpl(metac_type_table_t* table, const uint32_t sizeof_slot, me
 #  define ALIGN4(N) (((N) + 3) & ~3)
 #endif
 metac_type_index_t MetaCTypeTable_GetOrAddTypeImpl(metac_type_table_t* table,
-                                                   uint32_t hash,
+                                                   metac_type_t* type,
                                                    metac_type_table_slot_t* key,
                                                    const uint32_t keyTrailingSize)
 {
     metac_type_index_t result = {0};
 
+    const uint32_t hash = key->HashKey;
     const uint32_t keySize = keyTrailingSize + sizeof(hash);
-
     const uint32_t slotIndexMask = ((1 << table->SlotCount_Log2) - 1);
     const uint32_t initialSlotIndex = (hash & slotIndexMask);
 
@@ -56,10 +59,7 @@ metac_type_index_t MetaCTypeTable_GetOrAddTypeImpl(metac_type_table_t* table,
                         keyTrailingSize)
                 == 0)
             {
-                int32_t abs_index = ((char*)slot) - ((char*)table->Slots);
-                result.Index = abs_index / sizeof(char*);
-                assert(result.Index < (1 << 27));
-                result.Kind = table->Kind;
+                result = slot->TypeIndex;
                 break;
             }
             else

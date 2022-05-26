@@ -5,6 +5,7 @@
 #include "metac_default_target_info.h"
 #include "bsf.h"
 #include <stdlib.h>
+#include "crc32c.h"
 #define AT(...)
 
 bool IsExpressionNode(metac_node_kind_t);
@@ -25,8 +26,182 @@ static uint32_t _nodeCounter = 64;
 #  define emptyNode (metac_node_t) _emptyPointer
 #endif
 
+typedef struct handoff_walker_context_t
+{
+    uint32_t FunctionKey;
+
+    const metac_semantic_state_t* Origin;
+    metac_semantic_state_t* NewOwner;
+    metac_sema_declaration_t* decl;
+} handoff_walker_context_t;
+
+#define CRC32C_VALUE(HASH, VAL) \
+    (crc32c_nozero(HASH, &(VAL), sizeof(VAL)))
+
+uint32_t FieldHash(metac_type_aggregate_field_t* field)
+{
+#if NDEBUG
+    if (field->Hash)
+        return field->Hash;
+#endif
+    uint32_t hash = ~0;
+    hash = CRC32C_VALUE(hash, field->Type);
+    hash = CRC32C_VALUE(hash, field->Offset);
+    assert(!field->Header.Hash || field->Header.Hash == hash);
+    return hash;
+}
+
+uint32_t AggregateHash(metac_type_aggregate_t* agg)
+{
+    if (agg->Header.Hash)
+        return agg->Header.Hash;
+
+    uint32_t hash = ~0;
+    for(int i = 0; i < agg->FieldCount; i++)
+    {
+        metac_type_aggregate_field_t field = agg->Fields[i];
+        if (!field.Header.Hash)
+        {
+            field.Header.Hash = FieldHash(&field);
+        }
+        hash = CRC32C_VALUE(hash, field.Header.Hash);
+    }
+}
+
+static inline void HandoffIdentifier(metac_identifier_table_t* dstTable,
+                                     const metac_identifier_table_t* srcTable,
+                                     metac_identifier_ptr_t* idPtrP)
+{
+    assert(idPtrP->v);
+    const char* idChars =
+        IdentifierPtrToCharPtr((metac_identifier_table_t*)srcTable, *idPtrP);
+    const uint32_t idLen = strlen(idChars);
+    const uint32_t idHash = crc32c_nozero(~0, idChars, idLen);
+    const uint32_t idKey = IDENTIFIER_KEY(idHash, idLen);
+
+    metac_identifier_ptr_t newPtr =
+        GetOrAddIdentifier(dstTable, idKey, idChars);
+    idPtrP->v = newPtr.v;
+}
+
+static void HandoffField(metac_semantic_state_t* dstState,
+                          const metac_semantic_state_t* srcState,
+                          metac_type_aggregate_field_t* field)
+{
+
+}
+static inline void HandoffType(metac_semantic_state_t* dstState,
+                               const metac_semantic_state_t* srcState,
+                               metac_type_index_t* typeIndexP)
+{
+    assert(typeIndexP->v);
+    metac_type_index_t result = {0};
+
+    metac_type_index_t idx = *typeIndexP;
+    switch(TYPE_INDEX_KIND(idx))
+    {
+        metac_type_aggregate_slot_t* agg;
+        metac_type_aggregate_slot_t* newAgg;
+
+        case type_index_basic: break;
+        case type_index_unknown: assert(0);
+        case type_index_struct:
+        {
+            agg = srcState->StructTypeTable.Slots + TYPE_INDEX_INDEX(idx);
+            const uint32_t fieldCount = agg->FieldCount;
+
+            metac_type_aggregate_field_t* newFields =
+                (metac_type_aggregate_field_t*)
+                    malloc(sizeof(metac_type_aggregate_field_t) * fieldCount);
+            for(uint32_t i = 0; i < agg->FieldCount; i++)
+            {
+                metac_type_aggregate_field_t field = agg->Fields[i];
+                HandoffIdentifier(dstState->ParserIdentifierTable,
+                                  srcState->ParserIdentifierTable,
+                                  &field.Identifier);
+                HandoffType(dstState, srcState, &field.Type);
+                newFields[i] = field;
+            }
+            uint32_t newHash = 0;
+            metac_type_aggregate_slot_t newKey = {
+                newHash, fieldCount, newFields
+            };
+            result =
+                MetaCTypeTable_GetOrAddStructType(&dstState->StructTypeTable,
+                                                  newHash, &newKey);
+            goto LhandoffAggregate;
+        }
+        case type_index_union:
+        {
+            agg = srcState->UnionTypeTable.Slots + TYPE_INDEX_INDEX(idx);
+            goto LhandoffAggregate;
+        }
+        LhandoffAggregate:
+        {
+
+        } break;
+    }
+
+    assert(result.v);
+    (*typeIndexP) = result;
+}
+
+#include <string.h>
+static inline int HandoffWalker(metac_node_t node, void* ctx)
+{
+    const handoff_walker_context_t* context =
+        (handoff_walker_context_t*) ctx;
+    assert(crc32c_nozero(~0, __FUNCTION__, strlen(__FUNCTION__))
+        == context->FunctionKey);
+
+    const metac_semantic_state_t* srcState = context->Origin;
+    metac_semantic_state_t* dstState = context->NewOwner;
+
+    switch(node->Kind)
+    {
+        case node_decl_type_struct:
+        {
+            metac_type_aggregate_t* struct_ =
+                cast(metac_type_aggregate_t*) node;
+            uint32_t hash = struct_->Header.Hash;
+            assert(hash);
+
+            metac_type_aggregate_slot_t structKey = {
+                hash,
+            };
+            metac_type_index_t typeIndex =
+                MetaCTypeTable_GetOrAddStructType(&srcState->StructTypeTable,
+                    struct_->Header.Hash, &structKey);
+
+            HandoffType(dstState, srcState, &typeIndex);
+
+            node =
+                (metac_node_t)StructPtr(TYPE_INDEX_INDEX(typeIndex));
+            return 1;
+        }
+        case node_decl_field:
+        {
+
+        } break;
+    }
+
+    return 0;
+}
+
+/// transfers ownership of decl and all it's dependents from self to newOwner
+void MetaCSemantic_Handoff(metac_semantic_state_t* self, metac_sema_declaration_t* decl,
+                           metac_semantic_state_t* newOwner)
+{
+    handoff_walker_context_t handoff_context = {
+        crc32c_nozero(~0, "HandoffWalker", sizeof("HandoffWalker") -1),
+        self, newOwner, decl
+    };
+
+    MetaCDeclaration_Walk(decl, HandoffWalker, &handoff_context);
+}
+
 void MetaCSemantic_Init(metac_semantic_state_t* self, metac_parser_t* parser,
-                        decl_type_struct_t *compilerStruct)
+                        metac_type_aggregate_t* compilerStruct)
 {
 #define INIT_TYPE_TABLE(TYPE_NAME, MEMBER_NAME, INDEX_KIND) \
     TypeTableInitImpl((metac_type_table_t*)&self->MEMBER_NAME, \
@@ -83,7 +258,7 @@ metac_scope_t* MetaCSemantic_PushScope(metac_semantic_state_t* self,
         scopeParentIndex = FunctionIndex((sema_decl_function_t*)parentNode);
     break;
     case scope_parent_struct :
-        scopeParentIndex = StructIndex((sema_type_aggregate_t*)parentNode);
+        scopeParentIndex = StructIndex((metac_type_aggregate_t*)parentNode);
     break;
     case scope_parent_statement :
         scopeParentIndex = StatementIndex((metac_sema_statement_t*)parentNode);
@@ -92,7 +267,7 @@ metac_scope_t* MetaCSemantic_PushScope(metac_semantic_state_t* self,
         scopeParentIndex = BlockStatementIndex((sema_stmt_block_t*)parentNode);
     break;
     case scope_parent_union :
-        scopeParentIndex = UnionIndex((sema_type_aggregate_t*)parentNode);
+        scopeParentIndex = UnionIndex((metac_type_aggregate_t*)parentNode);
     break;
     }
     scopeParent.v = SCOPE_PARENT_V(parentKind, scopeParentIndex);
@@ -318,7 +493,7 @@ scope_insert_error_t MetaCSemantic_RegisterInScope(metac_semantic_state_t* self,
                                                    metac_node_t node)
 {
     scope_insert_error_t result = no_scope;
-    uint32_t idPtrHash = crc32c(~0, &idPtr.v, sizeof(idPtr.v));
+    uint32_t idPtrHash = crc32c_nozero(~0, &idPtr.v, sizeof(idPtr.v));
     // first search for keys that might clash
     // and remove them from the LRU hashes
     uint16_t hash12 = idPtrHash & 0xFFF0;
@@ -372,7 +547,7 @@ static inline uint32_t Align(uint32_t size, uint32_t alignment)
 
 bool MetaCSemantic_ComputeStructLayoutPopulateScope(metac_semantic_state_t* self,
                                                     decl_type_struct_t* agg,
-                                                    sema_type_aggregate_t* semaAgg)
+                                                    metac_type_aggregate_t* semaAgg)
 {
     bool result = true;
 
@@ -437,8 +612,10 @@ metac_type_index_t MetaCSemantic_GetPtrTypeOf(metac_semantic_state_t* state,
     uint32_t hash = elementTypeIndex.v;
     metac_type_ptr_slot_t key = {hash, elementTypeIndex};
 
+    metac_type_ptr_t ptrType;
+
     metac_type_index_t result =
-        MetaCTypeTable_GetOrAddPtrType(&state->PtrTypeTable, hash, &key);
+        MetaCTypeTable_GetOrAddPtrType(&state->PtrTypeTable, &key, &ptrType);
 
     return result;
 }
@@ -464,10 +641,12 @@ metac_type_index_t MetaCSemantic_doTypeSemantic_(metac_semantic_state_t* self,
             MetaCSemantic_doTypeSemantic(self, typedef_->Type);
 
         uint32_t hash = elementTypeIndex.v;
-        metac_type_typedef_slot_t key = {hash, elementTypeIndex};
+
+        metac_type_typedef_slot_t key = {hash, 0, elementTypeIndex};
+        metac_type_typedef_t typeEntry = {type->TypeHeader, elementTypeIndex};
 
         result =
-            MetaCTypeTable_GetOrAddTypedefType(&self->TypedefTypeTable, hash, &key);
+            MetaCTypeTable_GetOrAddTypedefType(&self->TypedefTypeTable, &key, &type);
         sema_decl_type_t* semaTypedef = AllocNewSemaType(result);
 
         scope_insert_error_t scopeInsertError =
@@ -483,7 +662,7 @@ metac_type_index_t MetaCSemantic_doTypeSemantic_(metac_semantic_state_t* self,
             typeKind = type_union;
         else
             assert(0);
-        sema_type_aggregate_t* semaAgg = AllocNewAggregate(typeKind, agg);
+        metac_type_aggregate_t* semaAgg = AllocNewAggregate(typeKind, agg);
         semaAgg->FieldCount = agg->FieldCount;
 
         metac_type_aggregate_field_t* semaFields =
@@ -510,12 +689,27 @@ metac_type_index_t MetaCSemantic_doTypeSemantic_(metac_semantic_state_t* self,
             {
                 MetaCSemantic_ComputeStructLayoutPopulateScope(self, agg, semaAgg);
                 metac_type_aggregate_field_t* fields = semaAgg->Fields;
-                uint32_t hash = semaAgg->Size;
+
+                /*
+                 *     metac_identifier_ptr_t Identifier;
+
+    metac_scope_t* Scope;
+
+    metac_type_aggregate_field_t* Fields;
+
+    uint32_t FieldCount;
+
+    uint32_t Size;
+
+    uint32_t Alignment;
+       */
+                uint32_t hash = AggregateHash(semaAgg);
+
                 metac_type_aggregate_slot_t structKey = {
                     hash, semaAgg->FieldCount, semaAgg->Fields
                 };
                 result =
-                    MetaCTypeTable_GetOrAddStructType(&self->StructTypeTable, hash, &structKey);
+                    MetaCTypeTable_GetOrAddStructType(&self->StructTypeTable, &structKey, semaAgg);
                 // MetaCSemantic_RegisterInScopeStructNamespace()
             } break;
 
@@ -554,7 +748,7 @@ metac_type_index_t MetaCSemantic_doTypeSemantic_(metac_semantic_state_t* self,
             MetaCSemantic_doTypeSemantic(self,
                 functionType->ReturnType);
 
-        uint32_t hash = crc32c(~0, &returnType, sizeof(returnType));
+        uint32_t hash = crc32c_nozero(~0, &returnType, sizeof(returnType));
         decl_parameter_t* currentParam = functionType->Parameters;
 
         const uint32_t nParams = functionType->ParameterCount;
@@ -570,13 +764,14 @@ metac_type_index_t MetaCSemantic_doTypeSemantic_(metac_semantic_state_t* self,
             currentParam = currentParam->Next;
         }
 
-        hash = crc32c(hash, &parameterTypes, sizeof(*parameterTypes) * nParams);
+        hash = crc32c_nozero(hash, &parameterTypes, sizeof(*parameterTypes) * nParams);
+        metac_type_functiontype_t funcType = { type->TypeHeader, returnType, parameterTypes, nParams };
         metac_type_functiontype_slot_t key =
-            { hash, returnType, parameterTypes, nParams };
+            { hash, 0, returnType, parameterTypes, nParams };
 
-        result = MetaCTypeTable_GetOrAddFunctionType(&self->FunctionTypeTable, hash, &key);
+        result = MetaCTypeTable_GetOrAddFunctionType(&self->FunctionTypeTable, &key, &funcType);
     }
-    else if (type->TypeIdentifier.v)
+    else if (type->DeclKind == decl_type && type->TypeKind == type_identifier)
     {
         printf("MetaCNodeKind_toChars: %s\n", MetaCNodeKind_toChars(type->DeclKind));
         printf("TypeIdentifier: %s\n",
@@ -676,13 +871,13 @@ sema_decl_function_t* MetaCSemantic_doFunctionSemantic(metac_semantic_state_t* s
 
 metac_node_t NodeFromTypeIndex(metac_type_index_t typeIndex)
 {
+    const uint32_t index = TYPE_INDEX_INDEX(typeIndex);
     switch(TYPE_INDEX_KIND(typeIndex))
     {
-        case type_struct:
-            return (metac_node_t)StructPtr(TYPE_INDEX_INDEX(typeIndex));
-        case type_union:
-            return (metac_node_t)UnionPtr(TYPE_INDEX_INDEX(typeIndex));
-
+        case type_index_struct:
+            return (metac_node_t)StructPtr(index);
+        case type_index_union:
+            return (metac_node_t)UnionIndex(index);
     }
 }
 
@@ -749,6 +944,7 @@ metac_sema_declaration_t* MetaCSemantic_doDeclSemantic_(metac_semantic_state_t* 
                 metac_node_t node =
                     NodeFromTypeIndex(type_index);
                 MetaCSemantic_RegisterInScope(self, declId, node);
+                result = node;
             }
         } break;
     }
@@ -887,7 +1083,7 @@ metac_node_t MetaCSemantic_LookupIdentifier(metac_semantic_state_t* self,
 {
 
     metac_node_t result = emptyNode;
-    uint32_t idPtrHash = crc32c(~0, &identifierPtr.v, sizeof(identifierPtr.v));
+    uint32_t idPtrHash = crc32c_nozero(~0, &identifierPtr.v, sizeof(identifierPtr.v));
 
     metac_scope_t *currentScope = self->CurrentScope;
     {
@@ -1047,8 +1243,8 @@ metac_sema_expression_t* MetaCSemantic_doExprSemantic_(metac_semantic_state_t* s
             }
             metac_expression_t* call = expr->E1;
             metac_expression_t* fn = call->E1;
-            exp_argument_t* args = (METAC_NODE(call->E2) != emptyNode ? call->E2->ArgumentList : (exp_argument_t*)emptyNode);
-
+            exp_argument_t* args = (METAC_NODE(call->E2) != emptyNode ?
+                call->E2->ArgumentList : (exp_argument_t*)emptyNode);
 
             printf("Type(fn) %s\n", MetaCExpressionKind_toChars(fn->Kind));
             printf("call: %s\n", MetaCPrinter_PrintExpression(&self->Printer, call));
@@ -1057,8 +1253,9 @@ metac_sema_expression_t* MetaCSemantic_doExprSemantic_(metac_semantic_state_t* s
                 memberIdx < self->CompilerInterface->FieldCount;
                 memberIdx)
             {
-
-
+                printf("Field: %s\n",
+                    IdentifierPtrToCharPtr(self->ParserIdentifierTable,
+                        self->CompilerInterface->Fields->Identifier));
             }
             // CompilerInterface_Call(
         } break;

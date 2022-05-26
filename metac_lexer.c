@@ -757,7 +757,7 @@ LcontinueLexnig:
                 assert(identifierLength < 0xFFF);
                 state->Column += eatenChars;
 #ifndef INCREMENTAL_HASH
-                identifierHash = crc32c(~0, identifierBegin, identifierLength);
+                identifierHash = crc32c_nozero(~0, identifierBegin, identifierLength);
 #endif
                 token.IdentifierKey =
                     IDENTIFIER_KEY(identifierHash, identifierLength);
@@ -940,7 +940,7 @@ LcontinueLexnig:
 
                 eatenChars++;
 #ifndef INCREMENTAL_HASH
-                stringHash = crc32c(~0, stringBegin, stringLength);
+                stringHash = crc32c_nozero(~0, stringBegin, stringLength);
 #endif
                 assert(stringLength < 0xFFFFF);
 

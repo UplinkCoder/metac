@@ -399,7 +399,7 @@ typedef struct sema_decl_type_array_t
     metac_sema_expression_t* Dim;
 } sema_decl_type_array_t;
 
-
+/*
 typedef struct sema_type_aggregate_t
 {
     SEMA_DECLARATION_HEADER
@@ -418,7 +418,7 @@ typedef struct sema_type_aggregate_t
 
     uint32_t Alignment;
 } sema_type_aggregate_t;
-
+*/
 typedef struct sema_decl_type_union_t
 {
     SEMA_DECLARATION_HEADER
@@ -453,7 +453,7 @@ typedef struct metac_sema_declaration_t
         sema_decl_type_ptr_t sema_decl_type_ptr;
         sema_decl_function_t sema_decl_function;
         sema_decl_type_array_t sema_decl_type_array;
-        sema_type_aggregate_t sema_type_aggergate;
+        metac_type_aggregate_t sema_type_aggergate;
     };
 
 } metac_sema_declaration_t;

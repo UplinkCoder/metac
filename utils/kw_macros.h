@@ -8,7 +8,7 @@
     ((unsigned int)(sizeof(#KW) - sizeof(KW_PREFIX)))
 
 #define KW_CRC32C(KW) \
-    ( crc32c(~0, #KW + KW_PREFIX_LEN, KW_LEN(KW)) )
+    ( crc32c_nozero(~0, #KW + KW_PREFIX_LEN, KW_LEN(KW)) )
 
 #define KW_KEY(KW) \
     ( IDENTIFIER_KEY(KW_CRC32C(KW), KW_LEN(KW)) )

@@ -54,7 +54,7 @@ void LexFile(metac_lexer_t* lexer,
             metac_token_t token =
                 *MetaCLexerLexNextToken(lexer, &lexer_state, text, length);
             uint32_t eaten_chars = lexer_state.Position - initialPosition;
-            fileHash = crc32c(fileHash, text, eaten_chars);
+            fileHash = crc32c_nozero(fileHash, text, eaten_chars);
 
             if (eaten_chars == 0)
             {

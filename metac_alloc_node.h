@@ -31,9 +31,9 @@ sema_decl_variable_t* AllocFunctionParameters(sema_decl_function_t* func,
 
 sema_decl_type_t* AllocNewSemaType(metac_type_index_t typeIndex);
 
-sema_type_aggregate_t* AllocNewAggregate(metac_type_kind_t kind, decl_type_struct_t* decl);
+metac_type_aggregate_t* AllocNewAggregate(metac_type_kind_t kind, decl_type_struct_t* decl);
 
-metac_type_aggregate_field_t* AllocAggregateFields(sema_type_aggregate_t* aggregate,
+metac_type_aggregate_field_t* AllocAggregateFields(metac_type_aggregate_t* aggregate,
                                                    metac_type_kind_t kind,
                                                    uint32_t fieldCount);
 #define AllocNewSemaStatement(KIND, RESULT_PTR) \
@@ -50,13 +50,13 @@ metac_scope_t* AllocNewScope(metac_scope_t* parent, metac_scope_parent_t owner);
 #define StatementIndex(STMT) StatementIndex_((metac_sema_statement_t*)STMT)
 
 uint32_t FunctionIndex(sema_decl_function_t* func);
-uint32_t StructIndex(sema_type_aggregate_t* struct_);
+uint32_t StructIndex(metac_type_aggregate_t* struct_);
 uint32_t StatementIndex_(metac_sema_statement_t* stmt);
 uint32_t BlockStatementIndex(sema_stmt_block_t* blockstmt);
-uint32_t UnionIndex(sema_type_aggregate_t* union_);
+uint32_t UnionIndex(metac_type_aggregate_t* union_);
 
 sema_decl_function_t* FunctionPtr(uint32_t index);
-sema_type_aggregate_t* StructPtr(uint32_t index);
+metac_type_aggregate_t* StructPtr(uint32_t index);
 metac_sema_statement_t* StatementPtr(uint32_t index);
 sema_stmt_block_t* BlockStatementPtr(uint32_t index);
-sema_type_aggregate_t* UnionPtr(uint32_t index);
+metac_type_aggregate_t* UnionPtr(uint32_t index);

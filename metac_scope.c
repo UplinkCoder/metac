@@ -55,7 +55,7 @@ metac_scope_table_slot_t* MetaCScopeTable_Lookup(metac_scope_table_t* self,
 metac_scope_table_slot_t* MetaCScopeTable_Insert(metac_scope_table_t* self,
                                                  metac_identifier_ptr_t idPtr)
 {
-    uint32_t hash = crc32c(~0, &idPtr.v, sizeof(idPtr.v));
+    uint32_t hash = crc32c_nozero(~0, &idPtr.v, sizeof(idPtr.v));
     const uint32_t slotIndexMask = ((1 << self->SlotCount_Log2) - 1);
     const uint32_t initialSlotIndex = (hash & slotIndexMask);
 

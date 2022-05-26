@@ -2,6 +2,7 @@
 #define _METAC_SCOPE_H_
 #include "compat.h"
 #include "metac_identifier_table.h"
+#include "metac_node.h"
 
 struct metac_sema_declaration_t;
 
@@ -58,10 +59,6 @@ typedef enum scope_insert_error_t
 #undef DEFINE_MEMBERS
 
 
-
-#include "metac_parsetree.h"
-
-
 #define SCOPE_PARENT_INDEX(PARENT_INDEX) \
     ((PARENT_INDEX).v & 0xfffffff)
 
@@ -81,7 +78,7 @@ typedef struct metac_scope_lru_slot_t
 {
     metac_identifier_ptr_t Ptr;
     /// Node may be 0
-    metac_node_header_t* Node;
+    struct metac_node_header_t* Node;
 } metac_scope_lru_slot_t;
 #pragma pack(pop)
 
