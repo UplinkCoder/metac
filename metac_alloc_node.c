@@ -108,7 +108,9 @@ noinline void _newMemRealloc(void** memP, uint32_t* capacityP, const uint32_t el
     M(metac_sema_statement_t, _newSemaStatements) \
     M(sema_stmt_block_t, _newSemaBlockStatements) \
     M(metac_scope_t, _newScopes) \
-    M(sema_decl_type_t, _newSemaTypes)
+    M(metac_type_typedef_t, _newSemaTypedefs) \
+    M(metac_type_functiontype_t, _newSemaFunctiontypes) \
+    M(metac_type_ptr_t, _newSemaPtrTypes)
 
 
 #define FREELIST(PREFIX) \
@@ -209,7 +211,23 @@ uint32_t StatementIndex_(metac_sema_statement_t* stmt)
     return result;
 }
 
+uint32_t TypedefIndex(metac_type_typedef_t* typedef_)
+{
+    uint32_t result = (typedef_ - _newSemaTypedefs_mem);
+    return result;
+}
 
+uint32_t PtrTypeIndex(metac_type_ptr_t* ptr)
+{
+    uint32_t result = (ptr - _newSemaPtrTypes_mem);
+    return result;
+}
+
+uint32_t FunctiontypeIndex(metac_type_functiontype_t* functiontype)
+{
+    uint32_t result = (functiontype  - _newSemaFunctiontypes_mem);
+    return result;
+}
 
 metac_type_aggregate_t* StructPtr(uint32_t index)
 {
@@ -223,7 +241,6 @@ metac_type_aggregate_t* UnionPtr(uint32_t index)
     return result;
 }
 
-
 sema_decl_function_t* FunctionPtr(uint32_t index)
 {
     sema_decl_function_t* result = (_newSemaFunc_mem + index);
@@ -233,6 +250,18 @@ sema_decl_function_t* FunctionPtr(uint32_t index)
 metac_sema_statement_t* StatementPtr(uint32_t index)
 {
     metac_sema_statement_t* result = (_newSemaStatements_mem + index);
+    return result;
+}
+
+metac_type_typedef_t* TypedefPtr(uint32_t index)
+{
+    metac_type_typedef_t* result = (_newSemaTypedefs_mem + index);
+    return result;
+}
+
+metac_type_ptr_t* PtrTypePtr(uint32_t index)
+{
+    metac_type_typedef_t* result = (_newSemaPtrTypes_mem + index);
     return result;
 }
 
@@ -371,18 +400,18 @@ sema_decl_variable_t* AllocFunctionParameters(sema_decl_function_t* func,
     return result;
 }
 
-metac_type_aggregate_t* AllocNewAggregate(metac_type_kind_t kind, decl_type_struct_t* agg)
+metac_type_aggregate_t* AllocNewAggregate(metac_declaration_kind_t kind)
 {
     metac_type_aggregate_t* result = 0;
 
     switch(kind)
     {
-        case type_struct:
+        case decl_type_struct:
         {
             REALLOC_BOILERPLATE(_newSemaStructs)
             result = _newSemaStructs_mem + INC(_newSemaStructs_size);
         } break;
-        case type_union:
+        case decl_type_union:
         {
             REALLOC_BOILERPLATE(_newSemaUnions)
             result = _newSemaUnions_mem + INC(_newSemaUnions_size);
@@ -394,34 +423,63 @@ metac_type_aggregate_t* AllocNewAggregate(metac_type_kind_t kind, decl_type_stru
         default: assert(0);
     }
 
-    result->Header.Kind = agg->DeclKind;
-    result->Header.LocationIdx = agg->LocationIdx;
+    result->Header.Kind = kind;
+    //result->Header.LocationIdx = agg->LocationIdx;
     //result->TypeKind = kind;
+    result->Header.Serial = INC(_nodeCounter);
+    //assert(result->Header.Serial != 120);
+    return result;
+}
+
+metac_type_typedef_t* AllocNewSemaTypedef(metac_type_index_t typeIndex)
+{
+    metac_type_typedef_t* result = 0;
+
+    REALLOC_BOILERPLATE(_newSemaTypedefs);
+    result = _newSemaTypedefs_mem + INC(_newSemaTypedefs_size);
+
+    result->Header.Kind = decl_type_typedef;
+    result->Type = typeIndex;
     result->Header.Serial = INC(_nodeCounter);
 
     return result;
 }
 
-sema_decl_type_t* AllocNewSemaType(metac_type_index_t typeIndex)
+metac_type_typedef_t* AllocNewSemaPtrType(metac_type_index_t elementTypeIndex)
 {
-    sema_decl_type_t* result = 0;
+    metac_type_typedef_t* result = 0;
 
-    REALLOC_BOILERPLATE(_newSemaTypes);
-    result = _newSemaTypes_mem + INC(_newSemaTypes_size);
+    REALLOC_BOILERPLATE(_newSemaTypedefs);
+    result = _newSemaTypedefs_mem + INC(_newSemaTypedefs_size);
 
-    if (TYPE_INDEX_KIND(typeIndex) == type_index_typedef)
-    {
-        result->DeclKind = decl_type_typedef;
-    }
-    else
-    {
-        assert(0);
-    }
-    result->typeIndex = typeIndex;
-    result->Serial = INC(_nodeCounter);
+    result->Header.Kind = decl_type_typedef;
+    result->Type = elementTypeIndex;
+    result->Header.Serial = INC(_nodeCounter);
 
     return result;
 }
+
+
+metac_type_functiontype_t* AllocNewSemaFunctionype(metac_type_index_t returnType,
+                                                   metac_type_index_t* parameterTypes,
+                                                   uint32_t parameterTypeCount)
+{
+    metac_type_functiontype_t* result = 0;
+
+    REALLOC_BOILERPLATE(_newSemaFunctiontypes);
+    result = _newSemaFunctiontypes_mem + INC(_newSemaFunctiontypes_size);
+
+    result->Header.Kind = decl_type_functiontype;
+    result->Header.Serial = INC(_nodeCounter);
+
+    result->ReturnType = returnType;
+    result->ParameterTypes = parameterTypes;
+    result->ParameterTypeCount = parameterTypeCount;
+
+
+    return result;
+}
+
 
 metac_type_aggregate_field_t* AllocAggregateFields(metac_type_aggregate_t* aggregate,
                                                    metac_type_kind_t kind,

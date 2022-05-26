@@ -9,11 +9,10 @@
 #define GET_OR_ADD_TYPE_DEF(TYPE_NAME, MEMBER_NAME) \
 metac_type_index_t MetaCTypeTable_GetOrAdd ## MEMBER_NAME ## Type \
     (METAC_TYPE_TABLE_T(TYPE_NAME)* table, \
-     METAC_TYPE_TABLE_KEY_T(TYPE_NAME)* key, \
-     metac_type_##TYPE_NAME##_t* type) \
+     METAC_TYPE_TABLE_KEY_T(TYPE_NAME)* key) \
 { \
     metac_type_index_t result = \
-        MetaCTypeTable_GetOrAddTypeImpl((metac_type_table_t*)table, (metac_type_t*) type, \
+        MetaCTypeTable_GetOrAddTypeImpl((metac_type_table_t*)table, \
         (metac_type_table_slot_t*)key, (sizeof(*key) - sizeof(uint32_t))); \
     return result; \
 }
@@ -32,7 +31,6 @@ void TypeTableInitImpl(metac_type_table_t* table, const uint32_t sizeof_slot, me
 #  define ALIGN4(N) (((N) + 3) & ~3)
 #endif
 metac_type_index_t MetaCTypeTable_GetOrAddTypeImpl(metac_type_table_t* table,
-                                                   metac_type_t* type,
                                                    metac_type_table_slot_t* key,
                                                    const uint32_t keyTrailingSize)
 {
@@ -54,8 +52,8 @@ metac_type_index_t MetaCTypeTable_GetOrAddTypeImpl(metac_type_table_t* table,
 
         if (slot->HashKey == hash)
         {
-            if (memcmp(((char*)&slot->HashKey) + sizeof(slot->HashKey),
-                        ((char*)key) + sizeof(hash),
+            if (memcmp(((char*)&slot->TypeIndex) + sizeof(slot->TypeIndex),
+                        ((char*)&key->TypeIndex) + sizeof(slot->TypeIndex),
                         keyTrailingSize)
                 == 0)
             {
@@ -72,19 +70,13 @@ metac_type_index_t MetaCTypeTable_GetOrAddTypeImpl(metac_type_table_t* table,
 #ifdef ATOMIC
             uint32_t expected = 0;
             uint32_t newValue;
-#endif
             do {
-                //assert(table->KeyMemorySize + ALIGN4(keySize)
-                //       < table->KeyMemoryCapacity);
-                int32_t abs_index = ((char*)slot) - ((char*)table->Slots);
-                result.v = TYPE_INDEX_V(table->Kind, abs_index / (keySize));
                 // Compare xchange here
-#ifdef ATOMIC
                 if (expected != 0)
                 {
                     // we tried to cmp_xchg and failed ...
-                    // this can mean another thread beat us to it or it can mean
-                    // that
+                    // this can mean another thread beat us to it
+                    assert(0);
                 }
                 newValue = hash;
             } while(!__atomic_compare_exchange(&slot->HashKey, &expected, &newValue,
@@ -92,12 +84,70 @@ metac_type_index_t MetaCTypeTable_GetOrAddTypeImpl(metac_type_table_t* table,
             // atomic compare exchange has been done.
             __atomic_add_fetch(&table->SlotsUsed, 1, __ATOMIC_ACQUIRE)
 #else
+            do {
+                assert(slot->HashKey == 0);
                 slot->HashKey = hash;
                 table->SlotsUsed = table->SlotsUsed + 1;
             } while (false);
 #endif
 
-            memcpy(((char*)slot) + sizeof(slot->HashKey), ((char*)key) + sizeof(hash), keyTrailingSize);
+            memcpy(&slot->TypeIndex + 1, ((char*)key) + sizeof(hash), keyTrailingSize);
+            uint32_t idx = ~0;
+            switch(table->Kind)
+            {
+                metac_declaration_kind_t declKind;
+
+                case type_index_struct:
+                { declKind = decl_type_struct; } goto Lagg;
+                case type_index_union:
+                { declKind = decl_type_union; } goto Lagg;
+                Lagg:
+                {
+                    metac_type_aggregate_slot_t* aggKey =
+                        (metac_type_aggregate_slot_t*)key;
+
+                    metac_type_aggregate_t* agg =
+                        AllocNewAggregate(declKind, aggKey->Fields, aggKey->Fields);
+
+                    if (table->Kind == type_index_struct)
+                        idx = StructIndex(agg);
+                    else if (table->Kind == type_index_union)
+                        idx = UnionIndex(agg);
+                    assert(idx != ~0);
+                } break;
+
+                case type_index_typedef:
+                {
+                    metac_type_typedef_slot_t *typedef_=
+                        (metac_type_typedef_slot_t*) key;
+                    metac_type_typedef_t* semaTypedef
+                        = AllocNewSemaTypedef(typedef_->ElementTypeIndex);
+                    idx = TypedefIndex(semaTypedef);
+                } break;
+
+                case type_index_functiontype:
+                {
+                    metac_type_functiontype_slot_t* funcType =
+                        (metac_type_functiontype_slot_t*) key;
+
+                    metac_type_typedef_t* semaFunctype
+                        = AllocNewSemaFunctionype(funcType->ReturnType,
+                                                  funcType->ParameterTypes,
+                                                  funcType->ParameterTypeCount);
+                    idx = FunctiontypeIndex(semaFunctype);
+                } break;
+                case type_index_ptr:
+                {
+                    metac_type_ptr_slot_t* ptrType =
+                        (metac_type_ptr_slot_t*) key;
+                    metac_type_ptr_t* semaPtr = AllocNewSemaPtrType(ptrType->ElementTypeIndex);
+                    idx = PtrTypeIndex(semaPtr);
+                } break;
+                default: assert(0);
+            }
+            slot->TypeIndex.v =
+                TYPE_INDEX_V(table->Kind, idx);
+            result = slot->TypeIndex;
             break;
         }
         continue;

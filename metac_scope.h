@@ -125,7 +125,7 @@ metac_node_header_t* MetaCScope_LookupIdentifier(metac_scope_t* self,
 /// Returns true on insertion and false if the table was full
 scope_insert_error_t MetaCScope_RegisterIdentifier(metac_scope_t* self,
                                                    metac_identifier_ptr_t idPtr,
-                                                   metac_node_header_t* node);
+                                                   metac_node_t node);
 
 metac_scope_t* MetaCScope_PushScope(metac_scope_t* self, metac_scope_parent_t owner);
 #endif // _METAC_SCOPE_H_
