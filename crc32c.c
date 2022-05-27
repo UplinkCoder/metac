@@ -198,7 +198,7 @@ static inline uint32_t intrinsic_crc32c(uint32_t crc, const void* s, uint32_t le
 
 #endif
 
-uint32_t crc32c_nozero(uint32_t crc, const void* s, const uint32_t len_p)
+uint32_t crc32c(uint32_t crc, const void* s, const uint32_t len_p)
 {
     const uint32_t len = len_p;
     const uint8_t* p = (const uint8_t*) s;
@@ -207,6 +207,13 @@ uint32_t crc32c_nozero(uint32_t crc, const void* s, const uint32_t len_p)
 #else
     crc = singletable_crc32c(crc, p, len);
 #endif
+    return crc;
+}
+
+uint32_t crc32c_nozero(uint32_t crc, const void* s, const uint32_t len_p)
+{
+    crc = crc32c(crc, s, len_p);
+
     return crc ? crc : ~0;
 }
 
