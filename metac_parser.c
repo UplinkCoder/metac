@@ -93,7 +93,8 @@ void MetaCParser_Free(metac_parser_t* self)
     IdentifierTable_Free(&self->IdentifierTable);
     IdentifierTable_Free(&self->StringTable);
     free(self->BlockStatementStack);
-    *self = (metac_parser_t) {0};
+    static const metac_parser_t zeroParser = {0};
+    *self = zeroParser;
     self = 0;
 }
 

@@ -464,7 +464,8 @@ void MetaCLexer_Free(metac_lexer_t* self)
     if (self->Tokens != self->inlineTokens)
         free(self->Tokens);
 
-    *self = (metac_lexer_t) {0};
+    static const metac_lexer_t zeroLexer = {0};
+    *self = zeroLexer;
     self = 0;
 }
 

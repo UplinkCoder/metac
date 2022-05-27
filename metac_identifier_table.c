@@ -57,8 +57,8 @@ void IdentifierTable_Free(metac_identifier_table_t* table)
 {
     free(table->Slots);
     free(table->StringMemory);
-
-    *table = (metac_identifier_table_t){0};
+    static const metac_identifier_table_t zeroTable = {0};
+    (*table) = zeroTable;
 }
 #define ALIGN4(N) (((N) + 3) & ~3)
 metac_identifier_ptr_t GetOrAddIdentifier(metac_identifier_table_t* table,
