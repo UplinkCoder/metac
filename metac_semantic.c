@@ -757,6 +757,7 @@ metac_type_index_t MetaCSemantic_doTypeSemantic_(metac_semantic_state_t* self,
             { hash, 0, returnType, parameterTypes, nParams };
 
         result = MetaCTypeTable_GetOrAddFunctionType(&self->FunctionTypeTable, &key);
+        printf("Should have retrived function type\n");
     }
     else if (type->DeclKind == decl_type && type->TypeKind == type_identifier)
     {

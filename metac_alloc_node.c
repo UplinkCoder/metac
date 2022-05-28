@@ -261,7 +261,7 @@ metac_type_typedef_t* TypedefPtr(uint32_t index)
 
 metac_type_ptr_t* PtrTypePtr(uint32_t index)
 {
-    metac_type_typedef_t* result = (_newSemaPtrTypes_mem + index);
+    metac_type_ptr_t* result = (_newSemaPtrTypes_mem + index);
     return result;
 }
 

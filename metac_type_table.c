@@ -3,6 +3,7 @@
 #include <assert.h>
 #include "metac_type_table.h"
 #include "metac_type.h"
+#include "metac_alloc_node.h"
 #include <string.h>
 #include <stdlib.h>
 
@@ -107,7 +108,7 @@ metac_type_index_t MetaCTypeTable_GetOrAddTypeImpl(metac_type_table_t* table,
                         (metac_type_aggregate_slot_t*)key;
 
                     metac_type_aggregate_t* agg =
-                        AllocNewAggregate(declKind, aggKey->Fields, aggKey->Fields);
+                        AllocNewAggregate(declKind);
 
                     if (table->Kind == type_index_struct)
                         idx = StructIndex(agg);
