@@ -98,7 +98,8 @@ static inline bool EnumSlotsEqual(const metac_type_table_slot_t* a,
         uint32_t count = slotA->MemberCount;
         for(int i = 0; i < count; i++)
         {
-            if (!Expression_IsEqual(slotA->Members[i].Value, slotB->Members[i].Value))
+            if (slotA->Members[i].Identifier.v != slotB->Members[i].Identifier.v
+             || !Expression_IsEqual(slotA->Members[i].Value, slotB->Members[i].Value))
             {
                 result = false;
                 break;
