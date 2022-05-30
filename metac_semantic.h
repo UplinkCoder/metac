@@ -43,6 +43,8 @@ typedef struct metac_semantic_state_t
     // to layout variables
     AT(transient) metac_sema_decl_state_t* CurrentDeclarationState;
 
+    AT(transient) uint32_t TemporaryScopeDepth;
+
     AT(transient) metac_scope_t* CurrentScope;
 
     AT(transient) metac_semantic_lru_t LRU;

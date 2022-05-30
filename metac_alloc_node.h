@@ -31,10 +31,12 @@ sema_decl_variable_t* AllocFunctionParameters(sema_decl_function_t* func,
 
 sema_decl_type_t* AllocNewSemaType(metac_type_index_t typeIndex);
 
-metac_type_aggregate_t* AllocNewAggregate(metac_declaration_kind_t kind);
+#define AllocNewAggregate(KIND) \
+    (AllocNewAggregate_(KIND, __LINE__, __FILE__))
+metac_type_aggregate_t* AllocNewAggregate_(metac_declaration_kind_t kind, uint32_t line, const char* file);
 
 metac_type_aggregate_field_t* AllocAggregateFields(metac_type_aggregate_t* aggregate,
-                                                   metac_type_kind_t kind,
+                                                   metac_declaration_kind_t kind,
                                                    uint32_t fieldCount);
 #define AllocNewSemaStatement(KIND, RESULT_PTR) \
     (sema_ ## KIND ## _t*) AllocNewSemaStatement_(KIND, sizeof(sema_ ## KIND ##_t), ((void**)(RESULT_PTR)))

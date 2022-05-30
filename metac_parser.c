@@ -1543,6 +1543,8 @@ LnextToken:
                     field->Next = (decl_field_t*)_emptyPointer;
                     metac_declaration_t *decl =
                         (metac_declaration_t*)MetaCParser_ParseDeclaration(self, (metac_declaration_t*)struct_);
+                    if (decl->DeclKind == decl_comment)
+                        continue;
                     assert(decl->DeclKind == decl_variable);
                     field->Field = (decl_variable_t*)decl;
 
@@ -1844,6 +1846,14 @@ metac_declaration_t* MetaCParser_ParseDeclaration(metac_parser_t* self, metac_de
                 }
             }
         }
+    }
+    else if (tokenType == tok_comment_multi
+          || tokenType == tok_comment_single)
+    {
+        metac_token_t* tok = MetaCParser_Match(self, tokenType);
+        decl_comment_t* comment = AllocNewDeclaration(decl_comment, &result);
+        comment->Text = tok->CommentBegin;
+        comment->Length = tok->CommentLength;
     }
     else
     {

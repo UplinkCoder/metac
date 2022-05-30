@@ -224,9 +224,6 @@ int main(int argc, const char* argv[])
             MetaCDeclaration_Walk(decls.Ptr[i], Presemantic, &presemanticContext);
         }
 
-        MetaCSemantic_Init(&sema, &g_lineParser, compilerStruct);
-        MetaCSemantic_PushScope(&sema, scope_parent_module, 1);
-
         for(int i = 0;
             i < decls.Length;
             i++)
@@ -262,8 +259,14 @@ int main(int argc, const char* argv[])
                 compilerStruct = MetaCSemantic_doDeclSemantic(&tmpSema, struct_);
             }
         }
-        MetaCSemantic_Handoff(&tmpSema, (metac_sema_declaration_t*)compilerStruct,
-                             &sema);
+
+        MetaCSemantic_Init(&sema, &g_lineParser, compilerStruct);
+        MetaCSemantic_PushScope(&sema, scope_parent_module, 1);
+
+
+//        MetaCSemantic_Handoff(&tmpSema, (metac_sema_declaration_t*)compilerStruct,
+//                             &sema);
+
         // FreeSema
         MetaCParser_Free(&tmpParser);
     }

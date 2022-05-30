@@ -113,7 +113,7 @@ scope_insert_error_t MetaCScope_RegisterIdentifier(metac_scope_t* self,
 #define _emptyPointer 0x1
 #define emptyNode (metac_node_header_t*) _emptyPointer
 #endif
-
+/*
 void MetaCScope_PushLRU(metac_scope_lru_t* lru, uint16_t lw15, metac_scope_table_slot_t* slot)
 {
     uint64_t LRUContentHashes = lru->LRUContentHashes;
@@ -146,6 +146,7 @@ void MetaCScope_PushLRU(metac_scope_lru_t* lru, uint16_t lw15, metac_scope_table
 #endif
 //    lru->Slots[0] = (metac_scope_lru_slot_t){slot->Ptr, slot->Node};
 }
+ */
 /*
  * const char *ssechr(const char *s, char ch)
 {

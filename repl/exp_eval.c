@@ -195,11 +195,11 @@ static inline void WalkTree(void* c, BCValue* result,
             BCGen_interface.Xor3(c, result, lhs, rhs);
         } break;
         case exp_identifier:
-            assert(0);
-
+        {
+            fprintf(stderr, "There have been unresolved identifiers ... this should not happen\n");
+        }
         case exp_variable:
         {
-
             metac_identifier_ptr_t vstoreId =
                 GetVStoreID(vstore, e);
             BCValue* v = GetValueFromVariableStore(vstore, vstoreId);

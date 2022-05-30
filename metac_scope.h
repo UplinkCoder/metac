@@ -73,15 +73,6 @@ typedef struct metac_scope_ptr_t
     uint32_t v;
 } metac_scope_ptr_t;
 
-#pragma pack(push, 1)
-typedef struct metac_scope_lru_slot_t
-{
-    metac_identifier_ptr_t Ptr;
-    /// Node may be 0
-    struct metac_node_header_t* Node;
-} metac_scope_lru_slot_t;
-#pragma pack(pop)
-
 typedef struct metac_scope_table_slot_t
 {
     uint32_t Hash;
@@ -98,22 +89,25 @@ typedef struct metac_scope_table_t
     uint32_t SlotsUsed;
 } metac_scope_table_t;
 
-typedef struct metac_scope_lru_t
+
+typedef enum metac_scope_flags_t
 {
-    /// has the lower 15 bit of the id hashes
-    /// contained in the LRU
-    uint64_t LRUContentHashes;
-    metac_scope_lru_slot_t Slots[4];
-} metac_scope_lru_t;
+    scope_flag_none,
+
+    scope_flag_temporary = (1 << 0),
+
+    scope_flag_max = (1 << 1)
+} metac_scope_flags_t;
 
 typedef struct metac_scope_t
 {
-    uint32_t Serial;
+    metac_scope_flags_t scopeFlags;
     metac_scope_parent_t Owner;
     struct metac_scope_t* Parent;
 
     metac_scope_table_t ScopeTable;
-    metac_scope_lru_t LRU;
+
+    uint32_t Serial;
 } metac_scope_t;
 
 /// Returns 0 to keep looking upwards

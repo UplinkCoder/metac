@@ -119,12 +119,19 @@ FOREACH_TABLE_SLOT_TYPE(METAC_TYPE_TABLE_T_DEF)
     M(functiontype, Function) \
     M(typedef, Typedef)
 
-#define DECLARE_GET_OR_ADD(TYPE_NAME, MEMBER_NAME) \
-    metac_type_index_t MetaCTypeTable_GetOrAdd ## MEMBER_NAME ## Type \
+#define DECLARE_ADD(TYPE_NAME, MEMBER_NAME) \
+    void MetaCTypeTable_Add ## MEMBER_NAME ## Type \
     (METAC_TYPE_TABLE_T(TYPE_NAME)* table, \
+     const METAC_TYPE_TABLE_KEY_T(TYPE_NAME)* key);
+
+#define DECLARE_GET_OR_EMPTY(TYPE_NAME, MEMBER_NAME) \
+    metac_type_index_t MetaCTypeTable_GetOrEmpty ## MEMBER_NAME ## Type \
+    (const METAC_TYPE_TABLE_T(TYPE_NAME)* table, \
      METAC_TYPE_TABLE_KEY_T(TYPE_NAME)* key);
 
-FOREACH_TABLE_MEMBER(DECLARE_GET_OR_ADD)
+FOREACH_TABLE_MEMBER(DECLARE_GET_OR_EMPTY)
+
+FOREACH_TABLE_MEMBER(DECLARE_ADD)
 /*
 metac_type_index_t MetaCTypeTable_GetOrAddArrayType(METAC_TYPE_TABLE_T(array)* table,
                                                     uint32_t hash,

@@ -445,15 +445,15 @@ metac_type_typedef_t* AllocNewSemaTypedef(metac_type_index_t typeIndex)
     return result;
 }
 
-metac_type_typedef_t* AllocNewSemaPtrType(metac_type_index_t elementTypeIndex)
+metac_type_ptr_t* AllocNewSemaPtrType(metac_type_index_t elementTypeIndex)
 {
-    metac_type_typedef_t* result = 0;
+    metac_type_ptr_t* result = 0;
 
-    REALLOC_BOILERPLATE(_newSemaTypedefs);
-    result = _newSemaTypedefs_mem + INC(_newSemaTypedefs_size);
+    REALLOC_BOILERPLATE(_newSemaPtrTypes);
+    result = _newSemaPtrTypes_mem + INC(_newSemaPtrTypes_size);
 
-    result->Header.Kind = decl_type_typedef;
-    result->Type = elementTypeIndex;
+    result->Header.Kind = decl_type_ptr;
+    result->ElementType = elementTypeIndex;
     result->Header.Serial = INC(_nodeCounter);
 
     return result;
@@ -482,31 +482,33 @@ metac_type_functiontype_t* AllocNewSemaFunctionype(metac_type_index_t returnType
 
 
 metac_type_aggregate_field_t* AllocAggregateFields(metac_type_aggregate_t* aggregate,
-                                                   metac_type_kind_t kind,
+                                                   metac_declaration_kind_t kind,
                                                    uint32_t fieldCount)
 {
     uint32_t aggregateIndex = 0;
     metac_type_aggregate_field_t* result = 0;
     switch(kind)
     {
-        case type_struct:
+        case decl_type_struct:
         {
             REALLOC_BOILERPLATE(_newSemaStructFields)
             result = _newSemaStructFields_mem +
                 POST_ADD(_newSemaStructFields_size, fieldCount);
             aggregateIndex = aggregate - _newSemaStructs_mem;
         } break;
-        case type_union:
+        case decl_type_union:
         {
             REALLOC_BOILERPLATE(_newSemaUnionFields)
             result = _newSemaUnionFields_mem +
                 POST_ADD(_newSemaUnionFields_size, fieldCount);
             aggregateIndex = aggregate - _newSemaUnions_mem;
         } break;
+/*
         case type_class:
         {
             assert(0);
         } break;
+*/
     }
 
     {

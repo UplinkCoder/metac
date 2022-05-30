@@ -281,6 +281,14 @@ typedef struct decl_type_t
     metac_identifier_ptr_t TypeIdentifier;
 } decl_type_t;
 
+typedef struct decl_comment_t
+{
+    DECLARATION_HEADER
+
+    const char* Text;
+    uint32_t Length;
+} decl_comment_t;
+
 typedef struct decl_variable_t
 {
     DECLARATION_HEADER

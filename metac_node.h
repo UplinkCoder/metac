@@ -32,7 +32,9 @@
     M(decl_type_functiontype) \
     LAST_DECL_TYPE(M) \
     \
-    M(decl_function)
+    M(decl_function) \
+    \
+    M(decl_comment)
 
 #define FOREACH_BINARY_EXP(M) \
     FIRST_BINARY_EXP(M) \
