@@ -89,99 +89,99 @@ typedef void (*destroy_instance_t) (void* ctx);
 typedef void (*new_instance_t) (void ** result_p);
 typedef uint32_t (*sizeof_instance_t) (void);
 
-typedef void (*ReadI32_cb_t)(uint32_t value, void* userCtx);
 typedef void (*ReadI32_t) (void* ctx, const BCValue* val, const ReadI32_cb_t readCb, void* userCtx);
+typedef void (*ReadI32_cb_t)(uint32_t value, void* userCtx);
 
 typedef struct BackendInterface
 {
     const char* name;
 
-    const Initialize_t Initialize;
-    const InitializeV_t InitializeV;
-    const Finalize_t Finalize;
+    const void (*Initialize) (void* ctx, uint32_t n_args, ...);
+    const void (*InitializeV) (void* ctx, uint32_t n_args, va_list args);
+    const void (*Finalize) (void* ctx);
 
-    const beginFunction_t beginFunction;
-    const endFunction_t endFunction;
+    const uint32_t (*beginFunction) (void* ctx, uint32_t fnId, const void* fd);
+    const void* (*endFunction) (void* ctx, uint32_t fnIdx);
 
-    const genTemporary_t genTemporary;
-    const destroyTemporary_t destroyTemporary;
+    const BCValue (*genTemporary) (void* ctx, BCType bct);
+    const void (*destroyTemporary) (void* ctx, BCValue* tmp);
 
-    const genLocal_t genLocal;
-    const genParameter_t genParameter;
-    const emitFlag_t emitFlag;
+    const BCValue (*genLocal) (void* ctx, BCType bct, const char* name);
+    const BCValue (*genParameter) (void* ctx, BCType bct, const char* name);
+    const void (*emitFlag) (void* ctx, BCValue* lhs);
 
-    const Alloc_t Alloc;
-    const Assert_t Assert;
-    const MemCpy_t MemCpy;
+    const void (*Alloc) (void* ctx, BCValue *heapPtr, const BCValue* size);
+    const void (*Assert) (void* ctx, const BCValue* value, const BCValue* err);
+    const void (*MemCpy) (void* ctx, const BCValue* dst, const BCValue* src, const BCValue* size);
 
-    const File_t File;
-    const Line_t Line;
-    const Comment_t Comment;
-    const Prt_t Prt;
+    const void (*File) (void* ctx, const char* filename);
+    const void (*Line) (void* ctx, uint32_t line);
+    const void (*Comment) (void* ctx, const char* comment);
+    const void (*Prt) (void* ctx, const BCValue* value, bool isString);
 
-    const Set_t Set;
-    const Ult3_t Ult3;
-    const Ule3_t Ule3;
-    const Lt3_t Lt3;
-    const Le3_t Le3;
-    const Ugt3_t Ugt3;
-    const Uge3_t Uge3;
-    const Gt3_t Gt3;
-    const Ge3_t Ge3;
-    const Eq3_t Eq3;
-    const Neq3_t Neq3;
-    const Add3_t Add3;
-    const Sub3_t Sub3;
-    const Mul3_t Mul3;
-    const Div3_t Div3;
-    const Udiv3_t Udiv3;
-    const And3_t And3;
-    const Or3_t Or3;
-    const Xor3_t Xor3;
-    const Lsh3_t Lsh3;
-    const Rsh3_t Rsh3;
-    const Mod3_t Mod3;
-    const Umod3_t Umod3;
-    const Not_t Not;
+    const void (*Set) (void* ctx, BCValue *lhs, const BCValue* rhs);
+    const void (*Ult3) (void* ctx, BCValue *result, const BCValue* lhs, const BCValue* rhs);
+    const void (*Ule3) (void* ctx, BCValue *result, const BCValue* lhs, const BCValue* rhs);
+    const void (*Lt3) (void* ctx, BCValue *result, const BCValue* lhs, const BCValue* rhs);
+    const void (*Le3) (void* ctx, BCValue *result, const BCValue* lhs, const BCValue* rhs);
+    const void (*Ugt3) (void* ctx, BCValue *result, const BCValue* lhs, const BCValue* rhs);
+    const void (*Uge3) (void* ctx, BCValue *result, const BCValue* lhs, const BCValue* rhs);
+    const void (*Gt3) (void* ctx, BCValue *result, const BCValue* lhs, const BCValue* rhs);
+    const void (*Ge3) (void* ctx, BCValue *result, const BCValue* lhs, const BCValue* rhs);
+    const void (*Eq3) (void* ctx, BCValue *result, const BCValue* lhs, const BCValue* rhs);
+    const void (*Neq3) (void* ctx, BCValue *result, const BCValue* lhs, const BCValue* rhs);
+    const void (*Add3) (void* ctx, BCValue *result, const BCValue* lhs, const BCValue* rhs);
+    const void (*Sub3) (void* ctx, BCValue *result, const BCValue* lhs, const BCValue* rhs);
+    const void (*Mul3) (void* ctx, BCValue *result, const BCValue* lhs, const BCValue* rhs);
+    const void (*Div3) (void* ctx, BCValue *result, const BCValue* lhs, const BCValue* rhs);
+    const void (*Udiv3) (void* ctx, BCValue *result, const BCValue* lhs, const BCValue* rhs);
+    const void (*And3) (void* ctx, BCValue *result, const BCValue* lhs, const BCValue* rhs);
+    const void (*Or3) (void* ctx, BCValue *result, const BCValue* lhs, const BCValue* rhs);
+    const void (*Xor3) (void* ctx, BCValue *result, const BCValue* lhs, const BCValue* rhs);
+    const void (*Lsh3) (void* ctx, BCValue *result, const BCValue* lhs, const BCValue* rhs);
+    const void (*Rsh3) (void* ctx, BCValue *result, const BCValue* lhs, const BCValue* rhs);
+    const void (*Mod3) (void* ctx, BCValue *result, const BCValue* lhs, const BCValue* rhs);
+    const void (*Umod3) (void* ctx, BCValue *result, const BCValue* lhs, const BCValue* rhs);
+    const void (*Not) (void* ctx, BCValue *result, const BCValue* val);
 
-    const LoadFramePointer_t LoadFramePointer;
+    const void (*LoadFramePointer) (void* ctx, BCValue *result, const int32_t offset);
 
-    const Call_t Call;
-    const genLabel_t genLabel;
-    const Jmp_t Jmp;
-    const beginJmp_t beginJmp;
-    const endJmp_t endJmp;
-    const beginCndJmp_t beginCndJmp;
-    const endCndJmp_t endCndJmp;
+    const void (*Call) (void* ctx, BCValue *result, const BCValue* fn, const BCValue* args, uint32_t n_args);
+    const BCLabel (*genLabel) (void* ctx);
+    const void (*Jmp) (void* ctx, BCLabel target);
+    const uint32_t (*beginJmp) (void* ctx);
+    const void (*endJmp) (void* ctx, BCAddr atIp, BCLabel target);
+    const CndJmpBegin (*beginCndJmp) (void* ctx, const BCValue* cond, bool ifTrue);
+    const void (*endCndJmp) (void* ctx, const CndJmpBegin *jmp, BCLabel target);
 
-    const Load8_t Load8;
-    const Store8_t Store8;
-    const Load16_t Load16;
-    const Store16_t Store16;
-    const Load32_t Load32;
-    const Store32_t Store32;
-    const Load64_t Load64;
-    const Store64_t Store64;
+    const void (*Load8) (void* ctx, BCValue *dest, const BCValue* from);
+    const void (*Store8) (void* ctx, BCValue *dest, const BCValue* value);
+    const void (*Load16) (void* ctx, BCValue *dest, const BCValue* from);
+    const void (*Store16) (void* ctx, BCValue *dest, const BCValue* value);
+    const void (*Load32) (void* ctx, BCValue *dest, const BCValue* from);
+    const void (*Store32) (void* ctx, BCValue *dest, const BCValue* value);
+    const void (*Load64) (void* ctx, BCValue *dest, const BCValue* from);
+    const void (*Store64) (void* ctx, BCValue *dest, const BCValue* value);
 
-    const Throw_t Throw;
-    const PushCatch_t PushCatch;
-    const PopCatch_t PopCatch;
-    const Ret_t Ret;
+    const void (*Throw) (void* ctx, const BCValue* e);
+    const void (*PushCatch) (void* ctx);
+    const void (*PopCatch) (void* ctx);
+    const void (*Ret) (void* ctx, const BCValue* val);
 
-    const IToF32_t IToF32;
-    const IToF64_t IToF64;
-    const F32ToI_t F32ToI;
-    const F64ToI_t F64ToI;
-    const F32ToF64_t F32ToF64;
-    const F64ToF32_t F64ToF32;
+    const void (*IToF32) (void* ctx, BCValue *result, const BCValue* rhs);
+    const void (*IToF64) (void* ctx, BCValue *result, const BCValue* rhs);
+    const void (*F32ToI) (void* ctx, BCValue *result, const BCValue* rhs);
+    const void (*F64ToI) (void* ctx, BCValue *result, const BCValue* rhs);
+    const void (*F32ToF64) (void* ctx, BCValue *result, const BCValue* rhs);
+    const void (*F64ToF32) (void* ctx, BCValue *result, const BCValue* rhs);
 
-    const Memcmp_t Memcmp;
-    const Realloc_t Realloc;
+    const void (*Memcmp) (void* ctx, BCValue *result, const BCValue* lhs, const BCValue* rhs);
+    const void (*Realloc) (void* ctx, BCValue *result, const BCValue* lhs, const BCValue* rhs, const uint32_t size);
 
-    const run_t run;
-    const destroy_instance_t destroy_instance;
-    const new_instance_t new_instance;
-    const sizeof_instance_t sizeof_instance;
+    const BCValue (*run) (void* ctx, uint32_t fnIdx, const BCValue* args, uint32_t n_args);
+    const void (*destroy_instance) (void* ctx);
+    const void (*new_instance) (void ** result_p);
+    const uint32_t (*sizeof_instance) (void);
 
-    const ReadI32_t ReadI32;
+    const void (*ReadI32) (void* ctx, const BCValue* val, const ReadI32_cb_t readCb, void* userCtx);
 } BackendInterface;

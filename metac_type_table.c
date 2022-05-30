@@ -7,14 +7,17 @@
 #include <string.h>
 #include <stdlib.h>
 
-#define GET_OR_EMPTY_TYPE_DEF(TYPE_NAME, MEMBER_NAME) \
+#define GET_OR_EMPTY_TYPE_DEF(TYPE_NAME, MEMBER_NAME, CMP_FUNC) \
 metac_type_index_t MetaCTypeTable_GetOrEmpty ## MEMBER_NAME ## Type \
     (const METAC_TYPE_TABLE_T(TYPE_NAME)* table, \
      METAC_TYPE_TABLE_KEY_T(TYPE_NAME)* key) \
 { \
     metac_type_index_t result = \
         MetaCTypeTable_GetOrEmptyImpl((metac_type_table_t*)table, \
-        (metac_type_table_slot_t*)key, (sizeof(*key) - sizeof(metac_type_table_slot_t))); \
+                                      (metac_type_table_slot_t*)key, \
+                                      (sizeof(*key) - sizeof(metac_type_table_slot_t)), \
+                                      CMP_FUNC \
+        ); \
     return result; \
 }
 
@@ -33,7 +36,9 @@ void TypeTableInitImpl(metac_type_table_t* table, const uint32_t sizeof_slot, me
 #endif
 metac_type_index_t MetaCTypeTable_GetOrEmptyImpl(metac_type_table_t* table,
                                                  metac_type_table_slot_t* key,
-                                                 const uint32_t keyTrailingSize)
+                                                 const uint32_t keyTrailingSize,
+                                                 const bool (*cmpSlot)(const metac_type_table_slot_t*,
+                                                                       const metac_type_table_slot_t*))
 {
     metac_type_index_t result = {0};
 
@@ -53,10 +58,7 @@ metac_type_index_t MetaCTypeTable_GetOrEmptyImpl(metac_type_table_t* table,
 
         if (slot->HashKey == hash)
         {
-            if (memcmp(((char*)slot) + sizeof(metac_type_table_slot_t),
-                        ((char*)key) + sizeof(metac_type_table_slot_t),
-                        keyTrailingSize)
-                == 0)
+            if (cmpSlot(slot, key))
             {
                 result = slot->TypeIndex;
                 break;
@@ -78,18 +80,20 @@ metac_type_index_t MetaCTypeTable_GetOrEmptyImpl(metac_type_table_t* table,
 FOREACH_TABLE_MEMBER(GET_OR_EMPTY_TYPE_DEF);
 
 
-#define ADD_TYPE_DEF(TYPE_NAME, MEMBER_NAME) \
+#define ADD_TYPE_DEF(TYPE_NAME, MEMBER_NAME, CMP_FUNC) \
 void MetaCTypeTable_Add ## MEMBER_NAME ## Type \
     (METAC_TYPE_TABLE_T(TYPE_NAME)* table, \
      const METAC_TYPE_TABLE_KEY_T(TYPE_NAME)* key) \
 { \
         MetaCTypeTable_AddImpl((metac_type_table_t*)table, \
-        (metac_type_table_slot_t*)key, (sizeof(*key) - sizeof(metac_type_table_slot_t))); \
+        (metac_type_table_slot_t*)key, (sizeof(*key) - sizeof(metac_type_table_slot_t)), CMP_FUNC); \
 }
 
 void MetaCTypeTable_AddImpl(metac_type_table_t* self,
                             const metac_type_table_slot_t *entry,
-                            uint32_t trailingSize)
+                            const uint32_t trailingSize,
+                            bool (*cmpSlot)(const metac_type_table_slot_t*,
+                                            const metac_type_table_slot_t*))
 {
     assert(entry->HashKey != 0 && entry->TypeIndex.v != 0 && entry->TypeIndex.v != -1);
 

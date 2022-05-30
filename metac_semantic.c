@@ -10,6 +10,30 @@
 
 bool IsExpressionNode(metac_node_kind_t);
 
+bool Expression_IsEqual_(metac_sema_expression_t* a,
+                         metac_sema_expression_t* b)
+{
+    bool result = true;
+    if (a == b)
+        assert(0);
+        // pointer equality comparision should have been done
+        // before calling this
+    if (a->Kind == b->Kind)
+    {
+        switch(a->Kind)
+        {
+            case exp_signed_integer:
+               result = a->ValueI64 == b->ValueI64;
+            break;
+            default: assert(0); // Not handled right now
+        }
+    }
+    else
+        result = false;
+Lret:
+    return result;
+}
+
 static inline bool isBasicType(metac_type_kind_t typeKind)
 {
     if ((typeKind >= type_void) & (typeKind <= type_unsigned_long_long))
@@ -714,7 +738,7 @@ metac_type_index_t MetaCSemantic_doTypeSemantic_(metac_semantic_state_t* self,
 
         uint32_t hash = elementTypeIndex.v;
 
-        metac_type_typedef_slot_t key = {hash, 0, elementTypeIndex};
+        metac_type_typedef_slot_t key = {hash, 0, typedef_->Identifier, elementTypeIndex};
 
         result =
             MetaCTypeTable_GetOrEmptyTypedefType(&self->TypedefTypeTable, &key);
