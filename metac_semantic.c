@@ -83,12 +83,12 @@ uint32_t AggregateHash(metac_type_aggregate_t* agg)
     uint32_t hash = ~0;
     for(int i = 0; i < agg->FieldCount; i++)
     {
-        metac_type_aggregate_field_t field = agg->Fields[i];
-        if (!field.Header.Hash)
+        metac_type_aggregate_field_t* field = agg->Fields +i;
+        if (!field->Header.Hash)
         {
-            field.Header.Hash = FieldHash(&field);
+            field->Header.Hash = FieldHash(field);
         }
-        hash = CRC32C_VALUE(hash, field.Header.Hash);
+        hash = CRC32C_VALUE(hash, field->Header.Hash);
     }
 
     return hash;
@@ -780,10 +780,13 @@ metac_type_index_t MetaCSemantic_doTypeSemantic_(metac_semantic_state_t* self,
         // where we then do the layout determination we need to look it up in the cache
 
 
-        metac_type_aggregate_field_t* tmpFields
+       metac_type_aggregate_field_t* tmpFields
             = alloca(sizeof(metac_type_aggregate_field_t)
             * agg->FieldCount);
-        metac_type_aggregate_t tmpSemaAggMem = {};
+        // ideally it wouldn't matter if this memset was here or not
+        memset(tmpFields, 0x0, sizeof(*tmpFields) * agg->FieldCount);
+
+        metac_type_aggregate_t tmpSemaAggMem = {0};
         tmpSemaAggMem.Header.Kind = agg->DeclKind;
         metac_type_aggregate_t* tmpSemaAgg = &tmpSemaAggMem;
         tmpSemaAgg->Fields = tmpFields;

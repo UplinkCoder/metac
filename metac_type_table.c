@@ -121,10 +121,7 @@ void MetaCTypeTable_AddImpl(metac_type_table_t* self,
         }
         if (slot->HashKey == hash)
         {
-            assert (memcmp(((char*)slot) + sizeof(metac_type_table_slot_t),
-                        ((char*)entry)   + sizeof(metac_type_table_slot_t),
-                        trailingSize)
-                != 0);
+            assert (!cmpSlot(slot, entry));
             // this assert makes sure we don't have duplicates
         }
     }
