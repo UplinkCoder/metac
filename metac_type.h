@@ -27,7 +27,9 @@ typedef enum metac_type_index_kind_t
 
     type_index_typedef       = 0xA,
 
-    // unused range B-D B, C, D
+    type_index_tuple         = 0xB,
+
+    // unused range C-D C, D
 
     type_index_extended      = 0xE,
     type_index_invalid       = 0xF

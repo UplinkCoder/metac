@@ -706,7 +706,7 @@ metac_token_t* MetaCLexerLexNextToken(metac_lexer_t* self,
 LcontinueLexnig:
     {
         uint32_t column = state->Column;
-
+        // ignore all the invisible ascii codes
         while (c && c <= 32)
         {
             if (c == '\n')

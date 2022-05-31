@@ -618,6 +618,25 @@ static inline void PrintExpression(metac_printer_t* self, metac_expression_t* ex
         if (!IsBinaryExp(exp->E1->Kind))
             PrintChar(self, ')');
     }
+    else if (exp->Kind == exp_tuple)
+    {
+        PrintChar(self, '{');
+        exp_tuple_t* tupleElement =
+            exp->TupleExpressionList;
+        for(int i = 0;
+            i < exp->TupleExpressionCount;
+            i++)
+        {
+            PrintExpression(self, tupleElement->Expression);
+            if (i != (exp->TupleExpressionCount - 1))
+            {
+                PrintChar(self, ',');
+                PrintSpace(self);
+            }
+            tupleElement = tupleElement->Next;
+        }
+        PrintChar(self, '}');
+    }
     else if (exp->Kind == exp_type)
     {
         PrintChar(self, '(');
@@ -860,4 +879,30 @@ const char* MetaCPrinter_PrintStatement(metac_printer_t* self, metac_statement_t
     self->StringMemory[self->StringMemorySize++] = '\0';
 
     return result;
+}
+
+const char* MetaCPrinter_PrintNode(metac_printer_t* self, metac_node_t node)
+{
+    const char* result = self->StringMemory + self->StringMemorySize;
+    uint32_t posBegin = self->StringMemorySize;
+
+    if (node->Kind > node_exp_invalid && node->Kind < node_exp_max)
+    {
+        PrintExpression(self, (metac_expression_t*) node);
+    }
+    else if (node->Kind > stmt_min && node->Kind < stmt_max)
+    {
+        PrintStatement(self, (metac_statement_t*) node);
+    }
+    else if (node->Kind > decl_min && node->Kind < decl_max)
+    {
+        PrintDeclaration(self, (metac_declaration_t*) node, 0);
+    }
+    else
+        assert(0);
+
+    int advancement = self->StringMemorySize - posBegin;
+    self->StringMemory[self->StringMemorySize++] = '\0';
+    return result;
+
 }

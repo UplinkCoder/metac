@@ -26,6 +26,12 @@ typedef struct exp_argument_t
     struct exp_argument_t* Next;
 } exp_argument_t;
 
+typedef struct exp_tuple_t
+{
+    struct metac_expression_t* Expression;
+    struct exp_tuple_t* Next;
+} exp_tuple_t;
+
 typedef struct metac_expression_t
 {
     EXPRESSION_HEADER
@@ -46,10 +52,12 @@ typedef struct metac_expression_t
         };
         // case exp_sizeof:
         struct {
-            union {
-                // struct metac_expression_t* SizeofExp;
-                struct decl_type_t* SizeofType;
-            };
+            struct metac_expression_t* SizeofExp;
+        };
+        // case exp_tuple:
+        struct {
+            struct exp_tuple_t* TupleExpressionList;
+            uint32_t TupleExpressionCount;
         };
         // case exp_cast:
         struct {

@@ -1127,6 +1127,9 @@ static inline const char* BasicTypeToChars(metac_type_index_t typeIndex)
         case type_invalid :
             assert(0);
 
+        case type_type:
+            return "type";
+
         case type_void :
             return "void";
 
@@ -1374,6 +1377,17 @@ metac_sema_expression_t* MetaCSemantic_doExprSemantic_(metac_semantic_state_t* s
         case exp_signed_integer :
             result->TypeIndex = MetaCSemantic_GetTypeIndex(self, type_int, (decl_type_t*)emptyPointer);
         break;
+        case exp_tuple:
+        {
+            exp_tuple_t* tupleElement = expr->TupleExpressionCount;
+            for(int i = 0;
+                i < expr->TupleExpressionCount;
+                i++)
+            {
+
+            }
+        }
+        break;
         case exp_dot_compiler:
         {
             if (expr->E1->Kind != exp_call)
@@ -1402,7 +1416,9 @@ metac_sema_expression_t* MetaCSemantic_doExprSemantic_(metac_semantic_state_t* s
         } break;
         case exp_type:
         {
-            result->TypeIndex = MetaCSemantic_doTypeSemantic(self, expr->TypeExp);
+            metac_type_index_t TypeIndex
+                = MetaCSemantic_doTypeSemantic(self, expr->TypeExp);
+            result->TypeIndex.v = TYPE_INDEX_V(type_index_basic, type_type);
         } break;
         case exp_sizeof:
         {

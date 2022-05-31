@@ -35,7 +35,6 @@ int GenerateFunctionCode(metac_codegen_function_t* cgfunction, void* c)
                 BCValue retval = BCGen_interface.genTemporary(c, BCType_i32);
                 // TODO we don't want to use WalkTree on this
                 // as we want to generate functionbodies indepentnt of vstore and dstore
-
                 BCGen_interface.Ret(c, &retval);
             } break;
         }

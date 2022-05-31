@@ -270,6 +270,11 @@ int main(int argc, const char* argv[])
         // FreeSema
         MetaCParser_Free(&tmpParser);
     }
+    else
+    {
+        MetaCSemantic_Init(&sema, &g_lineParser, 0);
+        MetaCSemantic_PushScope(&sema, scope_parent_module, 1);
+    }
 
     metac_printer_t printer;
     MetaCPrinter_Init(&printer,
@@ -457,6 +462,28 @@ LnextLine:
                 continue;
             }
         }
+        else if (line[0] == '.')
+        {
+            if (line_length == sizeof("scope")
+             && 0 == memcmp(line + 1, "scope", strlen("scope")))
+            {
+                if (sema.CurrentScope)
+                {
+                    metac_scope_table_t* table = &sema.CurrentScope->ScopeTable;
+                    uint32_t nMembers = table->SlotsUsed;
+
+                    for(uint32_t slotIdx = 0, memberIdx = 0; memberIdx < nMembers; slotIdx++)
+                    {
+                        metac_scope_table_slot_t slot = table->Slots[slotIdx];
+                        if (slot.Hash)
+                        {
+                            printf("Member [%u] : %s\n", memberIdx++, MetaCPrinter_PrintNode(&printer, slot.Node));
+                        }
+                    }
+                }
+                goto LnextLine;
+            }
+        }
 
         if (parseMode != parse_mode_file)
         {
@@ -563,6 +590,8 @@ LnextLine:
                     }
 
                     DeclarationStore_SetDecl(&dstore, dstoreId, decl);
+                    printf("Registering %s [v=%u] in scope\n", idChars, idPtr.v);
+                    MetaCSemantic_RegisterInScope(&sema, idPtr, decl);
                     goto LnextLine;
                 }
                 else
