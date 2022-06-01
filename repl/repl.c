@@ -297,9 +297,6 @@ int main(int argc, const char* argv[])
     MetaCDotPrinter_Init(&dot_printer, &g_lineParser.IdentifierTable);
     g_lineParser.DotPrinter = &dot_printer;
 
-    declaration_store_t dstore;
-    DeclarationStore_Init(&dstore);
-
     variable_store_t vstore;
     VariableStore_Init(&vstore);
 
@@ -523,7 +520,7 @@ LnextLine:
 
                 metac_expression_t printExpStorage;
 
-                metac_sema_expression_t eval_exp = evalWithVariables(result, &vstore, &dstore);
+                metac_sema_expression_t eval_exp = evalWithVariables(result, &vstore);
                 printExpStorage.ValueU64 = eval_exp.ValueU64;
                 printExpStorage.Kind = eval_exp.Kind;
                 result = &eval_exp;
@@ -548,7 +545,6 @@ LnextLine:
                     MetaCSemantic_doExprSemantic(&sema, exp);
 
                 const char* type_str = TypeToChars(&sema, result->TypeIndex);
-                printf("type_str = %p\n", type_str);
 
                 printf("typeof(%s) = %s\n", str, type_str);
                 // XXX static and fixed size state like _ReadContext
@@ -574,6 +570,7 @@ LnextLine:
                     const uint32_t length = strlen(idChars);
                     uint32_t idHash = crc32c_nozero(~0, idChars, length);
                     uint32_t idKey = IDENTIFIER_KEY(idHash, length);
+/*
                     metac_identifier_ptr_t dstoreId
                         = GetOrAddIdentifier(&dstore.Table, idKey, idChars);
 
@@ -590,6 +587,7 @@ LnextLine:
                     }
 
                     DeclarationStore_SetDecl(&dstore, dstoreId, decl);
+*/
                     printf("Registering %s [v=%u] in scope\n", idChars, idPtr.v);
                     MetaCSemantic_RegisterInScope(&sema, idPtr, decl);
                     goto LnextLine;

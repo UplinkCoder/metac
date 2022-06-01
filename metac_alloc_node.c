@@ -110,7 +110,8 @@ noinline void _newMemRealloc(void** memP, uint32_t* capacityP, const uint32_t el
     M(metac_scope_t, _newScopes) \
     M(metac_type_typedef_t, _newSemaTypedefs) \
     M(metac_type_functiontype_t, _newSemaFunctiontypes) \
-    M(metac_type_ptr_t, _newSemaPtrTypes)
+    M(metac_type_ptr_t, _newSemaPtrTypes) \
+    M(metac_type_array_t, _newSemaArrayTypes)
 
 
 #define FREELIST(PREFIX) \
@@ -217,6 +218,12 @@ uint32_t TypedefIndex(metac_type_typedef_t* typedef_)
     return result;
 }
 
+uint32_t ArrayTypeIndex(metac_type_array_t* array)
+{
+    uint32_t result = (array - _newSemaArrayTypes_mem);
+    return result;
+}
+
 uint32_t PtrTypeIndex(metac_type_ptr_t* ptr)
 {
     uint32_t result = (ptr - _newSemaPtrTypes_mem);
@@ -262,6 +269,12 @@ metac_type_typedef_t* TypedefPtr(uint32_t index)
 metac_type_ptr_t* PtrTypePtr(uint32_t index)
 {
     metac_type_ptr_t* result = (_newSemaPtrTypes_mem + index);
+    return result;
+}
+
+metac_type_array_t* ArrayTypePtr(uint32_t index)
+{
+    metac_type_array_t* result = (_newSemaArrayTypes_mem + index);
     return result;
 }
 
@@ -465,6 +478,20 @@ metac_type_ptr_t* AllocNewSemaPtrType(metac_type_index_t elementTypeIndex)
     return result;
 }
 
+metac_type_array_t* AllocNewSemaArrayType(metac_type_index_t elementTypeIndex, uint32_t dim)
+{
+    metac_type_array_t* result = 0;
+
+    REALLOC_BOILERPLATE(_newSemaArrayTypes);
+    result = _newSemaArrayTypes_mem + INC(_newSemaArrayTypes_size);
+
+    result->Header.Kind = decl_type_array;
+    result->ElementType = elementTypeIndex;
+    result->Dim = dim;
+    result->Header.Serial = INC(_nodeCounter);
+
+    return result;
+}
 
 metac_type_functiontype_t* AllocNewSemaFunctionype(metac_type_index_t returnType,
                                                    metac_type_index_t* parameterTypes,

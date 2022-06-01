@@ -88,8 +88,7 @@ uint32_t _ReadContextCapacity;
 
 static inline void WalkTree(void* c, BCValue* result,
                             metac_sema_expression_t* e,
-                            variable_store_t* vstore,
-                            declaration_store_t* dstore);
+                            variable_store_t* vstore);
 
 //FIXME we never hit this ... why?
 // maybe an issue with the declaration store or maybe with
@@ -114,8 +113,7 @@ static inline void WalkTree(void* c, BCValue* result,
 
 static inline void WalkTree(void* c, BCValue* result,
                             metac_sema_expression_t* e,
-                            variable_store_t* vstore,
-                            declaration_store_t* dstore)
+                            variable_store_t* vstore)
 {
     BCValue lhsT = BCGen_interface.genTemporary(c, BCType_i32);
     BCValue rhsT = BCGen_interface.genTemporary(c, BCType_i32);
@@ -131,8 +129,8 @@ static inline void WalkTree(void* c, BCValue* result,
 
     if (IsBinaryExp(op))
     {
-        WalkTree(c, lhs, e->E1, vstore, dstore);
-        WalkTree(c, rhs, e->E2, vstore, dstore);
+        WalkTree(c, lhs, e->E1, vstore);
+        WalkTree(c, rhs, e->E2, vstore);
     }
 
 
@@ -216,28 +214,28 @@ static inline void WalkTree(void* c, BCValue* result,
         } break;
         case exp_paren:
         {
-            WalkTree(c, result, e->E1, vstore, dstore);
+            WalkTree(c, result, e->E1, vstore);
         } break;
         case exp_compl:
         {
-            WalkTree(c, rhs, e->E1, vstore, dstore);
+            WalkTree(c, rhs, e->E1, vstore);
             BCGen_interface.Not(c, result, rhs);
         } break;
         case exp_not:
         {
-            WalkTree(c, lhs, e->E1, vstore, dstore);
+            WalkTree(c, lhs, e->E1, vstore);
             BCValue zero = imm32(0);
             BCGen_interface.Neq3(c, result, lhs, &zero);
         } break;
         case exp_umin:
         {
-            WalkTree(c, lhs, e->E1, vstore, dstore);
+            WalkTree(c, lhs, e->E1, vstore);
             BCValue zero = imm32(0);
             BCGen_interface.Sub3(c, result, &zero, lhs);
         } break;
         case exp_post_increment:
         {
-            WalkTree(c, lhs, e->E1, vstore, dstore);
+            WalkTree(c, lhs, e->E1, vstore);
             BCGen_interface.Set(c, result, lhs);
             BCValue one = imm32(1);
             BCGen_interface.Add3(c, lhs, lhs, &one);
@@ -259,24 +257,7 @@ static inline void WalkTree(void* c, BCValue* result,
         {
             assert(e->E1->Kind == exp_identifier);
             metac_identifier_ptr_t idPtr = e->E1->IdentifierPtr;
-            metac_identifier_ptr_t dStoreIdPtr =
-                FindMatchingIdentifier(&dstore->Table,
-                                       &g_lineParser.IdentifierTable,
-                                       idPtr);
-            if (dStoreIdPtr.v)
-            {
-                int fIndex = -1;
-
-                metac_declaration_t* decl =
-                    DeclarationStore_GetDecl(dstore, dStoreIdPtr);
-
-                if (fIndex)
-                {
-                    const BCValue findex_value = imm32(fIndex);
-                    BCValue args[1] = {imm32(42)};
-                    BCGen_interface.Call(c, result, &findex_value, args, 1);
-                }
-            }
+            assert(0); // Not supported for the time being
         } break;
     }
 
@@ -294,8 +275,7 @@ static inline void WalkTree(void* c, BCValue* result,
 }
 
 metac_sema_expression_t evalWithVariables(metac_sema_expression_t* e,
-                                          variable_store_t* vstore,
-                                          declaration_store_t* dstore)
+                                          variable_store_t* vstore)
 {
     void* c;
     BCGen_interface.new_instance(&c);
@@ -308,7 +288,7 @@ metac_sema_expression_t evalWithVariables(metac_sema_expression_t* e,
         BCValue result = BCGen_interface.genLocal(c, (BCType){BCTypeEnum_i64}, "result");
 
         // walk the tree;
-        WalkTree(c, &result, e, vstore, dstore);
+        WalkTree(c, &result, e, vstore);
 
         BCGen_interface.Ret(c, &result);
 
@@ -335,16 +315,6 @@ void VariableStore_Init(variable_store_t* self)
     IdentifierTableInit(&self->Table, IDENTIFIER_LENGTH_SHIFT);
 }
 
-void DeclarationStore_Init(declaration_store_t* self)
-{
-    self->DeclarationCapacity = 32;
-    self->DeclarationSize = 0;
-    self->Declarations = (stored_declaration_t*)
-        malloc(sizeof(stored_declaration_t) * self->DeclarationCapacity);
-
-    IdentifierTableInit(&self->Table, IDENTIFIER_LENGTH_SHIFT);
-}
-
 metac_identifier_ptr_t IdentifierPtrFromDecl(metac_declaration_t* decl)
 {
     metac_identifier_ptr_t idPtr = {0};
@@ -367,65 +337,4 @@ metac_identifier_ptr_t IdentifierPtrFromDecl(metac_declaration_t* decl)
     }
 
     return idPtr;
-}
-
-metac_declaration_t* DeclarationStore_GetDecl(declaration_store_t* dstore,
-                                              metac_identifier_ptr_t dStoreId)
-{
-    metac_declaration_t* result = 0;
-
-    for(int declIndex = 0;
-        declIndex < dstore->DeclarationSize;
-        declIndex++)
-    {
-        metac_declaration_t* decl = dstore->Declarations[declIndex].Declaration;
-        uint32_t idPtrV = IdentifierPtrFromDecl(decl).v;
-        printf("Checking idPtrV %u == %u\n", idPtrV, dStoreId.v);
-        if (idPtrV == dStoreId.v)
-        {
-            result = decl;
-            break;
-        }
-    }
-
-    if(!result)
-    {
-        fprintf(stderr, "Couldn't find decl for dStoreId: %u\n", dStoreId.v);
-    }
-
-    return result;
-}
-
-void DeclarationStore_SetDecl(declaration_store_t* dstore,
-                              metac_identifier_ptr_t dStoreId,
-                              metac_declaration_t* decl)
-{
-    metac_declaration_t** d = 0;
-
-    assert(IdentifierPtrFromDecl(decl).v == dStoreId.v);
-
-    for(int declIndex = 0;
-        declIndex < dstore->DeclarationSize;
-        declIndex++)
-    {
-        stored_declaration_t* declP = dstore->Declarations + declIndex;
-        if (IdentifierPtrFromDecl(declP->Declaration).v == dStoreId.v)
-        {
-            d = &declP->Declaration;
-            break;
-        }
-    }
-/*
-    if (d)
-    {
-        const char* idChars = IdentifierPtrToCharPtr(&dstore->Table, dStoreId);
-        fprintf(stderr, "overwriting stored version of %s\n", idChars);
-    }
-*/
-    if (!d)
-    {
-        d = &dstore->Declarations[dstore->DeclarationSize++].Declaration;
-    }
-
-    (*d) = decl;
 }

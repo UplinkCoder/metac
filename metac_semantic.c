@@ -761,6 +761,40 @@ metac_type_aggregate_t* MetaCSemantic_PersistTemporaryAggregate(metac_type_aggre
 
     return semaAgg;
 }
+
+metac_type_index_t MetaCSemantic_GetArrayTypeOf(metac_semantic_state_t* state,
+                                                metac_type_index_t elementTypeIndex,
+                                                uint32_t dimension)
+{
+    uint32_t hash = EntangleInts(TYPE_INDEX_INDEX(elementTypeIndex), dimension);
+    metac_type_array_slot_t key = {hash, 0, elementTypeIndex, dimension};
+
+    metac_type_index_t result =
+        MetaCTypeTable_GetOrEmptyArrayType(&state->ArrayTypeTable, &key);
+
+    if (key.TypeIndex.v == 0)
+    {
+        fprintf(stderr, "Alloc new array\n");
+        metac_type_array_t* arrayType =
+            AllocNewSemaArrayType(elementTypeIndex);
+        uint32_t idx = ArrayTypeIndex(arrayType);
+
+        key.TypeIndex.v = TYPE_INDEX_V(type_index_array, idx);
+        result = key.TypeIndex;
+        //result = key.TypeIndex;
+        MetaCTypeTable_AddArrayType(&state->ArrayTypeTable, &key);
+
+    }
+    else
+    {
+        assert(0);
+    }
+
+
+    return result;
+}
+
+
 metac_type_index_t MetaCSemantic_doTypeSemantic_(metac_semantic_state_t* self,
                                                  decl_type_t* type,
                                                  const char* callFun,
@@ -773,6 +807,21 @@ metac_type_index_t MetaCSemantic_doTypeSemantic_(metac_semantic_state_t* self,
     if (type->DeclKind == decl_type && isBasicType(typeKind))
     {
         result = MetaCSemantic_GetTypeIndex(self, typeKind, type);
+    }
+    else if (type->DeclKind == decl_type_array)
+    {
+        decl_type_array_t* arrayType =
+            cast(decl_type_array_t*)type;
+        metac_type_index_t elementType =
+            MetaCSemantic_doTypeSemantic(self, arrayType->ElementType);
+        metac_sema_expression_t* dim =
+            MetaCSemantic_doExprSemantic(self, arrayType->Dim);
+
+        result =
+            MetaCSemantic_GetArrayTypeOf(self,
+                                        elementType,
+                                        (uint32_t)dim->ValueU64);
+        int k = 12;
     }
     else if (type->DeclKind == decl_type_typedef)
     {
@@ -1068,8 +1117,10 @@ metac_node_t NodeFromTypeIndex(metac_type_index_t typeIndex)
         case type_index_struct:
             return (metac_node_t)StructPtr(index);
         case type_index_union:
-            return (metac_node_t)UnionIndex(index);
+            return (metac_node_t)UnionPtr(index);
     }
+
+    return 0;
 }
 
 metac_sema_declaration_t* MetaCSemantic_doDeclSemantic_(metac_semantic_state_t* self,
@@ -1152,20 +1203,6 @@ metac_sema_declaration_t* MetaCSemantic_doDeclSemantic_(metac_semantic_state_t* 
 #define INC(v)
     (__builtin_atomic_fetch_add(&v, __ATOMIC_RELEASE))
 #endif
-
-metac_type_index_t MetaCSemantic_GetArrayTypeOf(metac_semantic_state_t* state,
-                                                metac_type_index_t elementTypeIndex,
-                                                uint32_t dimension)
-{
-    uint32_t hash = EntangleInts(TYPE_INDEX_INDEX(elementTypeIndex), dimension);
-    metac_type_array_slot_t key = {hash, 0, elementTypeIndex, dimension};
-
-    metac_type_index_t result =
-        MetaCTypeTable_GetOrEmptyArrayType(&state->ArrayTypeTable, &key);
-
-    return result;
-}
-
 
 #include "metac_printer.h"
 static inline const char* BasicTypeToChars(metac_type_index_t typeIndex)
@@ -1534,6 +1571,7 @@ metac_sema_expression_t* MetaCSemantic_doExprSemantic_(metac_semantic_state_t* s
         {
             metac_type_index_t TypeIndex
                 = MetaCSemantic_doTypeSemantic(self, expr->TypeExp);
+            result->TypeExp = TypeIndex;
             result->TypeIndex.v = TYPE_INDEX_V(type_index_basic, type_type);
         } break;
         case exp_sizeof:
@@ -1541,8 +1579,14 @@ metac_sema_expression_t* MetaCSemantic_doExprSemantic_(metac_semantic_state_t* s
             uint32_t size = -1;
             metac_sema_expression_t* e1 =
                 MetaCSemantic_doExprSemantic(self, expr->E1);
+            metac_type_index_t type = e1->TypeIndex;
+            if (type.v == TYPE_INDEX_V(type_index_basic, type_type))
+            {
+                type = e1->TypeExp;
+            }
+
             if (e1->TypeIndex.v != 0 && e1->TypeIndex.v != -1)
-                size = MetaCSemantic_GetTypeSize(self, e1->TypeIndex);
+                size = MetaCSemantic_GetTypeSize(self, type);
 
             result->TypeIndex.v = TYPE_INDEX_V(type_index_basic, type_size_t);
             result->Kind = exp_signed_integer;

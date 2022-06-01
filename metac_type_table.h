@@ -117,8 +117,8 @@ static inline bool EnumSlotsEqual(const metac_type_table_slot_t* a,
 static inline bool ArraySlotsEqual(const metac_type_table_slot_t* a,
                                    const metac_type_table_slot_t* b)
 {
-    metac_type_array_slot_t* slotA = cast(metac_type_array_slot_t*) a;
-    metac_type_array_slot_t* slotB = cast(metac_type_array_slot_t*) b;
+    metac_type_array_slot_t* slotA = cast(metac_type_enum_slot_t*) a;
+    metac_type_array_slot_t* slotB = cast(metac_type_enum_slot_t*) b;
     return (slotA->ElementTypeIndex.v == slotB->ElementTypeIndex.v
          || slotA->Dimension == slotB->Dimension);
 }
