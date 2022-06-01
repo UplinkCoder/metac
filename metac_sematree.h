@@ -79,7 +79,15 @@ typedef struct metac_sema_expression_t
             struct metac_sema_expression_t* CastExp;
             struct metac_type_index_t CastType;
         };
-
+        // case exp_type
+        struct {
+            struct metac_type_index_t TypeExp;
+        };
+        // case exp_tuple
+        struct {
+            struct metac_sema_expression_t* TupleExpressions;
+            uint32_t TupleExpressionCount;
+        };
         // case exp_argument:
         struct {
             sema_exp_argument_list_t* ArgumentList;
@@ -450,6 +458,8 @@ typedef struct metac_sema_declaration_t
         sema_decl_variable_t sema_decl_variable;
         sema_decl_type_typedef_t sema_decl_typedef;
         sema_decl_type_t sema_decl_type;
+        sema_decl_enum_member_t sema_decl_enum_member;
+        sema_decl_type_enum_t sema_decl_type_enum;
         sema_decl_type_ptr_t sema_decl_type_ptr;
         sema_decl_function_t sema_decl_function;
         sema_decl_type_array_t sema_decl_type_array;

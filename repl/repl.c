@@ -210,7 +210,7 @@ int main(int argc, const char* argv[])
 
         metac_semantic_state_t tmpSema;
         MetaCSemantic_Init(&tmpSema, &tmpParser, 0);
-        MetaCSemantic_PushScope(&tmpSema, scope_parent_module, 0);
+        MetaCSemantic_PushNewScope(&tmpSema, scope_parent_module, 0);
 
         presemantic_context_t presemanticContext = {
             crc32c_nozero(~0, "Presemantic", sizeof("Presemantic") - 1),
@@ -261,7 +261,7 @@ int main(int argc, const char* argv[])
         }
 
         MetaCSemantic_Init(&sema, &g_lineParser, compilerStruct);
-        MetaCSemantic_PushScope(&sema, scope_parent_module, 1);
+        MetaCSemantic_PushNewScope(&sema, scope_parent_module, 1);
 
 
 //        MetaCSemantic_Handoff(&tmpSema, (metac_sema_declaration_t*)compilerStruct,
@@ -273,7 +273,7 @@ int main(int argc, const char* argv[])
     else
     {
         MetaCSemantic_Init(&sema, &g_lineParser, 0);
-        MetaCSemantic_PushScope(&sema, scope_parent_module, 1);
+        MetaCSemantic_PushNewScope(&sema, scope_parent_module, 1);
     }
 
     metac_printer_t printer;
@@ -477,7 +477,7 @@ LnextLine:
                         metac_scope_table_slot_t slot = table->Slots[slotIdx];
                         if (slot.Hash)
                         {
-                            printf("Member [%u] : %s\n", memberIdx++, MetaCPrinter_PrintNode(&printer, slot.Node));
+                            printf("Member [%u] : %s\n", memberIdx++, MetaCPrinter_PrintSemaNode(&printer, &sema, slot.Node));
                         }
                     }
                 }

@@ -339,14 +339,47 @@ void MetaCSemantic_PopTemporaryScope_(metac_semantic_state_t* self,
     printf("[%u] Popping tmpScope {%s:%u}\n", self->TemporaryScopeDepth, file, line);
     self->CurrentScope = self->CurrentScope->Parent;
 }
+/*
+#define MetaCSemantic_PushMountedScope(SELF, MNTSCOPE) \
+    MetaCSemantic_PushMountedScope_(SELF, MNTSCOPE, __LINE__, __FILE__)
 
-metac_scope_t* MetaCSemantic_PushScope(metac_semantic_state_t* self,
-                                       metac_scope_parent_kind_t parentKind,
-                                       metac_node_t parentNode)
+metac_scope_t* MetaCSemantic_PushMountedScope_(metac_semantic_state_t* self,
+                                               metac_scope_t* mntScope,
+                                               uint32_t line,
+                                               const char* file)
+{
+    printf("[%u]Pushing mntScope {%s:%u}\n", self->TemporaryScopeDepth, file, line);
+    assert((tmpScope->scopeFlags & scope_flag_mounted) == 0);
+
+    assert ((!self->TemporaryScopeDepth) || IsTemporaryScope(self->CurrentScope));
+    self->MountedScopeDepth++;
+
+    tmpScope->Parent = self->CurrentScope;
+    self->CurrentScope = tmpScope;
+
+    return tmpScope;
+}
+ *
+#define MetaCSemantic_PopMountedScope(SELF) \
+    MetaCSemantic_PopMountedScope_(SELF, __LINE__, __FILE__)
+void MetaCSemantic_PopMountedScope_(metac_semantic_state_t* self,
+//                                      metac_scope_t* tmpScope,
+                                      uint32_t line,
+                                      const char* file)
+{
+    assert(self->TemporaryScopeDepth != 0 && IsTemporaryScope(self->CurrentScope));
+    --self->MountedScopeDepth;
+    printf("[%u] Popping mntScope {%s:%u}\n", self->TemporaryScopeDepth, file, line);
+    self->CurrentScope = self->CurrentScope->Parent;
+}
+*/
+metac_scope_t* MetaCSemantic_PushNewScope(metac_semantic_state_t* self,
+                                          metac_scope_parent_kind_t parentKind,
+                                          metac_node_t parentNode)
 {
     metac_scope_parent_t scopeParent = ScopeParent(parentKind, parentNode);
-    self->CurrentScope = MetaCScope_PushScope(self->CurrentScope,
-                                              scopeParent);
+    self->CurrentScope = MetaCScope_PushNewScope(self->CurrentScope,
+                                                 scopeParent);
     return self->CurrentScope;
 }
 
@@ -375,7 +408,7 @@ metac_sema_statement_t* MetaCSemantic_doStatementSemantic_(metac_semantic_state_
             metac_scope_parent_t parent = {SCOPE_PARENT_V(scope_parent_statement,
                                            BlockStatementIndex(semaBlockStatement))};
 
-            MetaCSemantic_PushScope(self,
+            MetaCSemantic_PushNewScope(self,
                                     scope_parent_block,
                                     (metac_node_t)semaBlockStatement);
 
@@ -441,7 +474,7 @@ metac_type_index_t MetaCSemantic_GetTypeIndex(metac_semantic_state_t* state,
     return result;
 }
 
-bool IsAggregateType(metac_declaration_kind_t declKind)
+bool IsAggregateTypeDecl(metac_declaration_kind_t declKind)
 {
     if (declKind == decl_type_struct || declKind == decl_type_union)
     {
@@ -500,6 +533,11 @@ uint32_t MetaCSemantic_GetTypeSize(metac_semantic_state_t* self,
         result = MetaCSemantic_GetTypeSize(self,
                                            elementTypeIndex);
     }
+    else if (TYPE_INDEX_KIND(typeIndex) == type_index_struct)
+    {
+        metac_type_aggregate_t* struct_ = StructPtr(TYPE_INDEX_INDEX(typeIndex));
+        result = struct_->Size;
+    }
     else
     {
         assert(0);
@@ -543,6 +581,12 @@ uint32_t MetaCSemantic_GetTypeAlignment(metac_semantic_state_t* self,
         result = MetaCSemantic_GetTypeAlignment(self,
                                            elementTypeIndex);
     }
+    else if (TYPE_INDEX_KIND(typeIndex) == type_index_struct)
+    {
+        metac_type_aggregate_t* struct_ = StructPtr(TYPE_INDEX_INDEX(typeIndex));
+        result = struct_->Alignment;
+    }
+
     else
     {
         assert(0);
@@ -759,7 +803,7 @@ metac_type_index_t MetaCSemantic_doTypeSemantic_(metac_semantic_state_t* self,
         scope_insert_error_t scopeInsertError =
             MetaCSemantic_RegisterInScope(self, typedef_->Identifier, (metac_node_t)semaTypedef);
     }
-    else if (IsAggregateType(type->DeclKind))
+    else if (IsAggregateTypeDecl(type->DeclKind))
     {
         decl_type_struct_t* agg = (decl_type_struct_t*) type;
         if (type->DeclKind == decl_type_struct)
@@ -830,12 +874,9 @@ metac_type_index_t MetaCSemantic_doTypeSemantic_(metac_semantic_state_t* self,
                     metac_type_aggregate_t* semaAgg =
                         MetaCSemantic_PersistTemporaryAggregate(tmpSemaAgg);
                     structKey.TypeIndex.v = TYPE_INDEX_V(type_index_struct, StructIndex(semaAgg));
-
                     MetaCTypeTable_AddStructType(&self->StructTypeTable, &structKey);
                     result = structKey.TypeIndex;
                 }
-                free(tmpScopeMem.ScopeTable.Slots);
-
                 // MetaCSemantic_RegisterInScopeStructNamespace()
             } break;
 
@@ -853,6 +894,8 @@ metac_type_index_t MetaCSemantic_doTypeSemantic_(metac_semantic_state_t* self,
             default: assert(0);
 
         }
+        MetaCScopeTable_Free(&tmpSemaAgg->Scope->ScopeTable);
+
         MetaCSemantic_PopTemporaryScope(self);
     }
     else if (IsPointerType(type->DeclKind))
@@ -929,6 +972,12 @@ metac_type_index_t MetaCSemantic_doTypeSemantic_(metac_semantic_state_t* self,
             metac_type_typedef_t* typedef_ = (metac_type_typedef_t*)node;
             result = typedef_->Type;
         }
+        if (node != emptyNode &&
+            node->Kind == node_decl_type_struct)
+        {
+            metac_type_aggregate_t* struct_ = (metac_type_aggregate_t*)node;
+            result.v = TYPE_INDEX_V(type_index_struct, StructIndex((struct_)));
+        }
 /*
         if (node == emptyNode)
         {
@@ -985,7 +1034,7 @@ sema_decl_function_t* MetaCSemantic_doFunctionSemantic(metac_semantic_state_t* s
 
     metac_scope_parent_t Parent = {SCOPE_PARENT_V(scope_parent_function, FunctionIndex(f))};
 
-    f->Scope = MetaCSemantic_PushScope(self, scope_parent_function, (metac_node_t)f);
+    f->Scope = MetaCSemantic_PushNewScope(self, scope_parent_function, (metac_node_t)f);
     // now we compute the position on the stack and Register them in the scope.
 
     uint32_t frameOffset = 0;
@@ -1338,6 +1387,24 @@ metac_type_index_t MetaCSemantic_CommonSubtype(metac_semantic_state_t* self,
     else
         return (metac_type_index_t){-1};
 }
+
+const metac_scope_t* GetAggregateScope(metac_type_aggregate_t* agg)
+{
+    return agg->Scope;
+}
+
+static bool IsAggregateType(metac_type_index_kind_t typeKind)
+{
+    switch(typeKind)
+    {
+        case type_index_struct:
+        case type_index_union:
+        case type_index_class:
+            return true;
+    }
+
+    return false;
+}
 metac_sema_expression_t* MetaCSemantic_doExprSemantic_(metac_semantic_state_t* self,
                                                        metac_expression_t* expr,
                                                        const char* callFun,
@@ -1347,7 +1414,8 @@ metac_sema_expression_t* MetaCSemantic_doExprSemantic_(metac_semantic_state_t* s
 
     result = AllocNewSemaExpression(expr);
 
-    if (IsBinaryExp(expr->Kind))
+    if (IsBinaryExp(expr->Kind)
+        && (expr->Kind != exp_arrow || expr->Kind != exp_dot))
     {
         MetaCSemantic_PushExpr(self, result);
 
@@ -1361,6 +1429,54 @@ metac_sema_expression_t* MetaCSemantic_doExprSemantic_(metac_semantic_state_t* s
     {
         case exp_invalid:
             assert(0);
+
+        case exp_arrow:
+        case exp_dot:
+        {
+            result->E1 = MetaCSemantic_doExprSemantic(self, expr->E1);
+            // for the semantic of E2 we need to do the lookup in the scope of
+            // the type of E1
+            const metac_type_index_kind_t typeIndexKind
+                = TYPE_INDEX_KIND(result->E1->TypeIndex);
+            uint32_t typeIndexIndex = TYPE_INDEX_INDEX(result->E1->TypeIndex);
+
+            if (IsAggregateType(typeIndexKind))
+            {
+
+                metac_type_aggregate_t* agg = 0;
+                switch(typeIndexKind)
+                {
+                case type_index_struct:
+                    agg = StructPtr(typeIndexIndex);
+                break;
+                case type_index_union:
+                    agg = UnionPtr(typeIndexIndex);
+                break;
+                case type_index_class:
+                    assert(0);
+                }
+                assert(agg != 0);
+
+                assert(expr->E2->Kind == exp_identifier);
+                uint32_t idPtrHash = crc32c(~0,
+                                            &expr->E2->IdentifierPtr,
+                                            sizeof(expr->E2->IdentifierPtr));
+#if 0
+// TODO enable scope search! which means we store a compacted scope table on persistance of the tmp scope
+                metac_node_t node =
+                    MetaCScope_LookupIdentifier(agg->Scope,
+                                                idPtrHash,
+                                                expr->E2->IdentifierPtr);
+
+                if (node == emptyNode)
+                {
+                    break;
+                }
+#endif
+                int k = 2;
+            }
+
+        } break;
 
         case exp_add:
             result->TypeIndex =
@@ -1449,22 +1565,11 @@ metac_sema_expression_t* MetaCSemantic_doExprSemantic_(metac_semantic_state_t* s
                 }
                 if (node->Kind == node_decl_variable)
                 {
-                    metac_sema_declaration_t* sd =
-                        MetaCSemantic_doDeclSemantic(self, (metac_declaration_t*)node);
-                    // an exp_variable might resolve to something
-                    // diffrent than a variable so check that it is one now
-                    if(sd->DeclKind == decl_variable)
-                    {
-                        sema_decl_variable_t* variable =
-                            (sema_decl_variable_t*) sd;
-                        result->Kind = exp_variable;
-                        result->TypeIndex = variable->TypeIndex;
-                        result->Variable = variable;
-                    }
+                    sema_decl_variable_t* v = (sema_decl_variable_t*)node;
+
+                    result->TypeIndex = v->TypeIndex;
                 }
             }
-            //assert(0);
-            //
         }
         break;
         case exp_addr:

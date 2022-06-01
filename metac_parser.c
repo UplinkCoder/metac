@@ -637,7 +637,8 @@ static inline uint32_t OpToPrecedence(metac_expression_kind_t exp)
     {
         return 16;
     }
-    else if (exp == exp_umin || exp == exp_unary_dot)
+    else if (exp == exp_umin || exp == exp_unary_dot
+          || exp == exp_sizeof)
     {
         return 17;
     }
@@ -2111,12 +2112,13 @@ void LineLexerInit(void)
 
     ACCEL_INIT(g_lineLexer, Identifier, IDENTIFIER_LENGTH_SHIFT);
     ACCEL_INIT(g_lineLexer, String, STRING_LENGTH_SHIFT);
-    ACCEL_INIT(g_lineParser, Identifier, IDENTIFIER_LENGTH_SHIFT);
-    ACCEL_INIT(g_lineParser, String, STRING_LENGTH_SHIFT);
 
     if (g_lineParser.SpecialNamePtr_Compiler.v == 0)
+    {
+        ACCEL_INIT(g_lineParser, Identifier, IDENTIFIER_LENGTH_SHIFT);
+        ACCEL_INIT(g_lineParser, String, STRING_LENGTH_SHIFT);
         InitSpecialIdentifier(&g_lineParser);
-
+    }
 
     if (!g_lineParser.BlockStatementStack)
     {

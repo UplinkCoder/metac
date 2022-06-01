@@ -95,8 +95,11 @@ typedef enum metac_scope_flags_t
     scope_flag_none,
 
     scope_flag_temporary = (1 << 0),
+    /// mounted scopes are temporary scopes
+    /// which get mounted over the current scope
+    scope_flag_mounted   = (1 << 1),
 
-    scope_flag_max = (1 << 1)
+    scope_flag_max = (1 << 2)
 } metac_scope_flags_t;
 
 typedef struct metac_scope_t
@@ -104,9 +107,10 @@ typedef struct metac_scope_t
     metac_scope_flags_t scopeFlags;
     metac_scope_parent_t Owner;
     struct metac_scope_t* Parent;
-
-    metac_scope_table_t ScopeTable;
-
+    union {
+        metac_scope_table_t ScopeTable;
+        const struct metac_scope_t* MountedScope;
+    } ;
     uint32_t Serial;
 } metac_scope_t;
 
@@ -121,5 +125,5 @@ scope_insert_error_t MetaCScope_RegisterIdentifier(metac_scope_t* self,
                                                    metac_identifier_ptr_t idPtr,
                                                    metac_node_t node);
 
-metac_scope_t* MetaCScope_PushScope(metac_scope_t* self, metac_scope_parent_t owner);
+metac_scope_t* MetaCScope_PushNewScope(metac_scope_t* self, metac_scope_parent_t owner);
 #endif // _METAC_SCOPE_H_

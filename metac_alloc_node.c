@@ -265,6 +265,12 @@ metac_type_ptr_t* PtrTypePtr(uint32_t index)
     return result;
 }
 
+metac_type_functiontype_t* FunctiontypePtr(uint32_t index)
+{
+    metac_type_functiontype_t* result = (_newSemaFunctiontypes_mem + index);
+    return result;
+}
+
 metac_declaration_t* AllocNewDeclaration_(metac_declaration_kind_t kind, size_t nodeSize, void** result_ptr, uint32_t line)
 {
     metac_declaration_t* result = 0;

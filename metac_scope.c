@@ -22,6 +22,13 @@ void MetaCScopeTable_Init(metac_scope_table_t* self)
     MetaCScopeTable_InitN(self, 255);
 }
 
+void MetaCScopeTable_Free(metac_scope_table_t* self)
+{
+    free(self->Slots);
+    self->Slots = 0;
+    self->SlotCount_Log2 = 0;
+    self->SlotsUsed = 0;
+}
 
 metac_scope_table_slot_t* MetaCScopeTable_Lookup(metac_scope_table_t* self,
                                                  const uint32_t idPtrHash,
@@ -201,7 +208,7 @@ metac_node_header_t* MetaCScope_LookupIdentifier(metac_scope_t* self,
     return result;
 }
 
-metac_scope_t* MetaCScope_PushScope(metac_scope_t *self, metac_scope_parent_t scopeOwner)
+metac_scope_t* MetaCScope_PushNewScope(metac_scope_t *self, metac_scope_parent_t scopeOwner)
 {
     metac_scope_t* result = AllocNewScope(self, scopeOwner);
 
