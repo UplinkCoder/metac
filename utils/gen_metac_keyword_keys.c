@@ -5,7 +5,7 @@
 
 #include "kw_macros.h"
 
-void main(int argc, char* argv)
+void main(int argc, const char* argv[])
 {
 #define KW_WRITE_DEFINE(KW) \
     printf("#define %s_key 0x%x\n", \
