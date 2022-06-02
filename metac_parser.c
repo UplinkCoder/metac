@@ -1,7 +1,7 @@
 #ifndef _METAC_PARSER_C_
 #define _METAC_PARSER_C_
 
-#define TYPE_EXP
+#undef TYPE_EXP
 
 #ifndef ACCEL
 #  error "You must compile the parser with ACCEL set"
@@ -910,17 +910,22 @@ static inline metac_expression_t* ParseDotSpecialExpression(metac_parser_t* self
                                                             metac_expression_kind_t k)
 {
     metac_expression_t* result = 0;
-    MetaCParser_Match(self, tok_dot);
-    metac_token_t* peek;
-    peek = MetaCParser_PeekToken(self, 1);
-    if (!peek)
+
+    if (MetaCParser_PeekMatch(self, tok_dot, true))
     {
-        fprintf(stderr, "Expected . expression after '.special'\n");
-    }
-    else
-    {
-        result = AllocNewExpression(k);
-        result->E1 = MetaCParser_ParseExpression(self, expr_flags_none, 0);
+        MetaCParser_Match(self, tok_dot);
+
+        metac_token_t* peek;
+        peek = MetaCParser_PeekToken(self, 1);
+        if (!peek)
+        {
+            fprintf(stderr, "Expected expression after '.special.'\n");
+        }
+        else
+        {
+            result = AllocNewExpression(k);
+            result->E1 = MetaCParser_ParseExpression(self, expr_flags_none, 0);
+        }
     }
 
     return result;

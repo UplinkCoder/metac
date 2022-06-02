@@ -497,54 +497,16 @@ bool IsPointerType(metac_declaration_kind_t declKind)
 #define U32(VAR) \
     (*(uint32_t*)(&VAR))
 #endif
-/// Returns size in byte or INVALID_SIZE on error
-uint32_t MetaCSemantic_GetTypeSize(metac_semantic_state_t* self,
-                                   metac_type_index_t typeIndex)
+
+static inline uint32_t Align(uint32_t size, uint32_t alignment)
 {
-    uint32_t result = INVALID_SIZE;
-
-    if (TYPE_INDEX_KIND(typeIndex) == type_index_basic)
-    {
-        uint32_t idx = TYPE_INDEX_INDEX(typeIndex);
-
-        if ((idx >= type_unsigned_char)
-         && (idx <= type_unsigned_long))
-        {
-            idx -= ((uint32_t)type_unsigned_char - (uint32_t)type_char);
-        }
-        else if (idx == type_unsigned_long_long)
-        {
-            idx = type_long_long;
-        }
-        result =
-            MetaCTargetInfo_GetBasicSize(&default_target_info, (basic_type_kind_t) idx);
-    }
-    else if (TYPE_INDEX_KIND(typeIndex) == type_index_ptr
-        ||   TYPE_INDEX_KIND(typeIndex) == type_index_functiontype)
-    {
-        result = default_target_info.PtrSize;
-    }
-    else if (TYPE_INDEX_KIND(typeIndex) == type_index_typedef)
-    {
-        uint32_t idx = TYPE_INDEX_INDEX(typeIndex);
-        metac_type_index_t elementTypeIndex =
-            self->TypedefTypeTable.Slots[idx].ElementTypeIndex;
-
-        result = MetaCSemantic_GetTypeSize(self,
-                                           elementTypeIndex);
-    }
-    else if (TYPE_INDEX_KIND(typeIndex) == type_index_struct)
-    {
-        metac_type_aggregate_t* struct_ = StructPtr(TYPE_INDEX_INDEX(typeIndex));
-        result = struct_->Size;
-    }
-    else
-    {
-        assert(0);
-    }
-
-    return result;
+    assert(alignment >= 1);
+    uint32_t alignmentMinusOne = (alignment - 1);
+    uint32_t alignSize = (size + alignmentMinusOne);
+    uint32_t alignMask = ~(alignmentMinusOne);
+    return (alignSize & alignMask);
 }
+
 
 uint32_t MetaCSemantic_GetTypeAlignment(metac_semantic_state_t* self,
                                         metac_type_index_t typeIndex)
@@ -586,7 +548,76 @@ uint32_t MetaCSemantic_GetTypeAlignment(metac_semantic_state_t* self,
         metac_type_aggregate_t* struct_ = StructPtr(TYPE_INDEX_INDEX(typeIndex));
         result = struct_->Alignment;
     }
+    else if (TYPE_INDEX_KIND(typeIndex) == type_index_array)
+    {
+        uint32_t idx = TYPE_INDEX_INDEX(typeIndex);
+        metac_type_array_t* arrayType_ = ArrayTypePtr(idx);
+        metac_type_index_t elementTypeIndex = arrayType_->ElementType;
+        result = MetaCSemantic_GetTypeAlignment(self, elementTypeIndex);
+    }
 
+    else
+    {
+        assert(0);
+    }
+
+    return result;
+}
+
+/// Returns size in byte or INVALID_SIZE on error
+uint32_t MetaCSemantic_GetTypeSize(metac_semantic_state_t* self,
+                                   metac_type_index_t typeIndex)
+{
+    uint32_t result = INVALID_SIZE;
+
+    if (TYPE_INDEX_KIND(typeIndex) == type_index_basic)
+    {
+        uint32_t idx = TYPE_INDEX_INDEX(typeIndex);
+
+        if ((idx >= type_unsigned_char)
+         && (idx <= type_unsigned_long))
+        {
+            idx -= ((uint32_t)type_unsigned_char - (uint32_t)type_char);
+        }
+        else if (idx == type_unsigned_long_long)
+        {
+            idx = type_long_long;
+        }
+        result =
+            MetaCTargetInfo_GetBasicSize(&default_target_info, (basic_type_kind_t) idx);
+    }
+    else if (TYPE_INDEX_KIND(typeIndex) == type_index_ptr
+        ||   TYPE_INDEX_KIND(typeIndex) == type_index_functiontype)
+    {
+        result = default_target_info.PtrSize;
+    }
+    else if (TYPE_INDEX_KIND(typeIndex) == type_index_typedef)
+    {
+        uint32_t idx = TYPE_INDEX_INDEX(typeIndex);
+        metac_type_index_t elementTypeIndex =
+            self->TypedefTypeTable.Slots[idx].ElementTypeIndex;
+
+        result = MetaCSemantic_GetTypeSize(self,
+                                           elementTypeIndex);
+    }
+    else if (TYPE_INDEX_KIND(typeIndex) == type_index_struct)
+    {
+        metac_type_aggregate_t* struct_ = StructPtr(TYPE_INDEX_INDEX(typeIndex));
+        result = struct_->Size;
+    }
+    else if (TYPE_INDEX_KIND(typeIndex) == type_index_array)
+    {
+        uint32_t idx = TYPE_INDEX_INDEX(typeIndex);
+        metac_type_array_t* arrayType = ArrayTypePtr(idx);
+        metac_type_index_t elementTypeIndex = arrayType->ElementType;
+
+        uint32_t baseSize = MetaCSemantic_GetTypeSize(self,
+                                                      elementTypeIndex);
+        uint32_t alignedSize = Align(baseSize,
+                                     MetaCSemantic_GetTypeAlignment(self,
+                                                                    elementTypeIndex));
+        result = alignedSize * arrayType->Dim;
+    }
     else
     {
         assert(0);
@@ -651,15 +682,6 @@ scope_insert_error_t MetaCSemantic_RegisterInScope(metac_semantic_state_t* self,
         result = MetaCScope_RegisterIdentifier(self->CurrentScope, idPtr, node);
 
     return result;
-}
-
-static inline uint32_t Align(uint32_t size, uint32_t alignment)
-{
-    assert(alignment >= 1);
-    uint32_t alignmentMinusOne = (alignment - 1);
-    uint32_t alignSize = (size + alignmentMinusOne);
-    uint32_t alignMask = ~(alignmentMinusOne);
-    return (alignSize & alignMask);
 }
 
 bool MetaCSemantic_ComputeStructLayoutPopulateScope(metac_semantic_state_t* self,
@@ -733,7 +755,7 @@ metac_type_index_t MetaCSemantic_GetPtrTypeOf(metac_semantic_state_t* state,
 
     metac_type_index_t result =
         MetaCTypeTable_GetOrEmptyPtrType(&state->PtrTypeTable, &key);
-    if (result.v == 0 || result.v == -1)
+    if (result.v == 0)
     {
         metac_type_ptr_t* ptrType =
             AllocNewSemaPtrType(elementTypeIndex);
@@ -772,11 +794,11 @@ metac_type_index_t MetaCSemantic_GetArrayTypeOf(metac_semantic_state_t* state,
     metac_type_index_t result =
         MetaCTypeTable_GetOrEmptyArrayType(&state->ArrayTypeTable, &key);
 
-    if (key.TypeIndex.v == 0)
+    if (result.v == 0)
     {
         fprintf(stderr, "Alloc new array\n");
         metac_type_array_t* arrayType =
-            AllocNewSemaArrayType(elementTypeIndex);
+            AllocNewSemaArrayType(elementTypeIndex, dimension);
         uint32_t idx = ArrayTypeIndex(arrayType);
 
         key.TypeIndex.v = TYPE_INDEX_V(type_index_array, idx);
@@ -785,15 +807,10 @@ metac_type_index_t MetaCSemantic_GetArrayTypeOf(metac_semantic_state_t* state,
         MetaCTypeTable_AddArrayType(&state->ArrayTypeTable, &key);
 
     }
-    else
-    {
-        assert(0);
-    }
-
 
     return result;
 }
-
+const char* MetaCExpressionKind_toChars(metac_expression_kind_t);
 
 metac_type_index_t MetaCSemantic_doTypeSemantic_(metac_semantic_state_t* self,
                                                  decl_type_t* type,
@@ -816,7 +833,11 @@ metac_type_index_t MetaCSemantic_doTypeSemantic_(metac_semantic_state_t* self,
             MetaCSemantic_doTypeSemantic(self, arrayType->ElementType);
         metac_sema_expression_t* dim =
             MetaCSemantic_doExprSemantic(self, arrayType->Dim);
-
+        if (dim->Kind != exp_signed_integer)
+        {
+            printf("Array dimension should eval to integer but it is: %s\n",
+                MetaCExpressionKind_toChars(dim->Kind));
+        }
         result =
             MetaCSemantic_GetArrayTypeOf(self,
                                         elementType,
@@ -918,7 +939,7 @@ metac_type_index_t MetaCSemantic_doTypeSemantic_(metac_semantic_state_t* self,
 
                 result =
                     MetaCTypeTable_GetOrEmptyStructType(&self->StructTypeTable, &structKey);
-                if (result.v == 0 || result.v == -1)
+                if (result.v == 0)
                 {
                     metac_type_aggregate_t* semaAgg =
                         MetaCSemantic_PersistTemporaryAggregate(tmpSemaAgg);
@@ -992,7 +1013,7 @@ metac_type_index_t MetaCSemantic_doTypeSemantic_(metac_semantic_state_t* self,
         MetaCSemantic_PopTemporaryScope(self);
 
         result = MetaCTypeTable_GetOrEmptyFunctionType(&self->FunctionTypeTable, &key);
-        if (result.v == 0 || result.v == -1)
+        if (result.v == 0)
         {
             metac_type_functiontype_t* funcType =
                 AllocNewSemaFunctionype(returnType, parameterTypes, nParams);
@@ -1412,7 +1433,6 @@ bool MetaCSemantic_CanHaveAddress(metac_semantic_state_t* self,
 #define offsetof(st, m) \
     ((size_t)((char *)&((st *)0)->m - (char *)0))
 
-const char* MetaCExpressionKind_toChars(metac_expression_kind_t);
 ///TODO FIXME
 /// this is not nearly complete!
 metac_type_index_t MetaCSemantic_CommonSubtype(metac_semantic_state_t* self,
@@ -1512,7 +1532,16 @@ metac_sema_expression_t* MetaCSemantic_doExprSemantic_(metac_semantic_state_t* s
 #endif
                 int k = 2;
             }
+        } break;
 
+        case exp_typeof:
+        {
+            metac_sema_expression_t* E1 =
+                MetaCSemantic_doExprSemantic(self, expr->E1);
+            result->Kind = exp_type;
+            result->TypeIndex.v =
+                TYPE_INDEX_V(type_index_basic, type_type);
+            result->TypeExp = E1->TypeIndex;
         } break;
 
         case exp_add:
@@ -1610,7 +1639,8 @@ metac_sema_expression_t* MetaCSemantic_doExprSemantic_(metac_semantic_state_t* s
                 if (node->Kind == node_decl_variable)
                 {
                     sema_decl_variable_t* v = (sema_decl_variable_t*)node;
-
+                    result->Kind = exp_variable;
+                    result->Variable = v;
                     result->TypeIndex = v->TypeIndex;
                 }
             }

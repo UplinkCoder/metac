@@ -521,13 +521,18 @@ LnextLine:
                 metac_expression_t printExpStorage;
 
                 metac_sema_expression_t eval_exp = evalWithVariables(result, &vstore);
-                printExpStorage.ValueU64 = eval_exp.ValueU64;
-                printExpStorage.Kind = eval_exp.Kind;
                 result = &eval_exp;
 
                 const char* str = MetaCPrinter_PrintExpression(&printer, exp);
-                const char* result_str = MetaCPrinter_PrintExpression(&printer, &printExpStorage);
-
+                const char* result_str;
+                if (eval_exp.Kind == exp_type)
+                {
+                    result_str = MetaCPrinter_PrintSemaNode(&printer, &sema, &eval_exp);
+                }
+                else
+                {
+                    result_str = MetaCPrinter_PrintSemaNode(&printer, &sema, &eval_exp);
+                }
                 printf("%s = %s\n", str, result_str);
                 MetaCPrinter_Reset(&printer);
                 // XXX static and fixed size state like _ReadContext
@@ -630,22 +635,26 @@ LnextLine:
             } break;
 
             case parse_mode_stmt :
-                    stmt = MetaCParser_ParseStatementFromString(line);
-                    if (stmt)
-                        printf("stmt = %s\n", MetaCPrinter_PrintStatement(&printer, stmt));
-                    else
-                       fprintf(stderr, "couldn't parse statement\n");
-                    MetaCPrinter_Reset(&printer);
+            {
+                stmt = MetaCParser_ParseStatementFromString(line);
+                if (stmt)
+                    printf("stmt = %s\n", MetaCPrinter_PrintStatement(&printer, stmt));
+                else
+                   fprintf(stderr, "couldn't parse statement\n");
+                MetaCPrinter_Reset(&printer);
+                goto LnextLine;
+            }
+            case parse_mode_decl :
+            {
+                decl = MetaCParser_ParseDeclarationFromString(line);
+                if (decl)
+                    printf("decl = %s\n", MetaCPrinter_PrintDeclaration(&printer, decl));
+                else
+                    printf("Couldn't parse Declaration\n");
+                linenoiseSetMultiLine(false);
 
                 goto LnextLine;
-            case parse_mode_decl :
-                    decl = MetaCParser_ParseDeclarationFromString(line);
-                    if (decl)
-                        printf("decl = %s\n", MetaCPrinter_PrintDeclaration(&printer, decl));
-                    else
-                        printf("Couldn't parse Declaration\n");
-                    linenoiseSetMultiLine(false);
-                goto LnextLine;
+            }
 
             case parse_mode_ds :
             {

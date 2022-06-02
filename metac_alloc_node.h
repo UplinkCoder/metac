@@ -48,6 +48,7 @@ sema_stmt_block_t* AllocNewSemaBlockStatement(sema_stmt_block_t* Parent, uint32_
                                               void** result_ptr);
 
 metac_scope_t* AllocNewScope(metac_scope_t* parent, metac_scope_parent_t owner);
+metac_type_array_t* AllocNewSemaArrayType(metac_type_index_t elementTypeIndex, uint32_t dim);
 
 #define StatementIndex(STMT) StatementIndex_((metac_sema_statement_t*)STMT)
 

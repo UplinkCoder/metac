@@ -269,6 +269,10 @@ static inline void PrintType(metac_printer_t* self, decl_type_t* type)
             {
                 PrintString(self, "long double", sizeof("long double") - 1);
             }
+            else if (type->TypeKind == type_type)
+            {
+                PrintString(self, "type", sizeof("type") - 1);
+            }
             else if (type->TypeKind == type_identifier)
             {
                 PrintIdentifier(self, type->TypeIdentifier);

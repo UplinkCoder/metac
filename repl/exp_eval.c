@@ -144,6 +144,7 @@ static inline void WalkTree(void* c, BCValue* result,
             assert(0);
         } break;
 
+
         case exp_assign:
         {
             assert(e->E1->Kind == exp_variable);
@@ -154,7 +155,18 @@ static inline void WalkTree(void* c, BCValue* result,
             BCGen_interface.Set(c, result, lhs);
         } break;
 
-        case exp_signed_integer :
+        case exp_tuple:
+        {
+
+        } break;
+
+        case exp_type:
+        {
+            BCValue imm = imm32(e->TypeExp.v);
+            BCGen_interface.Set(c, result, &imm);
+        } break;
+
+        case exp_signed_integer:
         {
             BCValue imm = imm32((uint32_t)e->ValueU64);
             BCGen_interface.Set(c, result, &imm);
@@ -297,10 +309,19 @@ metac_sema_expression_t evalWithVariables(metac_sema_expression_t* e,
     BCGen_interface.Finalize(c);
 
     BCValue res = BCGen_interface.run(c, fIdx, 0, 0);
-
     metac_sema_expression_t result;
-    result.Kind = exp_signed_integer;
-    result.ValueI64 = res.imm64.imm64;
+
+    if (e->TypeIndex.v == TYPE_INDEX_V(type_index_basic, type_type))
+    {
+        result.Kind = exp_type;
+        result.TypeIndex.v = TYPE_INDEX_V(type_index_basic, type_type);
+        result.TypeExp.v = res.imm32.imm32;
+    }
+    else
+    {
+        result.Kind = exp_signed_integer;
+        result.ValueI64 = res.imm64.imm64;
+    }
 
     return result;
 }
