@@ -9,8 +9,6 @@
 #else
 #  if ACCEL == ACCEL_TABLE
 #    include "metac_identifier_table.c"
-#  elif ACCEL == ACCEL_TREE
-#    include "metac_identifier_tree.c"
 #  else
 #    error "Unknow ACCEL value "
 #    define DO_NOT_COMPILE
@@ -840,7 +838,7 @@ metac_expression_t* MetaCParser_ParsePrimaryExpression(metac_parser_t* self)
     {
         // self->OpenBraces++;
         MetaCParser_Match(self, tok_lBrace);
-        exp_tuple_t* tupleList = emptyPointer;
+        exp_tuple_t* tupleList = (exp_tuple_t*)emptyPointer;
 
         exp_tuple_t** nextElement = &tupleList;
         uint32_t nElements = 0;
@@ -1278,7 +1276,7 @@ bool IsBinaryExp(metac_expression_kind_t kind)
 
 bool IsBinaryAssignExp(metac_expression_kind_t kind)
 {
-   return (kind >= exp_add_ass && kind  <= exp_rsh_ass);
+   return (kind >= exp_add_ass && kind <= exp_rsh_ass);
 }
 
 
@@ -1368,6 +1366,7 @@ static inline bool IsDeclType(metac_declaration_t* decl)
 
 #define U32(VAR) \
     (*(uint32_t*)(&VAR))
+
 static decl_type_array_t* ParseArraySuffix(metac_parser_t* self, decl_type_t* type);
 
 decl_type_t* MetaCParser_ParseTypeDeclaration(metac_parser_t* self, metac_declaration_t* parent, metac_declaration_t* prev)

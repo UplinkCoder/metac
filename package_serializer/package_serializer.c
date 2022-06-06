@@ -2,6 +2,7 @@
 #include "../utils/read_file.c"
 #include "../crc32c.h"
 #include "../metac_parser_obj.c"
+#include "../metac_driver.c"
 //#include "../3rd_party/tracyC.h"
 
 #include <stdlib.h>

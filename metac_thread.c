@@ -1,6 +1,9 @@
 __thread void* tlsCtx;
 
-void startThread(void* (*fn)(void*), void* userPointer)
+#include <pthread.h>
+
+void startThread(void* (*fn)(void*),
+                 worker_context_t* workerContext)
 {
     tlsCtx = (void*)1;
 }

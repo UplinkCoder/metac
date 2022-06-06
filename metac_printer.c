@@ -814,7 +814,7 @@ static inline void PrintSemaType(metac_printer_t* self,
     {
         case type_index_basic:
         {
-            decl_type_t basicType = {0};
+            decl_type_t basicType = {(metac_declaration_kind_t)0};
             basicType.DeclKind = decl_type;
             metac_type_kind_t Kind =
                 cast(metac_type_kind_t) TYPE_INDEX_INDEX(typeIndex);
@@ -923,19 +923,22 @@ static inline void PrintSemaExpression(metac_printer_t* self,
         PrintSemaType(self, sema,semaExp->CastType);
         PrintChar(self, ')');
 
-        PrintExpression(self, semaExp->CastExp);
+        PrintSemaExpression(self, sema, semaExp->CastExp);
     }
     else if (semaExp->Kind == exp_call)
     {
         PrintSemaExpression(self, sema, semaExp->E1);
         PrintChar(self, '(');
-
-        for(exp_argument_t* arg = (exp_argument_t*)semaExp->E2;
-            arg != _emptyPointer;
-            arg = arg->Next)
+        sema_exp_argument_list_t* argList =
+            semaExp->E2->ArgumentList;
+        const metac_sema_expression_t* onePastLastArg =
+            argList->Arguments + argList->ArgumentCount;
+        for(metac_sema_expression_t* arg = argList->Arguments;
+            arg < onePastLastArg;
+            arg++)
         {
-            PrintSemaExpression(self, sema, arg->Expression);
-            if (arg->Next != _emptyPointer)
+            PrintSemaExpression(self, sema, arg);
+            if (arg != (onePastLastArg - 1))
                 PrintString(self, ", ", 2);
         }
         PrintChar(self, ')');
@@ -1044,7 +1047,7 @@ static inline void PrintSemaVariable(metac_printer_t* self,
 {
     if (TYPE_INDEX_KIND(variable->TypeIndex) == type_index_functiontype)
     {
-        sema_decl_type_functiontype_t *funcType =
+        metac_type_functiontype_t* funcType =
             FunctiontypePtr(TYPE_INDEX_INDEX(variable->TypeIndex));
 
         PrintSemaType(self, sema, funcType->ReturnType);
@@ -1127,7 +1130,11 @@ static inline void PrintSemaDeclaration(metac_printer_t* self,
                 memberIndex < struct_->FieldCount;
                 memberIndex++)
             {
-                PrintSemaDeclaration(self, sema, f + memberIndex, level);
+                //PrintSemaDeclaration(self, sema, f + memberIndex, level);
+                sema_decl_variable_t synVar;
+                synVar.TypeIndex = (f + memberIndex)->Type;
+                synVar.VarIdentifier = (f + memberIndex)->Identifier;
+                PrintSemaVariable(self, sema, &synVar);
                 //PrintChar(self, ';');
                 if (memberIndex && memberIndex != (struct_->FieldCount - 1))
                     PrintIndent(self);
