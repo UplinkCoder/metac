@@ -1,0 +1,4 @@
+The main version of this lives at:  https://github.com/tinycthread/tinycthread originally
+The version use comes from:         https://github.com/UplinkCoder/tinycthread
+
+

@@ -23,6 +23,7 @@ if [ -d $DST ]; then
        metac_semantic_lru.h \
        metac_type_table.c metac_type_table.h \
        metac_thread.c metac_thread.h \
+       metac_task.c metac_task.h \
        metac_parser_obj.c metac_semantic_obj.c \
        metac_target_info.c metac_target_info.h \
        metac_default_target_info.h \
@@ -36,6 +37,11 @@ if [ -d $DST ]; then
     mkdir -p $DST/3rd_party
     cp 3rd_party/bsr.c 3rd_party/bsf.c \
        $DST/3rd_party
+
+    mkdir -p $DST/3rd_party/tinycthread
+    cp 3rd_party/tinycthread/tinycthread.c \
+       3rd_party/tinycthread/tinycthread.h \
+       $DST/3rd_party/tinycthread
 
     mkdir -p $DST/$TRACY_DIR
     cp $TRACY_DIR/TracyC.h \
