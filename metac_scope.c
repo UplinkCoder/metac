@@ -207,12 +207,3 @@ metac_node_header_t* MetaCScope_LookupIdentifier(metac_scope_t* self,
     }
     return result;
 }
-
-metac_scope_t* MetaCScope_PushNewScope(metac_scope_t *self, metac_scope_parent_t scopeOwner)
-{
-    metac_scope_t* result = AllocNewScope(self, scopeOwner);
-
-    MetaCScopeTable_Init(&result->ScopeTable);
-
-    return result;
-}

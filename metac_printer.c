@@ -825,7 +825,7 @@ static inline void PrintSemaType(metac_printer_t* self,
         {
             uint32_t structIdx = TYPE_INDEX_INDEX(typeIndex);
             metac_identifier_ptr_t structName =
-                StructPtr(structIdx)->Identifier;
+                StructPtr(sema, structIdx)->Identifier;
             PrintString(self, "struct ", sizeof("struct"));
             if (structName.v != empty_identifier.v)
             {

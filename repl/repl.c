@@ -139,7 +139,7 @@ static inline int Presemantic(metac_node_t node, void* ctx)
     {
         decl_type_typedef_t* typedef_ = (decl_type_typedef_t*) node;
         metac_identifier_ptr_t typedefId = typedef_->Identifier;
-        //printf("found a typedef: %s\n", IdentifierPtrToCharPtr(context->Sema->ParserIdentifierTable, typedefId));
+        printf("found a typedef: %s\n", IdentifierPtrToCharPtr(context->Sema->ParserIdentifierTable, typedefId));
 
         metac_type_index_t typeIndex =
             MetaCSemantic_doTypeSemantic(context->Sema, node);
@@ -264,8 +264,8 @@ int main(int argc, const char* argv[])
         MetaCSemantic_PushNewScope(&sema, scope_parent_module, 1);
 
 
-//        MetaCSemantic_Handoff(&tmpSema, (metac_sema_declaration_t*)compilerStruct,
-//                             &sema);
+        MetaCSemantic_Handoff(&tmpSema, (metac_sema_declaration_t*)compilerStruct,
+                              &sema);
 
         // FreeSema
         MetaCParser_Free(&tmpParser);

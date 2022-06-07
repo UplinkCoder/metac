@@ -6,6 +6,10 @@
 #include "metac_scope.h"
 #include "metac_node.h"
 
+#ifndef AT
+#define AT(...)
+#endif
+
 typedef enum metac_type_index_kind_t
 {
     type_index_unknown       = 0x0,
@@ -87,15 +91,14 @@ typedef struct metac_type_aggregate_t
 
     metac_identifier_ptr_t Identifier;
 
-    metac_scope_t* Scope;
-
-    metac_type_aggregate_field_t* Fields;
-
-    uint32_t FieldCount;
+    uint16_t FieldCount;
+    uint16_t Alignment;
 
     uint32_t Size;
 
-    uint32_t Alignment;
+    AT(NO_SQL) metac_scope_t* Scope;
+
+    AT(NO_SQL) metac_type_aggregate_field_t* Fields;
 } metac_type_aggregate_t;
 
 typedef struct metac_enum_member_t
@@ -168,7 +171,7 @@ typedef enum metac_type_kind_t
     type_functiontype,
 
     type_auto,
-// DoNT CHANGE THE ORDER FROM HERE
+// DON'T CHANGE THE ORDER FROM HERE
 // XXX: Order needs to be in sync with the type tokens in metac_lexer.h
     type_void,
     type_bool,
@@ -183,14 +186,13 @@ typedef enum metac_type_kind_t
 //TO HERE
     type_long_long,
     type_long_double,
-// ALSO DON"T CHANGE ANYTHIBG FROM HERE
+// ALSO DON'T CHANGE ANYTHING FROM HERE
     type_unsigned_char,
     type_unsigned_short,
     type_unsigned_int,
     type_unsigned_long,
 //TO HERE
     type_unsigned_long_long,
-
 
     type_type,
     type_identifier,

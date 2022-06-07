@@ -10,65 +10,8 @@ uint32_t UntangleInts(uint32_t tangled);
 
 typedef struct metac_type_table_slot_t
 {
-    uint32_t HashKey;
-    metac_type_index_t TypeIndex;
+    METAC_TYPE_HEADER
 } metac_type_table_slot_t;
-
-typedef struct metac_type_enum_slot_t
-{
-    uint32_t HashKey;
-    metac_type_index_t TypeIndex;
-
-    uint32_t MemberCount;
-    metac_enum_member_t* Members;
-} metac_type_enum_slot_t;
-
-typedef struct metac_type_aggregate_slot_t
-{
-    uint32_t HashKey;
-    metac_type_index_t TypeIndex;
-
-    uint32_t FieldCount;
-    metac_type_aggregate_field_t* Fields;
-} metac_type_aggregate_slot_t;
-
-typedef struct metac_type_functiontype_slot_t
-{
-    uint32_t HashKey;
-    metac_type_index_t TypeIndex;
-
-    metac_type_index_t ReturnType;
-
-    metac_type_index_t* ParameterTypes;
-    uint32_t ParameterTypeCount;
-} metac_type_functiontype_slot_t;
-
-typedef struct metac_type_ptr_slot_t
-{
-    uint32_t HashKey;
-    metac_type_index_t TypeIndex;
-
-    metac_type_index_t ElementTypeIndex;
-} metac_type_ptr_slot_t;
-
-
-typedef struct metac_type_array_slot_t
-{
-    uint32_t HashKey;
-    metac_type_index_t TypeIndex;
-
-    metac_type_index_t ElementTypeIndex;
-    uint32_t Dimension;
-} metac_type_array_slot_t;
-
-typedef struct metac_type_typedef_slot_t
-{
-    uint32_t HashKey;
-    metac_type_index_t TypeIndex;
-
-    metac_identifier_ptr_t Identifier;
-    metac_type_index_t ElementTypeIndex;
-} metac_type_typedef_slot_t;
 
 typedef struct  metac_type_table_t
 {
@@ -91,8 +34,8 @@ static inline bool EnumSlotsEqual(const metac_type_table_slot_t* a,
                                   const metac_type_table_slot_t* b)
 {
     bool result = true;
-    metac_type_enum_slot_t* slotA = cast(metac_type_enum_slot_t*) a;
-    metac_type_enum_slot_t* slotB = cast(metac_type_enum_slot_t*) b;
+    metac_type_enum_t* slotA = cast(metac_type_enum_t*) a;
+    metac_type_enum_t* slotB = cast(metac_type_enum_t*) b;
     if (slotA->MemberCount == slotB->MemberCount)
     {
         uint32_t count = slotA->MemberCount;
@@ -117,29 +60,35 @@ static inline bool EnumSlotsEqual(const metac_type_table_slot_t* a,
 static inline bool ArraySlotsEqual(const metac_type_table_slot_t* a,
                                    const metac_type_table_slot_t* b)
 {
-    metac_type_array_slot_t* slotA = cast(metac_type_array_slot_t*) a;
-    metac_type_array_slot_t* slotB = cast(metac_type_array_slot_t*) b;
-    return (slotA->ElementTypeIndex.v == slotB->ElementTypeIndex.v
-         && slotA->Dimension == slotB->Dimension);
+    metac_type_array_t* slotA = cast(metac_type_array_t*) a;
+    metac_type_array_t* slotB = cast(metac_type_array_t*) b;
+    return (slotA->ElementType.v == slotB->ElementType.v
+         && slotA->Dim == slotB->Dim);
 }
 
 static inline bool AggregateSlotsEqual(const metac_type_table_slot_t* a,
                                        const metac_type_table_slot_t* b)
 {
     bool result = true;
-    metac_type_aggregate_slot_t* slotA = cast(metac_type_aggregate_slot_t*) a;
-    metac_type_aggregate_slot_t* slotB = cast(metac_type_aggregate_slot_t*) b;
+
+    metac_type_aggregate_t* slotA =
+        cast(metac_type_aggregate_t*) a;
+
+    metac_type_aggregate_t* slotB =
+        cast(metac_type_aggregate_t*) b;
+
     if (slotA->FieldCount == slotB->FieldCount)
     {
         const uint32_t fieldCount = slotA->FieldCount;
         for(uint32_t i = 0; i < fieldCount; i++)
         {
             const metac_type_aggregate_field_t* fieldsA =
-                slotA->Fields;
+                slotA->Fields + i;
             const metac_type_aggregate_field_t* fieldsB =
-                slotB->Fields;
-            if (fieldsA[i].Identifier.v != fieldsB[i].Identifier.v
-             || fieldsA[i].Type.v       != fieldsB[i].Type.v)
+                slotB->Fields + i;
+
+            if (fieldsA->Identifier.v != fieldsB->Identifier.v
+             || fieldsA->Type.v       != fieldsB->Type.v)
             {
                 result = false;
                 break;
@@ -156,19 +105,19 @@ static inline bool AggregateSlotsEqual(const metac_type_table_slot_t* a,
 static inline bool PtrSlotsEqual(const metac_type_table_slot_t* a,
                                  const metac_type_table_slot_t* b)
 {
-    metac_type_ptr_slot_t* slotA = cast(metac_type_ptr_slot_t*) a;
-    metac_type_ptr_slot_t* slotB = cast(metac_type_ptr_slot_t*) b;
-    return (slotA->ElementTypeIndex.v == slotB->ElementTypeIndex.v);
+    metac_type_ptr_t* slotA = cast(metac_type_ptr_t*) a;
+    metac_type_ptr_t* slotB = cast(metac_type_ptr_t*) b;
+    return (slotA->ElementType.v == slotB->ElementType.v);
 }
 
 static inline bool FunctiontypeSlotsEqual(const metac_type_table_slot_t* a,
                                           const metac_type_table_slot_t* b)
 {
     bool result = true;
-    metac_type_functiontype_slot_t* slotA =
-        cast(metac_type_functiontype_slot_t*) a;
-    metac_type_functiontype_slot_t* slotB =
-        cast(metac_type_functiontype_slot_t*) b;
+    metac_type_functiontype_t* slotA =
+        cast(metac_type_functiontype_t*) a;
+    metac_type_functiontype_t* slotB =
+        cast(metac_type_functiontype_t*) b;
 
 
     if (slotA->ReturnType.v == slotB->ReturnType.v &&
@@ -198,10 +147,10 @@ static inline bool FunctiontypeSlotsEqual(const metac_type_table_slot_t* a,
 static inline bool TypedefSlotsEqual(const metac_type_table_slot_t* a,
                                      const metac_type_table_slot_t* b)
 {
-    metac_type_typedef_slot_t* slotA = cast(metac_type_typedef_slot_t*) a;
-    metac_type_typedef_slot_t* slotB = cast(metac_type_typedef_slot_t*) b;
+    metac_type_typedef_t* slotA = cast(metac_type_typedef_t*) a;
+    metac_type_typedef_t* slotB = cast(metac_type_typedef_t*) b;
     return (slotA->Identifier.v == slotB->Identifier.v
-        &&  slotA->ElementTypeIndex.v == slotB->ElementTypeIndex.v);
+        &&  slotA->Type.v == slotB->Type.v);
 }
 
 
@@ -209,12 +158,12 @@ static inline bool TypedefSlotsEqual(const metac_type_table_slot_t* a,
     metac_type_table_##SLOT_TYPE##_t
 
 #define METAC_TYPE_TABLE_KEY_T(SLOT_TYPE) \
-    metac_type_## SLOT_TYPE ##_slot_t
+    metac_type_## SLOT_TYPE ##_t
 
 #define METAC_TYPE_TABLE_T_DEF(SLOT_TYPE) \
 typedef struct  METAC_TYPE_TABLE_T(SLOT_TYPE) \
 { \
-    metac_type_## SLOT_TYPE ##_slot_t* Slots; \
+    metac_type_## SLOT_TYPE ##_t* Slots; \
     \
     uint32_t SlotCount_Log2; \
     uint32_t SlotsUsed; \
@@ -244,7 +193,7 @@ FOREACH_TABLE_SLOT_TYPE(METAC_TYPE_TABLE_T_DEF)
     M(typedef, Typedef, TypedefSlotsEqual)
 
 #define DECLARE_ADD(TYPE_NAME, MEMBER_NAME, UNUSED_CMP) \
-    void MetaCTypeTable_Add ## MEMBER_NAME ## Type \
+    metac_type_index_t MetaCTypeTable_Add ## MEMBER_NAME ## Type \
     (METAC_TYPE_TABLE_T(TYPE_NAME)* table, \
      const METAC_TYPE_TABLE_KEY_T(TYPE_NAME)* key);
 

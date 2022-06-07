@@ -1,3 +1,6 @@
+#ifndef _METAC_SEMANTIC_H_
+#define _METAC_SEMANTIC_H_
+
 #include "metac_semantic_lru.h"
 #include "metac_parsetree.h"
 #include "metac_parser.h"
@@ -11,6 +14,57 @@
 #ifndef AT
 #  define AT(...)
 #endif
+
+#define FOREACH_SEMA_STATE_ARRAY(M) \
+    M(metac_sema_expression_t, Expressions) \
+    M(sema_decl_variable_t, Variables) \
+    M(sema_decl_function_t, Functions) \
+    M(metac_scope_t, Scopes) \
+    M(sema_stmt_block_t, BlockStatements) \
+    M(metac_sema_statement_t, Statements)
+
+#define DECLARE_ARRAY(TYPE_NAME, VAR) \
+    TYPE_NAME* VAR; \
+    uint32_t VAR##_size; \
+    uint32_t VAR##_capacity;
+
+#define INIT_ARRAY(SELF, TYPE_NAME, VAR) \
+   SELF->VAR = (TYPE_NAME*)0; \
+   SELF->VAR##_size = 0; \
+   SELF->VAR##_capacity = 0;
+
+
+//static uint32_t _nodeCounter = 1;
+
+#ifndef ATOMIC
+#define INC(v) \
+    (v++)
+#else
+#define INC(v)
+    (__builtin_atomic_fetch_add(&v, __ATOMIC_RELEASE))
+#endif
+
+/// TODO: lock during realloc
+#define REALLOC_BOILERPLATE(VAR) \
+if (VAR ## _capacity <= VAR ## _size) \
+    { \
+        _newMemRealloc( \
+            (void**)&  VAR, \
+            &VAR## _capacity, \
+            sizeof(* VAR) \
+        ); \
+    }
+
+/// TODO: lock during realloc
+#define REALLOC_N_BOILERPLATE(VAR, N) \
+if (VAR ## _capacity <= (VAR ## _size + (N))) \
+    { \
+        _newMemRealloc( \
+            (void**)&  VAR, \
+            &VAR## _capacity, \
+            sizeof(* VAR) \
+        ); \
+    }
 
 typedef struct metac_sema_decl_state_t
 {
@@ -51,6 +105,8 @@ typedef struct metac_semantic_state_t
 
     // metac_type_table_t* TypeTable;
     FOREACH_TYPE_TABLE(DECLARE_TYPE_TABLE)
+
+    FOREACH_SEMA_STATE_ARRAY(DECLARE_ARRAY)
 
     AT(transient) metac_sema_expression_t* ExpressionStack;
     AT(transient) uint32_t ExpressionStackSize;
@@ -119,3 +175,64 @@ metac_node_header_t* MetaCSemantic_LookupIdentifier(metac_semantic_state_t* self
     (A == B ? true : Expression_IsEqual_(A, B))
 bool Expression_IsEqual_(metac_sema_expression_t* a,
                          metac_sema_expression_t* b);
+
+
+metac_sema_expression_t* AllocNewSemaExpression(metac_semantic_state_t* self, metac_expression_t* expr);
+
+sema_decl_function_t* AllocNewSemaFunction(metac_semantic_state_t* self,decl_function_t* func);
+
+sema_decl_variable_t* AllocNewSemaVariable(metac_semantic_state_t* self, decl_variable_t *decl, metac_sema_declaration_t ** result_ptr);
+
+sema_decl_variable_t* AllocFunctionParameters(metac_semantic_state_t* self, sema_decl_function_t* func,
+                                              uint32_t parameterCount);
+
+sema_decl_type_t* AllocNewSemaType(metac_semantic_state_t* self, metac_type_index_t typeIndex);
+
+#define AllocNewAggregate(SELF, KIND) \
+    (AllocNewAggregate_(SELF, KIND, __LINE__, __FILE__))
+metac_type_aggregate_t* AllocNewAggregate_(metac_semantic_state_t* self, metac_declaration_kind_t kind, uint32_t line, const char* file);
+
+metac_type_aggregate_field_t* AllocAggregateFields(metac_semantic_state_t* self,
+                                                   metac_type_aggregate_t* aggregate,
+                                                   metac_declaration_kind_t kind,
+                                                   uint32_t fieldCount);
+#define AllocNewSemaStatement(SELF, KIND, RESULT_PTR) \
+    (sema_ ## KIND ## _t*) AllocNewSemaStatement_(SELF, KIND, sizeof(sema_ ## KIND ##_t), ((void**)(RESULT_PTR)))
+
+metac_sema_statement_t* AllocNewSemaStatement_(metac_semantic_state_t* self,
+                                               metac_statement_kind_t kind,
+                                               size_t nodeSize, void** result_ptr);
+
+sema_stmt_block_t* AllocNewSemaBlockStatement(metac_semantic_state_t* self,
+                                              sema_stmt_block_t* Parent, uint32_t statementCount,
+                                              void** result_ptr);
+
+metac_scope_t* AllocNewScope(metac_semantic_state_t* self, metac_scope_t* parent, metac_scope_parent_t owner);
+metac_type_array_t* AllocNewSemaArrayType(metac_semantic_state_t* self, metac_type_index_t elementTypeIndex, uint32_t dim);
+
+#define StatementIndex(SEMA, STMT) StatementIndex_(SEMA, (metac_sema_statement_t*)STMT)
+
+uint32_t FunctionIndex(metac_semantic_state_t* self, sema_decl_function_t* func);
+uint32_t StructIndex(metac_semantic_state_t* self, metac_type_aggregate_t* struct_);
+uint32_t StatementIndex_(metac_semantic_state_t* self, metac_sema_statement_t* stmt);
+uint32_t BlockStatementIndex(metac_semantic_state_t* self, sema_stmt_block_t* blockstmt);
+uint32_t UnionIndex(metac_semantic_state_t* self, metac_type_aggregate_t* union_);
+uint32_t TypedefIndex(metac_semantic_state_t* self, metac_type_typedef_t* typedef_);
+uint32_t PtrTypeIndex(metac_semantic_state_t* self, metac_type_ptr_t* ptr);
+uint32_t ArrayTypeIndex(metac_semantic_state_t* self, metac_type_array_t* array);
+
+
+sema_decl_function_t* FunctionPtr(metac_semantic_state_t* self, uint32_t index);
+metac_type_aggregate_t* StructPtr(metac_semantic_state_t* self, uint32_t index);
+metac_sema_statement_t* StatementPtr(metac_semantic_state_t* self, uint32_t index);
+sema_stmt_block_t* BlockStatementPtr(metac_semantic_state_t* self, uint32_t index);
+metac_type_aggregate_t* UnionPtr(metac_semantic_state_t* self, uint32_t index);
+metac_type_typedef_t* TypedefPtr(metac_semantic_state_t* self, uint32_t index);
+metac_type_ptr_t* PtrTypePtr(metac_semantic_state_t* self, uint32_t index);
+metac_type_array_t* ArrayTypePtr(metac_semantic_state_t* self, uint32_t index);
+
+metac_scope_t* MetaCScope_PushNewScope(metac_semantic_state_t* sema,
+                                       metac_scope_t* parent,
+                                       metac_scope_parent_t owner);
+
+#endif

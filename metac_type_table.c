@@ -36,14 +36,14 @@ void TypeTableInitImpl(metac_type_table_t* table, const uint32_t sizeof_slot, me
 #endif
 metac_type_index_t MetaCTypeTable_GetOrEmptyImpl(metac_type_table_t* table,
                                                  metac_type_table_slot_t* key,
-                                                 const uint32_t keyTrailingSize,
+                                                 const uint32_t slotTrailingSize,
                                                  const bool (*cmpSlot)(const metac_type_table_slot_t*,
                                                                        const metac_type_table_slot_t*))
 {
     metac_type_index_t result = {0};
 
-    const uint32_t hash = key->HashKey;
-    const uint32_t keySize = keyTrailingSize + sizeof(metac_type_table_slot_t);
+    const uint32_t hash = key->Hash;
+    const uint32_t slotSize = slotTrailingSize + sizeof(metac_type_table_slot_t);
     const uint32_t slotIndexMask = ((1 << table->SlotCount_Log2) - 1);
     const uint32_t initialSlotIndex = (hash & slotIndexMask);
 
@@ -54,13 +54,15 @@ metac_type_index_t MetaCTypeTable_GetOrEmptyImpl(metac_type_table_t* table,
     {
         metac_type_table_slot_t* slot = (metac_type_table_slot_t*)
         (((char*)table->Slots) +
-            ((slotIndex - 1) & slotIndexMask) * keySize);
+            ((slotIndex - 1) & slotIndexMask) * slotSize);
 
-        if (slot->HashKey == hash)
+        if (slot->Hash == hash)
         {
             if (cmpSlot(slot, key))
             {
-                result = slot->TypeIndex;
+                uint32_t slotIndex = (((char*)slot) - (char*)table->Slots) / slotSize;
+                assert(slotIndex < (1 << 28));
+                result.v = TYPE_INDEX_V(table->Kind, slotIndex);
                 break;
             }
             else
@@ -68,7 +70,7 @@ metac_type_index_t MetaCTypeTable_GetOrEmptyImpl(metac_type_table_t* table,
                 // collision happend
             }
         }
-        else if (slot->HashKey == 0)
+        else if (slot->Hash == 0)
         {
             break;
         }
@@ -81,24 +83,26 @@ FOREACH_TABLE_MEMBER(GET_OR_EMPTY_TYPE_DEF);
 
 
 #define ADD_TYPE_DEF(TYPE_NAME, MEMBER_NAME, CMP_FUNC) \
-void MetaCTypeTable_Add ## MEMBER_NAME ## Type \
+metac_type_index_t MetaCTypeTable_Add ## MEMBER_NAME ## Type \
     (METAC_TYPE_TABLE_T(TYPE_NAME)* table, \
      const METAC_TYPE_TABLE_KEY_T(TYPE_NAME)* key) \
 { \
-        MetaCTypeTable_AddImpl((metac_type_table_t*)table, \
+        return MetaCTypeTable_AddImpl((metac_type_table_t*)table, \
         (metac_type_table_slot_t*)key, (sizeof(*key) - sizeof(metac_type_table_slot_t)), CMP_FUNC); \
 }
 
-void MetaCTypeTable_AddImpl(metac_type_table_t* self,
-                            const metac_type_table_slot_t *entry,
-                            const uint32_t trailingSize,
-                            bool (*cmpSlot)(const metac_type_table_slot_t*,
-                                            const metac_type_table_slot_t*))
+metac_type_index_t MetaCTypeTable_AddImpl(metac_type_table_t* self,
+                                          const metac_type_table_slot_t *entry,
+                                          const uint32_t trailingSize,
+                                          bool (*cmpSlot)(const metac_type_table_slot_t*,
+                                                          const metac_type_table_slot_t*))
 {
-    assert(entry->HashKey != 0 && entry->TypeIndex.v != 0 && entry->TypeIndex.v != -1);
+    metac_type_index_t result = {0};
+
+    assert(entry->Hash != 0);
 
     // first we find the slot
-    const uint32_t hash = entry->HashKey;
+    const uint32_t hash = entry->Hash;
     const uint32_t keySize = trailingSize + sizeof(metac_type_table_slot_t);
 
     const uint32_t slotIndexMask = ((1 << self->SlotCount_Log2) - 1);
@@ -109,21 +113,27 @@ void MetaCTypeTable_AddImpl(metac_type_table_t* self,
         (++slotIndex & slotIndexMask) != initialSlotIndex;
     )
     {
+        slotIndex = ((slotIndex - 1) & slotIndexMask);
         metac_type_table_slot_t* slot = (metac_type_table_slot_t*)
-        (((char*)self->Slots) +
-            ((slotIndex - 1) & slotIndexMask) * keySize);
+        (((char*)self->Slots) + (slotIndex * keySize));
 
-        if (slot->HashKey == 0)
+        if (slot->Hash == 0)
         {
             // we've found the first empty space to put this entry
             memcpy(slot, entry, keySize);
-            return ;
+            result.v = TYPE_INDEX_V(self->Kind, slotIndex);
         }
-        if (slot->HashKey == hash)
+        else if (slot->Hash == hash)
         {
-            assert (!cmpSlot(slot, entry));
             // this assert makes sure we don't have duplicates
+            assert (!cmpSlot(slot, entry));
+            result.v = TYPE_INDEX_V(self->Kind, slotIndex);
+
+        } else
+        {
+            continue;
         }
+        return result;
     }
     assert(0);
 }
@@ -176,10 +186,10 @@ FOREACH_TABLE_MEMBER(ADD_TYPE_DEF);
 
                 case type_index_typedef:
                 {
-                    metac_type_typedef_slot_t *typedef_=
-                        (metac_type_typedef_slot_t*) key;
+                    metac_type_typedef_t *typedef_=
+                        (metac_type_typedef_t*) key;
                     metac_type_typedef_t* semaTypedef
-                        = AllocNewSemaTypedef(typedef_->ElementTypeIndex);
+                        = AllocNewSemaTypedef(typedef_->Type);
                     idx = TypedefIndex(semaTypedef);
                 } break;
 

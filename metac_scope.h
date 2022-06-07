@@ -125,5 +125,4 @@ scope_insert_error_t MetaCScope_RegisterIdentifier(metac_scope_t* self,
                                                    metac_identifier_ptr_t idPtr,
                                                    metac_node_t node);
 
-metac_scope_t* MetaCScope_PushNewScope(metac_scope_t* self, metac_scope_parent_t owner);
 #endif // _METAC_SCOPE_H_

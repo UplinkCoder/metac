@@ -25,6 +25,30 @@ bool Expression_IsEqual_(metac_sema_expression_t* a,
             case exp_signed_integer:
                result = a->ValueI64 == b->ValueI64;
             break;
+            case exp_argument:
+            {
+                if (a->ArgumentList->ArgumentCount
+                    == b->ArgumentList->ArgumentCount)
+                {
+                    const uint32_t ArgumentCount =
+                        a->ArgumentList->ArgumentCount;
+                    const metac_sema_expression_t* ExpsA
+                            = a->ArgumentList->Arguments;
+                    const metac_sema_expression_t* ExpsB
+                            = b->ArgumentList->Arguments;
+
+                    for(uint32_t i = 0;
+                        i < ArgumentCount;
+                        i++)
+                    {
+                        result &= Expression_IsEqual(ExpsA + i, ExpsB + i);
+                    }
+                }
+                else
+                {
+                    result = false;
+                }
+            } break;
             default: assert(0); // Not handled right now
         }
     }
@@ -94,6 +118,324 @@ uint32_t AggregateHash(metac_type_aggregate_t* agg)
     return hash;
 }
 
+metac_sema_expression_t* AllocNewSemaExpression(metac_semantic_state_t* self, metac_expression_t* expr)
+{
+    metac_sema_expression_t* result = 0;
+
+    REALLOC_BOILERPLATE(self->Expressions)
+
+    {
+        result = self->Expressions + INC(self->Expressions_size);
+        (*(metac_expression_header_t*) result) = (*(metac_expression_header_t*) expr);
+
+        result->TypeIndex.v = 0;
+        memcpy(
+               ((char*)result) + sizeof(metac_sema_expression_header_t),
+               ((char*)expr) + sizeof(metac_expression_header_t),
+               sizeof(metac_expression_t) - sizeof(metac_expression_header_t));
+        result->Serial = INC(_nodeCounter);
+    }
+
+    return result;
+}
+// ---------------------------------------------- sema -----------------------------
+
+uint32_t StructIndex(metac_semantic_state_t* self, metac_type_aggregate_t* struct_)
+{
+    uint32_t result = (struct_ - self->StructTypeTable.Slots);
+    return result;
+}
+
+uint32_t UnionIndex(metac_semantic_state_t* self, metac_type_aggregate_t* union_)
+{
+    uint32_t result = (union_ - self->UnionTypeTable.Slots);
+    return result;
+}
+
+
+uint32_t FunctionIndex(metac_semantic_state_t* self, sema_decl_function_t* func)
+{
+    uint32_t result = (func - self->Functions);
+    return result;
+}
+
+uint32_t StatementIndex_(metac_semantic_state_t* self, metac_sema_statement_t* stmt)
+{
+    uint32_t result = (stmt - self->Statements);
+    return result;
+}
+
+uint32_t TypedefIndex(metac_semantic_state_t* self, metac_type_typedef_t* typedef_)
+{
+    uint32_t result = (typedef_ - self->TypedefTypeTable.Slots);
+    return result;
+}
+
+uint32_t ArrayTypeIndex(metac_semantic_state_t* self, metac_type_array_t* array)
+{
+    uint32_t result = (array - self->ArrayTypeTable.Slots);
+    return result;
+}
+
+uint32_t PtrTypeIndex(metac_semantic_state_t* self, metac_type_ptr_t* ptr)
+{
+    uint32_t result = (ptr - self->PtrTypeTable.Slots);
+    return result;
+}
+
+uint32_t FunctiontypeIndex(metac_semantic_state_t* self, metac_type_functiontype_t* functiontype)
+{
+    uint32_t result = (functiontype - self->FunctionTypeTable.Slots);
+    return result;
+}
+
+metac_type_aggregate_t* StructPtr(metac_semantic_state_t* self, uint32_t index)
+{
+    metac_type_aggregate_t* result = (self->StructTypeTable.Slots + index);
+    return result;
+}
+
+metac_type_aggregate_t* UnionPtr(metac_semantic_state_t* self, uint32_t index)
+{
+    metac_type_aggregate_t* result = (self->UnionTypeTable.Slots + index);
+    return result;
+}
+
+sema_decl_function_t* FunctionPtr(metac_semantic_state_t* self, uint32_t index)
+{
+    sema_decl_function_t* result = (self->Functions + index);
+    return result;
+}
+
+metac_sema_statement_t* StatementPtr(metac_semantic_state_t* self, uint32_t index)
+{
+    metac_sema_statement_t* result = (self->Statements + index);
+    return result;
+}
+
+metac_type_typedef_t* TypedefPtr(metac_semantic_state_t* self, uint32_t index)
+{
+    metac_type_typedef_t* result = (self->TypedefTypeTable.Slots + index);
+    return result;
+}
+
+metac_type_ptr_t* PtrTypePtr(metac_semantic_state_t* self, uint32_t index)
+{
+    metac_type_ptr_t* result = (self->PtrTypeTable.Slots + index);
+    return result;
+}
+
+metac_type_array_t* ArrayTypePtr(metac_semantic_state_t* self, uint32_t index)
+{
+    metac_type_array_t* result = (self->ArrayTypeTable.Slots + index);
+    return result;
+}
+
+metac_type_functiontype_t* FunctiontypePtr(metac_semantic_state_t* self, uint32_t index)
+{
+    metac_type_functiontype_t* result = (self->FunctionTypeTable.Slots + index);
+    return result;
+}
+
+metac_scope_t* MetaCScope_PushNewScope(metac_semantic_state_t* sema,
+                                       metac_scope_t *parent,
+                                       metac_scope_parent_t scopeOwner)
+{
+    metac_scope_t* result = AllocNewScope(sema, parent, scopeOwner);
+
+    MetaCScopeTable_Init(&result->ScopeTable);
+
+    return result;
+}
+
+
+metac_scope_t* AllocNewScope(metac_semantic_state_t* self,
+                             metac_scope_t* parent, metac_scope_parent_t owner)
+{
+    metac_scope_t* result;
+
+    REALLOC_BOILERPLATE(self->Scopes)
+
+    {
+        result = self->Scopes + INC(self->Scopes_size);
+        result->Serial = INC(_nodeCounter);
+        result->Owner = owner;
+        result->Parent = parent;
+    }
+
+    return result;
+}
+
+
+sema_decl_function_t* AllocNewSemaFunction(metac_semantic_state_t* self,
+                                           decl_function_t* func)
+{
+    sema_decl_function_t* result = 0;
+
+    REALLOC_BOILERPLATE(self->Functions)
+
+    {
+        result = self->Functions + INC(self->Functions_size);
+        (*(metac_node_header_t*) result) = (*(metac_node_header_t*) func);
+
+        result->Serial = INC(_nodeCounter);
+        result->TypeIndex.v = 0;
+    }
+
+    return result;
+}
+
+#ifndef ATOMIC
+#define POST_ADD(v, b) \
+    (v += b, v - b)
+#else
+#define POST_ADD(v, b)
+    (__builtin_atomic_fetch_add(&v, b))
+#endif
+
+sema_decl_variable_t* AllocNewSemaVariable(metac_semantic_state_t* self, decl_variable_t* decl, metac_sema_declaration_t** result_ptr)
+{
+    sema_decl_variable_t* result = 0;
+    REALLOC_BOILERPLATE(self->Variables)
+
+    result = self->Variables + INC(self->Variables_size);
+    (*result_ptr) = (metac_sema_declaration_t*)result;
+
+    result->DeclKind = decl_variable;
+    result->Serial = INC(_nodeCounter);
+    decl->LocationIdx = result->LocationIdx;
+
+
+    return result;
+}
+
+sema_decl_variable_t* AllocFunctionParameters(metac_semantic_state_t* self,
+                                              sema_decl_function_t* func,
+                                              uint32_t parameterCount)
+{
+    sema_decl_variable_t* result = 0;
+
+    REALLOC_N_BOILERPLATE(self->Variables, parameterCount)
+
+    {
+        result = self->Variables + POST_ADD(self->Variables_size, parameterCount);
+        for(uint32_t i = 0;
+            i < parameterCount;
+            i++)
+        {
+            (result + i)->DeclKind = decl_parameter;
+            (result + i)->Serial = INC(_nodeCounter);
+        }
+
+    }
+
+    return result;
+}
+#if 0
+metac_type_aggregate_field_t* AllocAggregateFields(metac_semantic_state_t* self,
+                                                   metac_type_aggregate_t* aggregate,
+                                                   metac_declaration_kind_t kind,
+                                                   uint32_t fieldCount)
+{
+    uint32_t aggregateIndex = 0;
+    metac_type_aggregate_field_t* result = 0;
+    switch(kind)
+    {
+        case decl_type_struct:
+        {
+            REALLOC_BOILERPLATE(_newSemaStructFields)
+            result = _newSemaStructFields_mem +
+                POST_ADD(_newSemaStructFields_size, fieldCount);
+            aggregateIndex = aggregate - _newSemaStructs_mem;
+        } break;
+        case decl_type_union:
+        {
+            REALLOC_BOILERPLATE(_newSemaUnionFields)
+            result = _newSemaUnionFields_mem +
+                POST_ADD(_newSemaUnionFields_size, fieldCount);
+            aggregateIndex = aggregate - _newSemaUnions_mem;
+        } break;
+
+        case type_class:
+        {
+            assert(0);
+        } break;
+
+    }
+
+    {
+        for(uint32_t i = 0;
+            i < fieldCount;
+            i++)
+        {
+            (result + i)->Header.Serial = INC(_nodeCounter);
+            (result + i)->AggregateIndex = aggregateIndex;
+        }
+
+    }
+
+    aggregate->Fields = result;
+
+    return result;
+}
+#endif
+
+metac_sema_statement_t* AllocNewSemaStatement_(metac_semantic_state_t* self,
+                                               metac_statement_kind_t kind,
+                                               size_t nodeSize, void** result_ptr)
+{
+    metac_sema_statement_t* result = 0;
+
+    REALLOC_BOILERPLATE(self->Statements)
+
+    {
+        result = self->Statements + INC(self->Statements_size);
+        // result->Parent = 0;
+
+        result->Serial = INC(_nodeCounter);
+        // result->TypeIndex.v = 0;
+    }
+
+    *result_ptr = result;
+
+    return result;
+}
+
+sema_stmt_block_t* AllocNewSemaBlockStatement(metac_semantic_state_t* self,
+                                              sema_stmt_block_t* Parent, uint32_t statementCount,
+                                              void** result_ptr)
+{
+    sema_stmt_block_t* result = 0;
+
+    REALLOC_BOILERPLATE(self->BlockStatements)
+
+    {
+        uint32_t pointersSize = statementCount * sizeof(sema_stmt_block_t*);
+        uint32_t sizeInBlockStatements =
+            (pointersSize + sizeof(*self->BlockStatements)) /
+            sizeof(*self->BlockStatements);
+
+        result = self->BlockStatements + POST_ADD(self->BlockStatements_size,
+                                                        sizeInBlockStatements);
+        // result->Parent = 0;
+
+        result->Serial = INC(_nodeCounter);
+        result->Body = (metac_sema_statement_t*)(result + 1);
+        // result->TypeIndex.v = 0;
+    }
+    (*result_ptr) = result;
+
+    return result;
+}
+
+uint32_t BlockStatementIndex(metac_semantic_state_t* self,
+                             sema_stmt_block_t* blockstmt)
+{
+    return blockstmt - self->BlockStatements;
+}
+
+
+
 static inline void HandoffIdentifier(metac_identifier_table_t* dstTable,
                                      const metac_identifier_table_t* srcTable,
                                      metac_identifier_ptr_t* idPtrP)
@@ -108,6 +450,7 @@ static inline void HandoffIdentifier(metac_identifier_table_t* dstTable,
     metac_identifier_ptr_t newPtr =
         GetOrAddIdentifier(dstTable, idKey, idChars);
     idPtrP->v = newPtr.v;
+    printf("Transfering: %s\n", idChars);
 }
 
 static void HandoffField(metac_semantic_state_t* dstState,
@@ -126,41 +469,91 @@ static inline void HandoffType(metac_semantic_state_t* dstState,
     metac_type_index_t idx = *typeIndexP;
     switch(TYPE_INDEX_KIND(idx))
     {
-        metac_type_aggregate_slot_t* agg;
-        metac_type_aggregate_slot_t* newAgg;
 
-        case type_index_basic: break;
+        case type_index_basic:
+            result = *typeIndexP;
+        break;
         case type_index_unknown: assert(0);
+        case type_index_functiontype:
+        {
+            metac_type_functiontype_t* oldSlot
+                = srcState->FunctionTypeTable.Slots + TYPE_INDEX_INDEX(idx);
+
+            metac_type_functiontype_t* newSlot;
+            metac_type_functiontype_t tmpSlot = *oldSlot;
+            const uint32_t paramTypeCount = oldSlot->ParameterTypeCount;
+            metac_type_index_t* newParams =
+                calloc(sizeof(metac_type_index_t), oldSlot->ParameterTypeCount);
+            memcpy(newParams, oldSlot->ParameterTypes,
+                sizeof(metac_type_index_t) * paramTypeCount);
+            for(uint32_t i = 0;
+                i < paramTypeCount;
+                i++)
+            {
+                HandoffType(dstState, srcState, newParams + i);
+            }
+            if (tmpSlot.ParameterTypeCount != 0)
+                tmpSlot.ParameterTypes = newParams;
+            else
+                tmpSlot.ParameterTypes = (metac_type_index_t*)emptyNode;
+
+            result =
+                MetaCTypeTable_GetOrEmptyFunctionType(&dstState->FunctionTypeTable,
+                                                      &tmpSlot);
+            if (result.v == 0)
+            {
+                result =
+                    MetaCTypeTable_AddFunctionType(&dstState->FunctionTypeTable, &tmpSlot);
+            }
+            assert(result.v != -1 && result.v != 0);
+        } break;
+
         case type_index_struct:
         {
-            agg = srcState->StructTypeTable.Slots + TYPE_INDEX_INDEX(idx);
-            const uint32_t fieldCount = agg->FieldCount;
+            metac_type_aggregate_t* oldSlot;
+            metac_type_aggregate_t* newSlot;
+
+            metac_type_aggregate_t tmpSlot = *oldSlot;
+
+            oldSlot = srcState->StructTypeTable.Slots + TYPE_INDEX_INDEX(idx);
+            const uint32_t fieldCount = oldSlot->FieldCount;
 
             metac_type_aggregate_field_t* newFields =
                 (metac_type_aggregate_field_t*)
                     malloc(sizeof(metac_type_aggregate_field_t) * fieldCount);
-            for(uint32_t i = 0; i < agg->FieldCount; i++)
+            for(uint32_t i = 0; i < oldSlot->FieldCount; i++)
             {
-                metac_type_aggregate_field_t field = agg->Fields[i];
+                metac_type_aggregate_field_t field = oldSlot->Fields[i];
                 HandoffIdentifier(dstState->ParserIdentifierTable,
                                   srcState->ParserIdentifierTable,
                                   &field.Identifier);
                 HandoffType(dstState, srcState, &field.Type);
                 newFields[i] = field;
             }
-            uint32_t newHash = 0;
-            metac_type_aggregate_slot_t newKey = {
-                newHash, fieldCount, newFields
-            };
+            tmpSlot.Fields = newFields;
+            tmpSlot.Header.Hash = 0;
+
+            uint32_t newHash = AggregateHash(&tmpSlot);
+            tmpSlot.Header.Hash = newHash;
+
             result =
                 MetaCTypeTable_GetOrEmptyStructType(&dstState->StructTypeTable,
-                                                    &newKey);
+                                                    &tmpSlot);
+            assert(result.v == 0);
+            result =
+                MetaCTypeTable_AddStructType(&dstState->StructTypeTable, &tmpSlot);
             assert(result.v != -1 && result.v != 0);
+
             goto LhandoffAggregate;
         }
         case type_index_union:
         {
-            agg = srcState->UnionTypeTable.Slots + TYPE_INDEX_INDEX(idx);
+            metac_type_aggregate_t* oldSlot;
+            metac_type_aggregate_t* newSlot;
+
+            metac_type_aggregate_t tmpSlot = *oldSlot;
+
+            oldSlot = srcState->UnionTypeTable.Slots + TYPE_INDEX_INDEX(idx);
             goto LhandoffAggregate;
         }
         LhandoffAggregate:
@@ -186,6 +579,7 @@ static inline int HandoffWalker(metac_node_t node, void* ctx)
 
     switch(node->Kind)
     {
+        case node_decl_type_union:
         case node_decl_type_struct:
         {
             metac_type_aggregate_t* struct_ =
@@ -193,19 +587,35 @@ static inline int HandoffWalker(metac_node_t node, void* ctx)
             uint32_t hash = struct_->Header.Hash;
             assert(hash);
 
-            metac_type_aggregate_slot_t structKey = {
-                hash, 0, struct_->FieldCount, struct_->Fields
-            };
+
             metac_type_index_t typeIndex =
                 MetaCTypeTable_GetOrEmptyStructType(&srcState->StructTypeTable,
-                                                    &structKey);
+                                                    struct_);
             assert(typeIndex.v != 0 && typeIndex.v != -1);
             HandoffType(dstState, srcState, &typeIndex);
 
             node =
-                (metac_node_t)StructPtr(TYPE_INDEX_INDEX(typeIndex));
+                (metac_node_t)StructPtr(dstState, TYPE_INDEX_INDEX(typeIndex));
             return 1;
         }
+        case node_decl_type_functiontype:
+        {
+                        metac_type_aggregate_t* struct_ =
+                cast(metac_type_aggregate_t*) node;
+            uint32_t hash = struct_->Header.Hash;
+            assert(hash);
+
+
+            metac_type_index_t typeIndex =
+                MetaCTypeTable_GetOrEmptyFunctionType(&srcState->StructTypeTable,
+                                                    struct_);
+            assert(typeIndex.v != 0 && typeIndex.v != -1);
+            HandoffType(dstState, srcState, &typeIndex);
+
+            node =
+                (metac_node_t)FunctiontypePtr(dstState, TYPE_INDEX_INDEX(typeIndex));
+
+        } break;
         case node_decl_field:
         {
 
@@ -232,7 +642,7 @@ void MetaCSemantic_Init(metac_semantic_state_t* self, metac_parser_t* parser,
 {
 #define INIT_TYPE_TABLE(TYPE_NAME, MEMBER_NAME, INDEX_KIND) \
     TypeTableInitImpl((metac_type_table_t*)&self->MEMBER_NAME, \
-                      sizeof(metac_type_ ## TYPE_NAME ## _slot_t), \
+                      sizeof(metac_type_ ## TYPE_NAME ## _t), \
                       type_index_## INDEX_KIND);
 
     FOREACH_TYPE_TABLE(INIT_TYPE_TABLE)
@@ -265,7 +675,8 @@ void MetaCSemantic_PopScope(metac_semantic_state_t* self)
     self->CurrentScope = self->CurrentScope->Parent;
 }
 
-metac_scope_parent_t ScopeParent(metac_scope_parent_kind_t parentKind,
+metac_scope_parent_t ScopeParent(metac_semantic_state_t* sema,
+                                 metac_scope_parent_kind_t parentKind,
                                  metac_node_t parentNode)
 {
     metac_scope_parent_t scopeParent;
@@ -284,19 +695,19 @@ metac_scope_parent_t ScopeParent(metac_scope_parent_kind_t parentKind,
         scopeParentIndex = (uint32_t) parentNode;
     break;
     case scope_parent_function :
-        scopeParentIndex = FunctionIndex((sema_decl_function_t*)parentNode);
+        scopeParentIndex = FunctionIndex(sema, (sema_decl_function_t*)parentNode);
     break;
     case scope_parent_struct :
-        scopeParentIndex = StructIndex((metac_type_aggregate_t*)parentNode);
+        scopeParentIndex = StructIndex(sema, (metac_type_aggregate_t*)parentNode);
     break;
     case scope_parent_statement :
-        scopeParentIndex = StatementIndex((metac_sema_statement_t*)parentNode);
+        scopeParentIndex = StatementIndex(sema, (metac_sema_statement_t*)parentNode);
     break;
     case scope_parent_block :
-        scopeParentIndex = BlockStatementIndex((sema_stmt_block_t*)parentNode);
+        scopeParentIndex = BlockStatementIndex(sema, (sema_stmt_block_t*)parentNode);
     break;
     case scope_parent_union :
-        scopeParentIndex = UnionIndex((metac_type_aggregate_t*)parentNode);
+        scopeParentIndex = UnionIndex(sema, (metac_type_aggregate_t*)parentNode);
     break;
     }
     scopeParent.v = SCOPE_PARENT_V(parentKind, scopeParentIndex);
@@ -377,8 +788,9 @@ metac_scope_t* MetaCSemantic_PushNewScope(metac_semantic_state_t* self,
                                           metac_scope_parent_kind_t parentKind,
                                           metac_node_t parentNode)
 {
-    metac_scope_parent_t scopeParent = ScopeParent(parentKind, parentNode);
-    self->CurrentScope = MetaCScope_PushNewScope(self->CurrentScope,
+    metac_scope_parent_t scopeParent = ScopeParent(self, parentKind, parentNode);
+    self->CurrentScope = MetaCScope_PushNewScope(self,
+                                                 self->CurrentScope,
                                                  scopeParent);
     return self->CurrentScope;
 }
@@ -393,7 +805,7 @@ metac_sema_statement_t* MetaCSemantic_doStatementSemantic_(metac_semantic_state_
     {
         case stmt_exp:
         {
-            sema_stmt_exp_t* sse = AllocNewSemaStatement(stmt_exp, &result);
+            sema_stmt_exp_t* sse = AllocNewSemaStatement(self, stmt_exp, &result);
         } break;
 
         default: assert(0);
@@ -403,17 +815,17 @@ metac_sema_statement_t* MetaCSemantic_doStatementSemantic_(metac_semantic_state_
             stmt_block_t* blockStatement = (stmt_block_t*) stmt;
             uint32_t statementCount = blockStatement->StatementCount;
             sema_stmt_block_t* semaBlockStatement =
-                AllocNewSemaStatement(stmt_block, &result);
+                AllocNewSemaStatement(self, stmt_block, &result);
 
             metac_scope_parent_t parent = {SCOPE_PARENT_V(scope_parent_statement,
-                                           BlockStatementIndex(semaBlockStatement))};
+                                           BlockStatementIndex(self, semaBlockStatement))};
 
             MetaCSemantic_PushNewScope(self,
                                     scope_parent_block,
                                     (metac_node_t)semaBlockStatement);
 
             metac_statement_t* currentStatement = blockStatement->Body;
-            for(int i = 0;
+            for(uint32_t i = 0;
                 i < statementCount;
                 i++)
             {
@@ -429,7 +841,7 @@ metac_sema_statement_t* MetaCSemantic_doStatementSemantic_(metac_semantic_state_
         {
             stmt_return_t* returnStatement = (stmt_return_t*) stmt;
             sema_stmt_return_t* semaReturnStatement =
-                AllocNewSemaStatement(stmt_return, &result);
+                AllocNewSemaStatement(self, stmt_return, &result);
 
             metac_sema_expression_t* returnValue =
                 MetaCSemantic_doExprSemantic(self, returnStatement->Expression);
@@ -538,20 +950,20 @@ uint32_t MetaCSemantic_GetTypeAlignment(metac_semantic_state_t* self,
     {
         uint32_t idx = TYPE_INDEX_INDEX(typeIndex);
         metac_type_index_t elementTypeIndex =
-            self->TypedefTypeTable.Slots[idx].ElementTypeIndex;
+            self->TypedefTypeTable.Slots[idx].Type;
 
         result = MetaCSemantic_GetTypeAlignment(self,
                                            elementTypeIndex);
     }
     else if (TYPE_INDEX_KIND(typeIndex) == type_index_struct)
     {
-        metac_type_aggregate_t* struct_ = StructPtr(TYPE_INDEX_INDEX(typeIndex));
+        metac_type_aggregate_t* struct_ = StructPtr(self, TYPE_INDEX_INDEX(typeIndex));
         result = struct_->Alignment;
     }
     else if (TYPE_INDEX_KIND(typeIndex) == type_index_array)
     {
         uint32_t idx = TYPE_INDEX_INDEX(typeIndex);
-        metac_type_array_t* arrayType_ = ArrayTypePtr(idx);
+        metac_type_array_t* arrayType_ = ArrayTypePtr(self, idx);
         metac_type_index_t elementTypeIndex = arrayType_->ElementType;
         result = MetaCSemantic_GetTypeAlignment(self, elementTypeIndex);
     }
@@ -595,20 +1007,20 @@ uint32_t MetaCSemantic_GetTypeSize(metac_semantic_state_t* self,
     {
         uint32_t idx = TYPE_INDEX_INDEX(typeIndex);
         metac_type_index_t elementTypeIndex =
-            self->TypedefTypeTable.Slots[idx].ElementTypeIndex;
+            self->TypedefTypeTable.Slots[idx].Type;
 
         result = MetaCSemantic_GetTypeSize(self,
                                            elementTypeIndex);
     }
     else if (TYPE_INDEX_KIND(typeIndex) == type_index_struct)
     {
-        metac_type_aggregate_t* struct_ = StructPtr(TYPE_INDEX_INDEX(typeIndex));
+        metac_type_aggregate_t* struct_ = StructPtr(self, TYPE_INDEX_INDEX(typeIndex));
         result = struct_->Size;
     }
     else if (TYPE_INDEX_KIND(typeIndex) == type_index_array)
     {
         uint32_t idx = TYPE_INDEX_INDEX(typeIndex);
-        metac_type_array_t* arrayType = ArrayTypePtr(idx);
+        metac_type_array_t* arrayType = ArrayTypePtr(self, idx);
         metac_type_index_t elementTypeIndex = arrayType->ElementType;
 
         uint32_t baseSize = MetaCSemantic_GetTypeSize(self,
@@ -640,6 +1052,8 @@ scope_insert_error_t MetaCSemantic_RegisterInScope(metac_semantic_state_t* self,
                                                    metac_identifier_ptr_t idPtr,
                                                    metac_node_t node)
 {
+//    if (idPtr.v == 40)
+//        int breakMe = 2;
     scope_insert_error_t result = no_scope;
     uint32_t idPtrHash = crc32c_nozero(~0, &idPtr.v, sizeof(idPtr.v));
     // first search for keys that might clash
@@ -747,33 +1161,35 @@ bool MetaCSemantic_ComputeStructLayoutPopulateScope(metac_semantic_state_t* self
     return result;
 }
 
-metac_type_index_t MetaCSemantic_GetPtrTypeOf(metac_semantic_state_t* state,
+metac_type_index_t MetaCSemantic_GetPtrTypeOf(metac_semantic_state_t* self,
                                               metac_type_index_t elementTypeIndex)
 {
     uint32_t hash = elementTypeIndex.v;
-    metac_type_ptr_slot_t key = {hash, 0, elementTypeIndex};
+    metac_type_ptr_t key =
+            {(metac_type_header_t){node_decl_type_typedef, 0, hash, 0},
+             elementTypeIndex};
 
     metac_type_index_t result =
-        MetaCTypeTable_GetOrEmptyPtrType(&state->PtrTypeTable, &key);
+        MetaCTypeTable_GetOrEmptyPtrType(&self->PtrTypeTable, &key);
     if (result.v == 0)
     {
-        metac_type_ptr_t* ptrType =
-            AllocNewSemaPtrType(elementTypeIndex);
-        key.TypeIndex.v = TYPE_INDEX_V(type_index_ptr, PtrTypeIndex(ptrType));
-        MetaCTypeTable_AddPtrType(&state->PtrTypeTable, &key);
-        result = key.TypeIndex;
+        result = MetaCTypeTable_AddPtrType(&self->PtrTypeTable, &key);
     }
     return result;
 }
-metac_type_aggregate_t* MetaCSemantic_PersistTemporaryAggregate(metac_type_aggregate_t* tmpAgg)
+
+#if 1
+metac_type_aggregate_t* MetaCSemantic_PersistTemporaryAggregate(metac_semantic_state_t* self,
+                                                                metac_type_aggregate_t* tmpAgg)
 {
-    metac_type_aggregate_t* semaAgg =
-        AllocNewAggregate(tmpAgg->Header.Kind);
+    // memcpy(semaAgg, tmpAgg, sizeof(metac_type_aggregate_t));
 
-    memcpy(semaAgg, tmpAgg, sizeof(metac_type_aggregate_t));
-
+    metac_type_index_t typeIndex =
+        MetaCTypeTable_AddStructType(&self->StructTypeTable, tmpAgg);
+    metac_type_aggregate_t* semaAgg = StructPtr(self, TYPE_INDEX_INDEX(typeIndex));
     metac_type_aggregate_field_t* semaFields =
-        AllocAggregateFields(semaAgg, tmpAgg->Header.Kind, tmpAgg->FieldCount);
+            calloc(sizeof(metac_type_aggregate_field_t), tmpAgg->FieldCount);
+        //AllocAggregateFields(self, semaAgg, tmpAgg->Header.Kind, tmpAgg->FieldCount);
 
     //TODO FIXME this should use a deep walk through the fields
     //MetaCDeclaration_Walk(tmpAgg,)
@@ -783,29 +1199,22 @@ metac_type_aggregate_t* MetaCSemantic_PersistTemporaryAggregate(metac_type_aggre
 
     return semaAgg;
 }
+#endif
 
 metac_type_index_t MetaCSemantic_GetArrayTypeOf(metac_semantic_state_t* state,
                                                 metac_type_index_t elementTypeIndex,
                                                 uint32_t dimension)
 {
     uint32_t hash = EntangleInts(TYPE_INDEX_INDEX(elementTypeIndex), dimension);
-    metac_type_array_slot_t key = {hash, 0, elementTypeIndex, dimension};
+    metac_type_array_t key = {
+            (metac_type_header_t){hash, 0, }, elementTypeIndex, dimension};
 
     metac_type_index_t result =
         MetaCTypeTable_GetOrEmptyArrayType(&state->ArrayTypeTable, &key);
 
     if (result.v == 0)
     {
-        fprintf(stderr, "Alloc new array\n");
-        metac_type_array_t* arrayType =
-            AllocNewSemaArrayType(elementTypeIndex, dimension);
-        uint32_t idx = ArrayTypeIndex(arrayType);
-
-        key.TypeIndex.v = TYPE_INDEX_V(type_index_array, idx);
-        result = key.TypeIndex;
-        //result = key.TypeIndex;
         MetaCTypeTable_AddArrayType(&state->ArrayTypeTable, &key);
-
     }
 
     return result;
@@ -852,22 +1261,18 @@ metac_type_index_t MetaCSemantic_doTypeSemantic_(metac_semantic_state_t* self,
 
         uint32_t hash = elementTypeIndex.v;
 
-        metac_type_typedef_slot_t key = {hash, 0, typedef_->Identifier, elementTypeIndex};
+        metac_type_typedef_t key = {
+            (metac_type_header_t){decl_type_typedef, 0, hash},
+            elementTypeIndex, typedef_->Identifier
+        };
 
         result =
             MetaCTypeTable_GetOrEmptyTypedefType(&self->TypedefTypeTable, &key);
         if (result.v == 0)
         {
-            fprintf(stderr, "Alloc new typdef\n");
-            metac_type_typedef_t* typedef_ =
-                AllocNewSemaTypedef(elementTypeIndex);
-            uint32_t idx = TypedefIndex(typedef_);
-
-            key.TypeIndex.v = TYPE_INDEX_V(type_index_typedef, idx);
-            result = key.TypeIndex;
-            MetaCTypeTable_AddTypedefType(&self->TypedefTypeTable, &key);
+            result = MetaCTypeTable_AddTypedefType(&self->TypedefTypeTable, &key);
         }
-        metac_type_typedef_t* semaTypedef = TypedefPtr(TYPE_INDEX_INDEX(result));
+        metac_type_typedef_t* semaTypedef = TypedefPtr(self, TYPE_INDEX_INDEX(result));
         //semaTypedef->Type = elementTypeIndex;
 
         scope_insert_error_t scopeInsertError =
@@ -933,19 +1338,21 @@ metac_type_index_t MetaCSemantic_doTypeSemantic_(metac_semantic_state_t* self,
                 uint32_t hash = AggregateHash(tmpSemaAgg);
                 tmpSemaAgg->Header.Hash = hash;
 
-                metac_type_aggregate_slot_t structKey = {
-                    hash, 0, tmpSemaAgg->FieldCount, tmpSemaAgg->Fields
-                };
-
                 result =
-                    MetaCTypeTable_GetOrEmptyStructType(&self->StructTypeTable, &structKey);
+                    MetaCTypeTable_GetOrEmptyStructType(&self->StructTypeTable, tmpSemaAgg);
                 if (result.v == 0)
                 {
-                    metac_type_aggregate_t* semaAgg =
-                        MetaCSemantic_PersistTemporaryAggregate(tmpSemaAgg);
-                    structKey.TypeIndex.v = TYPE_INDEX_V(type_index_struct, StructIndex(semaAgg));
-                    MetaCTypeTable_AddStructType(&self->StructTypeTable, &structKey);
-                    result = structKey.TypeIndex;
+                    metac_type_aggregate_t* semaAgg;
+#if 1
+// We should really get this persist stuff working.
+                    semaAgg =
+                        MetaCSemantic_PersistTemporaryAggregate(self, tmpSemaAgg);
+#else
+                    semaAgg = tmpSemaAgg;
+                                       result =
+                    MetaCTypeTable_AddStructType(&self->StructTypeTable, semaAgg);
+#endif
+                    result.v = TYPE_INDEX_V(type_index_struct, semaAgg - self->StructTypeTable.Slots);
                 }
                 // MetaCSemantic_RegisterInScopeStructNamespace()
             } break;
@@ -1007,20 +1414,17 @@ metac_type_index_t MetaCSemantic_doTypeSemantic_(metac_semantic_state_t* self,
         }
 
         hash = crc32c_nozero(hash, &parameterTypes, sizeof(*parameterTypes) * nParams);
-        metac_type_functiontype_slot_t key =
-            { hash, 0, returnType, parameterTypes, nParams };
+        metac_type_functiontype_t key = {
+            {hash, 0, decl_type_functiontype }
+            , returnType, parameterTypes, nParams };
 
         MetaCSemantic_PopTemporaryScope(self);
 
         result = MetaCTypeTable_GetOrEmptyFunctionType(&self->FunctionTypeTable, &key);
         if (result.v == 0)
         {
-            metac_type_functiontype_t* funcType =
-                AllocNewSemaFunctionype(returnType, parameterTypes, nParams);
-            key.TypeIndex.v = TYPE_INDEX_V(type_index_functiontype, FunctiontypeIndex(funcType));
-            MetaCTypeTable_AddFunctionType(&self->FunctionTypeTable, &key);
-            result = key.TypeIndex;
-
+            result =
+                MetaCTypeTable_AddFunctionType(&self->FunctionTypeTable, &key);
         }
         printf("Should have retrived function type\n");
     }
@@ -1029,6 +1433,10 @@ metac_type_index_t MetaCSemantic_doTypeSemantic_(metac_semantic_state_t* self,
         printf("MetaCNodeKind_toChars: %s\n", MetaCNodeKind_toChars(type->DeclKind));
         printf("TypeIdentifier: %s\n",
             IdentifierPtrToCharPtr(self->ParserIdentifierTable, type->TypeIdentifier));
+        if (callLine == 1200 && self->TemporaryScopeDepth == 0)
+        {
+            int breakmeHere = 12;
+        }
         metac_node_t node =
             MetaCSemantic_LookupIdentifier(self, type->TypeIdentifier);
         {
@@ -1046,7 +1454,7 @@ metac_type_index_t MetaCSemantic_doTypeSemantic_(metac_semantic_state_t* self,
             node->Kind == node_decl_type_struct)
         {
             metac_type_aggregate_t* struct_ = (metac_type_aggregate_t*)node;
-            result.v = TYPE_INDEX_V(type_index_struct, StructIndex((struct_)));
+            result.v = TYPE_INDEX_V(type_index_struct, StructIndex(self, (struct_)));
         }
 /*
         if (node == emptyNode)
@@ -1058,7 +1466,7 @@ metac_type_index_t MetaCSemantic_doTypeSemantic_(metac_semantic_state_t* self,
     }
     else
     {
-
+        assert(0); // me not no what do do.
     }
 
     assert(result.v != 0);
@@ -1074,11 +1482,11 @@ sema_decl_function_t* MetaCSemantic_doFunctionSemantic(metac_semantic_state_t* s
     metac_sema_decl_state_t declState = {0};
     self->CurrentDeclarationState = &declState;
 
-    sema_decl_function_t* f =
-        AllocNewSemaFunction(func);
+    sema_decl_function_t* f = AllocNewSemaFunction(self, func);
     // let's first do the parameters
-    sema_decl_variable_t* params = f->Parameters =
-        AllocFunctionParameters(f, func->ParameterCount);
+    sema_decl_variable_t* params =
+        f->Parameters =
+            AllocFunctionParameters(self, f, func->ParameterCount);
 
     decl_parameter_t* currentParam = func->Parameters;
     for(int i = 0;
@@ -1102,7 +1510,7 @@ sema_decl_function_t* MetaCSemantic_doFunctionSemantic(metac_semantic_state_t* s
         return f;
     }
 
-    metac_scope_parent_t Parent = {SCOPE_PARENT_V(scope_parent_function, FunctionIndex(f))};
+    metac_scope_parent_t Parent = {SCOPE_PARENT_V(scope_parent_function, FunctionIndex(self, f))};
 
     f->Scope = MetaCSemantic_PushNewScope(self, scope_parent_function, (metac_node_t)f);
     // now we compute the position on the stack and Register them in the scope.
@@ -1130,15 +1538,16 @@ sema_decl_function_t* MetaCSemantic_doFunctionSemantic(metac_semantic_state_t* s
     return f;
 }
 
-metac_node_t NodeFromTypeIndex(metac_type_index_t typeIndex)
+metac_node_t NodeFromTypeIndex(metac_semantic_state_t* sema,
+                               metac_type_index_t typeIndex)
 {
     const uint32_t index = TYPE_INDEX_INDEX(typeIndex);
     switch(TYPE_INDEX_KIND(typeIndex))
     {
         case type_index_struct:
-            return (metac_node_t)StructPtr(index);
+            return (metac_node_t)StructPtr(sema, index);
         case type_index_union:
-            return (metac_node_t)UnionPtr(index);
+            return (metac_node_t)UnionPtr(sema, index);
     }
 
     return 0;
@@ -1166,7 +1575,7 @@ metac_sema_declaration_t* MetaCSemantic_doDeclSemantic_(metac_semantic_state_t* 
         case decl_variable:
         {
             decl_variable_t* v = cast(decl_variable_t*) decl;
-            sema_decl_variable_t* var = AllocNewSemaVariable(v, &result);
+            sema_decl_variable_t* var = AllocNewSemaVariable(self, v, &result);
             var->TypeIndex = MetaCSemantic_doTypeSemantic(self, v->VarType);
             if (METAC_NODE(v->VarInitExpression) != emptyNode)
             {
@@ -1205,7 +1614,7 @@ metac_sema_declaration_t* MetaCSemantic_doDeclSemantic_(metac_semantic_state_t* 
                 if (declId.v != 0 && declId.v != -1)
             {
                 metac_node_t node =
-                    NodeFromTypeIndex(type_index);
+                    NodeFromTypeIndex(self, type_index);
                 MetaCSemantic_RegisterInScope(self, declId, node);
                 result = node;
             }
@@ -1364,11 +1773,11 @@ static inline void TypeToCharsP(metac_semantic_state_t* self,
     {
         case type_index_array:
         {
-            metac_type_array_slot_t* arrayType =
+            metac_type_array_t* arrayType =
                 (self->ArrayTypeTable.Slots + TYPE_INDEX_INDEX(typeIndex));
-            TypeToCharsP(self, printer, arrayType->ElementTypeIndex);
+            TypeToCharsP(self, printer, arrayType->ElementType);
             MetacPrinter_PrintStringLiteral(printer, "[");
-            MetacPrinter_PrintI64(printer, (int64_t)arrayType->Dimension);
+            MetacPrinter_PrintI64(printer, (int64_t)arrayType->Dim);
             MetacPrinter_PrintStringLiteral(printer, "]");
         } break;
         case type_index_basic:
@@ -1378,9 +1787,9 @@ static inline void TypeToCharsP(metac_semantic_state_t* self,
         } break;
         case type_index_ptr:
         {
-            metac_type_ptr_slot_t* ptrType =
+            metac_type_ptr_t* ptrType =
                 (self->PtrTypeTable.Slots + TYPE_INDEX_INDEX(typeIndex));
-            TypeToCharsP(self, printer, ptrType->ElementTypeIndex);
+            TypeToCharsP(self, printer, ptrType->ElementType);
             MetacPrinter_PrintStringLiteral(printer, "*");
         } break;
     }
@@ -1469,7 +1878,7 @@ metac_sema_expression_t* MetaCSemantic_doExprSemantic_(metac_semantic_state_t* s
 {
     metac_sema_expression_t* result = 0;
 
-    result = AllocNewSemaExpression(expr);
+    result = AllocNewSemaExpression(self, expr);
 
     if (IsBinaryExp(expr->Kind)
         && (expr->Kind != exp_arrow || expr->Kind != exp_dot))
@@ -1504,10 +1913,10 @@ metac_sema_expression_t* MetaCSemantic_doExprSemantic_(metac_semantic_state_t* s
                 switch(typeIndexKind)
                 {
                 case type_index_struct:
-                    agg = StructPtr(typeIndexIndex);
+                    agg = StructPtr(self, typeIndexIndex);
                 break;
                 case type_index_union:
-                    agg = UnionPtr(typeIndexIndex);
+                    agg = UnionPtr(self, typeIndexIndex);
                 break;
                 case type_index_class:
                     assert(0);
