@@ -81,6 +81,7 @@ typedef struct handoff_walker_context_t
     const metac_semantic_state_t* Origin;
     metac_semantic_state_t* NewOwner;
     metac_sema_declaration_t* decl;
+    metac_node_t result;
 } handoff_walker_context_t;
 
 #define CRC32C_VALUE(HASH, VAL) \
@@ -258,6 +259,7 @@ metac_scope_t* AllocNewScope(metac_semantic_state_t* self,
 
     {
         result = self->Scopes + INC(self->Scopes_size);
+
         result->Serial = INC(_nodeCounter);
         result->Owner = owner;
         result->Parent = parent;
@@ -449,8 +451,8 @@ static inline void HandoffIdentifier(metac_identifier_table_t* dstTable,
 
     metac_identifier_ptr_t newPtr =
         GetOrAddIdentifier(dstTable, idKey, idChars);
+
     idPtrP->v = newPtr.v;
-    printf("Transfering: %s\n", idChars);
 }
 
 static void HandoffField(metac_semantic_state_t* dstState,
@@ -510,12 +512,11 @@ static inline void HandoffType(metac_semantic_state_t* dstState,
 
         case type_index_struct:
         {
-            metac_type_aggregate_t* oldSlot;
-            metac_type_aggregate_t* newSlot;
+            metac_type_aggregate_t* oldSlot =
+                srcState->StructTypeTable.Slots + TYPE_INDEX_INDEX(idx);
 
             metac_type_aggregate_t tmpSlot = *oldSlot;
 
-            oldSlot = srcState->StructTypeTable.Slots + TYPE_INDEX_INDEX(idx);
             const uint32_t fieldCount = oldSlot->FieldCount;
 
             metac_type_aggregate_field_t* newFields =
@@ -543,9 +544,7 @@ static inline void HandoffType(metac_semantic_state_t* dstState,
             result =
                 MetaCTypeTable_AddStructType(&dstState->StructTypeTable, &tmpSlot);
             assert(result.v != -1 && result.v != 0);
-
-            goto LhandoffAggregate;
-        }
+        } break;
         case type_index_union:
         {
             metac_type_aggregate_t* oldSlot;
@@ -554,8 +553,7 @@ static inline void HandoffType(metac_semantic_state_t* dstState,
             metac_type_aggregate_t tmpSlot = *oldSlot;
 
             oldSlot = srcState->UnionTypeTable.Slots + TYPE_INDEX_INDEX(idx);
-            goto LhandoffAggregate;
-        }
+        } break;
         LhandoffAggregate:
         {
 
@@ -569,7 +567,7 @@ static inline void HandoffType(metac_semantic_state_t* dstState,
 #include <string.h>
 static inline int HandoffWalker(metac_node_t node, void* ctx)
 {
-    const handoff_walker_context_t* context =
+    handoff_walker_context_t* context =
         (handoff_walker_context_t*) ctx;
     assert(crc32c_nozero(~0, __FUNCTION__, strlen(__FUNCTION__))
         == context->FunctionKey);
@@ -594,7 +592,7 @@ static inline int HandoffWalker(metac_node_t node, void* ctx)
             assert(typeIndex.v != 0 && typeIndex.v != -1);
             HandoffType(dstState, srcState, &typeIndex);
 
-            node =
+            context->result =
                 (metac_node_t)StructPtr(dstState, TYPE_INDEX_INDEX(typeIndex));
             return 1;
         }
@@ -612,7 +610,7 @@ static inline int HandoffWalker(metac_node_t node, void* ctx)
             assert(typeIndex.v != 0 && typeIndex.v != -1);
             HandoffType(dstState, srcState, &typeIndex);
 
-            node =
+            context->result =
                 (metac_node_t)FunctiontypePtr(dstState, TYPE_INDEX_INDEX(typeIndex));
 
         } break;
@@ -626,15 +624,20 @@ static inline int HandoffWalker(metac_node_t node, void* ctx)
 }
 
 /// transfers ownership of decl and all it's dependents from self to newOwner
-void MetaCSemantic_Handoff(metac_semantic_state_t* self, metac_sema_declaration_t* decl,
+void MetaCSemantic_Handoff(metac_semantic_state_t* self, metac_sema_declaration_t** declP,
                            metac_semantic_state_t* newOwner)
 {
+    printf("Handoff\n");
+    metac_sema_declaration_t* decl = *declP;
+
     handoff_walker_context_t handoff_context = {
         crc32c_nozero(~0, "HandoffWalker", sizeof("HandoffWalker") -1),
-        self, newOwner, decl
+        self, newOwner, decl, 0
     };
 
     MetaCDeclaration_Walk(decl, HandoffWalker, &handoff_context);
+
+    *declP = (metac_sema_declaration_t*)handoff_context.result;
 }
 
 void MetaCSemantic_Init(metac_semantic_state_t* self, metac_parser_t* parser,
@@ -646,6 +649,8 @@ void MetaCSemantic_Init(metac_semantic_state_t* self, metac_parser_t* parser,
                       type_index_## INDEX_KIND);
 
     FOREACH_TYPE_TABLE(INIT_TYPE_TABLE)
+
+    FOREACH_SEMA_STATE_ARRAY(self, INIT_ARRAY)
 
     self->TemporaryScopeDepth = 0;
 
@@ -666,6 +671,10 @@ void MetaCSemantic_Init(metac_semantic_state_t* self, metac_parser_t* parser,
     if (compilerStruct && ((metac_node_t)compilerStruct) != emptyNode)
     {
         self->CompilerInterface = compilerStruct;
+    }
+    else
+    {
+        self->CompilerInterface = 0;
     }
 }
 
@@ -1970,7 +1979,7 @@ metac_sema_expression_t* MetaCSemantic_doExprSemantic_(metac_semantic_state_t* s
         break;
         case exp_tuple:
         {
-            exp_tuple_t* tupleElement = expr->TupleExpressionCount;
+            exp_tuple_t* tupleElement = expr->TupleExpressionList;
             for(int i = 0;
                 i < expr->TupleExpressionCount;
                 i++)
@@ -1995,13 +2004,33 @@ metac_sema_expression_t* MetaCSemantic_doExprSemantic_(metac_semantic_state_t* s
             printf("Type(fn) %s\n", MetaCExpressionKind_toChars(fn->Kind));
             printf("call: %s\n", MetaCPrinter_PrintExpression(&self->Printer, call));
 
+            int callIdx = -1;
+
             for(int memberIdx = 0;
                 memberIdx < self->CompilerInterface->FieldCount;
                 memberIdx++)
             {
-                printf("Field: %s\n",
-                    IdentifierPtrToCharPtr(self->ParserIdentifierTable,
-                        self->CompilerInterface->Fields->Identifier));
+                metac_identifier_ptr_t id =
+                    self->CompilerInterface->Fields[memberIdx].Identifier;
+                //printf("Field: %s\n",
+                //    IdentifierPtrToCharPtr(self->ParserIdentifierTable, id));
+                if (id.v == fn->IdentifierPtr.v)
+                {
+                    printf("Found\n");
+                    callIdx = memberIdx;
+                    break;
+                }
+            }
+            if (callIdx == -1)
+            {
+                printf("CallNotFound\n");
+                result->Kind = exp_signed_integer;
+                result->ValueI64 = 0;
+                result->TypeIndex.v = 0;
+            }
+            else
+            {
+
             }
             // CompilerInterface_Call(
         } break;

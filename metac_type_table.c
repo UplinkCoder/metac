@@ -133,6 +133,7 @@ metac_type_index_t MetaCTypeTable_AddImpl(metac_type_table_t* self,
         {
             continue;
         }
+
         return result;
     }
     assert(0);

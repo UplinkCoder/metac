@@ -264,9 +264,9 @@ int main(int argc, const char* argv[])
         MetaCSemantic_PushNewScope(&sema, scope_parent_module, 1);
 
 
-        MetaCSemantic_Handoff(&tmpSema, (metac_sema_declaration_t*)compilerStruct,
+        MetaCSemantic_Handoff(&tmpSema,
+                              (metac_sema_declaration_t**)&sema.CompilerInterface,
                               &sema);
-
         // FreeSema
         MetaCParser_Free(&tmpParser);
     }

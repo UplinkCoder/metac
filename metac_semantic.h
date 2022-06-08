@@ -15,15 +15,15 @@
 #  define AT(...)
 #endif
 
-#define FOREACH_SEMA_STATE_ARRAY(M) \
-    M(metac_sema_expression_t, Expressions) \
-    M(sema_decl_variable_t, Variables) \
-    M(sema_decl_function_t, Functions) \
-    M(metac_scope_t, Scopes) \
-    M(sema_stmt_block_t, BlockStatements) \
-    M(metac_sema_statement_t, Statements)
+#define FOREACH_SEMA_STATE_ARRAY(SELF, M) \
+    M(SELF, metac_sema_expression_t, Expressions) \
+    M(SELF, sema_decl_variable_t, Variables) \
+    M(SELF, sema_decl_function_t, Functions) \
+    M(SELF, metac_scope_t, Scopes) \
+    M(SELF, sema_stmt_block_t, BlockStatements) \
+    M(SELF, metac_sema_statement_t, Statements)
 
-#define DECLARE_ARRAY(TYPE_NAME, VAR) \
+#define DECLARE_ARRAY(UNUSED, TYPE_NAME, VAR) \
     TYPE_NAME* VAR; \
     uint32_t VAR##_size; \
     uint32_t VAR##_capacity;
@@ -44,14 +44,16 @@
     (__builtin_atomic_fetch_add(&v, __ATOMIC_RELEASE))
 #endif
 
+void _newMemRealloc(void** memP, uint32_t* capacityP, const uint32_t elementSize);
+
 /// TODO: lock during realloc
 #define REALLOC_BOILERPLATE(VAR) \
 if (VAR ## _capacity <= VAR ## _size) \
     { \
         _newMemRealloc( \
-            (void**)&  VAR, \
+            ((void**)&VAR), \
             &VAR## _capacity, \
-            sizeof(* VAR) \
+            sizeof(*VAR) \
         ); \
     }
 
@@ -60,9 +62,9 @@ if (VAR ## _capacity <= VAR ## _size) \
 if (VAR ## _capacity <= (VAR ## _size + (N))) \
     { \
         _newMemRealloc( \
-            (void**)&  VAR, \
+            ((void**)&VAR), \
             &VAR## _capacity, \
-            sizeof(* VAR) \
+            sizeof(*VAR) \
         ); \
     }
 
@@ -106,7 +108,7 @@ typedef struct metac_semantic_state_t
     // metac_type_table_t* TypeTable;
     FOREACH_TYPE_TABLE(DECLARE_TYPE_TABLE)
 
-    FOREACH_SEMA_STATE_ARRAY(DECLARE_ARRAY)
+    FOREACH_SEMA_STATE_ARRAY(NULL, DECLARE_ARRAY)
 
     AT(transient) metac_sema_expression_t* ExpressionStack;
     AT(transient) uint32_t ExpressionStackSize;
