@@ -5,7 +5,6 @@
 #include "metac_parsetree.h"
 #include "metac_parser.h"
 #include "metac_type_table.h"
-#include "metac_printer.h"
 #include "metac_sematree.h"
 #include "metac_scope.h"
 //TODO get rid of exp_eval after testing
@@ -118,8 +117,6 @@ typedef struct metac_semantic_state_t
 
     AT(valid_if, CurrentScope->Parent.Owner.Kind == scope_parent_function)
     uint32_t FrameOffset;
-
-    metac_printer_t Printer;
 } metac_semantic_state_t;
 
 #define SemanticError(STATE, MSG, ...) \

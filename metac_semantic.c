@@ -667,7 +667,6 @@ void MetaCSemantic_Init(metac_semantic_state_t* self, metac_parser_t* parser,
 
     memset(&self->LRU, 0, sizeof(self->LRU));
 
-    MetaCPrinter_Init(&self->Printer, self->ParserIdentifierTable, &parser->StringTable);
     if (compilerStruct && ((metac_node_t)compilerStruct) != emptyNode)
     {
         self->CompilerInterface = compilerStruct;
@@ -2002,7 +2001,6 @@ metac_sema_expression_t* MetaCSemantic_doExprSemantic_(metac_semantic_state_t* s
                 call->E2->ArgumentList : (exp_argument_t*)emptyNode);
 
             printf("Type(fn) %s\n", MetaCExpressionKind_toChars(fn->Kind));
-            printf("call: %s\n", MetaCPrinter_PrintExpression(&self->Printer, call));
 
             int callIdx = -1;
 
@@ -2092,7 +2090,11 @@ metac_sema_expression_t* MetaCSemantic_doExprSemantic_(metac_semantic_state_t* s
             if (!MetaCSemantic_CanHaveAddress(self, expr->E1))
             {
                 result->TypeIndex.v = ERROR_TYPE_INDEX_V;
-                SemanticError(self, "cannot take the address of %s", MetaCPrinter_PrintExpression(&self->Printer, expr->E1));
+                const char* e1String = "E1";
+                //TODO FIXME use some global printer to do this
+                //e1String = MetaCPrinter_PrintExpression(printer, expr->E1);
+
+                SemanticError(self, "cannot take the address of %s", e1String);
             }
             else
             {

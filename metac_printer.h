@@ -10,6 +10,8 @@
 #define INITIAL_SIZE (16 * 4096)
 #define GROWTH_FACTOR 1.3f
 
+typedef struct metac_semantic_state_t metac_semantic_state_t;
+
 typedef struct metac_printer_t
 {
     char* StringMemory;
@@ -44,5 +46,10 @@ void MetacPrinter_PrintI64(metac_printer_t* self, const int64_t value);
 void MetacPrinter_PrintStringLiteral(metac_printer_t* self, const char* str);
 
 void MetaCPrinter_Reset(metac_printer_t* self);
+
+const char* MetaCPrinter_PrintSemaNode(metac_printer_t* self,
+                                       metac_semantic_state_t* sema,
+                                       metac_node_t node);
+
 
 #endif // _METAC_PRINTER_H_

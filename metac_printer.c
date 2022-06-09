@@ -803,7 +803,6 @@ static inline void PrintExpression(metac_printer_t* self, metac_expression_t* ex
         printf("don't know how to print %s\n", (MetaCExpressionKind_toChars(exp->Kind)));
     }
 }
-
 #include "metac_semantic.h"
 
 static inline void PrintSemaType(metac_printer_t* self,
