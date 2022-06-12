@@ -154,6 +154,30 @@ static inline bool TypedefSlotsEqual(const metac_type_table_slot_t* a,
 }
 
 
+static inline bool TupleSlotsEqual(const metac_type_table_slot_t* a,
+                                   const metac_type_table_slot_t* b)
+{
+   metac_type_tuple_t* slotA = cast(metac_type_tuple_t*) a;
+   metac_type_tuple_t* slotB = cast(metac_type_tuple_t*) b;
+   bool result = false;
+
+   if (slotA->typeCount == slotB->typeCount)
+   {
+       result = true;
+       const uint32_t typeCount = slotA->typeCount;
+       for(int i = 0; i < typeCount; i++)
+       {
+           if (slotA->typeIndicies[i].v != slotB->typeIndicies[i].v)
+           {
+               result = false;
+               break;
+           }
+       }
+   }
+
+   return result;
+}
+
 #define METAC_TYPE_TABLE_T(SLOT_TYPE) \
     metac_type_table_##SLOT_TYPE##_t
 
@@ -178,7 +202,8 @@ typedef struct  METAC_TYPE_TABLE_T(SLOT_TYPE) \
     M(aggregate) \
     M(ptr) \
     M(functiontype) \
-    M(typedef)
+    M(typedef) \
+    M(tuple)
 
 FOREACH_TABLE_SLOT_TYPE(METAC_TYPE_TABLE_T_DEF)
 
@@ -190,7 +215,8 @@ FOREACH_TABLE_SLOT_TYPE(METAC_TYPE_TABLE_T_DEF)
     M(aggregate, Union,  AggregateSlotsEqual) \
     M(ptr, Ptr, PtrSlotsEqual) \
     M(functiontype, Function, FunctiontypeSlotsEqual) \
-    M(typedef, Typedef, TypedefSlotsEqual)
+    M(typedef, Typedef, TypedefSlotsEqual) \
+    M(tuple, Tuple, TupleSlotsEqual)
 
 #define DECLARE_ADD(TYPE_NAME, MEMBER_NAME, UNUSED_CMP) \
     metac_type_index_t MetaCTypeTable_Add ## MEMBER_NAME ## Type \

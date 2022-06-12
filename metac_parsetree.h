@@ -242,6 +242,9 @@ typedef struct stmt_do_while_t
 
 #define MEMBER(KIND) \
     KIND##_t KIND;
+
+typedef struct decl_type_tuple_t decl_type_tuple_t;
+
 typedef struct metac_statement_t
 {
     union // switch(Kind)
@@ -451,6 +454,14 @@ typedef struct decl_type_typedef_t
 
     metac_identifier_ptr_t Identifier;
 } decl_type_typedef_t;
+
+typedef struct decl_type_tuple_t
+{
+    DECLARATION_HEADER
+
+    decl_type_t** Types;
+    uint32_t TypeCount;
+} decl_type_tuple_t;
 
 typedef struct metac_declaration_t
 {

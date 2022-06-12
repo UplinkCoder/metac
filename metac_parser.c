@@ -1,7 +1,7 @@
 #ifndef _METAC_PARSER_C_
 #define _METAC_PARSER_C_
 
-#undef TYPE_EXP
+#define TYPE_EXP
 
 #ifndef ACCEL
 #  error "You must compile the parser with ACCEL set"
@@ -644,7 +644,8 @@ static inline uint32_t OpToPrecedence(metac_expression_kind_t exp)
           || exp == exp_signed_integer
           || exp == exp_string
           || exp == exp_identifier
-          || exp == exp_char)
+          || exp == exp_char
+          || exp == exp_tuple)
     {
         return 18;
     }

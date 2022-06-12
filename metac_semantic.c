@@ -119,6 +119,14 @@ uint32_t AggregateHash(metac_type_aggregate_t* agg)
     return hash;
 }
 
+#ifndef ATOMIC
+#define POST_ADD(v, b) \
+    (v += b, v - b)
+#else
+#define POST_ADD(v, b)
+    (__builtin_atomic_fetch_add(&v, b))
+#endif
+
 metac_sema_expression_t* AllocNewSemaExpression(metac_semantic_state_t* self, metac_expression_t* expr)
 {
     metac_sema_expression_t* result = 0;
@@ -135,6 +143,22 @@ metac_sema_expression_t* AllocNewSemaExpression(metac_semantic_state_t* self, me
                ((char*)expr) + sizeof(metac_expression_header_t),
                sizeof(metac_expression_t) - sizeof(metac_expression_header_t));
         result->Serial = INC(_nodeCounter);
+    }
+
+    if (expr->Kind == exp_tuple)
+    {
+        const uint32_t tupleExpCount = expr->TupleExpressionCount;
+        REALLOC_N_BOILERPLATE(self->Expressions, tupleExpCount);
+
+        metac_sema_expression_t* elements =
+            self->Expressions + POST_ADD(self->Expressions_size, tupleExpCount);
+        for(uint32_t i = 0;
+            i < tupleExpCount;
+            i++)
+        {
+            (elements + i)->Kind = exp_invalid;
+            //(elements + i)->Serial = INC(_nodeCounter);
+        }
     }
 
     return result;
@@ -190,6 +214,12 @@ uint32_t FunctiontypeIndex(metac_semantic_state_t* self, metac_type_functiontype
     return result;
 }
 
+uint32_t TupleTypeIndex(metac_semantic_state_t* self, metac_type_tuple_t* tupletype)
+{
+    uint32_t result = (tupletype - self->TupleTypeTable.Slots);
+    return result;
+}
+
 metac_type_aggregate_t* StructPtr(metac_semantic_state_t* self, uint32_t index)
 {
     metac_type_aggregate_t* result = (self->StructTypeTable.Slots + index);
@@ -235,6 +265,12 @@ metac_type_array_t* ArrayTypePtr(metac_semantic_state_t* self, uint32_t index)
 metac_type_functiontype_t* FunctiontypePtr(metac_semantic_state_t* self, uint32_t index)
 {
     metac_type_functiontype_t* result = (self->FunctionTypeTable.Slots + index);
+    return result;
+}
+
+metac_type_tuple_t* TupleTypePtr(metac_semantic_state_t* self, uint32_t index)
+{
+    metac_type_tuple_t* result = (self->TupleTypeTable.Slots + index);
     return result;
 }
 
@@ -286,14 +322,6 @@ sema_decl_function_t* AllocNewSemaFunction(metac_semantic_state_t* self,
 
     return result;
 }
-
-#ifndef ATOMIC
-#define POST_ADD(v, b) \
-    (v += b, v - b)
-#else
-#define POST_ADD(v, b)
-    (__builtin_atomic_fetch_add(&v, b))
-#endif
 
 sema_decl_variable_t* AllocNewSemaVariable(metac_semantic_state_t* self, decl_variable_t* decl, metac_sema_declaration_t** result_ptr)
 {
@@ -547,12 +575,15 @@ static inline void HandoffType(metac_semantic_state_t* dstState,
         } break;
         case type_index_union:
         {
+            assert(0);
+#if 0
             metac_type_aggregate_t* oldSlot;
             metac_type_aggregate_t* newSlot;
 
             metac_type_aggregate_t tmpSlot = *oldSlot;
 
             oldSlot = srcState->UnionTypeTable.Slots + TYPE_INDEX_INDEX(idx);
+#endif
         } break;
         LhandoffAggregate:
         {
@@ -605,7 +636,7 @@ static inline int HandoffWalker(metac_node_t node, void* ctx)
 
 
             metac_type_index_t typeIndex =
-                MetaCTypeTable_GetOrEmptyFunctionType(&srcState->StructTypeTable,
+                MetaCTypeTable_GetOrEmptyFunctionType(&srcState->FunctionTypeTable,
                                                     struct_);
             assert(typeIndex.v != 0 && typeIndex.v != -1);
             HandoffType(dstState, srcState, &typeIndex);
@@ -1215,7 +1246,7 @@ metac_type_index_t MetaCSemantic_GetArrayTypeOf(metac_semantic_state_t* state,
 {
     uint32_t hash = EntangleInts(TYPE_INDEX_INDEX(elementTypeIndex), dimension);
     metac_type_array_t key = {
-            (metac_type_header_t){hash, 0, }, elementTypeIndex, dimension};
+            (metac_type_header_t){decl_type_array, 0, hash}, elementTypeIndex, dimension};
 
     metac_type_index_t result =
         MetaCTypeTable_GetOrEmptyArrayType(&state->ArrayTypeTable, &key);
@@ -1800,6 +1831,24 @@ static inline void TypeToCharsP(metac_semantic_state_t* self,
             TypeToCharsP(self, printer, ptrType->ElementType);
             MetacPrinter_PrintStringLiteral(printer, "*");
         } break;
+        case type_index_tuple:
+        {
+            metac_type_tuple_t* tupleType =
+                (self->TupleTypeTable.Slots + TYPE_INDEX_INDEX(typeIndex));
+            MetacPrinter_PrintStringLiteral(printer, "{");
+            const uint32_t typeCount = tupleType->typeCount;
+            for(uint32_t i = 0;
+                i < tupleType->typeCount;
+                i++)
+            {
+                TypeToCharsP(self, printer, tupleType->typeIndicies[i]);
+                if (i != (typeCount - 1))
+                {
+                    MetacPrinter_PrintStringLiteral(printer, ", ");
+                }
+            }
+            MetacPrinter_PrintStringLiteral(printer, "}");
+        } break;
     }
 }
 
@@ -1979,12 +2028,52 @@ metac_sema_expression_t* MetaCSemantic_doExprSemantic_(metac_semantic_state_t* s
         case exp_tuple:
         {
             exp_tuple_t* tupleElement = expr->TupleExpressionList;
+            const uint32_t tupleExpressionCount =
+                expr->TupleExpressionCount;
+            metac_sema_expression_t** resolvedExps = alloca(
+                sizeof(metac_sema_expression_t*) * tupleExpressionCount);
+
             for(int i = 0;
                 i < expr->TupleExpressionCount;
                 i++)
             {
-
+                metac_expression_t *e = tupleElement->Expression;
+                tupleElement = tupleElement->Next;
+                resolvedExps[i] = MetaCSemantic_doExprSemantic(self, e);
             }
+
+            metac_type_index_t* indicies =
+                alloca(sizeof(metac_type_index_t) * expr->TupleExpressionCount);
+
+            for(uint32_t i = 0; i < tupleExpressionCount; i++)
+            {
+                *(result->TupleExpressions + i) = *resolvedExps[i];
+                indicies[i] = resolvedExps[i]->TypeIndex;
+            }
+
+           uint32_t hash = crc32c(~0, indicies,
+                sizeof(metac_type_index_t) * expr->TupleExpressionCount);
+
+            metac_type_tuple_t typeTuple;
+            typeTuple.Header.Kind = node_decl_type_tuple;
+            typeTuple.Header.Hash = hash;
+            typeTuple.typeCount = tupleExpressionCount;
+            typeTuple.typeIndicies = indicies;
+
+           // AllocNewTupleType()
+            metac_type_index_t tupleIdx =
+                MetaCTypeTable_GetOrEmptyTupleType(&self->TupleTypeTable, &typeTuple);
+            if (tupleIdx.v == 0)
+            {
+                metac_type_index_t* newIndicies = (metac_type_index_t*)
+                    malloc(expr->TupleExpressionCount * sizeof(metac_type_index_t));
+                memcpy(newIndicies, indicies,
+                    expr->TupleExpressionCount * sizeof(metac_type_index_t));
+                typeTuple.typeIndicies = newIndicies;
+                tupleIdx =
+                    MetaCTypeTable_AddTupleType(&self->TupleTypeTable, &typeTuple);
+            }
+            result->TypeIndex = tupleIdx;
         }
         break;
         case exp_dot_compiler:
@@ -2010,10 +2099,11 @@ metac_sema_expression_t* MetaCSemantic_doExprSemantic_(metac_semantic_state_t* s
             {
                 metac_identifier_ptr_t id =
                     self->CompilerInterface->Fields[memberIdx].Identifier;
-                //printf("Field: %s\n",
-                //    IdentifierPtrToCharPtr(self->ParserIdentifierTable, id));
                 if (id.v == fn->IdentifierPtr.v)
                 {
+                    printf("Field: %s\n",
+                        IdentifierPtrToCharPtr(self->ParserIdentifierTable, id));
+
                     printf("Found\n");
                     callIdx = memberIdx;
                     break;

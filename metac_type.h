@@ -158,6 +158,15 @@ typedef struct metac_type_typedef_t
     metac_identifier_ptr_t Identifier;
 } metac_type_typedef_t;
 
+typedef struct metac_type_tuple_t
+{
+    metac_type_header_t Header;
+
+    metac_type_index_t* typeIndicies;
+
+    uint32_t typeCount;
+} metac_type_tuple_t;
+
 typedef enum metac_type_kind_t
 {
     type_invalid,
@@ -201,6 +210,8 @@ typedef enum metac_type_kind_t
     type_array,
 
     type_map,
+
+    type_tuple,
 
     type_max
 } metac_type_kind_t;

@@ -30,6 +30,7 @@
     M(decl_type_array) \
     M(decl_type_ptr) \
     M(decl_type_functiontype) \
+    M(decl_type_tuple) \
     LAST_DECL_TYPE(M) \
     \
     M(decl_function) \

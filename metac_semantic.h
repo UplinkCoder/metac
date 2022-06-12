@@ -86,7 +86,8 @@ typedef struct metac_sema_decl_state_t
     M(ptr,          PtrTypeTable,               ptr) \
     M(aggregate,    UnionTypeTable,           union) \
     M(typedef,      TypedefTypeTable,       typedef) \
-    M(functiontype, FunctionTypeTable, functiontype)
+    M(functiontype, FunctionTypeTable, functiontype) \
+    M(tuple,        TupleTypeTable,           tuple)
 
 typedef struct metac_semantic_state_t
 {

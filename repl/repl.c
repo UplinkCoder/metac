@@ -548,7 +548,7 @@ LnextLine:
                 const char* str = MetaCPrinter_PrintExpression(&printer, exp);
                 metac_sema_expression_t* result =
                     MetaCSemantic_doExprSemantic(&sema, exp);
-
+                printf("typeIndex.v: %x\n", result->TypeIndex.v);
                 const char* type_str = TypeToChars(&sema, result->TypeIndex);
 
                 printf("typeof(%s) = %s\n", str, type_str);

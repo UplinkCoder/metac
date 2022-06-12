@@ -111,6 +111,12 @@ static inline void WalkTree(void* c, BCValue* result,
     printf("There should have been some code\n");
 */
 
+static inline void TupleToValue(void* c, BCValue* result,
+                                metac_sema_expression_t* e)
+{
+
+}
+
 static inline void WalkTree(void* c, BCValue* result,
                             metac_sema_expression_t* e,
                             variable_store_t* vstore)
@@ -157,7 +163,7 @@ static inline void WalkTree(void* c, BCValue* result,
 
         case exp_tuple:
         {
-
+            TupleToValue(c, result, e);
         } break;
 
         case exp_type:
