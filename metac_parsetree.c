@@ -32,6 +32,8 @@ int MetaCDeclaration_Walk_Real(metac_declaration_t* decl, walker_function_t walk
     switch(decl->DeclKind)
     {
         //default 0:
+        case decl_type_tuple:
+        // decl_type_tuple doesn't really exist
         case decl_min:
         case decl_max:
             assert(0);

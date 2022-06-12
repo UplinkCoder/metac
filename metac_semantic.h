@@ -94,6 +94,7 @@ typedef struct metac_semantic_state_t
     bool initialized;
     metac_identifier_table_t SemanticIdentifierTable;
     metac_identifier_table_t* ParserIdentifierTable;
+    metac_identifier_table_t* ParserStringTable;
 
     // has state such as the current stack offset and the like
     // to layout variables
@@ -209,6 +210,9 @@ sema_stmt_block_t* AllocNewSemaBlockStatement(metac_semantic_state_t* self,
 
 metac_scope_t* AllocNewScope(metac_semantic_state_t* self, metac_scope_t* parent, metac_scope_parent_t owner);
 metac_type_array_t* AllocNewSemaArrayType(metac_semantic_state_t* self, metac_type_index_t elementTypeIndex, uint32_t dim);
+
+void MetaCSemantic_Handoff(metac_semantic_state_t* self, metac_sema_declaration_t** declP,
+                           metac_semantic_state_t* newOwner);
 
 #define StatementIndex(SEMA, STMT) StatementIndex_(SEMA, (metac_sema_statement_t*)STMT)
 

@@ -692,6 +692,7 @@ void MetaCSemantic_Init(metac_semantic_state_t* self, metac_parser_t* parser,
 
     IdentifierTableInit(&self->SemanticIdentifierTable, IDENTIFIER_LENGTH_SHIFT);
     self->ParserIdentifierTable = &parser->IdentifierTable;
+    self->ParserStringTable = &parser->StringTable;
 
     self->CurrentScope = 0;
     self->CurrentDeclarationState = 0;
@@ -706,6 +707,8 @@ void MetaCSemantic_Init(metac_semantic_state_t* self, metac_parser_t* parser,
     {
         self->CompilerInterface = 0;
     }
+
+    self->initialized = true;
 }
 
 void MetaCSemantic_PopScope(metac_semantic_state_t* self)
@@ -2039,6 +2042,9 @@ metac_sema_expression_t* MetaCSemantic_doExprSemantic_(metac_semantic_state_t* s
             {
                 metac_expression_t *e = tupleElement->Expression;
                 tupleElement = tupleElement->Next;
+                metac_printer_t printer;
+                MetaCPrinter_Init(&printer, self->ParserIdentifierTable, self->ParserStringTable);
+                printf("Doing semantic on tuple Element: %s\n", MetaCPrinter_PrintExpression(&printer, e));
                 resolvedExps[i] = MetaCSemantic_doExprSemantic(self, e);
             }
 
