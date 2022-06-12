@@ -47,9 +47,12 @@ void MetacPrinter_PrintStringLiteral(metac_printer_t* self, const char* str);
 
 void MetaCPrinter_Reset(metac_printer_t* self);
 
+#ifndef NO_SEMANTIC
+
 const char* MetaCPrinter_PrintSemaNode(metac_printer_t* self,
                                        metac_semantic_state_t* sema,
                                        metac_node_t node);
 
+#endif // NO_SEMANTIC
 
 #endif // _METAC_PRINTER_H_

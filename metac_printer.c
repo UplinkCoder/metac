@@ -803,6 +803,9 @@ static inline void PrintExpression(metac_printer_t* self, metac_expression_t* ex
         printf("don't know how to print %s\n", (MetaCExpressionKind_toChars(exp->Kind)));
     }
 }
+
+#ifndef NO_SEMANTIC
+
 #include "metac_semantic.h"
 
 static inline void PrintSemaType(metac_printer_t* self,
@@ -854,24 +857,21 @@ static inline void PrintSemaExpression(metac_printer_t* self,
     }
     else if (semaExp->Kind == exp_tuple)
     {
-/*
         PrintChar(self, '{');
         exp_tuple_t* tupleElement =
-            semaExp->TupleExpressionList;
+            semaExp->TupleExpressions;
         for(int i = 0;
             i < semaExp->TupleExpressionCount;
             i++)
         {
-            PrintSemaExpression(self, tupleElement->Expression);
+            PrintSemaExpression(self, sema, tupleElement + i);
             if (i != (semaExp->TupleExpressionCount - 1))
             {
                 PrintChar(self, ',');
                 PrintSpace(self);
             }
-            tupleElement = tupleElement->Next;
         }
         PrintChar(self, '}');
-*/
     }
     else if (semaExp->Kind == exp_type)
     {
@@ -1201,6 +1201,35 @@ static inline void PrintSemaDeclaration(metac_printer_t* self,
     PrintNewline(self);
 }
 
+const char* MetaCPrinter_PrintSemaNode(metac_printer_t* self,
+                                       metac_semantic_state_t* sema,
+                                       metac_node_t node)
+{
+    const char* result = self->StringMemory + self->StringMemorySize;
+    uint32_t posBegin = self->StringMemorySize;
+
+    if (node->Kind > node_exp_invalid && node->Kind < node_exp_max)
+    {
+        PrintSemaExpression(self, sema, (metac_sema_expression_t*) node);
+    }
+    else if (node->Kind > stmt_min && node->Kind < stmt_max)
+    {
+        // PrintSemaStatement(self, (metac_sema_statement_t*) node);
+    }
+    else if (node->Kind > decl_min && node->Kind < decl_max)
+    {
+        PrintSemaDeclaration(self, sema, (metac_sema_declaration_t*) node, 0);
+    }
+    else
+        assert(0);
+
+    int advancement = self->StringMemorySize - posBegin;
+    self->StringMemory[self->StringMemorySize++] = '\0';
+    return result;
+}
+
+#endif // NO_SEMANTIC
+
 void MetaCPrinter_Reset(metac_printer_t* self)
 {
     memset(self->StringMemory, ' ', self->StringMemorySize);
@@ -1306,30 +1335,3 @@ const char* MetaCPrinter_PrintNode(metac_printer_t* self, metac_node_t node)
 
 }
 
-const char* MetaCPrinter_PrintSemaNode(metac_printer_t* self,
-                                       metac_semantic_state_t* sema,
-                                       metac_node_t node)
-{
-    const char* result = self->StringMemory + self->StringMemorySize;
-    uint32_t posBegin = self->StringMemorySize;
-
-    if (node->Kind > node_exp_invalid && node->Kind < node_exp_max)
-    {
-        PrintSemaExpression(self, sema, (metac_sema_expression_t*) node);
-    }
-    else if (node->Kind > stmt_min && node->Kind < stmt_max)
-    {
-        // PrintSemaStatement(self, (metac_sema_statement_t*) node);
-    }
-    else if (node->Kind > decl_min && node->Kind < decl_max)
-    {
-        PrintSemaDeclaration(self, sema, (metac_sema_declaration_t*) node, 0);
-    }
-    else
-        assert(0);
-
-    int advancement = self->StringMemorySize - posBegin;
-    self->StringMemory[self->StringMemorySize++] = '\0';
-    return result;
-
-}

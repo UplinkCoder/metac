@@ -514,6 +514,7 @@ LnextLine:
             {
                 exp =
                     MetaCParser_ParseExpressionFromString(line);
+                const char* str = MetaCPrinter_PrintExpression(&printer, exp);
 
                 metac_sema_expression_t* result =
                     MetaCSemantic_doExprSemantic(&sema, exp);
@@ -523,7 +524,6 @@ LnextLine:
                 metac_sema_expression_t eval_exp = evalWithVariables(result, &vstore);
                 result = &eval_exp;
 
-                const char* str = MetaCPrinter_PrintExpression(&printer, exp);
                 const char* result_str;
                 if (eval_exp.Kind == exp_type)
                 {

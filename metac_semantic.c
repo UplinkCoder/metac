@@ -2007,10 +2007,19 @@ metac_sema_expression_t* MetaCSemantic_doExprSemantic_(metac_semantic_state_t* s
         {
             metac_sema_expression_t* E1 =
                 MetaCSemantic_doExprSemantic(self, expr->E1);
-            result->Kind = exp_type;
+            //result->Kind = exp_type;
             result->TypeIndex.v =
                 TYPE_INDEX_V(type_index_basic, type_type);
             result->TypeExp = E1->TypeIndex;
+        } break;
+
+        case exp_paren:
+        {
+            metac_sema_expression_t* E1 =
+                MetaCSemantic_doExprSemantic(self, expr->E1);
+            //result->Kind = exp_paren;
+            result->TypeIndex = E1->TypeIndex;
+            result->E1 = E1;
         } break;
 
         case exp_add:
