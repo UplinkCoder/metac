@@ -1106,7 +1106,7 @@ scope_insert_error_t MetaCSemantic_RegisterInScope(metac_semantic_state_t* self,
     uint16_t hash12 = idPtrHash & 0xFFF0;
     int16x8_t hashes;
 #if defined(SIMD)
-
+    assert(0); // Not implemented as of now
 #elif defined(SSE2)
     hashes.XMM = _mm_load_si128((__m128i*) self->LRU.LRUContentHashes.E);
 #elif defined(NEON)
