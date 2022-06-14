@@ -12,6 +12,8 @@
 #  include "metac_simd.h"
 #endif
 
+const char* MetaCExpressionKind_toChars(metac_expression_kind_t);
+
 bool IsExpressionNode(metac_node_kind_t);
 
 bool Expression_IsEqual_(metac_sema_expression_t* a,
@@ -1282,7 +1284,6 @@ metac_type_index_t MetaCSemantic_GetArrayTypeOf(metac_semantic_state_t* state,
 
     return result;
 }
-const char* MetaCExpressionKind_toChars(metac_expression_kind_t);
 
 metac_type_index_t MetaCSemantic_doTypeSemantic_(metac_semantic_state_t* self,
                                                  decl_type_t* type,
@@ -2024,11 +2025,12 @@ metac_sema_expression_t* MetaCSemantic_doExprSemantic_(metac_semantic_state_t* s
                 assert(agg != 0);
 
                 assert(expr->E2->Kind == exp_identifier);
+
+#if 0
+// TODO enable scope search! which means we store a compacted scope table on persistance of the tmp scope
                 uint32_t idPtrHash = crc32c(~0,
                                             &expr->E2->IdentifierPtr,
                                             sizeof(expr->E2->IdentifierPtr));
-#if 0
-// TODO enable scope search! which means we store a compacted scope table on persistance of the tmp scope
                 metac_node_t node =
                     MetaCScope_LookupIdentifier(agg->Scope,
                                                 idPtrHash,
@@ -2181,6 +2183,7 @@ metac_sema_expression_t* MetaCSemantic_doExprSemantic_(metac_semantic_state_t* s
                     break;
                 }
             }
+
             if (callIdx == -1)
             {
                 printf("CallNotFound\n");
@@ -2230,7 +2233,7 @@ metac_sema_expression_t* MetaCSemantic_doExprSemantic_(metac_semantic_state_t* s
             }
             else
             {
-                if (node->Kind == (metac_expression_kind_t)exp_identifier)
+                if (node->Kind == (metac_node_kind_t)exp_identifier)
                 {
                     fprintf(stderr, "we should not be retured an identifier\n");
                 }

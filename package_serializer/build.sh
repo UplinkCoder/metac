@@ -12,8 +12,9 @@ fi
 echo $CC package_serializer.c -DACCEL=$ACCEL -DWRITE_TABLE \
     -g2 -O0 -march=native -mtune=native -o package_serializer $@
 
-$CC package_serializer.c -DACCEL=$ACCEL -DWRITE_TABLE \
-    -g2 -O0 -march=native -mtune=native -o package_serializer $@
+#$CC package_serializer.c -DACCEL=$ACCEL -DWRITE_TABLE \
+#    -g2 -O0 -march=native -mtune=native -o package_serializer $@
 
-#g++ package_serializer.c ../metac_parser_obj.c ../3rd_party/tracy/TracyClientNoExit.o -I.. \
-#    -g2 -O0 -march=native -mtune=native -lpthread -lm -ldl -o package_serializer $@
+g++ package_serializer.c -DACCEL=$ACCEL -DWRITE_TABLE \
+    ~/dev/tracy/TracyClientNoExit.o -I.. \
+    -g2 -O3 -march=native -mtune=native -lpthread -lm -ldl -o package_serializer $@

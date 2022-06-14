@@ -32,7 +32,7 @@
    SELF->VAR##_size = 0; \
    SELF->VAR##_capacity = 0;
 
-
+void _newMemRealloc(void** memP, uint32_t* capacityP, const uint32_t elementSize);
 //static uint32_t _nodeCounter = 1;
 
 #ifndef ATOMIC
@@ -42,8 +42,6 @@
 #define INC(v)
     (__builtin_atomic_fetch_add(&v, __ATOMIC_RELEASE))
 #endif
-
-void _newMemRealloc(void** memP, uint32_t* capacityP, const uint32_t elementSize);
 
 /// TODO: lock during realloc
 #define REALLOC_BOILERPLATE(VAR) \
