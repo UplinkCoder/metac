@@ -11,6 +11,7 @@ if [ -d $DST ]; then
        crc32c.c crc32c.h \
        bsr.h bsf.h \
        metac_node.h \
+       metac_simd.h \
        metac_lexer.c metac_lexer.h metac_parser.c metac_parser.h \
        metac_alloc_node.c metac_alloc_node.h \
        metac_parsetree.c metac_parsetree.h \

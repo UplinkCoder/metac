@@ -8,6 +8,10 @@
 #include "crc32c.h"
 #define AT(...)
 
+#if defined(SIMD)
+#  include "metac_simd.h"
+#endif
+
 bool IsExpressionNode(metac_node_kind_t);
 
 bool Expression_IsEqual_(metac_sema_expression_t* a,
@@ -616,7 +620,6 @@ static inline int HandoffWalker(metac_node_t node, void* ctx)
             uint32_t hash = struct_->Header.Hash;
             assert(hash);
 
-
             metac_type_index_t typeIndex =
                 MetaCTypeTable_GetOrEmptyStructType(&srcState->StructTypeTable,
                                                     struct_);
@@ -629,7 +632,7 @@ static inline int HandoffWalker(metac_node_t node, void* ctx)
         }
         case node_decl_type_functiontype:
         {
-                        metac_type_aggregate_t* struct_ =
+            metac_type_aggregate_t* struct_ =
                 cast(metac_type_aggregate_t*) node;
             uint32_t hash = struct_->Header.Hash;
             assert(hash);
@@ -1102,25 +1105,42 @@ scope_insert_error_t MetaCSemantic_RegisterInScope(metac_semantic_state_t* self,
     // and remove them from the LRU hashes
     uint16_t hash12 = idPtrHash & 0xFFF0;
     int16x8_t hashes;
+#if defined(SIMD)
 
-#ifdef SSE2
+#elif defined(SSE2)
     hashes.XMM = _mm_load_si128((__m128i*) self->LRU.LRUContentHashes.E);
+#elif defined(NEON)
+    hashes =
+        (*(int16x8_t*) self->LRUContentHashes.E);
 #else
     hashes = self->LRU.LRUContentHashes;
 #endif
 
-#ifdef SSE2
+#if defined(SSE2)
     const __m128i key = _mm_set1_epi16(hash12);
-    const __m128i keyMask = _mm_set1_epi16(0xF);
+    const __m128i keyMask = _mm_set1_epi16(0xFFF0);
     // mask out the scope_hash so we only compare keys
     // TODO can we make this store conditinal or would
     // the additional movemask make this slower?
-    __m128i masked = _mm_andnot_si128(keyMask, hashes.XMM);
-    __m128i cmp = _mm_cmpeq_epi16(masked, key);
+    __m128i maskedHashes =
+        _mm_and_si128(keyMask, hashes.XMM);
+    __m128i clearMask =
+        _mm_cmpeq_epi16(maskedHashes, key);
     // clear out all the LRU hash entires where the key matched
-    __m128i cleaned = _mm_andnot_si128(cmp, hashes.XMM);
+    __m128i cleaned =
+        _mm_andnot_si128(clearMask, hashes.XMM);
 
     _mm_store_si128((__m128i*) self->LRU.LRUContentHashes.E, cleaned);
+#elif defined(NEON)
+    const int16x8_t hash8 =
+        {hash12, hash12, hash12, hash12,
+         hash12, hash12, hash12, hash12};
+    int16x8_t maskedHashes = hashes & 0xFFF0;
+    int16x8_t clearMask = maskedHashes == hash8;
+    // == sets 0xFFFF if an element compares true
+    (*(int16x8_t*) self->LRU.LRUContentHashes.E) =
+        hashes & clearMask;
+   // store the result
 #else
     bool needsStore = false;
     for(int i = 0; i < ARRAY_SIZE(hashes.E); i++)
@@ -1737,8 +1757,11 @@ metac_node_t MetaCSemantic_LRU_LookupIdentifier(metac_semantic_state_t* self,
     int16x8_t hashes;
 
     metac_node_t result = emptyNode;
-#ifdef SSE2
+#if defined(SSE2)
     hashes.XMM = _mm_load_si128((__m128i*) self->LRU.LRUContentHashes.E);
+#elif defined(NEON)
+    hashes =
+        (*(int16x8_t*) self->LRU.LRUContentHashes.E);
 #else
     hashes = self->LRU.LRUContentHashes;
 #endif
@@ -1746,13 +1769,30 @@ metac_node_t MetaCSemantic_LRU_LookupIdentifier(metac_semantic_state_t* self,
 
     uint32_t startSearch = 0;
 
-#ifdef SSE2
+#if defined(SIMD)
+    const int16x8_t hash8 = Set1_16(hash12);
+    const hashMask = Set1_16(0xFFF0);
+    const int16x8_t maskedHashes = And16(hashes, hashMask);
+    const int16x8_t matches = Eq16(maskedHashes, hash12);
+    mask = MoveMask16(matches);
+#elif defined(SSE2)
     __m128i key = _mm_set1_epi16(hash12);
-     const __m128i keyMask = _mm_set1_epi16(0xF);
+     const __m128i keyMask = _mm_set1_epi16(0xFFF0);
     // mask out the scope_hash so we only compare keys
-    __m128i masked = _mm_andnot_si128(keyMask, hashes.XMM);
+    __m128i masked = _mm_and_si128(keyMask, hashes.XMM);
     __m128i cmp = _mm_cmpeq_epi16(masked, key);
     mask = _mm_movemask_epi16(cmp);
+#elif defined(NEON)
+    const int16x8_t hash8 =
+        {hash12, hash12, hash12, hash12,
+         hash12, hash12, hash12, hash12};
+    const int16x8_t maskedHashes = hashes & 0xFFF0;
+    const in16x8_t matches = maskedHashes == hash8;
+    // == sets the result element to 0xFF on match
+    const int16x8_t multi = {1 << 0, 1 << 1, 1 << 2, 1 << 3,
+                             1 << 4, 1 << 5, 1 << 6, 1 << 7};
+    // horizontal add over all elements to get the result
+    mask = vaddvq_s16(matches & multi);
 #else
     for(int i = 0; i < ARRAY_SIZE(hashes.E); i++)
     {
