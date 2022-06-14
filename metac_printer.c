@@ -184,7 +184,7 @@ static inline void PrintVariable(metac_printer_t* self,
         PrintIdentifier(self, variable->VarIdentifier);
     }
 
-    if (variable->VarInitExpression != _emptyPointer)
+    if (variable->VarInitExpression != emptyPointer)
     {
         PrintSpace(self);
         PrintToken(self, tok_assign);
@@ -333,7 +333,7 @@ static inline void PrintStatement(metac_printer_t* self, metac_statement_t* stmt
 
             PrintKeyword(self, tok_kw_return);
             PrintSpace(self);
-            if (stmt_return->Expression != _emptyPointer)
+            if (stmt_return->Expression != emptyPointer)
                 PrintExpression(self, stmt_return->Expression);
             PrintChar(self, ';');
         } break;
@@ -356,7 +356,7 @@ static inline void PrintStatement(metac_printer_t* self, metac_statement_t* stmt
             PrintIndent(self);
 
             for(metac_statement_t* nextStmt = stmt_block->Body;
-                nextStmt != _emptyPointer;
+                nextStmt != emptyPointer;
                 nextStmt = nextStmt->Next)
             {
                 PrintStatement(self, nextStmt);
@@ -505,14 +505,14 @@ static inline void PrintDeclaration(metac_printer_t* self,
                 memberIndex++)
             {
                 PrintIdentifier(self, member->Name);
-                if (member->Value != _emptyPointer)
+                if (member->Value != emptyPointer)
                 {
                     PrintSpace(self);
                     PrintChar(self, '=');
                     PrintSpace(self);
                     PrintExpression(self, member->Value);
                 }
-                if (member->Next != _emptyPointer)
+                if (member->Next != emptyPointer)
                 {
                     PrintChar(self, ',');
                     PrintNewline(self);
@@ -562,7 +562,7 @@ static inline void PrintDeclaration(metac_printer_t* self,
             {
                 PrintDeclaration(self, (metac_declaration_t*)f, level);
                 //PrintChar(self, ';');
-                if (f->Next && f->Next != _emptyPointer)
+                if (f->Next && f->Next != emptyPointer)
                     PrintIndent(self);
                 f = f->Next;
             }
@@ -598,7 +598,7 @@ static inline void PrintDeclaration(metac_printer_t* self,
             PrintIdentifier(self, function_->Identifier);
             PrintParameterList(self, function_->Parameters);
 
-            if (function_->FunctionBody != _emptyPointer)
+            if (function_->FunctionBody != emptyPointer)
             {
                 PrintStatement(self, (metac_statement_t*)function_->FunctionBody);
                 printSemicolon = false;
@@ -697,11 +697,11 @@ static inline void PrintExpression(metac_printer_t* self, metac_expression_t* ex
         PrintChar(self, '(');
 
         for(exp_argument_t* arg = (exp_argument_t*)exp->E2;
-            arg != _emptyPointer;
+            arg != emptyPointer;
             arg = arg->Next)
         {
             PrintExpression(self, arg->Expression);
-            if (arg->Next != _emptyPointer)
+            if (arg->Next != emptyPointer)
                 PrintString(self, ", ", 2);
         }
         PrintChar(self, ')');
@@ -858,7 +858,7 @@ static inline void PrintSemaExpression(metac_printer_t* self,
     else if (semaExp->Kind == exp_tuple)
     {
         PrintChar(self, '{');
-        exp_tuple_t* tupleElement =
+        metac_sema_expression_t* tupleElement =
             semaExp->TupleExpressions;
         for(int i = 0;
             i < semaExp->TupleExpressionCount;
@@ -1080,7 +1080,7 @@ static inline void PrintSemaVariable(metac_printer_t* self,
         PrintIdentifier(self, variable->VarIdentifier);
     }
 
-    if (variable->VarInitExpression != _emptyPointer)
+    if (variable->VarInitExpression != emptyPointer)
     {
         PrintSpace(self);
         PrintToken(self, tok_assign);
@@ -1189,7 +1189,7 @@ static inline void PrintSemaDeclaration(metac_printer_t* self,
             }
             PrintChar(self, ')');
             PrintSpace(self);
-            if (function_->FunctionBody != _emptyPointer)
+            if (function_->FunctionBody != emptyPointer)
             {
                 PrintStatement(self, (metac_statement_t*)function_->FunctionBody);
                 printSemicolon = false;

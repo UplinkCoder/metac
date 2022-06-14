@@ -33,7 +33,7 @@ const void* _emptyPointer = (const void*)0x1;
 #  define emptyPointer ((void*)_emptyPointer)
 #endif
 
-void _newMemRealloc(void** memP, uint32_t* capacity, const uint32_t elementSize);
+// void _newMemRealloc(void** memP, uint32_t* capacity, const uint32_t elementSize);
 const char* MetaCExpressionKind_toChars(metac_expression_kind_t type);
 
 bool IsExpressionNode(metac_node_kind_t Kind)
@@ -370,26 +370,6 @@ metac_token_t* MetaCParser_Match_(metac_parser_t* self, metac_token_enum_t type,
 #  define ALIGN4(N) \
       (((N) + 3) & ~3)
 #endif
-
-metac_expression_kind_t BinExpTypeFromTokenType(metac_token_enum_t tokenType)
-{
-    metac_expression_kind_t result = exp_invalid;
-    if (((tokenType >= FIRST_BINARY_TOKEN(TOK_SELF)) & (tokenType <= LAST_BINARY_TOKEN(TOK_SELF))))
-    {
-        result = cast(metac_expression_kind_t)(cast(int)tokenType -
-                (cast(int)FIRST_BINARY_TOKEN(TOK_SELF) -
-                 cast(int)FIRST_BINARY_EXP(TOK_SELF)));
-    }
-
-    if (tokenType == tok_lParen)
-        result = exp_call;
-
-    if (tokenType == tok_lBracket)
-        result = exp_index;
-
-    return result;
-}
-
 const char* BinExpTypeToChars(metac_binary_expression_kind_t t)
 {
     switch(t)
@@ -441,6 +421,25 @@ const char* BinExpTypeToChars(metac_binary_expression_kind_t t)
 
     assert(0);
     return 0;
+}
+
+metac_expression_kind_t BinExpTypeFromTokenType(metac_token_enum_t tokenType)
+{
+    metac_expression_kind_t result = exp_invalid;
+    if (((tokenType >= FIRST_BINARY_TOKEN(TOK_SELF)) & (tokenType <= LAST_BINARY_TOKEN(TOK_SELF))))
+    {
+        result = cast(metac_expression_kind_t)(cast(int)tokenType -
+                (cast(int)FIRST_BINARY_TOKEN(TOK_SELF) -
+                 cast(int)FIRST_BINARY_EXP(TOK_SELF)));
+    }
+
+    if (tokenType == tok_lParen)
+        result = exp_call;
+
+    if (tokenType == tok_lBracket)
+        result = exp_index;
+
+    return result;
 }
 
 metac_expression_kind_t ExpTypeFromTokenType(metac_token_enum_t tokenType)

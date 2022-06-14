@@ -450,6 +450,8 @@ typedef struct decl_type_typedef_t
 {
     DECLARATION_HEADER
 
+    TYPE_HEADER
+
     decl_type_t* Type;
 
     metac_identifier_ptr_t Identifier;
@@ -458,6 +460,8 @@ typedef struct decl_type_typedef_t
 typedef struct decl_type_tuple_t
 {
     DECLARATION_HEADER
+
+    TYPE_HEADER
 
     decl_type_t** Types;
     uint32_t TypeCount;
