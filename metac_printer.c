@@ -1047,7 +1047,7 @@ static inline void PrintSemaVariable(metac_printer_t* self,
     if (TYPE_INDEX_KIND(variable->TypeIndex) == type_index_functiontype)
     {
         metac_type_functiontype_t* funcType =
-            FunctiontypePtr(TYPE_INDEX_INDEX(variable->TypeIndex));
+            FunctiontypePtr(sema, TYPE_INDEX_INDEX(variable->TypeIndex));
 
         PrintSemaType(self, sema, funcType->ReturnType);
         PrintSpace(self);
@@ -1110,7 +1110,6 @@ static inline void PrintSemaDeclaration(metac_printer_t* self,
         case decl_type_union :
         case decl_type_struct :
         {
-
             metac_type_aggregate_t* struct_ = (metac_type_aggregate_t*) semaDecl;
             PrintKeyword(self, AggToken(semaDecl->DeclKind));
             if (struct_->Identifier.v != empty_identifier.v)
@@ -1168,7 +1167,7 @@ static inline void PrintSemaDeclaration(metac_printer_t* self,
         {
             sema_decl_function_t* function_ = (sema_decl_function_t*) semaDecl;
             metac_type_functiontype_t* functionType =
-                FunctiontypePtr(TYPE_INDEX_INDEX(function_->TypeIndex));
+                FunctiontypePtr(sema, TYPE_INDEX_INDEX(function_->TypeIndex));
 
             PrintSemaType(self, sema, functionType->ReturnType);
             PrintSpace(self);

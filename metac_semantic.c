@@ -1110,7 +1110,7 @@ scope_insert_error_t MetaCSemantic_RegisterInScope(metac_semantic_state_t* self,
 #endif
 
 #ifdef SSE2
-    const __m128i key = _mm_set1_epi16(hash16);
+    const __m128i key = _mm_set1_epi16(hash12);
     const __m128i keyMask = _mm_set1_epi16(0xF);
     // mask out the scope_hash so we only compare keys
     // TODO can we make this store conditinal or would
@@ -1256,7 +1256,8 @@ metac_type_index_t MetaCSemantic_GetArrayTypeOf(metac_semantic_state_t* state,
 
     if (result.v == 0)
     {
-        MetaCTypeTable_AddArrayType(&state->ArrayTypeTable, &key);
+        result =
+            MetaCTypeTable_AddArrayType(&state->ArrayTypeTable, &key);
     }
 
     return result;
@@ -1751,9 +1752,7 @@ metac_node_t MetaCSemantic_LRU_LookupIdentifier(metac_semantic_state_t* self,
     // mask out the scope_hash so we only compare keys
     __m128i masked = _mm_andnot_si128(keyMask, hashes.XMM);
     __m128i cmp = _mm_cmpeq_epi16(masked, key);
-    uint32_t searchResult = _mm_movemask_epi16(cmp);
-    if (searchResult == 0)
-        goto LtableLookup;
+    mask = _mm_movemask_epi16(cmp);
 #else
     for(int i = 0; i < ARRAY_SIZE(hashes.E); i++)
     {
@@ -1775,6 +1774,7 @@ metac_node_t MetaCSemantic_LRU_LookupIdentifier(metac_semantic_state_t* self,
             break;
         }
     }
+
     return result;
 }
 
@@ -1941,7 +1941,7 @@ metac_sema_expression_t* MetaCSemantic_doExprSemantic_(metac_semantic_state_t* s
     result = AllocNewSemaExpression(self, expr);
 
     if (IsBinaryExp(expr->Kind)
-        && (expr->Kind != exp_arrow || expr->Kind != exp_dot))
+        && (expr->Kind != exp_arrow && expr->Kind != exp_dot))
     {
         MetaCSemantic_PushExpr(self, result);
 
@@ -1998,8 +1998,25 @@ metac_sema_expression_t* MetaCSemantic_doExprSemantic_(metac_semantic_state_t* s
                 {
                     break;
                 }
+#else
+                result->AggExp =
+                    MetaCSemantic_doExprSemantic(self, expr->E1);
+
+                metac_type_aggregate_field_t* fields = agg->Fields;
+                for(uint32_t i = 0;
+                    i < agg->FieldCount;
+                    i++)
+                {
+                    metac_type_aggregate_field_t field = fields[i];
+                    if (field.Identifier.v == expr->E2->IdentifierPtr.v)
+                    {
+                        //printf("Found field: %s\n",
+                        //    IdentifierPtrToCharPtr(self->ParserIdentifierTable, field.Identifier));
+                        result->TypeIndex = field.Type;
+                        result->AggOffset = field.Offset;
+                    }
+                }
 #endif
-                int k = 2;
             }
         } break;
 
@@ -2032,7 +2049,7 @@ metac_sema_expression_t* MetaCSemantic_doExprSemantic_(metac_semantic_state_t* s
         case exp_string :
             result->TypeIndex = MetaCSemantic_GetArrayTypeOf(self,
                 MetaCSemantic_GetTypeIndex(self, type_char, (decl_type_t*)emptyPointer),
-                LENGTH_FROM_STRING_KEY(expr->StringKey));
+                LENGTH_FROM_STRING_KEY(expr->StringKey) + 1);
         break;
         case exp_signed_integer :
             result->TypeIndex = MetaCSemantic_GetTypeIndex(self, type_int, (decl_type_t*)emptyPointer);

@@ -79,6 +79,11 @@ typedef struct metac_sema_expression_t
             struct metac_sema_expression_t* CastExp;
             struct metac_type_index_t CastType;
         };
+        // case exp_dot, exp_arrow:
+        struct {
+            struct metac_sema_expression_t* AggExp;
+            uint32_t AggOffset;
+        };
         // case exp_type
         struct {
             struct metac_type_index_t TypeExp;

@@ -149,7 +149,11 @@ static inline void WalkTree(void* c, BCValue* result,
             );
             assert(0);
         } break;
-
+        case exp_string:
+        {
+            // this should not happen, we should have made it into a pointer I think
+            assert(0);
+        }
 
         case exp_assign:
         {

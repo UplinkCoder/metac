@@ -1,7 +1,6 @@
 #include "metac_scope.h"
 #include "crc32c.h"
 #include "metac_alloc_node.h"
-#undef SSE2
 
 #ifdef SSE2
 #  include <xmmintrin.h>

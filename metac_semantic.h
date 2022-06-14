@@ -224,7 +224,7 @@ uint32_t UnionIndex(metac_semantic_state_t* self, metac_type_aggregate_t* union_
 uint32_t TypedefIndex(metac_semantic_state_t* self, metac_type_typedef_t* typedef_);
 uint32_t PtrTypeIndex(metac_semantic_state_t* self, metac_type_ptr_t* ptr);
 uint32_t ArrayTypeIndex(metac_semantic_state_t* self, metac_type_array_t* array);
-
+uint32_t FunctiontypeIndex(metac_semantic_state_t* self, metac_type_functiontype_t* functiontype);
 
 sema_decl_function_t* FunctionPtr(metac_semantic_state_t* self, uint32_t index);
 metac_type_aggregate_t* StructPtr(metac_semantic_state_t* self, uint32_t index);
@@ -234,6 +234,7 @@ metac_type_aggregate_t* UnionPtr(metac_semantic_state_t* self, uint32_t index);
 metac_type_typedef_t* TypedefPtr(metac_semantic_state_t* self, uint32_t index);
 metac_type_ptr_t* PtrTypePtr(metac_semantic_state_t* self, uint32_t index);
 metac_type_array_t* ArrayTypePtr(metac_semantic_state_t* self, uint32_t index);
+metac_type_functiontype_t* FunctiontypePtr(metac_semantic_state_t* self, uint32_t index);
 
 metac_scope_t* MetaCScope_PushNewScope(metac_semantic_state_t* sema,
                                        metac_scope_t* parent,
