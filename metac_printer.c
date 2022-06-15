@@ -437,6 +437,11 @@ static inline void PrintStatement(metac_printer_t* self, metac_statement_t* stmt
             PrintDeclaration(self, decl_stmt->Declaration, 0);
             PrintToken(self, tok_semicolon);
         } break;
+        case stmt_for:
+        {
+            stmt_return_t* stmt_return = cast(stmt_return_t*) stmt;
+
+        } break;
         default : {
             fprintf(stderr,
                 "Statement Kind: not handled by printer\n");

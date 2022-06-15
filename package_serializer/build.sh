@@ -17,4 +17,4 @@ echo $CC package_serializer.c -DACCEL=$ACCEL -DWRITE_TABLE \
 
 g++ package_serializer.c -DACCEL=$ACCEL -DWRITE_TABLE \
     ~/dev/tracy/TracyClientNoExit.o -I.. \
-    -g2 -O3 -march=native -mtune=native -lpthread -lm -ldl -o package_serializer $@
+    -g2 -O0 -march=native -mtune=native -lpthread -lm -ldl -o package_serializer $@

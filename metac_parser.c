@@ -1679,6 +1679,8 @@ metac_declaration_t* MetaCParser_ParseDeclaration(metac_parser_t* self, metac_de
 
     metac_declaration_t* result = 0;
     bool isStatic = false;
+    bool isInline = false;
+    bool isExtern = false;
 
     decl_type_t* type = 0;
 
@@ -1686,6 +1688,22 @@ metac_declaration_t* MetaCParser_ParseDeclaration(metac_parser_t* self, metac_de
     {
         isStatic = true;
         MetaCParser_Match(self, tok_kw_static);
+        currentToken = MetaCParser_PeekToken(self, 1);
+        tokenType = currentToken ? currentToken->TokenType : tok_eof;
+    }
+
+    if (MetaCParser_PeekMatch(self, tok_kw_inline, true))
+    {
+        isInline = true;
+        MetaCParser_Match(self, tok_kw_inline);
+        currentToken = MetaCParser_PeekToken(self, 1);
+        tokenType = currentToken ? currentToken->TokenType : tok_eof;
+    }
+
+    if (MetaCParser_PeekMatch(self, tok_kw_extern, true))
+    {
+        isExtern = true;
+        MetaCParser_Match(self, tok_kw_extern);
         currentToken = MetaCParser_PeekToken(self, 1);
         tokenType = currentToken ? currentToken->TokenType : tok_eof;
     }
@@ -1785,6 +1803,15 @@ metac_declaration_t* MetaCParser_ParseDeclaration(metac_parser_t* self, metac_de
                 {
                     varDecl->VarType = (decl_type_t*)ParseArraySuffix(self, varDecl->VarType);
                 }
+
+                // check for bitfield decl
+                if (MetaCParser_PeekMatch(self, tok_colon, true))
+                {
+                    MetaCParser_Match(self, tok_colon);
+                    metac_token_t* bitSz = MetaCParser_Match(self, tok_uint);
+                    printf("ignoring bitfield spec : %d\n", bitSz->ValueI64);
+                }
+
                 if (MetaCParser_PeekMatch(self, tok_assign, true))
                 {
                     MetaCParser_Match(self, tok_assign);
@@ -1803,7 +1830,7 @@ metac_declaration_t* MetaCParser_ParseDeclaration(metac_parser_t* self, metac_de
     }
     else
     {
-        ParseError(self->LexerState, "A declaration is expected to start with  a type");
+        ParseErrorF(self->LexerState, "A declaration is expected to start with a type CurrentToken %s\n", MetaCTokenEnum_toChars(tokenType));
     }
 
 LendDecl:
