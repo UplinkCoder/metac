@@ -16,6 +16,7 @@
 #include <stdio.h>
 #include "exp_eval.c"
 #include "../metac_type_table.h"
+#include "../metac_task.h"
 
 extern bool g_exernalIdentifierTable;
 extern metac_lexer_t g_lineLexer;
@@ -139,7 +140,6 @@ static inline int Presemantic(metac_node_t node, void* ctx)
     {
         decl_type_typedef_t* typedef_ = (decl_type_typedef_t*) node;
         metac_identifier_ptr_t typedefId = typedef_->Identifier;
-        printf("found a typedef: %s\n", IdentifierPtrToCharPtr(context->Sema->ParserIdentifierTable, typedefId));
 
         metac_type_index_t typeIndex =
             MetaCSemantic_doTypeSemantic(context->Sema, node);
@@ -189,6 +189,8 @@ int main(int argc, const char* argv[])
     metac_semantic_state_t sema;
     // make sure we know our special identifiers
     LineLexerInit();
+
+
 
     if (fCompilterInterface.FileContent0)
     {
@@ -253,8 +255,8 @@ int main(int argc, const char* argv[])
                 {
                     printIdentifier = struct_->Identifier;
                 }
-                printf("found struct : '%s'\n",
-                    IdentifierPtrToCharPtr(&tmpParser.IdentifierTable, printIdentifier));
+ //               printf("found struct : '%s'\n",
+ //                   IdentifierPtrToCharPtr(&tmpParser.IdentifierTable, printIdentifier));
 
                 compilerStruct = MetaCSemantic_doDeclSemantic(&tmpSema, struct_);
             }
@@ -557,6 +559,7 @@ LnextLine:
                 _ReadContextSize = 0;
                 goto LnextLine;
             }
+
             case parse_mode_setvars :
             {
                 metac_declaration_t* decl = MetaCParser_ParseDeclarationFromString(line);
@@ -644,6 +647,7 @@ LnextLine:
                 MetaCPrinter_Reset(&printer);
                 goto LnextLine;
             }
+
             case parse_mode_decl :
             {
                 decl = MetaCParser_ParseDeclarationFromString(line);

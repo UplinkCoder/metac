@@ -23,7 +23,6 @@ if [ -d $DST ]; then
        metac_semantic.c metac_semantic.h \
        metac_semantic_lru.h \
        metac_type_table.c metac_type_table.h \
-       metac_thread.c metac_thread.h \
        metac_task.c metac_task.h \
        metac_parser_obj.c metac_semantic_obj.c \
        metac_target_info.c metac_target_info.h \

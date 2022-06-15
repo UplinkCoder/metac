@@ -1010,6 +1010,10 @@ metac_expression_t* MetaCParser_ParseUnaryExpression(metac_parser_t* self)
         MetaCParser_Match(self, tok_dot);
         result = ParseUnaryDotExpression(self);
     }
+    if (tokenType == tok_question)
+    {
+        int k = 12;
+    }
     else if (tokenType == tok_kw_eject)
     {
         MetaCParser_Match(self, tok_kw_eject);
@@ -1336,6 +1340,7 @@ metac_expression_t* MetaCParser_ParseExpression(metac_parser_t* self,
             metac_expression_t* E1 = result;
             metac_expression_t* E2 =
                 MetaCParser_ParseExpression(self, expr_flags_none, 0);
+            int k = 12;
             MetaCParser_Match(self, tok_colon);
             metac_expression_t* E3 =
                 MetaCParser_ParseExpression(self, expr_flags_none, 0);

@@ -1,14 +1,15 @@
 #ifndef _METAC_TASK_H_
 #define _METAC_TASK_H_
 #include "compat.h"
-
-#include "metac_thread.h"
+#include "3rd_party/tinycthread/tinycthread.h"
 #define FIBERS_PER_WORKER 32
+#define TASK_PAGE_SIZE 4096
 
 typedef struct taskcontext_t
 {
-    uint16_t TaskPages;
-
+    void* TaskMemory;
+    uint32_t BytesAllocated;
+    uint32_t BytesUsed;
 } taskcontext_t;
 
 typedef struct task_t
@@ -40,11 +41,22 @@ typedef struct taskqueue_t
     task_t (*queueMemory)[1024];
 } taskqueue_t;
 
+typedef struct worker_context_t
+{
+    taskqueue_t Queue;
+
+    uint32_t WorkerId;
+    //PoolAllocator threadAlloc;
+
+    thrd_t Thread;
+} worker_context_t;
+
 typedef struct tasksystem_t
 {
-    worker_context_t* workerContexts;
+    struct worker_context_t* workerContexts;
     taskqueue_t* taskQueues;
     uint32_t nWorkers;
 } tasksystem_t;
 
+void MetaCTaskSystem_Init(tasksystem_t* self, uint32_t workerThreads, void (*workerFn)(worker_context_t*));
 #endif

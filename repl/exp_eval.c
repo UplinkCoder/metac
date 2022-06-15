@@ -182,6 +182,11 @@ static inline void WalkTree(void* c, BCValue* result,
             BCGen_interface.Set(c, result, &imm);
         } break;
 
+        case exp_eq:
+        {
+            BCGen_interface.Eq3(c, result, lhs, rhs);
+        } break;
+
         case exp_add:
         {
             BCGen_interface.Add3(c, result, lhs, rhs);
@@ -318,7 +323,10 @@ metac_sema_expression_t evalWithVariables(metac_sema_expression_t* e,
     }
     BCGen_interface.Finalize(c);
 
+    // BCGen_printFunction(c);
+
     BCValue res = BCGen_interface.run(c, fIdx, 0, 0);
+
     metac_sema_expression_t result;
 
     if (e->TypeIndex.v == TYPE_INDEX_V(type_index_basic, type_type))
