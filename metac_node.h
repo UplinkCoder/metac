@@ -109,6 +109,7 @@
     M(exp_umin) \
     M(exp_paren) \
     M(exp_tuple) \
+    M(exp_ternary) \
     M(exp_cast) \
     \
     FOREACH_BINARY_EXP(M) \

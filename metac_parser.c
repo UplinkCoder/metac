@@ -1329,6 +1329,21 @@ metac_expression_t* MetaCParser_ParseExpression(metac_parser_t* self,
         {
             result = MetaCParser_ParsePostfixExpression(self, result);
         }
+        else if (tokenType == tok_question)
+        {
+            // inline parse Ternary Expression
+            MetaCParser_Match(self, tok_question);
+            metac_expression_t* E1 = result;
+            metac_expression_t* E2 =
+                MetaCParser_ParseExpression(self, expr_flags_none, 0);
+            MetaCParser_Match(self, tok_colon);
+            metac_expression_t* E3 =
+                MetaCParser_ParseExpression(self, expr_flags_none, 0);
+            result = AllocNewExpression(exp_ternary);
+            result->E1 = E1;
+            result->E2 = E2;
+            result->E3 = E3;
+        }
         else if (peekNext->TokenType == tok_lParen)
         {
             result = MetaCParser_ParseBinaryExpression(self, eflags, result, OpToPrecedence(exp_call));
@@ -1911,8 +1926,18 @@ static metac_statement_t* MetaCParser_ParseStatement(metac_parser_t* self,
     }
     else if (tokenType == tok_kw_for)
     {
+        MetaCParser_Match(self, tok_kw_for);
         stmt_for_t* for_ = AllocNewStatement(stmt_for, &result);
+        MetaCParser_Match(self, tok_lParen);
+
         uint32_t hash = crc32c_nozero(~0, "for", sizeof("for") - 1);
+
+        for_->ForInit = MetaCParser_ParseDeclaration(self, 0);
+        for_->ForCond = MetaCParser_ParseExpression(self, expr_flags_none, 0);
+        MetaCParser_Match(self, tok_semicolon);
+
+        for_->ForPostLoop = MetaCParser_ParseExpression(self, expr_flags_none, 0);
+        MetaCParser_Match(self, tok_rParen);
 
         result->Hash = hash;
     }

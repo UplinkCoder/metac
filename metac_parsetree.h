@@ -46,6 +46,12 @@ typedef struct metac_expression_t
             struct metac_expression_t* _E1;
             struct metac_expression_t* E2;
         };
+        //case exp_ternary:
+        struct {
+            struct metac_expression_t* _E1_;
+            struct metac_expression_t* _E2;
+            struct metac_expression_t* E3;
+        };
         // case  exp_inject, exp_eject, exp_assert, exp_outerParen, exp_outer :
         struct {
             struct metac_expression_t* E1;
@@ -160,7 +166,7 @@ typedef struct stmt_for_t
 {
     STATEMENT_HEADER
 
-    metac_expression_t* ForInit;
+    struct metac_declaration_t* ForInit;
     metac_expression_t* ForCond;
     metac_expression_t* ForPostLoop;
 

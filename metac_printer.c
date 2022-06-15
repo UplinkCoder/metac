@@ -626,6 +626,20 @@ static inline void PrintExpression(metac_printer_t* self, metac_expression_t* ex
         if (!IsBinaryExp(exp->E1->Kind))
             PrintChar(self, ')');
     }
+    else if (exp->Kind == exp_ternary)
+    {
+        PrintChar(self, '(');
+        PrintExpression(self, exp->E1);
+        PrintSpace(self);
+        PrintChar(self, '?');
+        PrintSpace(self);
+        PrintExpression(self, exp->E2);
+        PrintSpace(self);
+        PrintChar(self, ':');
+        PrintSpace(self);
+        PrintExpression(self, exp->E3);
+        PrintChar(self, ')');
+    }
     else if (exp->Kind == exp_tuple)
     {
         PrintChar(self, '{');
