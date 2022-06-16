@@ -171,7 +171,7 @@ metac_expression_t* AllocNewExpression(metac_expression_kind_t kind)
     return result;
 }
 
-metac_declaration_t* AllocNewDeclaration_(metac_declaration_kind_t kind, size_t nodeSize, void** result_ptr, uint32_t line)
+metac_declaration_t* AllocNewDeclaration_(metac_declaration_kind_t kind, uint32_t nodeSize, void** result_ptr, uint32_t line)
 {
     metac_declaration_t* result = 0;
 
@@ -188,7 +188,7 @@ metac_declaration_t* AllocNewDeclaration_(metac_declaration_kind_t kind, size_t 
     return result;
 }
 
-metac_statement_t* AllocNewStatement_(metac_statement_kind_t kind, size_t nodeSize, void** result_ptr)
+metac_statement_t* AllocNewStatement_(metac_statement_kind_t kind, uint32_t nodeSize, void** result_ptr)
 {
     metac_statement_t* result = 0;
 
