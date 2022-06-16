@@ -2,8 +2,10 @@
 #include "../utils/read_file.c"
 #include "../crc32c.h"
 #include "../metac_parser_obj.c"
+#include "../metac_semantic_obj.c"
 #include "../metac_driver.c"
 #include "../3rd_party/tracy/TracyC.h"
+#include "../metac_task.c"
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -25,6 +27,14 @@ int main(int argc, const char* argv[])
     includePathCapacity = 256;
     includePaths = (const char**)malloc(sizeof(char**) * includePathCapacity);
     const char* arg = "bigcode.c";
+
+    uint32_t nWorkers = 3;
+
+    tasksystem_t theTaskystem;
+    worker_context_t* contexts =
+        (worker_context_t*)calloc(sizeof(worker_context_t), nWorkers);
+
+    MetaCTaskSystem_Init(&theTaskystem, nWorkers, contexts);
 
     for(int arg_idx = 1;
         arg_idx < argc;
@@ -93,5 +103,7 @@ int main(int argc, const char* argv[])
 #endif
 #endif
     }
+
+    // getchar();
     return errored;
 }

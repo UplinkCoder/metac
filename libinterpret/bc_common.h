@@ -324,14 +324,14 @@ CONSTEXPR static inline uint32_t align16(const uint32_t val)
 }
 
 EXTERN_C const uint32_t BCTypeEnum_basicTypeSize(const BCTypeEnum bct);
-
+/*
 static inline const uint32_t fastLog10(const uint32_t val)
 {
     return (val < 10) ? 0 : (val < 100) ? 1 : (val < 1000) ? 2 : (val < 10000) ? 3
         : (val < 100000) ? 4 : (val < 1000000) ? 5 : (val < 10000000) ? 6
         : (val < 100000000) ? 7 : (val < 1000000000) ? 8 : 9;
 }
-
+*/
 /*@unique*/
 /*
 static const fastPow10tbl = [

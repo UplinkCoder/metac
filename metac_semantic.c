@@ -75,7 +75,7 @@ static inline bool isBasicType(metac_type_kind_t typeKind)
     return false;
 }
 
-static uint32_t _nodeCounter = 64;
+// static uint32_t _nodeCounter = 64;
 
 #ifndef _emptyPointer
 #  define _emptyPointer (void*)0x1
@@ -222,6 +222,13 @@ uint32_t FunctiontypeIndex(metac_semantic_state_t* self, metac_type_functiontype
     return result;
 }
 
+uint32_t EnumIndex(metac_semantic_state_t* self, metac_type_enum_t* enumtype)
+{
+    uint32_t result = (enumtype - self->EnumTypeTable.Slots);
+    return result;
+}
+
+
 uint32_t TupleTypeIndex(metac_semantic_state_t* self, metac_type_tuple_t* tupletype)
 {
     uint32_t result = (tupletype - self->TupleTypeTable.Slots);
@@ -275,6 +282,13 @@ metac_type_functiontype_t* FunctiontypePtr(metac_semantic_state_t* self, uint32_
     metac_type_functiontype_t* result = (self->FunctionTypeTable.Slots + index);
     return result;
 }
+
+metac_type_enum_t* EnumTypePtr(metac_semantic_state_t* self, uint32_t index)
+{
+    metac_type_enum_t* result = (self->EnumTypeTable.Slots + index);
+    return result;
+}
+
 
 metac_type_tuple_t* TupleTypePtr(metac_semantic_state_t* self, uint32_t index)
 {

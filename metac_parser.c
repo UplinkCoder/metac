@@ -581,10 +581,10 @@ static inline uint32_t OpToPrecedence(metac_expression_kind_t exp)
     {
         return 2;
     }
-    //else if (exp_ternary)
-    //{
-    //  return 3;
-    //}
+    else if (exp_ternary)
+    {
+        return 3;
+    }
     else if (exp == exp_oror)
     {
         return 4;
@@ -1157,7 +1157,7 @@ metac_expression_t* MetaCParser_ParseUnaryExpression(metac_parser_t* self)
             fprintf(stderr, "line: %d col: %d\n", location.StartLine, location.StartColumn);
         }
         fprintf(stderr, "Unexpected Token: %s\n", MetaCTokenEnum_toChars(tokenType));
- //       assert(0);
+        assert(0);
     }
 
     metac_token_t* peek_post = MetaCParser_PeekToken(self, 1);

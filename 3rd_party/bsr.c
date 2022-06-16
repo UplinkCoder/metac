@@ -1,5 +1,6 @@
 #include "../compat.h"
-
+#ifndef _BSR_C_
+#define _BSR_C_
 // modified CLZ2 taken from https://embeddedgurus.com/state-space/2014/09/fast-deterministic-and-portable-counting-leading-zeros/
 static inline uint32_t BSR(uint32_t x) {
     static uint8_t const clz_lkup[] = {
@@ -46,3 +47,4 @@ static inline uint32_t BSR(uint32_t x) {
     }
     return ((uint32_t)(clz_lkup[x >> n] - n)) ^ 31;
 }
+#endif

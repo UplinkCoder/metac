@@ -9,7 +9,7 @@ if [ -z $ACCEL ]; then
     ACCEL=ACCEL_TABLE
 fi
 
-$CC repl.c ../metac_parser_obj.c ../metac_driver.c ../metac_semantic_obj.c \
+$CC repl.c \
     -I.. -DACCEL=$ACCEL \
     -g3 -O0 -lm -march=native -mtune=native -o repl $@
 # -mtune=core2 -march=core2
