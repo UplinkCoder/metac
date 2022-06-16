@@ -302,7 +302,9 @@ metac_identifier_table_t ReadTable(const char* filename)
 
     const uint32_t slotIndexMask = ((1 << result.SlotCount_Log2) - 1);
 
-    slot_t* readSlot = (slot_t*)alloca(slotMemorySize);
+    char slotMem[slotMemorySize];
+
+    slot_t* readSlot = (slot_t*)malloc(slotMemorySize);
     memset(readSlot, 0, slotMemorySize);
 
     for(int i = 0; i < header.NumberOfSlots; i++)

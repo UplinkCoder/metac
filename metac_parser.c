@@ -75,7 +75,7 @@ void MetaCParser_Init(metac_parser_t* self)
     self->BlockStatementStackCapacity = 16;
     self->BlockStatementStackSize = 0;
     self->BlockStatementStack = (stmt_block_t**)
-        malloc(sizeof(stmt_block_t**) * self->BlockStatementStackCapacity);
+        malloc(sizeof(stmt_block_t*) * self->BlockStatementStackCapacity);
 
     self->OpenParens = 0;
 
@@ -2186,7 +2186,7 @@ void LineLexerInit(void)
         g_lineParser.BlockStatementStackCapacity = 8;
         g_lineParser.BlockStatementStackSize = 0;
         g_lineParser.BlockStatementStack = (stmt_block_t**)
-            malloc(sizeof(stmt_block_t**) * g_lineParser.BlockStatementStackCapacity);
+            malloc(sizeof(stmt_block_t*) * g_lineParser.BlockStatementStackCapacity);
     }
 
     if (!g_lineParser.Defines)

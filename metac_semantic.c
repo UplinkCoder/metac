@@ -31,6 +31,7 @@ bool Expression_IsEqual_(metac_sema_expression_t* a,
             case exp_signed_integer:
                result = a->ValueI64 == b->ValueI64;
             break;
+
             case exp_argument:
             {
                 if (a->ArgumentList->ArgumentCount
@@ -55,6 +56,7 @@ bool Expression_IsEqual_(metac_sema_expression_t* a,
                     result = false;
                 }
             } break;
+
             default: assert(0); // Not handled right now
         }
     }
@@ -1364,7 +1366,7 @@ metac_type_index_t MetaCSemantic_doTypeSemantic_(metac_semantic_state_t* self,
 
 
        metac_type_aggregate_field_t* tmpFields
-            = alloca(sizeof(metac_type_aggregate_field_t)
+            = malloc(sizeof(metac_type_aggregate_field_t)
             * agg->FieldCount);
         // ideally it wouldn't matter if this memset was here or not
         memset(tmpFields, 0x0, sizeof(*tmpFields) * agg->FieldCount);
@@ -1436,7 +1438,7 @@ metac_type_index_t MetaCSemantic_doTypeSemantic_(metac_semantic_state_t* self,
 
         }
         MetaCScopeTable_Free(&tmpSemaAgg->Scope->ScopeTable);
-
+        free(tmpFields);
         MetaCSemantic_PopTemporaryScope(self);
     }
     else if (IsPointerType(type->DeclKind))
@@ -2101,7 +2103,7 @@ metac_sema_expression_t* MetaCSemantic_doExprSemantic_(metac_semantic_state_t* s
             exp_tuple_t* tupleElement = expr->TupleExpressionList;
             const uint32_t tupleExpressionCount =
                 expr->TupleExpressionCount;
-            metac_sema_expression_t** resolvedExps = alloca(
+            metac_sema_expression_t** resolvedExps = malloc(
                 sizeof(metac_sema_expression_t*) * tupleExpressionCount);
 
             for(int i = 0;
@@ -2117,7 +2119,7 @@ metac_sema_expression_t* MetaCSemantic_doExprSemantic_(metac_semantic_state_t* s
             }
 
             metac_type_index_t* indicies =
-                alloca(sizeof(metac_type_index_t) * expr->TupleExpressionCount);
+                malloc(sizeof(metac_type_index_t) * expr->TupleExpressionCount);
 
             for(uint32_t i = 0; i < tupleExpressionCount; i++)
             {
@@ -2147,7 +2149,9 @@ metac_sema_expression_t* MetaCSemantic_doExprSemantic_(metac_semantic_state_t* s
                 tupleIdx =
                     MetaCTypeTable_AddTupleType(&self->TupleTypeTable, &typeTuple);
             }
+            free(indicies);
             result->TypeIndex = tupleIdx;
+            free(resolvedExps);
         }
         break;
         case exp_dot_compiler:

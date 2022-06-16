@@ -3,7 +3,6 @@
 #include <assert.h>
 #include "metac_type_table.h"
 #include "metac_type.h"
-#include "metac_alloc_node.h"
 #include <string.h>
 #include <stdlib.h>
 

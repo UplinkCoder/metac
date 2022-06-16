@@ -264,13 +264,13 @@ typedef struct CndJmpBegin
 
 static inline bool isStackAddress(uint32_t unrealPointer)
 {
-    // a stack address has the upper 4 bits set
+    // a stack address has the upper 6 bits set
     return (unrealPointer & stackAddrMask) == stackAddrMask;
 }
 
 static inline bool isHeapAddress(uint32_t unrealPointer)
 {
-    // a heap address does not have the upper 3 bits set
+    // a heap address does not have the upper 6 bits set
     return (unrealPointer & stackAddrMask) != stackAddrMask;
 }
 

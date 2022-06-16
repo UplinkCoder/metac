@@ -1,8 +1,9 @@
 #define cast(T) (T)
 
-
-#define ARRAY_SIZE(A) \
+#ifndef ARRAY_SIZE
+#  define ARRAY_SIZE(A) \
      ((unsigned int)(sizeof((A)) / sizeof((A)[0])))
+#endif
 
 #if !defined(_MSC_VER)
 #  define noinline volatile __attribute__ ((noinline))
@@ -12,14 +13,11 @@
 
 #if defined(_MSC_VER)
 #  include "stdint_msvc.h"
-#  include <malloc.h>
-#  define alloca _alloca
 #  ifndef __cplusplus
 #    error "win32 compile only works in c++ mode ... use /TP"
 #  endif
 #else
 #  include <stdint.h>
-#  include <alloca.h>
 #endif
 
 #  ifdef __CC65__

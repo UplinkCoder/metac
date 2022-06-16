@@ -11,7 +11,7 @@
 #endif
 
 #ifndef offsetof
-  #define offsetof(st, m) \
+#  define offsetof(st, m) \
       ((size_t)((char *)&((st *)0)->m - (char *)0))
 #endif
 /*
