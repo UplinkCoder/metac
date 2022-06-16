@@ -14,8 +14,6 @@
 #else
 #  error("No atomic supported")
 #endif
-
-
 // the watcher shoud allocate the worker contexts since it is responsible for distribution
 // and monitoring of the work
 

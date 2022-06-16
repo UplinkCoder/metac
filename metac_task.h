@@ -3,6 +3,7 @@
 #include "compat.h"
 #include "3rd_party/tinycthread/tinycthread.h"
 #include "3rd_party/deboost.context/include/fcontext/fcontext.h"
+
 #define FIBERS_PER_WORKER 32
 #define TASK_PAGE_SIZE 4096
 #define TASK_QUEUE_SIZE 1024
@@ -29,7 +30,29 @@ typedef struct taskcontext_t
     void* TaskMemory;
     uint32_t BytesAllocated;
     uint32_t BytesUsed;
+
+    const char* CallerFile;
+    uint32_t CallerLine;
 } taskcontext_t;
+
+typedef struct task_context_t {
+    fcontext_t FContext;
+    taskcontext_t* TaskCtx;
+} task_context_t;
+
+typedef void (*task_fn_t)(task_context_t);
+
+#define CTX_NAME \
+    __FILE__ ## #__LINE__ ## _ctx
+
+#define CallTask() \
+    task_context_t CTX_NAME = \
+        {taskContext.TaskMemory, \
+        taskContext.BytesAllocated, \
+        taskContext.BytesUsed, \
+        \
+        __FILE__, __LINE__ }; \
+    jump_fcontext(fctx, &CTX_NAME);
 
 typedef struct task_t
 {
@@ -91,5 +114,4 @@ typedef struct tasksystem_t
 
 void MetaCTaskSystem_Init(tasksystem_t* self, uint32_t workerThreads, void (*workerFn)(worker_context_t*));
 bool AddTask(task_t* task);
-
 #endif
