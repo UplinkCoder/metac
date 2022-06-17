@@ -581,7 +581,7 @@ static inline uint32_t OpToPrecedence(metac_expression_kind_t exp)
     {
         return 2;
     }
-    else if (exp_ternary)
+    else if (exp == exp_ternary)
     {
         return 3;
     }
