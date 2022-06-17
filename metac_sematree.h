@@ -73,7 +73,7 @@ typedef struct metac_sema_expression_t
         struct {
             struct metac_sema_expression_t* _E1_;
             struct metac_sema_expression_t* _E2;
-            struct metac_sema_expression_t* E3;
+            struct metac_sema_expression_t* ECond;
         };
         // case exp_sizeof:
         // case  exp_inject, exp_eject, exp_assert, exp_outerParen, exp_outer :

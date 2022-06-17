@@ -1731,54 +1731,16 @@ metac_node_t MetaCSemantic_LRU_LookupIdentifier(metac_semantic_state_t* self,
                                                  metac_identifier_ptr_t idPtr)
 {
     uint32_t mask = 0;
-    int16x8_t hashes;
+    int16x8_t hashes = Load16(&self->LRU.LRUContentHashes);
 
     metac_node_t result = emptyNode;
-#if defined(SSE2)
-    hashes.XMM = _mm_load_si128((__m128i*) self->LRU.LRUContentHashes.E);
-#elif defined(NEON)
-    hashes =
-        (*(int16x8_t*) self->LRU.LRUContentHashes.E);
-#else
-    hashes = self->LRU.LRUContentHashes;
-#endif
     uint16_t hash12 = idPtrHash & 0xFFF0;
 
-    uint32_t startSearch = 0;
-
-#if defined(SIMD)
-    const int16x8_t hash8 = Set1_16(hash12);
-    const hashMask = Set1_16(0xFFF0);
+    const int16x8_t hash12_8 = Set1_16(hash12);
+    const int16x8_t hashMask = Set1_16(0xFFF0);
     const int16x8_t maskedHashes = And16(hashes, hashMask);
-    const int16x8_t matches = Eq16(maskedHashes, hash12);
+    const int16x8_t matches = Eq16(maskedHashes, hash12_8);
     mask = MoveMask16(matches);
-#elif defined(SSE2)
-    __m128i key = _mm_set1_epi16(hash12);
-     const __m128i keyMask = _mm_set1_epi16(0xFFF0);
-    // mask out the scope_hash so we only compare keys
-    __m128i masked = _mm_and_si128(keyMask, hashes.XMM);
-    __m128i cmp = _mm_cmpeq_epi16(masked, key);
-    mask = _mm_movemask_epi16(cmp);
-#elif defined(NEON)
-    const int16x8_t hash8 =
-        {hash12, hash12, hash12, hash12,
-         hash12, hash12, hash12, hash12};
-    const int16x8_t maskedHashes = hashes & 0xFFF0;
-    const in16x8_t matches = maskedHashes == hash8;
-    // == sets the result element to 0xFF on match
-    const int16x8_t multi = {1 << 0, 1 << 1, 1 << 2, 1 << 3,
-                             1 << 4, 1 << 5, 1 << 6, 1 << 7};
-    // horizontal add over all elements to get the result
-    mask = vaddvq_s16(matches & multi);
-#else
-    for(int i = 0; i < ARRAY_SIZE(hashes.E); i++)
-    {
-        if ((hashes.E[i] & 0xFFF0) == hash12)
-        {
-            mask |= (1 << i);
-        }
-    }
-#endif
 
     while(mask)
     {
@@ -2057,9 +2019,14 @@ metac_sema_expression_t* MetaCSemantic_doExprSemantic_(metac_semantic_state_t* s
             result->E1 = E1;
         } break;
 
-        case exp_add:
-            result->TypeIndex =
-                MetaCSemantic_CommonSubtype(self, result->E1->TypeIndex, result->E2->TypeIndex);
+#define COMPUTE_COMMON_SUBTYPE_CASE(M) \
+        case M: \
+            result->TypeIndex = \
+                MetaCSemantic_CommonSubtype(self, result->E1->TypeIndex, result->E2->TypeIndex); \
+        break;
+        FOREACH_BIN_ARITH_EXP(COMPUTE_COMMON_SUBTYPE_CASE)
+        case exp_ternary:
+            result->TypeIndex = MetaCSemantic_CommonSubtype(self, result->E1->TypeIndex, result->E2->TypeIndex);
         break;
         case exp_char :
             result->TypeIndex = MetaCSemantic_GetTypeIndex(self, type_char, (decl_type_t*)emptyPointer);

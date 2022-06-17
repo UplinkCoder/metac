@@ -42,9 +42,15 @@
     FOREACH_BINARY_EXP_(M) \
     LAST_BINARY_EXP(M)
 
-#define FOREACH_BINARY_EXP_(M) \
-    M(exp_dot) \
-    \
+#define FOREACH_CMP_EXP(M) \
+    M(exp_eq) \
+    M(exp_neq) \
+    M(exp_lt) \
+    M(exp_le) \
+    M(exp_gt) \
+    M(exp_ge)
+
+#define FOREACH_BIN_ARITH_EXP(M) \
     M(exp_add) \
     M(exp_sub) \
     M(exp_mul) \
@@ -55,16 +61,9 @@
     M(exp_and) \
     M(exp_cat) \
     M(exp_lsh) \
-    M(exp_rsh) \
-    \
-    M(exp_oror) \
-    M(exp_andand) \
-    \
-    M(exp_arrow) \
-    M(exp_dotdot) \
-    \
-    M(exp_assign) \
-    \
+    M(exp_rsh)
+
+#define FOREACH_BIN_ARITH_ASSIGN_EXP(M) \
     M(exp_add_ass) \
     M(exp_sub_ass) \
     M(exp_mul_ass) \
@@ -75,15 +74,28 @@
     M(exp_and_ass) \
     M(exp_cat_ass) \
     M(exp_lsh_ass) \
-    M(exp_rsh_ass) \
-    \
-    M(exp_eq) \
-    M(exp_neq) \
-    M(exp_lt) \
-    M(exp_le) \
-    M(exp_gt) \
-    M(exp_ge)
+    M(exp_rsh_ass)
 
+#define FOREACH_BIN_LOGIC_EXP(M) \
+    M(exp_oror) \
+    M(exp_andand)
+
+#define FOREACH_BINARY_EXP_(M) \
+    M(exp_dot) \
+    \
+    FOREACH_BIN_ARITH_EXP(M) \
+    \
+    FOREACH_BIN_LOGIC_EXP(M) \
+    \
+    M(exp_arrow) \
+    M(exp_dotdot) \
+    \
+    M(exp_assign) \
+    \
+    FOREACH_BIN_ARITH_ASSIGN_EXP(M) \
+    \
+    FOREACH_CMP_EXP(M)
+    \
 #define FOREACH_EXP(M) \
     M(exp_invalid) \
     \
