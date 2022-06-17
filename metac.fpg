@@ -123,6 +123,10 @@ MetalNode {
              Expression rhs, Operator op, Expression rhs
         }
 
+        TernaryExpression {
+            Expression cond, "?", Expression e1, ":", Expression e2  
+        }
+
         SliceExp {
             Expression slice, "[", Expression lower, "..", Expression upper, "]"
         }

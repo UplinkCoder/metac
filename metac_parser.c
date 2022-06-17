@@ -669,7 +669,7 @@ static inline bool IsTypeToken(metac_token_enum_t tokenType)
 static inline bool IsPrimaryExpressionToken(metac_token_enum_t tokenType)
 {
 #ifdef TYPE_EXP
-    if (IsTypeToken(tokenType))
+    if (IsTypeToken(tokenType) && tokenType != tok_star)
         return true;
 #endif
     switch(tokenType)
@@ -760,7 +760,7 @@ metac_expression_t* MetaCParser_ParsePrimaryExpression(metac_parser_t* self)
     metac_token_enum_t tokenType =
         (currentToken ? currentToken->TokenType : tok_eof);
 #ifdef TYPE_EXP
-    if (tokenType != tok_identifier && IsTypeToken(tokenType))
+    if (tokenType != tok_identifier && tokenType != tok_star && IsTypeToken(tokenType))
     {
         decl_type_t* type =
             MetaCParser_ParseTypeDeclaration(self, 0, 0);
