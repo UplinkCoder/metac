@@ -2086,6 +2086,54 @@ static bool IsAggregateType(metac_type_index_kind_t typeKind)
 
     return false;
 }
+
+static inline int32_t GetConstI32(metac_semantic_state_t* self, metac_sema_expression_t* index, bool *errored)
+{
+    int32_t result = INT32_MIN;
+
+    if (index->Kind == exp_signed_integer)
+    {
+        result = cast(int32_t) index->ValueI64;
+    }
+    else
+    {
+        *errored = true;
+    }
+
+    return result;
+}
+
+metac_sema_expression_t* MetaCSemantic_doIndexSemantic_(metac_semantic_state_t* self,
+                                                        metac_expression_t* expr,
+                                                        const char* callFun,
+                                                        uint32_t callLine)
+{
+    metac_sema_expression_t* result = 0;
+
+    metac_sema_expression_t* indexed = MetaCSemantic_doExprSemantic(self, expr->E1/*, expr_asAddress*/);
+    metac_sema_expression_t* index = MetaCSemantic_doExprSemantic(self, expr->E2);
+    if (indexed->Kind ==  exp_tuple)
+    {
+        bool errored = false;
+        int32_t idx = GetConstI32(self, index, &errored);
+        if (indexed->TupleExpressionCount > idx)
+        {
+            result = indexed->TupleExpressions + idx;
+        }
+        else if (!errored)
+        {
+            fprintf(stderr, "TupleIndex needs to be less than: %u", indexed->TupleExpressionCount);
+        }
+        else
+        {
+            fprintf(stderr, "index is not a constant value\n");
+        }
+
+    }
+
+    return  result;
+}
+
 metac_sema_expression_t* MetaCSemantic_doExprSemantic_(metac_semantic_state_t* self,
                                                        metac_expression_t* expr,
                                                        const char* callFun,
@@ -2204,6 +2252,9 @@ metac_sema_expression_t* MetaCSemantic_doExprSemantic_(metac_semantic_state_t* s
         break;
         FOREACH_BIN_ARITH_ASSIGN_EXP(CASE)
             result->TypeIndex = result->E1->TypeIndex;
+        break;
+        case exp_index:
+            result = MetaCSemantic_doIndexSemantic(self, expr);
         break;
         case exp_char :
             result->TypeIndex = MetaCSemantic_GetTypeIndex(self, type_char, (decl_type_t*)emptyPointer);

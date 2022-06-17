@@ -147,6 +147,15 @@ void MetaCSemantic_Init(metac_semantic_state_t* self,
 void MetaCSemantic_PushExpr(metac_semantic_state_t* self, metac_sema_expression_t* expr);
 void MetaCSemantic_PopExpr(metac_semantic_state_t* self,  metac_sema_expression_t* expr);
 
+#define MetaCSemantic_doIndexSemantic(SELF, EXPR) \
+    MetaCSemantic_doIndexSemantic_(SELF, EXPR, \
+                                   __FUNCTION__, __LINE__)
+
+metac_sema_expression_t* MetaCSemantic_doIndexSemantic_(metac_semantic_state_t* self,
+                                                        metac_expression_t* expr,
+                                                        const char* callFun,
+                                                        uint32_t callLine);
+
 #define MetaCSemantic_doExprSemantic(SELF, NODE) \
     MetaCSemantic_doExprSemantic_(SELF, ((metac_expression_t*)(NODE)), \
                                   __FUNCTION__, __LINE__)
