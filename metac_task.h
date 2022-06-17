@@ -2,7 +2,7 @@
 #define _METAC_TASK_H_
 #include "compat.h"
 #include "3rd_party/tinycthread/tinycthread.h"
-#include "3rd_party/deboost.context/include/fcontext/fcontext.h"
+#include "3rd_party/libfiber/c/include/fiber/libfiber.h"
 
 #define FIBERS_PER_WORKER 32
 #define TASK_PAGE_SIZE 4096
@@ -36,7 +36,7 @@ typedef struct taskcontext_t
 } taskcontext_t;
 
 typedef struct task_context_t {
-    fcontext_t FContext;
+    ACL_FIBER* Fiber;
     taskcontext_t* TaskCtx;
 } task_context_t;
 
@@ -87,10 +87,10 @@ typedef struct fiber_pool_t
 {
     uint32_t FreeBitfield;
 
-    fcontext_t fibers[sizeof(uint32_t) * 8];
+    ACL_FIBER* fibers[sizeof(uint32_t) * 8];
     uint32_t stackLeft[sizeof(uint32_t) * 8];
     uint32_t stackTop[sizeof(uint32_t) * 8];
-    fcontext_stack_t stacks[sizeof(uint32_t) * 8];
+    void* stacks[sizeof(uint32_t) * 8];
     //static_assert(sizeof(FreeBitfield) * 8 >= FIBERS_PER_WORKER);
 
 } fiber_pool_t;
@@ -112,6 +112,6 @@ typedef struct tasksystem_t
     uint32_t nWorkers;
 } tasksystem_t;
 
-void MetaCTaskSystem_Init(tasksystem_t* self, uint32_t workerThreads, void (*workerFn)(worker_context_t*));
+void TaskSystem_Init(tasksystem_t* self, uint32_t workerThreads, void (*workerFn)(worker_context_t*));
 bool AddTask(task_t* task);
 #endif

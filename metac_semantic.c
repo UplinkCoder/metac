@@ -11,13 +11,13 @@
 #if defined(SIMD)
 #  include "metac_simd.h"
 #endif
-
+#include "metac_task.h"
 const char* MetaCExpressionKind_toChars(metac_expression_kind_t);
 
 bool IsExpressionNode(metac_node_kind_t);
 
-bool Expression_IsEqual_(metac_sema_expression_t* a,
-                         metac_sema_expression_t* b)
+bool Expression_IsEqual_(const metac_sema_expression_t* a,
+                         const metac_sema_expression_t* b)
 {
     bool result = true;
     if (a == b)
@@ -652,21 +652,20 @@ static inline int HandoffWalker(metac_node_t node, void* ctx)
         }
         case node_decl_type_functiontype:
         {
-            metac_type_aggregate_t* struct_ =
-                cast(metac_type_aggregate_t*) node;
-            uint32_t hash = struct_->Header.Hash;
+            metac_type_functiontype_t* functiontype =
+                cast(metac_type_functiontype_t*) node;
+            uint32_t hash = functiontype->Header.Hash;
             assert(hash);
 
 
             metac_type_index_t typeIndex =
                 MetaCTypeTable_GetOrEmptyFunctionType(&srcState->FunctionTypeTable,
-                                                    struct_);
+                                                      functiontype);
             assert(typeIndex.v != 0 && typeIndex.v != -1);
             HandoffType(dstState, srcState, &typeIndex);
 
             context->result =
                 (metac_node_t)FunctiontypePtr(dstState, TYPE_INDEX_INDEX(typeIndex));
-
         } break;
         case node_decl_field:
         {
@@ -689,7 +688,8 @@ void MetaCSemantic_Handoff(metac_semantic_state_t* self, metac_sema_declaration_
         self, newOwner, decl, 0
     };
 
-    MetaCDeclaration_Walk(decl, HandoffWalker, &handoff_context);
+    //TODO
+    // MetaCSemaDeclaration_Walk(decl, HandoffWalker, &handoff_context);
 
     *declP = (metac_sema_declaration_t*)handoff_context.result;
 }
@@ -712,6 +712,10 @@ void MetaCSemantic_Init(metac_semantic_state_t* self, metac_parser_t* parser,
     self->ExpressionStackSize = 0;
     self->ExpressionStack = (metac_sema_expression_t*)
         calloc(sizeof(metac_sema_expression_t), self->ExpressionStackCapacity);
+
+    self->Waiters.WaiterCapacity = 64;
+    self->Waiters.WaiterCount = 0;
+    self->Waiters.Waiters = calloc(sizeof(*self->Waiters.Waiters), self->Waiters.WaiterCapacity);
 
     IdentifierTableInit(&self->SemanticIdentifierTable, IDENTIFIER_LENGTH_SHIFT);
     self->ParserIdentifierTable = &parser->IdentifierTable;
@@ -1138,6 +1142,8 @@ scope_insert_error_t MetaCSemantic_RegisterInScope(metac_semantic_state_t* self,
     return result;
 }
 
+#define YIELD_ON(NODE, FUNC);
+
 bool MetaCSemantic_ComputeStructLayoutPopulateScope(metac_semantic_state_t* self,
                                                     decl_type_struct_t* agg,
                                                     metac_type_aggregate_t* semaAgg)
@@ -1162,6 +1168,22 @@ bool MetaCSemantic_ComputeStructLayoutPopulateScope(metac_semantic_state_t* self
 
         semaField->Type =
             MetaCSemantic_doTypeSemantic(self, declField->Field->VarType);
+        if (!semaField->Type.v)
+        {
+            ACL_FIBER* me = acl_fiber_running();
+            if (me != 0)
+            {
+                metac_semantic_waiter_t waiter;
+                waiter.FuncHash = CRC32C_S("MetaCSemantic_doTypeSemantic");
+                waiter.NodeHash = declField->Field->VarType->TypeHeader.Hash;
+                waiter.continuation = me;
+
+                assert(self->Waiters.WaiterCount < self->Waiters.WaiterCapacity);
+                self->Waiters.Waiters[self->Waiters.WaiterCount++] = waiter;
+                acl_fiber_yield();
+            }
+            // YIELD_ON(declField->Field->VarType, MetaCSemantic_doTypeSemantic);
+        }
         declField = declField->Next;
     }
     uint32_t maxAlignment = semaAgg->FieldCount ?
@@ -1260,11 +1282,15 @@ metac_type_index_t MetaCSemantic_GetArrayTypeOf(metac_semantic_state_t* state,
 
     return result;
 }
+typedef struct MetaCSemantic_doTypeSemantic_Fiber_t
+{
+    metac_semantic_state_t* Sema;
+    decl_type_t* Type;
+    metac_type_index_t Result;
+} MetaCSemantic_doTypeSemantic_Fiber_t;
 
-metac_type_index_t MetaCSemantic_doTypeSemantic_(metac_semantic_state_t* self,
-                                                 decl_type_t* type,
-                                                 const char* callFun,
-                                                 uint32_t callLine)
+metac_type_index_t MetaCSemantic_TypeSemantic(metac_semantic_state_t* self,
+                                              decl_type_t* type)
 {
     metac_type_index_t result = {0};
 
@@ -1291,7 +1317,6 @@ metac_type_index_t MetaCSemantic_doTypeSemantic_(metac_semantic_state_t* self,
             MetaCSemantic_GetArrayTypeOf(self,
                                         elementType,
                                         (uint32_t)dim->ValueU64);
-        int k = 12;
     }
     else if (type->DeclKind == decl_type_typedef)
     {
@@ -1383,15 +1408,9 @@ metac_type_index_t MetaCSemantic_doTypeSemantic_(metac_semantic_state_t* self,
                 if (result.v == 0)
                 {
                     metac_type_aggregate_t* semaAgg;
-#if 1
-// We should really get this persist stuff working.
                     semaAgg =
                         MetaCSemantic_PersistTemporaryAggregate(self, tmpSemaAgg);
-#else
-                    semaAgg = tmpSemaAgg;
-                                       result =
-                    MetaCTypeTable_AddStructType(&self->StructTypeTable, semaAgg);
-#endif
+
                     result.v = TYPE_INDEX_V(type_index_struct, semaAgg - self->StructTypeTable.Slots);
                 }
                 // MetaCSemantic_RegisterInScopeStructNamespace()
@@ -1455,8 +1474,9 @@ metac_type_index_t MetaCSemantic_doTypeSemantic_(metac_semantic_state_t* self,
 
         hash = crc32c_nozero(hash, &parameterTypes, sizeof(*parameterTypes) * nParams);
         metac_type_functiontype_t key = {
-            {hash, 0, decl_type_functiontype }
-            , returnType, parameterTypes, nParams };
+            (metac_type_header_t){hash, 0, decl_type_functiontype },
+            returnType, parameterTypes, nParams
+        };
 
         MetaCSemantic_PopTemporaryScope(self);
 
@@ -1473,16 +1493,19 @@ metac_type_index_t MetaCSemantic_doTypeSemantic_(metac_semantic_state_t* self,
         printf("MetaCNodeKind_toChars: %s\n", MetaCNodeKind_toChars(type->DeclKind));
         printf("TypeIdentifier: %s\n",
             IdentifierPtrToCharPtr(self->ParserIdentifierTable, type->TypeIdentifier));
-        if (callLine == 1200 && self->TemporaryScopeDepth == 0)
-        {
-            int breakmeHere = 12;
-        }
+
         metac_node_t node =
             MetaCSemantic_LookupIdentifier(self, type->TypeIdentifier);
         {
             printf("Lookup: %s\n", ((node != emptyNode) ?
                                        MetaCNodeKind_toChars(node->Kind) :
                                        "empty"));
+            if (node == emptyNode)
+            {
+                printf("Yield!\n");
+                acl_fiber_yield();
+                printf("Continue after yielding\n");
+            }
         }
         if (node != emptyNode &&
             node->Kind == node_decl_type_typedef)
@@ -1509,9 +1532,73 @@ metac_type_index_t MetaCSemantic_doTypeSemantic_(metac_semantic_state_t* self,
         assert(0); // me not no what do do.
     }
 
+    const uint32_t funcHash = crc32c(~0, "MetaCSemantic_doTypeSemantic",
+                                  sizeof("MetaCSemantic_doTypeSemantic") -1);
+
+    uint32_t nodeHash = type->Hash;
+    // check if someone waited for the node we just resolved
+    for(uint32_t waiterIdx = 0;
+        waiterIdx < self->Waiters.WaiterCount;
+        waiterIdx++)
+    {
+        if (self->Waiters.Waiters[waiterIdx].FuncHash == funcHash
+         && self->Waiters.Waiters[waiterIdx].NodeHash == nodeHash)
+        {
+
+        }
+    }
+
     assert(result.v != 0);
-    assert(result.v != 40);
     return result;
+}
+
+
+void MetaCSemantic_doTypeSemantic_Fiber(ACL_FIBER* fib, void* arg)
+{
+    MetaCSemantic_doTypeSemantic_Fiber_t* ctx =
+        cast(MetaCSemantic_doTypeSemantic_Fiber_t*) arg;
+    metac_semantic_state_t* sema = ctx->Sema;
+    decl_type_t* type = ctx->Type;
+
+    ctx->Result = MetaCSemantic_TypeSemantic(sema, type);
+
+}
+
+metac_type_index_t MetaCSemantic_doTypeSemantic_(metac_semantic_state_t* self,
+                                                 decl_type_t* type,
+                                                 const char* callFun,
+                                                 uint32_t callLine)
+{
+    metac_sema_declaration_t* result = 0;
+
+    MetaCSemantic_doTypeSemantic_Fiber_t arg = {
+        self, type, {0}
+    };
+
+    ACL_FIBER* f =
+        acl_fiber_create(MetaCSemantic_doTypeSemantic_Fiber, &arg, 128 * 1024);
+    acl_fiber_schedule();
+    if (acl_fiber_running() != 0)
+    {
+        acl_fiber_yield();
+        //acl_fiber_switch();
+    }
+    uint32_t funcHash = CRC32C_S("MetaCSemantic_doTypeSemantic");
+    uint32_t nodeHash = type->TypeHeader.Hash;
+
+    for(uint32_t waiterIdx = 0;
+        waiterIdx < self->Waiters.WaiterCount;
+        waiterIdx++)
+    {
+        metac_semantic_waiter_t waiter = self->Waiters.Waiters[waiterIdx];
+        if (funcHash == waiter.FuncHash && nodeHash == waiter.NodeHash)
+        {
+            acl_fiber_ready(waiter.continuation);
+            acl_fiber_switch();
+        }
+    }
+
+    return arg.Result;
 }
 
 sema_decl_function_t* MetaCSemantic_doFunctionSemantic(metac_semantic_state_t* self,
@@ -1593,12 +1680,17 @@ metac_node_t NodeFromTypeIndex(metac_semantic_state_t* sema,
     return 0;
 }
 
-metac_sema_declaration_t* MetaCSemantic_doDeclSemantic_(metac_semantic_state_t* self,
-                                                        metac_declaration_t* decl,
-                                                        const char* callFun,
-                                                        uint32_t callLine)
+typedef struct MetaCSemantic_doDeclSemantic_Fiber_t
 {
-    metac_sema_declaration_t* result = 0;
+    metac_semantic_state_t* Sema;
+    metac_declaration_t* Decl;
+    metac_sema_declaration_t* Result;
+} MetaCSemantic_doDeclSemantic_Fiber_t;
+
+metac_sema_declaration_t* MetaCSemantic_declSemantic(metac_semantic_state_t* self,
+                                                     metac_declaration_t* decl)
+{
+    metac_sema_declaration_t* result;
     metac_identifier_ptr_t declId = {0};
 
     switch(decl->DeclKind)
@@ -1661,9 +1753,39 @@ metac_sema_declaration_t* MetaCSemantic_doDeclSemantic_(metac_semantic_state_t* 
         } break;
     }
 
-
-
     return result;
+}
+
+void MetaCSemantic_doDeclSemantic_Fiber(ACL_FIBER* fib, void* arg)
+{
+    MetaCSemantic_doDeclSemantic_Fiber_t* ctx =
+        cast(MetaCSemantic_doDeclSemantic_Fiber_t*) arg;
+    metac_semantic_state_t* sema = ctx->Sema;
+    metac_declaration_t* decl = ctx->Decl;
+
+    ctx->Result = MetaCSemantic_declSemantic(sema, decl);
+}
+
+metac_sema_declaration_t* MetaCSemantic_doDeclSemantic_(metac_semantic_state_t* self,
+                                                        metac_declaration_t* decl,
+                                                        const char* callFun,
+                                                        uint32_t callLine)
+{
+    metac_sema_declaration_t* result = 0;
+
+    MetaCSemantic_doDeclSemantic_Fiber_t arg = {
+        self, decl, 0
+    };
+
+    ACL_FIBER* f =
+        acl_fiber_create(MetaCSemantic_doDeclSemantic_Fiber, &arg, 128 * 1024);
+
+    acl_fiber_schedule();
+    if (acl_fiber_running() != 0)
+    {
+        acl_fiber_yield();
+    }
+    return arg.Result;
 }
 
 #ifndef ATOMIC

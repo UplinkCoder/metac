@@ -4,9 +4,12 @@
 #include "compat.h"
 #include "metac_target_info.h"
 
-#ifdef _MSC_VER
+#if defined(_MSC_VER)
 #define _Alignof(X) \
     __alignof(X)
+#elif defined(__TINYC__)
+#define _Alignof(X) \
+    __alignof__(X)
 #endif
 // thanks msvc for not supporting struct literals
 // in c++ mode ... great job!
@@ -21,7 +24,6 @@ static const metac_target_info_t default_target_info =
     /*.SizeDouble =*/ sizeof(double),
     /*.SizeLongLong =*/ sizeof(long long),
     /*.SizeLongDouble =*/ sizeof(long double),
-
 
     /*.AlignmentBool =*/ _Alignof(bool),
     /*.AlignmentShort =*/ _Alignof(short),

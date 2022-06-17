@@ -1,5 +1,5 @@
 #include "metac_task.h"
-
+#include <assert.h>
 #include <stdlib.h>
 
 #if !defined(ATOMIC)
@@ -30,6 +30,13 @@ _Thread_local worker_context_t* threadContext = 0;
 
 taskqueue_t gQueue;
 
+_Thread_local void *_CurrentFiber;
+
+void* CurrentFiber()
+{
+    return _CurrentFiber;
+}
+
 void Taskqueue_Init(taskqueue_t* queue)
 {
     queue->queueMemory = cast(task_t (*)[1024])
@@ -43,9 +50,8 @@ void FiberPool_Init(fiber_pool_t* self)
 {
     for(uint32_t i = 0; i < sizeof(self->FreeBitfield) * 8; i++)
     {
-        self->stacks[i] = create_fcontext_stack(128 * 1024);
-        self->stackLeft[i] = 128 * 1024;
-        self->fibers[i] = 0;
+
+        self->fibers[i] = acl_fiber_create(0, 0, 128 * 1024);
         // self->contexts[i];
     }
 
@@ -79,7 +85,7 @@ uint32_t MakeWorkerThread(void (*workerFunc)(worker_context_t*), worker_context_
 }
 
 
-void MetaCTaskSystem_Init(tasksystem_t* self, uint32_t workerThreads, void (*workerFn)(worker_context_t*))
+void TaskSystem_Init(tasksystem_t* self, uint32_t workerThreads, void (*workerFn)(worker_context_t*))
 {
     // gQueue
     self->workerContexts = cast(worker_context_t*)

@@ -65,6 +65,20 @@ if (VAR ## _capacity <= (VAR ## _size + (N))) \
         ); \
     }
 
+typedef struct metac_semantic_waiter_t
+{
+    uint32_t FuncHash;
+    uint32_t NodeHash;
+    void* continuation;
+} metac_semantic_waiter_t;
+
+typedef struct metac_semantic_waitlist_t
+{
+    metac_semantic_waiter_t* Waiters;
+    uint32_t WaiterCount;
+    uint32_t WaiterCapacity;
+} metac_semantic_waitlist_t;
+
 typedef struct metac_sema_decl_state_t
 {
     sema_decl_variable_t* CurrentVariables;
@@ -93,6 +107,8 @@ typedef struct metac_semantic_state_t
     metac_identifier_table_t SemanticIdentifierTable;
     metac_identifier_table_t* ParserIdentifierTable;
     metac_identifier_table_t* ParserStringTable;
+
+    metac_semantic_waitlist_t Waiters;
 
     // has state such as the current stack offset and the like
     // to layout variables
@@ -173,11 +189,11 @@ metac_node_header_t* MetaCSemantic_LookupIdentifier(metac_semantic_state_t* self
 #ifndef Expression_IsEqual
 #define Expression_IsEqual(A, B) \
     (A == B ? true : Expression_IsEqual_( \
-    ((metac_sema_expression_t*)(A)), ((metac_sema_expression_t*)(B)))
+    ((const metac_sema_expression_t*)(A)), ((const metac_sema_expression_t*)(B)))
 #endif
 
-bool Expression_IsEqual_(metac_sema_expression_t* a,
-                         metac_sema_expression_t* b);
+bool Expression_IsEqual_(const metac_sema_expression_t* a,
+                         const metac_sema_expression_t* b);
 
 
 metac_sema_expression_t* AllocNewSemaExpression(metac_semantic_state_t* self, metac_expression_t* expr);
