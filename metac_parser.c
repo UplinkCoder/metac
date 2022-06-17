@@ -715,6 +715,9 @@ static bool CouldBeCast(metac_parser_t* self, metac_token_enum_t tok)
         (peek = MetaCParser_PeekToken(self, peekCount)), peek;
         peekCount++)
     {
+        if (peek->TokenType == tok_lParen)
+            return false;
+
         if (peek->TokenType == tok_rParen)
         {
             rParenPos = peekCount;
@@ -1251,8 +1254,6 @@ metac_expression_t* MetaCParser_ParseBinaryExpression(metac_parser_t* self,
             uint32_t opPrecedence = OpToPrecedence(exp_right);
             MetaCParser_Match(self, peekTokenType);
             metac_expression_t* rhs = MetaCParser_ParseUnaryExpression(self);
-            if (peekTokenType == tok_lBracket)
-                MetaCParser_Match(self, tok_rBracket);
             peekToken = MetaCParser_PeekToken(self, 1);
             peekTokenType = (peekToken ? peekToken->TokenType : tok_eof);
             while(IsBinaryOperator(peekTokenType, eflags)
@@ -1263,6 +1264,8 @@ metac_expression_t* MetaCParser_ParseBinaryExpression(metac_parser_t* self,
                 peekToken = MetaCParser_PeekToken(self, 1);
                 peekTokenType = (peekToken ? peekToken->TokenType : tok_eof);
             }
+            if (exp_right == exp_index)
+                MetaCParser_Match(self, tok_rBracket);
             result = AllocNewExpression(exp_right);
             result->E1 = left;
             result->E2 = rhs;

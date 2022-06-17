@@ -246,3 +246,11 @@ typedef struct BCGen
     bool finalized;
     uint32_t byteCodeArray[8192];
 } BCGen;
+
+typedef struct byte_code_array_t
+{
+    int32_t* Code;
+    uint32_t Count;
+} byte_code_array_t;
+
+byte_code_array_t* BCGen_Code(BCGen* self);

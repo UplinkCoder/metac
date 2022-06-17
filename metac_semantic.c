@@ -74,8 +74,10 @@ static inline bool isBasicType(metac_type_kind_t typeKind)
     }
     return false;
 }
-
-// static uint32_t _nodeCounter = 64;
+// In case we do a stand alone compile of semantic we need this
+#ifndef _METAC_PARSER_C_
+    static uint32_t _nodeCounter = 64;
+#endif
 
 #ifndef _emptyPointer
 #  define _emptyPointer (void*)0x1

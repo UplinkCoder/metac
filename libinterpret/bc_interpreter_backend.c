@@ -69,7 +69,6 @@ static inline void BCGen_Init(BCGen* self)
 
     self->parameterCount = 0;
     self->temporaryCount = 0;
-    self->temporaryCount = 0;
 
     self->ip = 4;
     self->sp = 4;
@@ -228,6 +227,16 @@ bool BCInterpreter_Return(BCInterpreter* self)
 
     assert(0);
     return true;
+}
+
+byte_code_array_t BCGen_CodeBytes(BCGen* self)
+{
+    byte_code_array_t result;
+
+    result.Count = self->byteCodeCount;
+    result.Code = self->byteCodeArray;
+
+    return result;
 }
 
 #ifdef PRINT_CODE
@@ -1033,7 +1042,7 @@ BCValue BCGen_interpret(BCGen* self, uint32_t fnIdx, BCValue* args, uint32_t n_a
         }
     }
 
-    int cond = 0;
+    int cond = 1;
 
     for (;;)
     {
@@ -1182,124 +1191,54 @@ BCValue BCGen_interpret(BCGen* self, uint32_t fnIdx, BCValue* args, uint32_t n_a
             break;
         case LongInst_ImmEq:
             {
-                if ((*opRef) == imm32c)
-                {
-                    cond = 0;
-                }
-                else
-                {
-                    cond = 1;
-                }
+                cond == ((*opRef) == imm32c);
             }
             break;
         case LongInst_ImmNeq:
             {
-                if ((*opRef) != imm32c)
-                {
-                    cond = 0;
-                }
-                else
-                {
-                    cond = 1;
-                }
+                cond == ((*opRef) != imm32c);
             }
             break;
 
         case LongInst_ImmUlt:
             {
-                if (((int64_t)(*opRef)) < cast(uint32_t)hi)
-                {
-                    cond = 0;
-                }
-                else
-                {
-                    cond = 1;
-                }
+                cond = (((int64_t)(*opRef)) < cast(uint32_t)hi);
             }
             break;
         case LongInst_ImmUgt:
             {
-                if (((uint64_t)(*opRef)) > cast(uint32_t)hi)
-                {
-                    cond = 0;
-                }
-                else
-                {
-                    cond = 1;
-                }
+                cond = (((uint64_t)(*opRef)) > cast(uint32_t)hi);
             }
             break;
         case LongInst_ImmUle:
             {
-                if (((uint64_t)(*opRef)) <= cast(uint32_t)hi)
-                {
-                    cond = 0;
-                }
-                else
-                {
-                    cond = 1;
-                }
+                cond = (((uint64_t)(*opRef)) <= cast(uint32_t)hi);
             }
             break;
         case LongInst_ImmUge:
             {
-                if (((uint64_t)(*opRef)) >= cast(uint32_t)hi)
-                {
-                    cond = 0;
-                }
-                else
-                {
-                    cond = 1;
-                }
+                cond = (((uint64_t)(*opRef)) >= cast(uint32_t)hi);
             }
             break;
 
         case LongInst_ImmLt:
             {
-                if ((*opRef) < imm32c)
-                {
-                    cond = 0;
-                }
-                else
-                {
-                    cond = 1;
-                }
+                cond = ((*opRef) < imm32c);
             }
             break;
         case LongInst_ImmGt:
             {
-                if ((*opRef) > imm32c)
-                {
-                    cond = 0;
-                }
-                else
-                {
-                    cond = 1;
-                }
+                cond = ((*opRef) > imm32c);
             }
             break;
         case LongInst_ImmLe:
             {
-                if ((*opRef) <= imm32c)
-                {
-                    cond = 0;
-                }
-                else
-                {
-                    cond = 1;
-                }
+                cond = ((*opRef) <= imm32c);
             }
             break;
         case LongInst_ImmGe:
             {
-                if ((*opRef) >= imm32c)
-                {
-                    cond = 0;
-                }
-                else
-                {
-                    cond = 1;
-                }
+                cond = ((*opRef) >= imm32c);
             }
             break;
 
@@ -1555,28 +1494,13 @@ BCValue BCGen_interpret(BCGen* self, uint32_t fnIdx, BCValue* args, uint32_t n_a
             break;
         case LongInst_Eq:
             {
-                if ((*lhsRef) == *rhs)
-                {
-                    cond = 0;
-                }
-                else
-                {
-                    cond = 1;
-                }
-
+                cond = ((*lhsRef) == (*rhs));
             }
             break;
 
         case LongInst_Neq:
             {
-                if ((*lhsRef) != *rhs)
-                {
-                    cond = 0;
-                }
-                else
-                {
-                    cond = 1;
-                }
+                cond = ((*lhsRef) != *rhs);
             }
             break;
 
@@ -1588,102 +1512,43 @@ BCValue BCGen_interpret(BCGen* self, uint32_t fnIdx, BCValue* args, uint32_t n_a
 
         case LongInst_Ult:
             {
-                if (((uint64_t)(*lhsRef)) < ((uint64_t)*rhs))
-                {
-                    cond = 0;
-                }
-                else
-                {
-                    cond = 1;
-                }
+                cond = (((uint64_t)(*lhsRef)) < ((uint64_t)*rhs));
             }
             break;
         case LongInst_Ugt:
             {
-                if ((uint64_t)(*lhsRef) > (uint64_t)*rhs)
-                {
-                    cond = 0;
-                }
-                else
-                {
-                    cond = 1;
-                }
+                cond = ((uint64_t)(*lhsRef) > (uint64_t)*rhs);
             }
             break;
         case LongInst_Ule:
             {
-                if (((uint64_t)(*lhsRef)) <= ((uint64_t)*rhs))
-                {
-                    cond = 0;
-                }
-                else
-                {
-                    cond = 1;
-                }
+                cond = (((uint64_t)(*lhsRef)) <= ((uint64_t)*rhs));
             }
             break;
         case LongInst_Uge:
             {
-                if (((uint64_t)(*lhsRef)) >= ((uint64_t)*rhs))
-                {
-                    cond = 0;
-                }
-                else
-                {
-                    cond = 1;
-                }
-
+                cond = (((uint64_t)(*lhsRef)) >= ((uint64_t)*rhs));
             }
             break;
 
         case LongInst_Lt:
             {
-                if ((*lhsRef) < *rhs)
-                {
-                    cond = 0;
-                }
-                else
-                {
-                    cond = 1;
-                }
+                cond = ((*lhsRef) < *rhs);
             }
             break;
         case LongInst_Gt:
             {
-                if ((*lhsRef) > *rhs)
-                {
-                    cond = 0;
-                }
-                else
-                {
-                    cond = 1;
-                }
+                cond = ((*lhsRef) > *rhs);
             }
             break;
         case LongInst_Le:
             {
-                if ((*lhsRef) <= *rhs)
-                {
-                    cond = 0;
-                }
-                else
-                {
-                    cond = 1;
-                }
-
+                cond = ((*lhsRef) <= *rhs);
             }
             break;
         case LongInst_Ge:
             {
-                if ((*lhsRef) >= *rhs)
-                {
-                    cond = 0;
-                }
-                else
-                {
-                    cond = 1;
-                }
-
+                cond = ((*lhsRef) >= *rhs);
             }
             break;
 #if 0
@@ -2089,7 +1954,7 @@ L_LongInst_Comment:
 #if 1
         case LongInst_Memcmp:
             {
-                cond = 0;
+                cond = 1;
 
                 uint32_t size = cast(uint32_t) *opRef;
                 uint32_t _lhs = cast(uint32_t) *lhsRef;
@@ -2098,7 +1963,7 @@ L_LongInst_Comment:
                 assert(_lhs && _rhs);//, "trying to deref nullPointers");
                 if (_lhs == _rhs)
                 {
-                    cond = 1;
+                    cond = 0;
                 }
                 else
                 {
