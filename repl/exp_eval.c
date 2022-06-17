@@ -182,6 +182,11 @@ static inline void WalkTree(void* c, BCValue* result,
             BCGen_interface.Set(c, result, &imm);
         } break;
 
+        case exp_neq:
+        {
+            BCGen_interface.Neq3(c, result, lhs, rhs);
+        } break;
+
         case exp_eq:
         {
             BCGen_interface.Eq3(c, result, lhs, rhs);
