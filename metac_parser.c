@@ -1190,7 +1190,7 @@ metac_expression_t* MetaCParser_ParseBinaryExpression(metac_parser_t* self,
     // a * b + c * d
     // a * b | (a * b) + c |
     // here we pop the stack
-
+/*
     if (peekTokenType == tok_lBracket)
     {
         MetaCParser_Match(self, tok_lBracket);
@@ -1202,7 +1202,9 @@ metac_expression_t* MetaCParser_ParseBinaryExpression(metac_parser_t* self,
 
         MetaCParser_Match(self, tok_rBracket);
     }
-    else if (peekTokenType == tok_lParen)
+    else 
+*/
+    if (peekTokenType == tok_lParen)
     {
         self->OpenParens++;
         MetaCParser_Match(self, tok_lParen);
@@ -1249,6 +1251,8 @@ metac_expression_t* MetaCParser_ParseBinaryExpression(metac_parser_t* self,
             uint32_t opPrecedence = OpToPrecedence(exp_right);
             MetaCParser_Match(self, peekTokenType);
             metac_expression_t* rhs = MetaCParser_ParseUnaryExpression(self);
+            if (peekTokenType == tok_lBracket)
+                MetaCParser_Match(self, tok_rBracket);
             peekToken = MetaCParser_PeekToken(self, 1);
             peekTokenType = (peekToken ? peekToken->TokenType : tok_eof);
             while(IsBinaryOperator(peekTokenType, eflags)
