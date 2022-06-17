@@ -150,30 +150,27 @@ static inline int Presemantic(metac_node_t node, void* ctx)
     return 0;
 }
 
-int main(int argc, const char* argv[])
+typedef struct repl_state_t
 {
+    parse_mode_t parseMode;
+    metac_lexer_state_t repl_state;
+    metac_lexer_t lexer;
+    metac_type_aggregate_t* compilerStruct;
+    metac_semantic_state_t sema;
+
+    // maybe not needed
     const char* line;
 
-    char* srcBuffer = 0;
-    void* freePtr = 0;
-    uint32_t srcBufferLength = 0;
+    char* srcBuffer;
+    void* freePtr;
+    uint32_t srcBufferLength;
 
-    parse_mode_t parseMode = parse_mode_ee;
-    metac_lexer_state_t repl_state;
-    repl_state.Position = 0;
-    repl_state.Line = 1;
-    repl_state.Column = 1;
+    metac_printer_t printer;
+    variable_store_t vstore;
+} repl_state_t;
 
-    metac_lexer_t lexer;
-    MetaCLexer_Init(&lexer);
-
-    g_lineLexer.Tokens =
-        (metac_token_t*)malloc(128 * sizeof(metac_token_t));
-    g_lineLexer.TokenCapacity = 128;
-    g_lineLexer.LocationStorage.Locations =
-        (metac_location_t*)malloc(128 * sizeof(metac_location_t));
-    g_lineLexer.LocationStorage.LocationCapacity = 128;
-
+void Presemantic_(repl_state_t* self)
+{
     metac_type_aggregate_t* compilerStruct = 0;
 
     read_result_t fCompilterInterface =
@@ -181,12 +178,6 @@ int main(int argc, const char* argv[])
     if (!fCompilterInterface.FileContent0)
         fCompilterInterface =
         ReadFileAndZeroTerminate("../metac_compiler_interface.h");
-
-    metac_semantic_state_t sema;
-    // make sure we know our special identifiers
-    LineLexerInit();
-
-
 
     if (fCompilterInterface.FileContent0)
     {
@@ -258,26 +249,67 @@ int main(int argc, const char* argv[])
             }
         }
 
-        MetaCSemantic_Init(&sema, &g_lineParser, compilerStruct);
-        MetaCSemantic_PushNewScope(&sema, scope_parent_module, 1);
-
-
         MetaCSemantic_Handoff(&tmpSema,
-                              (metac_sema_declaration_t**)&sema.CompilerInterface,
-                              &sema);
+                              (metac_sema_declaration_t**)&self->sema.CompilerInterface,
+                              &self->sema);
         // FreeSema
         MetaCParser_Free(&tmpParser);
     }
-    else
-    {
-        MetaCSemantic_Init(&sema, &g_lineParser, 0);
-        MetaCSemantic_PushNewScope(&sema, scope_parent_module, 1);
-    }
+}
 
-    metac_printer_t printer;
-    MetaCPrinter_Init(&printer,
+void Repl_Init(repl_state_t* self)
+{
+    self->repl_state.Position = 0;
+    self->repl_state.Line = 1;
+    self->repl_state.Column = 1;
+    self->parseMode = parse_mode_ee;
+
+    self->compilerStruct = 0;
+
+    self->srcBuffer = 0;
+    self->freePtr = 0;
+    self->srcBufferLength = 0;
+
+    // init line lexer with more than the default
+    // tokens
+    g_lineLexer.Tokens =
+        (metac_token_t*)malloc(128 * sizeof(metac_token_t));
+    g_lineLexer.TokenCapacity = 128;
+    g_lineLexer.LocationStorage.Locations =
+        (metac_location_t*)malloc(128 * sizeof(metac_location_t));
+    g_lineLexer.LocationStorage.LocationCapacity = 128;
+    // make sure we know our special identifiers
+    LineLexerInit();
+
+    MetaCLexer_Init(&self->lexer);
+
+    MetaCSemantic_Init(&self->sema, &g_lineParser, 0);
+    MetaCSemantic_PushNewScope(&self->sema, scope_parent_module, 1);
+
+    Presemantic_(self);
+
+    MetaCPrinter_Init(&self->printer,
         &g_lineParser.IdentifierTable,
         &g_lineParser.StringTable);
+
+   VariableStore_Init(&self->vstore);
+
+    _ReadContextCapacity = 32;
+    _ReadContexts = (ReadI32_Ctx*)
+        malloc(sizeof(ReadI32_Ctx) * _ReadContextCapacity);
+    _ReadContextSize = 0;
+
+}
+
+
+int main(int argc, const char* argv[])
+{
+
+    repl_state_t repl;
+    Repl_Init(&repl);
+
+
+
 /*
     printf("Transfered decl: %s\n",
         MetaCPrinter_PrintDeclaration(&printer, compilerStruct));
@@ -290,21 +322,14 @@ int main(int argc, const char* argv[])
     const char* promt_;
 
 
-
+/*
     metac_dot_printer_t dot_printer;
     MetaCDotPrinter_Init(&dot_printer, &g_lineParser.IdentifierTable);
     g_lineParser.DotPrinter = &dot_printer;
-
-    variable_store_t vstore;
-    VariableStore_Init(&vstore);
-
-    _ReadContextCapacity = 32;
-    _ReadContexts = (ReadI32_Ctx*)
-        malloc(sizeof(ReadI32_Ctx) * _ReadContextCapacity);
-    _ReadContextSize = 0;
+*/
 
 LswitchMode:
-    switch (parseMode)
+    switch (repl.parseMode)
     {
     case parse_mode_max: assert(0);
     case parse_mode_file:
@@ -345,22 +370,23 @@ LswitchMode:
     while(0)
     {
 LnextLine:
-        linenoiseFree((void*)line);
+        linenoiseFree((void*)repl.line);
     }
-    while ((line = linenoise(promt_)))
+    while ((repl.line = linenoise(promt_)))
     {
-        linenoiseHistoryAdd(line);
-        uint32_t line_length = strlen(line);
-        if (*line == ':')
+        linenoiseHistoryAdd(repl.line);
+        uint32_t line_length = strlen(repl.line);
+        if (*repl.line == ':')
         {
-            switch(line[1])
+            switch(repl.line[1])
             {
             case 'q':
                 linenoiseHistorySave(".repl_history");
                 return 0;
+#if 0
             case 'l' :
             {
-                const char* filename = line + 3;
+                const char* filename = repl.line + 3;
                 printf("loading and lexing: '%s'\n", filename);
                 FILE* fd = fopen(filename, "rb");
                 if (!fd)
@@ -401,45 +427,46 @@ LnextLine:
                 }
                 break;
             }
+#endif
             case 't' :
-                parseMode = parse_mode_token;
+                repl.parseMode = parse_mode_token;
                 goto LswitchMode;
             case 'd' :
-                switch (line[2])
+                switch (repl.line[2])
                 {
                 default:
-                    parseMode = parse_mode_decl;
+                    repl.parseMode = parse_mode_decl;
                     goto LswitchMode;
 
                  case 's':
-                    parseMode = parse_mode_ds;
+                    repl.parseMode = parse_mode_ds;
                     goto LswitchMode;
                 }
 
             case 'v' :
-                parseMode = parse_mode_setvars;
+                repl.parseMode = parse_mode_setvars;
                 goto LswitchMode;
             case 'e' :
-                switch(line[2])
+                switch(repl.line[2])
                 {
                 default:
-                    parseMode = parse_mode_expr;
+                    repl.parseMode = parse_mode_expr;
                     goto LswitchMode;
                 case 'e':
-                    parseMode = parse_mode_ee;
+                    repl.parseMode = parse_mode_ee;
                     goto LswitchMode;
                 case 's':
-                    parseMode = parse_mode_es;
+                    repl.parseMode = parse_mode_es;
                     goto LswitchMode;
                 }
             case 's' :
-                switch (line[2])
+                switch (repl.line[2])
                 {
                 default:
-                    parseMode = parse_mode_stmt;
+                    repl.parseMode = parse_mode_stmt;
                     goto LswitchMode;
                 case 's':
-                    parseMode = parse_mode_ss;
+                    repl.parseMode = parse_mode_ss;
                     goto LswitchMode;
                 }
             case 'i' :
@@ -450,21 +477,21 @@ LnextLine:
 #endif
                 continue;
             default :
-                printf("Command :%c unknown type :h for help\n", *(line + 1));
+                printf("Command :%c unknown type :h for help\n", *(repl.line + 1));
                 continue;
             case 'h' :
                 PrintHelp();
                 continue;
             }
         }
-        else if (line[0] == '.')
+        else if (repl.line[0] == '.')
         {
             if (line_length == sizeof("scope")
-             && 0 == memcmp(line + 1, "scope", strlen("scope")))
+             && 0 == memcmp(repl.line + 1, "scope", strlen("scope")))
             {
-                if (sema.CurrentScope)
+                if (repl.sema.CurrentScope)
                 {
-                    metac_scope_table_t* table = &sema.CurrentScope->ScopeTable;
+                    metac_scope_table_t* table = &repl.sema.CurrentScope->ScopeTable;
                     uint32_t nMembers = table->SlotsUsed;
 
                     for(uint32_t slotIdx = 0, memberIdx = 0; memberIdx < nMembers; slotIdx++)
@@ -472,7 +499,7 @@ LnextLine:
                         metac_scope_table_slot_t slot = table->Slots[slotIdx];
                         if (slot.Hash)
                         {
-                            printf("Member [%u] : %s\n", memberIdx++, MetaCPrinter_PrintSemaNode(&printer, &sema, slot.Node));
+                            printf("Member [%u] : %s\n", memberIdx++, MetaCPrinter_PrintSemaNode(&repl.printer, &repl.sema, slot.Node));
                         }
                     }
                 }
@@ -480,13 +507,13 @@ LnextLine:
             }
         }
 
-        if (parseMode != parse_mode_file)
+        if (repl.parseMode != parse_mode_file)
         {
-            srcBuffer = (char*)line;
-            srcBufferLength = line_length;
+            repl.srcBuffer = (char*)repl.line;
+            repl.srcBufferLength = line_length;
         }
 
-        while (srcBufferLength > 0)
+        while (repl.srcBufferLength > 0)
         {
             metac_token_t token;
 
@@ -494,45 +521,45 @@ LnextLine:
             metac_statement_t* stmt;
             metac_declaration_t* decl;
 
-            uint32_t initalPosition = repl_state.Position;
-            switch(parseMode)
+            uint32_t initalPosition = repl.repl_state.Position;
+            switch(repl.parseMode)
             {
             case parse_mode_max: break;
             case parse_mode_expr:
             {
                  exp =
-                    MetaCParser_ParseExpressionFromString(line);
+                    MetaCParser_ParseExpressionFromString(repl.line);
 
-                const char* str = MetaCPrinter_PrintExpression(&printer, exp);
+                const char* str = MetaCPrinter_PrintExpression(&repl.printer, exp);
                 printf("expr = %s\n", str);
-                MetaCPrinter_Reset(&printer);
+                MetaCPrinter_Reset(&repl.printer);
                 goto LnextLine;
             }
             case parse_mode_ee:
             {
                 exp =
-                    MetaCParser_ParseExpressionFromString(line);
-                const char* str = MetaCPrinter_PrintExpression(&printer, exp);
+                    MetaCParser_ParseExpressionFromString(repl.line);
+                const char* str = MetaCPrinter_PrintExpression(&repl.printer, exp);
 
                 metac_sema_expression_t* result =
-                    MetaCSemantic_doExprSemantic(&sema, exp);
+                    MetaCSemantic_doExprSemantic(&repl.sema, exp);
 
                 metac_expression_t printExpStorage;
 
-                metac_sema_expression_t eval_exp = evalWithVariables(result, &vstore);
+                metac_sema_expression_t eval_exp = evalWithVariables(result, &repl.vstore);
                 result = &eval_exp;
 
                 const char* result_str;
                 if (eval_exp.Kind == exp_type)
                 {
-                    result_str = MetaCPrinter_PrintSemaNode(&printer, &sema, &eval_exp);
+                    result_str = MetaCPrinter_PrintSemaNode(&repl.printer, &repl.sema, &eval_exp);
                 }
                 else
                 {
-                    result_str = MetaCPrinter_PrintSemaNode(&printer, &sema, &eval_exp);
+                    result_str = MetaCPrinter_PrintSemaNode(&repl.printer, &repl.sema, &eval_exp);
                 }
                 printf("%s = %s\n", str, result_str);
-                MetaCPrinter_Reset(&printer);
+                MetaCPrinter_Reset(&repl.printer);
                 // XXX static and fixed size state like _ReadContext
                 // should go away soon.
                 _ReadContextSize = 0;
@@ -541,13 +568,13 @@ LnextLine:
             case parse_mode_es:
             {
                 exp =
-                    MetaCParser_ParseExpressionFromString(line);
+                    MetaCParser_ParseExpressionFromString(repl.line);
 
-                const char* str = MetaCPrinter_PrintExpression(&printer, exp);
+                const char* str = MetaCPrinter_PrintExpression(&repl.printer, exp);
                 metac_sema_expression_t* result =
-                    MetaCSemantic_doExprSemantic(&sema, exp);
+                    MetaCSemantic_doExprSemantic(&repl.sema, exp);
                 printf("typeIndex.v: %x\n", result->TypeIndex.v);
-                const char* type_str = TypeToChars(&sema, result->TypeIndex);
+                const char* type_str = TypeToChars(&repl.sema, result->TypeIndex);
 
                 printf("typeof(%s) = %s\n", str, type_str);
                 // XXX static and fixed size state like _ReadContext
@@ -558,7 +585,7 @@ LnextLine:
 
             case parse_mode_setvars :
             {
-                metac_declaration_t* decl = MetaCParser_ParseDeclarationFromString(line);
+                metac_declaration_t* decl = MetaCParser_ParseDeclarationFromString(repl.line);
                 if (decl)
                 {
                     metac_identifier_ptr_t idPtr = {0};
@@ -593,12 +620,12 @@ LnextLine:
                     DeclarationStore_SetDecl(&dstore, dstoreId, decl);
 */
                     printf("Registering %s [v=%u] in scope\n", idChars, idPtr.v);
-                    MetaCSemantic_RegisterInScope(&sema, idPtr, decl);
+                    MetaCSemantic_RegisterInScope(&repl.sema, idPtr, decl);
                     goto LnextLine;
                 }
                 else
                 {
-                    metac_expression_t* assignExp = MetaCParser_ParseExpressionFromString(line);
+                    metac_expression_t* assignExp = MetaCParser_ParseExpressionFromString(repl.line);
                     if (assignExp)
                     {
                         if (assignExp->Kind != exp_assign)
@@ -608,7 +635,7 @@ LnextLine:
                         }
 
                         metac_sema_expression_t* ae =
-                            MetaCSemantic_doExprSemantic(&sema, assignExp);
+                            MetaCSemantic_doExprSemantic(&repl.sema, assignExp);
                         if (ae)
                         {
                             if (ae->E1->Kind == exp_identifier)
@@ -617,7 +644,7 @@ LnextLine:
                             }
                             assert(ae->E2->Kind == exp_signed_integer);
 
-                            VariableStore_SetValueI32(&vstore, ae->E1, (int32_t)ae->E2->ValueI64);
+                            VariableStore_SetValueI32(&repl.vstore, ae->E1, (int32_t)ae->E2->ValueI64);
                         }
                         else
                         {
@@ -635,20 +662,20 @@ LnextLine:
 
             case parse_mode_stmt :
             {
-                stmt = MetaCParser_ParseStatementFromString(line);
+                stmt = MetaCParser_ParseStatementFromString(repl.line);
                 if (stmt)
-                    printf("stmt = %s\n", MetaCPrinter_PrintStatement(&printer, stmt));
+                    printf("stmt = %s\n", MetaCPrinter_PrintStatement(&repl.printer, stmt));
                 else
                    fprintf(stderr, "couldn't parse statement\n");
-                MetaCPrinter_Reset(&printer);
+                MetaCPrinter_Reset(&repl.printer);
                 goto LnextLine;
             }
 
             case parse_mode_decl :
             {
-                decl = MetaCParser_ParseDeclarationFromString(line);
+                decl = MetaCParser_ParseDeclarationFromString(repl.line);
                 if (decl)
-                    printf("decl = %s\n", MetaCPrinter_PrintDeclaration(&printer, decl));
+                    printf("decl = %s\n", MetaCPrinter_PrintDeclaration(&repl.printer, decl));
                 else
                     printf("Couldn't parse Declaration\n");
                 linenoiseSetMultiLine(false);
@@ -658,14 +685,14 @@ LnextLine:
 
             case parse_mode_ds :
             {
-                decl = MetaCParser_ParseDeclarationFromString(line);
+                decl = MetaCParser_ParseDeclarationFromString(repl.line);
                 if (decl)
-                    printf("decl = %s\n", MetaCPrinter_PrintDeclaration(&printer, decl));
+                    printf("decl = %s\n", MetaCPrinter_PrintDeclaration(&repl.printer, decl));
                 else
                     printf("Couldn't parse Declaration\n");
 
                 metac_sema_declaration_t* ds =
-                    MetaCSemantic_doDeclSemantic(&sema, decl);
+                    MetaCSemantic_doDeclSemantic(&repl.sema, decl);
 
                 goto LnextLine;
             }
@@ -674,14 +701,15 @@ LnextLine:
                 goto LlexSrcBuffer;
             case parse_mode_token :
 
-LlexSrcBuffer:
-                   token = *MetaCLexerLexNextToken(&lexer, &repl_state, srcBuffer, srcBufferLength);
+LlexSrcBuffer: {}
+#if 1
+                token = *MetaCLexerLexNextToken(&repl.lexer, &repl.repl_state, repl.srcBuffer, repl.srcBufferLength);
 
-                uint32_t eaten_chars = repl_state.Position - initalPosition;
+                uint32_t eaten_chars = repl.repl_state.Position - initalPosition;
                 const uint32_t token_length = MetaCTokenLength(token);
 #if 1
                 const uint32_t locPtr = token.LocationId;
-                const metac_location_t loc = lexer.LocationStorage.Locations[locPtr - 4];
+                const metac_location_t loc = repl.lexer.LocationStorage.Locations[locPtr - 4];
 
                 printf("read tokenType: %s {length: %d}\n Location: {Line: %d, Col: %d}",
                         MetaCTokenEnum_toChars(token.TokenType), token_length,
@@ -691,9 +719,9 @@ LlexSrcBuffer:
                 if (token.TokenType == tok_identifier)
                 {
 #if ACCEL == ACCEL_TABLE
-                    printf("    %.*s\n", LENGTH_FROM_IDENTIFIER_KEY(token.Key), IDENTIFIER_PTR(&lexer.MEMBER_SUFFIX(Identifier), token));
+                    printf("    %.*s\n", LENGTH_FROM_IDENTIFIER_KEY(token.Key), IDENTIFIER_PTR(&repl.lexer.MEMBER_SUFFIX(Identifier), token));
 #elif ACCEL == ACCEL_TREE
-                    printf("    %.*s\n", LENGTH_FROM_IDENTIFIER_KEY(token.Key), IDENTIFIER_PTR(&lexer.IdentifierTree, token));
+                    printf("    %.*s\n", LENGTH_FROM_IDENTIFIER_KEY(token.Key), IDENTIFIER_PTR(&repl.lexer.IdentifierTree, token));
 #endif
                 }
                 else if (token.TokenType == tok_char)
@@ -711,12 +739,12 @@ LlexSrcBuffer:
                 }
                 else if (token.TokenType == tok_string)
                 {
-                    printf("    \"%.*s\"\n", LENGTH_FROM_STRING_KEY(token.Key), STRING_PTR(&lexer.String, token.StringPtr));
+                    printf("    \"%.*s\"\n", LENGTH_FROM_STRING_KEY(token.Key), STRING_PTR(&repl.lexer.String, token.StringPtr));
                 }
 #endif
 
-                srcBufferLength -= eaten_chars;
-                srcBuffer += eaten_chars;
+                repl.srcBufferLength -= eaten_chars;
+                repl.srcBuffer += eaten_chars;
                 printf("eaten_chars: %d\n", eaten_chars);
                 if (!token_length)
                     break;
@@ -724,20 +752,21 @@ LlexSrcBuffer:
         }
 
         {
-            repl_state.Line++;
-            repl_state.Column = 1;
-            lexer.TokenSize = 0;
-            lexer.LocationStorage.LocationSize = 0;
+            repl.repl_state.Line++;
+            repl.repl_state.Column = 1;
+            repl.lexer.TokenSize = 0;
+            repl.lexer.LocationStorage.LocationSize = 0;
         }
 
-        if (freePtr)
+        if (repl.freePtr)
         {
-            free(freePtr);
-            freePtr = 0;
-            parseMode = parse_mode_token;
+            free(repl.freePtr);
+            repl.freePtr = 0;
+            repl.parseMode = parse_mode_token;
             goto LswitchMode;
         }
-        srcBuffer = 0;
+        repl.srcBuffer = 0;
+#endif
     }
 }
 #endif
