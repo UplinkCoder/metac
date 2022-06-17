@@ -1117,63 +1117,21 @@ scope_insert_error_t MetaCSemantic_RegisterInScope(metac_semantic_state_t* self,
                                                    metac_identifier_ptr_t idPtr,
                                                    metac_node_t node)
 {
-//    if (idPtr.v == 40)
-//        int breakMe = 2;
     scope_insert_error_t result = no_scope;
     uint32_t idPtrHash = crc32c_nozero(~0, &idPtr.v, sizeof(idPtr.v));
     // first search for keys that might clash
     // and remove them from the LRU hashes
     uint16_t hash12 = idPtrHash & 0xFFF0;
+
     int16x8_t hashes;
-#if defined(SIMD)
-    assert(0); // Not implemented as of now
-#elif defined(SSE2)
-    hashes.XMM = _mm_load_si128((__m128i*) self->LRU.LRUContentHashes.E);
-#elif defined(NEON)
-    hashes =
-        (*(int16x8_t*) self->LRUContentHashes.E);
-#else
-    hashes = self->LRU.LRUContentHashes;
-#endif
+    hashes = Load16(&self->LRU.LRUContentHashes);
+    const int16x8_t hash12_8 = Set1_16(hash12);
+    const int16x8_t hashMask = Set1_16(0xFFF0);
+    const int16x8_t maskedHashes = And16(hashes, hashMask);
+    const int16x8_t clearMask = Eq16(maskedHashes, hash12_8);
+    const int16x8_t cleared = Andnot16(clearMask, hashes);
+    Store16(&self->LRU.LRUContentHashes, cleared);
 
-#if defined(SSE2)
-    const __m128i key = _mm_set1_epi16(hash12);
-    const __m128i keyMask = _mm_set1_epi16(0xFFF0);
-    // mask out the scope_hash so we only compare keys
-    // TODO can we make this store conditinal or would
-    // the additional movemask make this slower?
-    __m128i maskedHashes =
-        _mm_and_si128(keyMask, hashes.XMM);
-    __m128i clearMask =
-        _mm_cmpeq_epi16(maskedHashes, key);
-    // clear out all the LRU hash entires where the key matched
-    __m128i cleaned =
-        _mm_andnot_si128(clearMask, hashes.XMM);
-
-    _mm_store_si128((__m128i*) self->LRU.LRUContentHashes.E, cleaned);
-#elif defined(NEON)
-    const int16x8_t hash8 =
-        {hash12, hash12, hash12, hash12,
-         hash12, hash12, hash12, hash12};
-    int16x8_t maskedHashes = hashes & 0xFFF0;
-    int16x8_t clearMask = maskedHashes == hash8;
-    // == sets 0xFFFF if an element compares true
-    (*(int16x8_t*) self->LRU.LRUContentHashes.E) =
-        hashes & clearMask;
-   // store the result
-#else
-    bool needsStore = false;
-    for(int i = 0; i < ARRAY_SIZE(hashes.E); i++)
-    {
-        if ((hashes.E[i] & 0xFFF0) == hash12)
-        {
-            needsStore |= true;
-            hashes.E[i] = 0;
-        }
-    }
-    if (needsStore)
-        self->LRU.LRUContentHashes = hashes;
-#endif
     if (self->CurrentScope != 0)
         result = MetaCScope_RegisterIdentifier(self->CurrentScope, idPtr, node);
 

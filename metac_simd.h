@@ -50,7 +50,14 @@ static inline int16x8_t And16(const int16x8_t a, const int16x8_t b)
 {
     int16x8_t result;
     result.XMM = _mm_and_si128(a.XMM, b.XMM);
-    resturn result;
+    return result;
+}
+
+static inline int16x8_t Andnot16(const int16x8_t a, const int16x8_t b)
+{
+    int16x8_t result;
+    result.XMM = _mm_andnot_si128(a.XMM, b.XMM);
+    return result;
 }
 
 static inline int16x8_t Eq16(const int16x8_t a, const int16x8_t b)
@@ -60,6 +67,17 @@ static inline int16x8_t Eq16(const int16x8_t a, const int16x8_t b)
     return result;
 }
 
+static inline int16x8_t Load16(const int16x8_t* ptr)
+{
+    int16x8_t result;
+    result.XMM == _mm_loadu_si128((_m128i*)ptr->E);
+    return result;
+}
+
+static inline void Store16(int16x8_t* ptr, const int16x8_t value)
+{
+    _mm_storeu_si128(ptr, value.XMM);
+}
 #elif defined(NEON)
 static inline uint32_t MoveMask16(const int16x8_t a)
 {
@@ -80,9 +98,24 @@ static inline int16x8_t And16(const int16x8_t a, const int16x8_t b)
     return a & b;
 }
 
+static inline int16x8_t Andnot16(const int16x8_t a, const int16x8_t b)
+{
+    return (~a) & b;
+}
+
 static inline int16x8_t Eq16(const int16x8_t a, const int16x8_t b)
 {
     return a == b;
+}
+
+static inline int16x8_t Load16(const int16x8_t* ptr)
+{
+    return *ptr;
+}
+
+static inline void Store16(int16x8_t* ptr, const int16x8_t value)
+{
+    *ptr = value;
 }
 #else // no supported SIMD_PLATFROM
 static inline uint32_t MoveMask16(const int16x8_t a)
@@ -122,6 +155,18 @@ static inline int16x8_t And16(const int16x8_t a, const int16x8_t b)
     return result;
 }
 
+static inline int16x8_t Andnot16(const int16x8_t a, const int16x8_t b)
+{
+    int16x8_t result = {0};
+
+    for(int i = 0; i < 8; i++)
+    {
+        result.E[i] = ((~a.E[i]) & b.E[i]);
+    }
+
+    return result;
+}
+
 static inline int16x8_t Eq16(const int16x8_t a, const int16x8_t b)
 {
     int16x8_t result = {0};
@@ -132,5 +177,15 @@ static inline int16x8_t Eq16(const int16x8_t a, const int16x8_t b)
     }
 
     return result;
+}
+
+static inline int16x8_t Load16(const int16x8_t* ptr)
+{
+    return *ptr;
+}
+
+static inline void Store16(int16x8_t* ptr, const int16x8_t value)
+{
+    *ptr = value;
 }
 #endif
