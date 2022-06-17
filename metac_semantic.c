@@ -1881,15 +1881,69 @@ bool MetaCSemantic_CanHaveAddress(metac_semantic_state_t* self,
 #define offsetof(st, m) \
     ((size_t)((char *)&((st *)0)->m - (char *)0))
 
+
+static inline metac_type_index_t CommonBasicType(const metac_type_index_t a,
+                                                 const metac_type_index_t b)
+{
+    metac_type_index_t result;
+    result.v = TYPE_INDEX_V(type_index_basic, basic_int);
+
+    if (a.v == TYPE_INDEX_V(type_index_basic, basic_long_double) ||
+        b.v == TYPE_INDEX_V(type_index_basic, basic_long_double))
+    {
+        result.v = TYPE_INDEX_V(type_index_basic, basic_long_double);
+    } else if (a.v == TYPE_INDEX_V(type_index_basic, basic_double) ||
+               b.v == TYPE_INDEX_V(type_index_basic, basic_double))
+    {
+        result.v = TYPE_INDEX_V(type_index_basic, basic_double);
+    } else if (a.v == TYPE_INDEX_V(type_index_basic, basic_float) ||
+               b.v == TYPE_INDEX_V(type_index_basic, basic_float))
+    {
+        result.v = TYPE_INDEX_V(type_index_basic, basic_float);
+    } else if (a.v == TYPE_INDEX_V(type_index_basic, type_unsigned_long_long) ||
+               b.v == TYPE_INDEX_V(type_index_basic, type_unsigned_long_long))
+    {
+        result.v = TYPE_INDEX_V(type_index_basic, type_unsigned_long_long);
+    } else if (a.v == TYPE_INDEX_V(type_index_basic, type_long_long) ||
+               b.v == TYPE_INDEX_V(type_index_basic, type_long_long))
+    {
+        result.v = TYPE_INDEX_V(type_index_basic, type_long_long);
+    } else if (a.v == TYPE_INDEX_V(type_index_basic, type_unsigned_long) ||
+               b.v == TYPE_INDEX_V(type_index_basic, type_unsigned_long))
+    {
+        result.v = TYPE_INDEX_V(type_index_basic, type_unsigned_long);
+    } else if (a.v == TYPE_INDEX_V(type_index_basic, type_long) ||
+               b.v == TYPE_INDEX_V(type_index_basic, type_long))
+    {
+        result.v = TYPE_INDEX_V(type_index_basic, type_long);
+    } else if (a.v == TYPE_INDEX_V(type_index_basic, type_unsigned_int) ||
+               b.v == TYPE_INDEX_V(type_index_basic, type_unsigned_int))
+    {
+        result.v = TYPE_INDEX_V(type_index_basic, type_unsigned_int);
+    }
+
+    return result;
+}
+
 ///TODO FIXME
 /// this is not nearly complete!
 metac_type_index_t MetaCSemantic_CommonSubtype(metac_semantic_state_t* self,
-                                               metac_type_index_t a,
-                                               metac_type_index_t b)
+                                               const metac_type_index_t a,
+                                               const metac_type_index_t b)
 {
     if (a.v == b.v)
         return a;
     else
+    {
+        if (TYPE_INDEX_KIND(a) == TYPE_INDEX_KIND(b))
+        {
+            switch(TYPE_INDEX_KIND(a))
+            {
+                case type_index_basic:
+                    return CommonBasicType(a, b);
+            }
+        }
+    }
         return (metac_type_index_t){-1};
 }
 
@@ -2019,14 +2073,15 @@ metac_sema_expression_t* MetaCSemantic_doExprSemantic_(metac_semantic_state_t* s
             result->E1 = E1;
         } break;
 
-#define COMPUTE_COMMON_SUBTYPE_CASE(M) \
-        case M: \
-            result->TypeIndex = \
-                MetaCSemantic_CommonSubtype(self, result->E1->TypeIndex, result->E2->TypeIndex); \
-        break;
-        FOREACH_BIN_ARITH_EXP(COMPUTE_COMMON_SUBTYPE_CASE)
+#define CASE(M) case M:
+
+        FOREACH_BIN_ARITH_EXP(CASE)
         case exp_ternary:
-            result->TypeIndex = MetaCSemantic_CommonSubtype(self, result->E1->TypeIndex, result->E2->TypeIndex);
+            result->TypeIndex =
+                MetaCSemantic_CommonSubtype(self, result->E1->TypeIndex, result->E2->TypeIndex);
+        break;
+        FOREACH_BIN_ARITH_ASSIGN_EXP(CASE)
+            result->TypeIndex = result->E1->TypeIndex;
         break;
         case exp_char :
             result->TypeIndex = MetaCSemantic_GetTypeIndex(self, type_char, (decl_type_t*)emptyPointer);

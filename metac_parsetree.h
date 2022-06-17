@@ -50,7 +50,7 @@ typedef struct metac_expression_t
         struct {
             struct metac_expression_t* _E1_;
             struct metac_expression_t* _E2;
-            struct metac_expression_t* E3;
+            struct metac_expression_t* Econd;
         };
         // case  exp_inject, exp_eject, exp_assert, exp_outerParen, exp_outer :
         struct {

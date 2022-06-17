@@ -1344,17 +1344,16 @@ metac_expression_t* MetaCParser_ParseExpression(metac_parser_t* self,
         {
             // inline parse Ternary Expression
             MetaCParser_Match(self, tok_question);
-            metac_expression_t* E1 = result;
-            metac_expression_t* E2 =
+            metac_expression_t* Econd = result;
+            metac_expression_t* E1 =
                 MetaCParser_ParseExpression(self, expr_flags_none, 0);
-            int k = 12;
             MetaCParser_Match(self, tok_colon);
-            metac_expression_t* E3 =
+            metac_expression_t* E2 =
                 MetaCParser_ParseExpression(self, expr_flags_none, 0);
             result = AllocNewExpression(exp_ternary);
             result->E1 = E1;
             result->E2 = E2;
-            result->E3 = E3;
+            result->Econd = Econd;
         }
         else if (peekNext->TokenType == tok_lParen)
         {

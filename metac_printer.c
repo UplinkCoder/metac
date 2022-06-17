@@ -629,15 +629,15 @@ static inline void PrintExpression(metac_printer_t* self, metac_expression_t* ex
     else if (exp->Kind == exp_ternary)
     {
         PrintChar(self, '(');
-        PrintExpression(self, exp->E1);
+        PrintExpression(self, exp->Econd);
         PrintSpace(self);
         PrintChar(self, '?');
         PrintSpace(self);
-        PrintExpression(self, exp->E2);
+        PrintExpression(self, exp->E1);
         PrintSpace(self);
         PrintChar(self, ':');
         PrintSpace(self);
-        PrintExpression(self, exp->E3);
+        PrintExpression(self, exp->E2);
         PrintChar(self, ')');
     }
     else if (exp->Kind == exp_tuple)
