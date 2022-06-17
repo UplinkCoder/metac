@@ -6,9 +6,9 @@
 #endif
 
 #if !defined(_MSC_VER)
-#  define noinline volatile __attribute__ ((noinline))
+#  define noinline __attribute__ ((noinline))
 #else
-#  define noinline
+#  define noinline __declspec(noinline)
 #endif
 
 #if defined(_MSC_VER)

@@ -2297,6 +2297,9 @@ void TestParseExprssion(void)
 
     expr = MetaCParser_ParseExpressionFromString("a = b(c)");
     assert(!strcmp(MetaCPrinter_PrintExpression(&printer, expr), "(a = b(c))"));
+
+    expr = MetaCParser_ParseExpressionFromString("((x + ((((a + b))))) + d)");
+    assert(!strcmp(MetaCPrinter_PrintExpression(&printer, expr), "((x + ((((a + b))))) + d)"));
 }
 
 void TestParseDeclaration(void)
