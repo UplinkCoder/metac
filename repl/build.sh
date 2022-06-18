@@ -11,5 +11,8 @@ fi
 
 $CC repl.c \
     -I.. -DACCEL=$ACCEL \
-    -g3 -O0 -lm -march=native -mtune=native -o repl $@
+    -g3 -O0 -march=native -mtune=native \
+    -lm -lpthread -lfiber -ldl \
+    -L../3rd_party/libfiber/c \
+    -o repl $@
 # -mtune=core2 -march=core2

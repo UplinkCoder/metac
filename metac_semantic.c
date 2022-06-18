@@ -1144,6 +1144,11 @@ scope_insert_error_t MetaCSemantic_RegisterInScope(metac_semantic_state_t* self,
 
 #define YIELD_ON(NODE, FUNC);
 
+bool ComputeStructLayout(metac_semantic_state_t* self, decl_type_t* type)
+{
+
+}
+
 bool MetaCSemantic_ComputeStructLayoutPopulateScope(metac_semantic_state_t* self,
                                                     decl_type_struct_t* agg,
                                                     metac_type_aggregate_t* semaAgg)
@@ -1168,8 +1173,10 @@ bool MetaCSemantic_ComputeStructLayoutPopulateScope(metac_semantic_state_t* self
 
         semaField->Type =
             MetaCSemantic_doTypeSemantic(self, declField->Field->VarType);
+#ifndef NO_FIBERS
         if (!semaField->Type.v)
         {
+            printf("FieldType couldn't be resolved\n yielding fiber\n");
             ACL_FIBER* me = acl_fiber_running();
             if (me != 0)
             {
@@ -1180,12 +1187,17 @@ bool MetaCSemantic_ComputeStructLayoutPopulateScope(metac_semantic_state_t* self
 
                 assert(self->Waiters.WaiterCount < self->Waiters.WaiterCapacity);
                 self->Waiters.Waiters[self->Waiters.WaiterCount++] = waiter;
+                printf("Yieldn\n");
                 acl_fiber_yield();
+                semaField->Type =
+                    MetaCSemantic_doTypeSemantic(self, declField->Field->VarType);
             }
             // YIELD_ON(declField->Field->VarType, MetaCSemantic_doTypeSemantic);
         }
+#endif
         declField = declField->Next;
     }
+
     uint32_t maxAlignment = semaAgg->FieldCount ?
         MetaCSemantic_GetTypeAlignment(self, semaAgg->Fields->Type) :
         ~0;
@@ -1502,9 +1514,11 @@ metac_type_index_t MetaCSemantic_TypeSemantic(metac_semantic_state_t* self,
                                        "empty"));
             if (node == emptyNode)
             {
+#ifndef NO_FIBERS
                 printf("Yield!\n");
                 acl_fiber_yield();
                 printf("Continue after yielding\n");
+#endif
             }
         }
         if (node != emptyNode &&
@@ -1552,7 +1566,7 @@ metac_type_index_t MetaCSemantic_TypeSemantic(metac_semantic_state_t* self,
     return result;
 }
 
-
+#ifndef NO_FIBERS
 void MetaCSemantic_doTypeSemantic_Fiber(ACL_FIBER* fib, void* arg)
 {
     MetaCSemantic_doTypeSemantic_Fiber_t* ctx =
@@ -1563,6 +1577,7 @@ void MetaCSemantic_doTypeSemantic_Fiber(ACL_FIBER* fib, void* arg)
     ctx->Result = MetaCSemantic_TypeSemantic(sema, type);
 
 }
+#endif
 
 metac_type_index_t MetaCSemantic_doTypeSemantic_(metac_semantic_state_t* self,
                                                  decl_type_t* type,
@@ -1574,15 +1589,18 @@ metac_type_index_t MetaCSemantic_doTypeSemantic_(metac_semantic_state_t* self,
     MetaCSemantic_doTypeSemantic_Fiber_t arg = {
         self, type, {0}
     };
-
+#ifndef NO_FIBERS
     ACL_FIBER* f =
         acl_fiber_create(MetaCSemantic_doTypeSemantic_Fiber, &arg, 128 * 1024);
+    acl_fiber_schedule();
+    acl_fiber_ready(f);
     acl_fiber_schedule();
     if (acl_fiber_running() != 0)
     {
         acl_fiber_yield();
         //acl_fiber_switch();
     }
+
     uint32_t funcHash = CRC32C_S("MetaCSemantic_doTypeSemantic");
     uint32_t nodeHash = type->TypeHeader.Hash;
 
@@ -1599,6 +1617,9 @@ metac_type_index_t MetaCSemantic_doTypeSemantic_(metac_semantic_state_t* self,
     }
 
     return arg.Result;
+#else
+    return MetaCSemantic_TypeSemantic(self, type);
+#endif
 }
 
 sema_decl_function_t* MetaCSemantic_doFunctionSemantic(metac_semantic_state_t* self,
@@ -1772,7 +1793,7 @@ metac_sema_declaration_t* MetaCSemantic_doDeclSemantic_(metac_semantic_state_t* 
                                                         uint32_t callLine)
 {
     metac_sema_declaration_t* result = 0;
-
+#ifndef NO_FIBERS
     MetaCSemantic_doDeclSemantic_Fiber_t arg = {
         self, decl, 0
     };
@@ -1786,6 +1807,9 @@ metac_sema_declaration_t* MetaCSemantic_doDeclSemantic_(metac_semantic_state_t* 
         acl_fiber_yield();
     }
     return arg.Result;
+#else
+    return MetaCSemantic_declSemantic(self, decl);
+#endif
 }
 
 #ifndef ATOMIC

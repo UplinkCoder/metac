@@ -2,6 +2,8 @@
 #include <assert.h>
 #include <stdlib.h>
 
+extern int __stdout_enable = 0;
+
 #if !defined(ATOMIC)
 #define INC(v) \
     (v++)
@@ -87,6 +89,7 @@ uint32_t MakeWorkerThread(void (*workerFunc)(worker_context_t*), worker_context_
 
 void TaskSystem_Init(tasksystem_t* self, uint32_t workerThreads, void (*workerFn)(worker_context_t*))
 {
+    __stdout_enable = 1;
     // gQueue
     self->workerContexts = cast(worker_context_t*)
         calloc(sizeof(worker_context_t), workerThreads);
