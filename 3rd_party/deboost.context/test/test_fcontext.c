@@ -25,17 +25,17 @@ static inline void  fsleep(uint32_t _ms)
 static void doo(fcontext_transfer_t t)
 {
     puts("DOO");
-    fsleep(1000);
+    fsleep(10);
     jump_fcontext(t.ctx, NULL);
 }
 
 static void foo(fcontext_transfer_t t)
 {
     puts("FOO");
-    fsleep(1000);
+    fsleep(10);
     jump_fcontext(ctx2, NULL);
     puts("FOO 2");
-    fsleep(1000);
+    fsleep(10);
     jump_fcontext(t.ctx, NULL);
 }
 

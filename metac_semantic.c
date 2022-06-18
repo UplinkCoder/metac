@@ -1802,10 +1802,7 @@ metac_sema_declaration_t* MetaCSemantic_doDeclSemantic_(metac_semantic_state_t* 
         acl_fiber_create(MetaCSemantic_doDeclSemantic_Fiber, &arg, 128 * 1024);
 
     acl_fiber_schedule();
-    if (acl_fiber_running() != 0)
-    {
-        acl_fiber_yield();
-    }
+
     return arg.Result;
 #else
     return MetaCSemantic_declSemantic(self, decl);

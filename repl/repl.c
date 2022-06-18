@@ -681,7 +681,7 @@ LnextLine:
 
                 metac_sema_declaration_t* ds =
                     MetaCSemantic_doDeclSemantic(&repl->sema, decl);
-
+                acl_fiber_switch();
                 goto LnextLine;
             }
 
