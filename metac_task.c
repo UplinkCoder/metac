@@ -39,10 +39,29 @@ void* CurrentFiber()
     return _CurrentFiber;
 }
 
+worker_context_t* CurrentWorker()
+{
+    return threadContext;
+}
+
 void Taskqueue_Init(taskqueue_t* queue)
 {
-    queue->queueMemory = cast(task_t (*)[1024])
-        calloc(sizeof(task_t), ARRAY_SIZE(*queue->queueMemory));
+    queue->QueueMemory = cast(task_t (*)[1024])
+        calloc(sizeof(task_t), ARRAY_SIZE(*queue->QueueMemory));
+    queue->TicketLock.currentlyServing = 0;
+    queue->TicketLock.nextTicket = 0;
+    
+    task_t* qMem = (*queue->QueueMemory);
+    for(uint32_t taskIdx = 0; 
+        taskIdx < ARRAY_SIZE(*queue->QueueMemory);
+        taskIdx++)
+    {
+        task_t* task = qMem + taskIdx;
+        // printf("task: %p %u\n", task, task - (*queue->QueueMemory));
+        task->ContextCapacity = sizeof(task->_inlineContext);
+        task->Context = task->_inlineContext;
+        task->ContextSize = 0;
+    }
 #if THREAD_MUTEX
     mtx_init(&queue->TicketLock.Mutex);
 #endif
@@ -50,17 +69,27 @@ void Taskqueue_Init(taskqueue_t* queue)
 
 void FiberPool_Init(fiber_pool_t* self)
 {
+    worker_context_t* ctx = CurrentWorker();
+    self->FreeBitfield = ~0;
+
     for(uint32_t i = 0; i < sizeof(self->FreeBitfield) * 8; i++)
     {
-
-        self->fibers[i] = acl_fiber_create(0, 0, 128 * 1024);
-        // self->contexts[i];
+        self->fibers[i] = *aco_create(ctx->MainCo, ctx->ShareStack, 0, 0, 0);
     }
 
+    printf("Initialized FiberPool\n");
+}
+
+void ExecuteTask(task_t* task, aco_t* fiber)
+{
+    assert(!(task->TaskFlags & Task_Running));
+    assert(!(task->TaskFlags & Task_Complete));
+    assert(task->Fiber == fiber);
+    aco_resume(task->Fiber);
 }
 
 // the actual worker function
-void workerFunction(worker_context_t* context)
+void defaultWorkerFunction(worker_context_t* context)
 {
     threadContext = context;
     Taskqueue_Init(&context->Queue);
@@ -70,9 +99,19 @@ void workerFunction(worker_context_t* context)
     FiberPool_Init(&fiberPool);
     //context->FiberPool = &fiberPool;
     uint32_t* fiberExecCounts = calloc(sizeof(uint32_t), FIBERS_PER_WORKER);
+
+    taskqueue_t const *q = &context->Queue;
+    task_t* taskP;
     for(;;)
     {
-
+        if (TaskQueue_Pull(q, &taskP))
+        {
+            printf("Pulled task\n");
+        }
+        else
+        {
+            printf("No task to be pulled\n");
+        }
     }
 }
 
@@ -82,14 +121,13 @@ uint32_t MakeWorkerThread(void (*workerFunc)(worker_context_t*), worker_context_
     static uint32_t workerId = 1;
     workerContext->WorkerId = INC(workerId);
 
-//    void (*threadProc)(void*) = (void (*)(void*)) workerFunc;
-    return thrd_create(&workerContext->Thread, workerFunc, workerContext);
+    int (*const threadProc)(void*) = (int (*)(void*)) workerFunc;
+    return thrd_create(&workerContext->Thread, threadProc, workerContext);
 }
 
 
 void TaskSystem_Init(tasksystem_t* self, uint32_t workerThreads, void (*workerFn)(worker_context_t*))
 {
-    __stdout_enable = 1;
     // gQueue
     self->workerContexts = cast(worker_context_t*)
         calloc(sizeof(worker_context_t), workerThreads);
@@ -98,7 +136,7 @@ void TaskSystem_Init(tasksystem_t* self, uint32_t workerThreads, void (*workerFn
     {
         worker_context_t* ctx = self->workerContexts + i;
 
-        MakeWorkerThread(workerFunction, ctx);
+        MakeWorkerThread((workerFn ? workerFn : defaultWorkerFunction), ctx);
     }
     //thrd_creat
 
@@ -148,6 +186,7 @@ void ReleaseTicket(volatile ticket_lock_t* lock, uint32_t ticket)
     mtx_unlock(&lock->Mutex);
 #endif
 }
+
 uint32_t DrawTicket(volatile ticket_lock_t* lock)
 {
 #ifdef INSPECTOR
@@ -191,14 +230,23 @@ bool TaskQueue_Push(taskqueue_t* self, task_t* task)
         ReleaseTicket(&self->TicketLock, myTicket);
         return false;
     }
-
-    ((*self->queueMemory)[(writePointer + 1 <= TASK_QUEUE_SIZE) ? writePointer : 0]) = *task;
-    INC(writePointer);
+    task_t* queueTask = (*self->QueueMemory) + INC(writePointer);
+    // ((*self->QueueMemory)[(writePointer + 1 <= TASK_QUEUE_SIZE) ? writePointer : 0]) = *task;
+    *queueTask = *task;
+    if (task->ContextSize >= sizeof(task->_inlineContext))
+    {
+        assert(0);
+    //    memcpy(task->ContextStorage, task->TaskParam, task->TaskParamSz);
+    }
+    queueTask->ContextSize = task->ContextSize;
+    INC(self->writePointer);
     FENCE
     ReleaseTicket(&self->TicketLock, myTicket);
     return true;
 }
 
+/// returns true if task could be pulled
+/// false if no task is pulled
 bool TaskQueue_Pull(taskqueue_t* self, task_t** taskP)
 {
     uint32_t readPointer = self->readPointer & (TASK_QUEUE_SIZE - 1);
@@ -223,14 +271,14 @@ bool TaskQueue_Pull(taskqueue_t* self, task_t** taskP)
         return false;
     }
 
-    *taskP = self->queueMemory[INC(readPointer)];
+    *taskP = self->QueueMemory[INC(readPointer)];
 
     FENCE
     ReleaseTicket(&self->TicketLock, myTicket);
     return true;
 }
 
-bool AddTask(task_t* task)
+bool AddTaskToQueue(task_t* task)
 {
     bool result = false;
 

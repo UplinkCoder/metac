@@ -10,9 +10,8 @@ if [ -z $ACCEL ]; then
 fi
 
 $CC repl.c \
-    -I.. -DACCEL=$ACCEL \
+    -I.. -DACCEL=$ACCEL ../metac_coro.c ../metac_task.c \
     -g3 -O0 -march=native -mtune=native \
-    -lm -lpthread -lfiber -ldl \
-    -L../3rd_party/libfiber/c \
+    -lm -lpthread \
     -o repl $@
 # -mtune=core2 -march=core2

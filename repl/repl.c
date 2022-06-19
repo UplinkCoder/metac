@@ -17,6 +17,7 @@
 extern bool g_exernalIdentifierTable;
 extern metac_lexer_t g_lineLexer;
 extern void LineLexerInit();
+extern __thread worker_context_t *threadContext;
 
 metac_statement_t* MetaCParser_ParseStatementFromString(const char* str);
 metac_declaration_t* MetaCParser_ParseDeclarationFromString(const char* str);
@@ -92,7 +93,6 @@ static inline int TranslateIdentifiers(metac_node_t node, void* ctx)
     const metac_identifier_table_t* SrcTable = context->SrcTable;
     metac_identifier_table_t* DstTable = context->DstTable;
 
-
     switch(node->Kind)
     {
         case decl_variable:
@@ -122,6 +122,7 @@ static inline int TranslateIdentifiers(metac_node_t node, void* ctx)
 
 typedef struct presemantic_context_t
 {
+    int32_t sz;
     const uint32_t FunctionKey;
     metac_semantic_state_t* Sema;
 } presemantic_context_t;
@@ -203,6 +204,7 @@ void Presemantic_(repl_state_t* self)
         MetaCSemantic_PushNewScope(&tmpSema, scope_parent_module, 0);
 
         presemantic_context_t presemanticContext = {
+            sizeof(presemantic_context_t),
             crc32c_nozero(~0, "Presemantic", sizeof("Presemantic") - 1),
             &tmpSema,
         };
@@ -295,7 +297,6 @@ void Repl_SwtichMode(repl_state_t* self)
         self->promt = "SetVars>";
         break;
     }
-
 }
 
 void Repl_Init(repl_state_t* self)
@@ -341,28 +342,19 @@ void Repl_Init(repl_state_t* self)
     _ReadContextSize = 0;
 
 }
-
-void Repl_Fiber(ACL_FIBER* fiber, void* arg)
+/// returns false if the repl is done running
+bool Repl_Loop(repl_state_t* repl)
 {
-    repl_state_t repl_;
-    repl_state_t* repl = &repl_;
-
-    Repl_Init(repl);
-    PrintHelp();
-    linenoiseHistoryLoad(".repl_history");
-
-    Presemantic_(repl);
-
 LswitchMode:
     Repl_SwtichMode(repl);
     // while(0) makes sure we can only call free
     // in the case we jumped to the LnextLine label
     while(0)
     {
-LnextLine:
-        linenoiseFree((void*)repl->line);
     }
-    while ((repl->line = linenoise(repl->promt)))
+
+    repl->line = linenoise(repl->promt);
+
     {
         linenoiseHistoryAdd(repl->line);
         uint32_t line_length = strlen(repl->line);
@@ -372,7 +364,8 @@ LnextLine:
             {
             case 'q':
                 linenoiseHistorySave(".repl_history");
-                return 0;
+                linenoiseFree((void*)repl->line);
+                return false;
             case 'l' :
             {
                 const char* filename = repl->line + 3;
@@ -463,13 +456,13 @@ LnextLine:
 #else
                 printf("MetaC compiled without Accelerator\n");
 #endif
-                continue;
+                break;
             default :
                 printf("Command :%c unknown type :h for help\n", *(repl->line + 1));
-                continue;
+                break;
             case 'h' :
                 PrintHelp();
-                continue;
+                break;
             }
         }
         else if (repl->line[0] == '.')
@@ -681,7 +674,6 @@ LnextLine:
 
                 metac_sema_declaration_t* ds =
                     MetaCSemantic_doDeclSemantic(&repl->sema, decl);
-                acl_fiber_switch();
                 goto LnextLine;
             }
 
@@ -756,8 +748,141 @@ LlexSrcBuffer: {}
         repl->srcBuffer = 0;
 #endif
     }
+LnextLine:
+    return true;
 }
+
+void Repl_Fiber()
+{
+    repl_state_t repl_;
+    repl_state_t* repl = &repl_;
+    Repl_Init(repl);
+
+    PrintHelp();
+    linenoiseHistoryLoad(".repl_history");
+
+    // Presemantic_(repl);
+
+    while (Repl_Loop(repl) != false)
+    {
+        aco_yield();
+    }
+
+    fprintf(stderr, "Repl_Loop exited this should only happen on quit\n");
+#ifndef NO_FIBERS
+    aco_exit1(aco_gtls_co);
 #endif
+}
+
+void ReplMainFiber(void)
+{
+    printf("I am the repl main fiber\n");
+}
+
+void PrintNTask(task_t* task)
+{
+    uint32_t n = *cast(uint32_t*) task->Context;
+    for(uint32_t i = 0; i < 20; i++)
+    {
+        printf("n: %d\n", n++);
+        aco_yield();
+    }
+    printf("We are done this task is going to exit now\n");
+    aco_exit();
+}
+
+void FiberDoTask(void)
+{
+    for(;;)
+    {
+        task_t* task = (task_t*) aco_get_arg();
+        assert(!(task->TaskFlags & Task_Running));
+        assert(task->Fiber == aco_get_co());
+
+        task->TaskFlags |= Task_Running;
+        task->TaskFunction(task);
+        task->TaskFlags |= Task_Complete;
+
+        printf("When we get here the task is completed\n");
+    }
+}
+
+void GrabTaskAndExecute(worker_context_t* worker)
+{
+    printf("GrabTaskAndExecute\n");
+    task_t *taskP;
+    volatile taskqueue_t* q = &worker->Queue;
+
+    if (TaskQueue_Pull(q, &taskP))
+    {
+        printf("Pulled task trying execution\n");
+        if (!taskP->Fiber)
+        {
+            aco_t* fiber;
+            //fiber = FiberPool_NextFree(worker->FiberPool);
+            // we aren't bothering with the fiberPool for now
+            fiber = aco_create(worker->MainCo, worker->ShareStack,
+                               0, FiberDoTask, taskP);
+            taskP->Fiber = fiber;
+        }
+        ExecuteTask(taskP, taskP->Fiber);
+    }
+    else
+    {
+        task_t newTask = {0};
+        uint32_t n = 64;
+        newTask.TaskFunction = PrintNTask;
+        newTask.Context = &n;
+        newTask.ContextSize = sizeof(n);
+        printf("Pushing task\n");
+        TaskQueue_Push(q, &newTask);
+    }
+}
+
+void RunWorkerThread(worker_context_t* ctx, void (*specialFunc)(), void* specialFuncCtx)
+{
+    aco_thread_init(0);
+
+    void* shareStack = aco_share_stack_new(0);
+    aco_t* mainFiber =
+        aco_create(0, shareStack, 0, specialFunc, ctx);
+    ctx->MainCo = mainFiber;
+    ctx->ShareStack = shareStack;
+    Taskqueue_Init(&ctx->Queue);
+
+    aco_t* specialFiber = 0;
+    if (specialFunc)
+    {
+        specialFiber =
+            aco_create(mainFiber, shareStack, 0, specialFunc, specialFuncCtx);
+        aco_resume(specialFiber);
+    }
+
+    printf("Inital Repl run done\n");
+    ctx->KillWorker = false;
+    bool terminationRequested = false;
+
+    for(;;)
+    {
+        GrabTaskAndExecute(ctx);
+        if (ctx->KillWorker || terminationRequested)
+            break;
+
+        if (specialFiber)
+        {
+            if (specialFiber->is_end)
+            {
+                terminationRequested = true;
+                continue;
+            }
+
+            aco_resume(specialFiber);
+            printf("replFiberResume\n");
+        }
+    }
+
+    printf("worker thread to be torn down\n");
+}
 
 int main(int argc, const char* argv[])
 {
@@ -777,14 +902,13 @@ int main(int argc, const char* argv[])
     MetaCDotPrinter_Init(&dot_printer, &g_lineParser.IdentifierTable);
     g_lineParser.DotPrinter = &dot_printer;
 */
-#ifdef NO_FIBERS
-    Repl_Fiber(0, 0);
+#ifndef NO_FIBERS
+    worker_context_t replWorkerContext = {0};
+    threadContext = &replWorkerContext;
+    RunWorkerThread(&replWorkerContext, Repl_Fiber, 0);
 #else
-    ACL_FIBER* fib =
-        acl_fiber_create(Repl_Fiber, 0, 32 * 4096);
-    acl_fiber_schedule_init(1);
-    acl_fiber_ready(fib);
-    acl_fiber_schedule();
+    Repl_Fiber();
 #endif
     return 1;
 }
+#endif

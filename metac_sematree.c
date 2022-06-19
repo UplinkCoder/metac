@@ -198,6 +198,15 @@ int MetaCSemaTree_Walk_Real(metac_sema_declaration_t* decl, struct metac_semanti
 
     return 0;
 }
+#ifdef NDEBUG
+#  define MetaCSemaTree_Walk(DECL, FUNC, CTX) \
+      MetaCSemaTree_Walk_Real(DECL, FUNC, (void*)CTX)
+#else
+  int MetaCSemaTree_Debug(metac_sema_declaration_t* decl, const char* fn_name, walker_function_t walker_fn, void* ctx);
+#  define MetaCSemaTree_Walk(DECL, FUNC, CTX) \
+      MetaCSemaTree_Walk_Debug(DECL, #FUNC, FUNC, (void*)CTX)
+#endif
+
 #undef MetaCSemaTree_Walk_Real
 #undef walker_fn
 #undef emptyNode

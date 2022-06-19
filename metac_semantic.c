@@ -12,6 +12,7 @@
 #  include "metac_simd.h"
 #endif
 #include "metac_task.h"
+#include "metac_coro.h"
 const char* MetaCExpressionKind_toChars(metac_expression_kind_t);
 
 bool IsExpressionNode(metac_node_kind_t);
@@ -74,6 +75,7 @@ static inline bool isBasicType(metac_type_kind_t typeKind)
     }
     return false;
 }
+
 // In case we do a stand alone compile of semantic we need this
 #ifndef _METAC_PARSER_C_
     static uint32_t _nodeCounter = 64;
@@ -1146,7 +1148,7 @@ scope_insert_error_t MetaCSemantic_RegisterInScope(metac_semantic_state_t* self,
 
 bool ComputeStructLayout(metac_semantic_state_t* self, decl_type_t* type)
 {
-
+    return false;
 }
 
 bool MetaCSemantic_ComputeStructLayoutPopulateScope(metac_semantic_state_t* self,
@@ -1177,7 +1179,7 @@ bool MetaCSemantic_ComputeStructLayoutPopulateScope(metac_semantic_state_t* self
         if (!semaField->Type.v)
         {
             printf("FieldType couldn't be resolved\n yielding fiber\n");
-            ACL_FIBER* me = acl_fiber_running();
+            void* me = CurrentFiber();
             if (me != 0)
             {
                 metac_semantic_waiter_t waiter;
@@ -1187,8 +1189,9 @@ bool MetaCSemantic_ComputeStructLayoutPopulateScope(metac_semantic_state_t* self
 
                 assert(self->Waiters.WaiterCount < self->Waiters.WaiterCapacity);
                 self->Waiters.Waiters[self->Waiters.WaiterCount++] = waiter;
-                printf("Yieldn\n");
-                acl_fiber_yield();
+                printf("We should Yield\n");
+                aco_yield();
+                printf("Now we should be able to resolve\n");
                 semaField->Type =
                     MetaCSemantic_doTypeSemantic(self, declField->Field->VarType);
             }
@@ -1227,10 +1230,11 @@ bool MetaCSemantic_ComputeStructLayoutPopulateScope(metac_semantic_state_t* self
     }
 
     // result =
-    fprintf(stderr, "sizeof(struct) = %u\n", currentFieldOffset);//DEBUG
-
     semaAgg->Size = currentFieldOffset;
     semaAgg->Alignment = maxAlignment;
+
+    fprintf(stderr, "sizeof(struct) = %u\n", semaAgg->Size);//DEBUG
+    fprintf(stderr, "Alignof(struct) = %u\n", semaAgg->Alignment);//DEBUG
 
     return result;
 }
@@ -1296,6 +1300,7 @@ metac_type_index_t MetaCSemantic_GetArrayTypeOf(metac_semantic_state_t* state,
 }
 typedef struct MetaCSemantic_doTypeSemantic_Fiber_t
 {
+    int32_t ContextSz;
     metac_semantic_state_t* Sema;
     decl_type_t* Type;
     metac_type_index_t Result;
@@ -1498,7 +1503,6 @@ metac_type_index_t MetaCSemantic_TypeSemantic(metac_semantic_state_t* self,
             result =
                 MetaCTypeTable_AddFunctionType(&self->FunctionTypeTable, &key);
         }
-        printf("Should have retrived function type\n");
     }
     else if (type->DeclKind == decl_type && type->TypeKind == type_identifier)
     {
@@ -1516,7 +1520,7 @@ metac_type_index_t MetaCSemantic_TypeSemantic(metac_semantic_state_t* self,
             {
 #ifndef NO_FIBERS
                 printf("Yield!\n");
-                acl_fiber_yield();
+                aco_yield();
                 printf("Continue after yielding\n");
 #endif
             }
@@ -1567,7 +1571,7 @@ metac_type_index_t MetaCSemantic_TypeSemantic(metac_semantic_state_t* self,
 }
 
 #ifndef NO_FIBERS
-void MetaCSemantic_doTypeSemantic_Fiber(ACL_FIBER* fib, void* arg)
+void MetaCSemantic_doTypeSemantic_Fiber(void* caller, void* arg)
 {
     MetaCSemantic_doTypeSemantic_Fiber_t* ctx =
         cast(MetaCSemantic_doTypeSemantic_Fiber_t*) arg;
@@ -1584,42 +1588,45 @@ metac_type_index_t MetaCSemantic_doTypeSemantic_(metac_semantic_state_t* self,
                                                  const char* callFun,
                                                  uint32_t callLine)
 {
-    metac_sema_declaration_t* result = 0;
+    metac_type_index_t result = {0, 0};
 
     MetaCSemantic_doTypeSemantic_Fiber_t arg = {
-        self, type, {0}
+        sizeof(arg), self, type, 0
     };
+
+//   result =
+//        DO_TASK(MetaCSemantic_TypeSemantic, self, type);
+
+    result = MetaCSemantic_TypeSemantic(self, type);
+    if (!result.v)
+    {
 #ifndef NO_FIBERS
-    ACL_FIBER* f =
-        acl_fiber_create(MetaCSemantic_doTypeSemantic_Fiber, &arg, 128 * 1024);
-    acl_fiber_schedule();
-    acl_fiber_ready(f);
-    acl_fiber_schedule();
-    if (acl_fiber_running() != 0)
-    {
-        acl_fiber_yield();
-        //acl_fiber_switch();
-    }
+        worker_context_t currentContext = *CurrentWorker();
+        aco_t* typeSem = aco_create(currentContext.MainCo,
+                   &currentContext.ShareStack, 0,
+                   MetaCSemantic_doTypeSemantic_Fiber, &arg
+        );
 
-    uint32_t funcHash = CRC32C_S("MetaCSemantic_doTypeSemantic");
-    uint32_t nodeHash = type->TypeHeader.Hash;
+        uint32_t funcHash = CRC32C_S("MetaCSemantic_doTypeSemantic");
+        uint32_t nodeHash = type->TypeHeader.Hash;
 
-    for(uint32_t waiterIdx = 0;
-        waiterIdx < self->Waiters.WaiterCount;
-        waiterIdx++)
-    {
-        metac_semantic_waiter_t waiter = self->Waiters.Waiters[waiterIdx];
-        if (funcHash == waiter.FuncHash && nodeHash == waiter.NodeHash)
+        for(uint32_t waiterIdx = 0;
+            waiterIdx < self->Waiters.WaiterCount;
+            waiterIdx++)
         {
-            acl_fiber_ready(waiter.continuation);
-            acl_fiber_switch();
+            metac_semantic_waiter_t waiter = self->Waiters.Waiters[waiterIdx];
+            if (funcHash == waiter.FuncHash && nodeHash == waiter.NodeHash)
+            {
+                aco_yield2(waiter.continuation);
+            }
         }
-    }
 
-    return arg.Result;
+    result = arg.Result;
 #else
-    return MetaCSemantic_TypeSemantic(self, type);
+    printf("Without fiber no deferral\n");
 #endif
+    }
+    return result;
 }
 
 sema_decl_function_t* MetaCSemantic_doFunctionSemantic(metac_semantic_state_t* self,
@@ -1703,6 +1710,7 @@ metac_node_t NodeFromTypeIndex(metac_semantic_state_t* sema,
 
 typedef struct MetaCSemantic_doDeclSemantic_Fiber_t
 {
+    int32_t ContextSz;
     metac_semantic_state_t* Sema;
     metac_declaration_t* Decl;
     metac_sema_declaration_t* Result;
@@ -1711,7 +1719,7 @@ typedef struct MetaCSemantic_doDeclSemantic_Fiber_t
 metac_sema_declaration_t* MetaCSemantic_declSemantic(metac_semantic_state_t* self,
                                                      metac_declaration_t* decl)
 {
-    metac_sema_declaration_t* result;
+    metac_sema_declaration_t* result = 0xFEFEFEFE;
     metac_identifier_ptr_t declId = {0};
 
     switch(decl->DeclKind)
@@ -1773,40 +1781,51 @@ metac_sema_declaration_t* MetaCSemantic_declSemantic(metac_semantic_state_t* sel
             }
         } break;
     }
-
+    assert(result != 0xFEFEFEFE);
     return result;
 }
 
-void MetaCSemantic_doDeclSemantic_Fiber(ACL_FIBER* fib, void* arg)
+#ifndef NO_FIBERS
+void MetaCSemantic_doDeclSemantic_Fiber(void)
 {
+    void* me = aco_get_co();
     MetaCSemantic_doDeclSemantic_Fiber_t* ctx =
-        cast(MetaCSemantic_doDeclSemantic_Fiber_t*) arg;
+        cast(MetaCSemantic_doDeclSemantic_Fiber_t*) aco_get_arg();
     metac_semantic_state_t* sema = ctx->Sema;
     metac_declaration_t* decl = ctx->Decl;
 
     ctx->Result = MetaCSemantic_declSemantic(sema, decl);
 }
+#endif
 
+void MetaCSemantic_doDeclSemantic_Task(task_fn_t task)
+{
+
+}
 metac_sema_declaration_t* MetaCSemantic_doDeclSemantic_(metac_semantic_state_t* self,
                                                         metac_declaration_t* decl,
                                                         const char* callFun,
                                                         uint32_t callLine)
 {
     metac_sema_declaration_t* result = 0;
-#ifndef NO_FIBERS
-    MetaCSemantic_doDeclSemantic_Fiber_t arg = {
-        self, decl, 0
-    };
-
-    ACL_FIBER* f =
-        acl_fiber_create(MetaCSemantic_doDeclSemantic_Fiber, &arg, 128 * 1024);
-
-    acl_fiber_schedule();
-
-    return arg.Result;
+    result = MetaCSemantic_declSemantic(self, decl);
+    if (!result)
+    {
+#if !defined(NO_FIBERS)
+        printf("Couldn't do the decl Semantic, yielding to try again\n");
+        MetaCSemantic_doDeclSemantic_Fiber_t CtxValue = {
+            self, decl, 0
+        };
+        MetaCSemantic_doDeclSemantic_Fiber_t* CtxValuePtr = &CtxValue;
+        printf("We should yield now\n");
+        CALL_TASK_FN(MetaCSemantic_doDeclSemantic_Fiber, CtxValuePtr);
+        printf("We are back\n");
+        result = CtxValuePtr->Result;
 #else
-    return MetaCSemantic_declSemantic(self, decl);
+        printf("Fibers not enable cannot deal with out-of-order things without it\n");
 #endif
+    }
+    return result;
 }
 
 #ifndef ATOMIC

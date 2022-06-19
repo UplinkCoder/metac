@@ -2,7 +2,7 @@
 #define _METAC_TASK_H_
 #include "compat.h"
 #include "3rd_party/tinycthread/tinycthread.h"
-#include "3rd_party/libfiber/c/include/fiber/libfiber.h"
+#include "metac_coro.h"
 
 #define FIBERS_PER_WORKER 32
 #define TASK_PAGE_SIZE 4096
@@ -27,6 +27,9 @@ typedef struct taskcontext_t
 {
     uint32_t ContextCrc;
 
+    void* ContextMem;
+    uint32_t ContextMemSize;
+
     void* TaskMemory;
     uint32_t BytesAllocated;
     uint32_t BytesUsed;
@@ -35,41 +38,60 @@ typedef struct taskcontext_t
     uint32_t CallerLine;
 } taskcontext_t;
 
-typedef struct task_context_t {
-    ACL_FIBER* Fiber;
-    taskcontext_t* TaskCtx;
-} task_context_t;
+typedef void (*task_fn_t)(struct task_t*);
 
-typedef void (*task_fn_t)(task_context_t);
-
-#define CTX_NAME \
-    __FILE__ ## #__LINE__ ## _ctx
-
-#define CallTask() \
-    task_context_t CTX_NAME = \
-        {taskContext.TaskMemory, \
-        taskContext.BytesAllocated, \
-        taskContext.BytesUsed, \
+#define CALL_TASK_FN(FN, CTX_STRUCT_PTR) do { \
+    void* ctxMem = alloca(sizeof(taskcontext_t) + sizeof(*(CTX_STRUCT_PTR))); \
+    taskcontext_t* taskCtx = cast(taskcontext_t*) ctxMem; \
+    void* ctxPtr = ctxMem + sizeof(taskcontext_t); \
+    \
+    memcpy(ctxPtr, CTX_STRUCT_PTR, sizeof(*(CTX_STRUCT_PTR))); \
+    \
+    taskcontext_t ctx = \
+        { \
+        crc32c(~0, #FN, sizeof(#FN) - 1), \
+        ctxPtr, sizeof(*(CTX_STRUCT_PTR)), \
         \
         __FILE__, __LINE__ }; \
-    jump_fcontext(fctx, &CTX_NAME);
+    \
+    *taskCtx = ctx; \
+    (*cast(void**)(&CTX_STRUCT_PTR)) = ctxPtr; \
+} while (0);
+
+
+typedef enum TaskFlags_t
+{
+    Task_None,
+
+    Task_Running   = (1 << 0),
+    Task_Suspended = (1 << 1),
+    Task_Complete  = (1 << 2),
+
+} TaskFlags_t;
 
 typedef struct task_t
 {
     void (*TaskFunction)(taskcontext_t* taskContext);
-    void* TaskParam;
-
+    void* Context;
+    
     const char* (*PrintFunction)(struct task_t* task);
+
+    volatile uint32_t TaskFlags;
+    aco_t* Fiber;
 
     struct task_t* Parent;
     struct task_t* Children;
+    
+    uint8_t _inlineContext[64];
+    
     uint32_t ChildCount;
     uint32_t ChildrenCompleted;
 
-    volatile uint32_t TaskFlags;
-
     uint16_t QueueId;
     uint16_t CompletionAttempts;
+    
+    uint16_t ContextSize;
+    uint16_t ContextCapacity;
 } task_t;
 
 typedef struct taskqueue_t
@@ -80,19 +102,22 @@ typedef struct taskqueue_t
     uint32_t readPointer; // head
     uint32_t writePointer; // tail
 
-    task_t (*queueMemory)[TASK_QUEUE_SIZE];
+    task_t (*QueueMemory)[TASK_QUEUE_SIZE];
+    
+    void* ContextStorage;
+    uint32_t ContextStorageCapacity;
+    
 } taskqueue_t;
 
 typedef struct fiber_pool_t
 {
     uint32_t FreeBitfield;
 
-    ACL_FIBER* fibers[sizeof(uint32_t) * 8];
+    aco_t   fibers[sizeof(uint32_t) * 8];
     uint32_t stackLeft[sizeof(uint32_t) * 8];
     uint32_t stackTop[sizeof(uint32_t) * 8];
-    void* stacks[sizeof(uint32_t) * 8];
-    //static_assert(sizeof(FreeBitfield) * 8 >= FIBERS_PER_WORKER);
 
+    //static_assert(sizeof(FreeBitfield) * 8 >= FIBERS_PER_WORKER);
 } fiber_pool_t;
 
 typedef struct worker_context_t
@@ -100,10 +125,17 @@ typedef struct worker_context_t
     taskqueue_t Queue;
 
     uint32_t WorkerId;
+    uint32_t KillWorker;
+
     //PoolAllocator threadAlloc;
 
     thrd_t Thread;
+    aco_t* MainCo;
+    aco_share_stack_t* ShareStack;
     //fiber_pool_t* FiberPool;
+    aco_t** FiberStack;
+    uint32_t FiberStackTop;
+    uint32_t FiberStackSize;
 } worker_context_t;
 
 typedef struct tasksystem_t
@@ -114,4 +146,9 @@ typedef struct tasksystem_t
 
 void TaskSystem_Init(tasksystem_t* self, uint32_t workerThreads, void (*workerFn)(worker_context_t*));
 bool AddTask(task_t* task);
+worker_context_t* CurrentWorker(void);
+
+bool TaskQueue_Push(taskqueue_t* self, task_t* task);
+bool TaskQueue_Pull(taskqueue_t* self, task_t** taskP);
+
 #endif
