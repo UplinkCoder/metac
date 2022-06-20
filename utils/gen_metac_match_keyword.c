@@ -2,15 +2,35 @@
 #include "../crc32c.c"
 #include "../metac_lexer.h"
 #include "../metac_identifier_table.h"
+#define USE_NO_ALIGN_MACROS
 
 #include "kw_macros.h"
 
 const char* C4Macros =
 "#define C4(A, B, C, D) \\\n"
-"    ((uint32_t)(A | B << 8 | C << 16 | D << 24)) \n"
+"    ((uint32_t)(A | B << 8 | C << 16 | D << 24))\n"
 "\n"
 "#define C2(A, B) \\\n"
-"    ((uint16_t)(A | B << 8))\n";
+"    ((uint16_t)(A | B << 8))\n"
+"\n"
+#ifdef USE_NO_ALIGN_MACROS
+"#define U2(PTR, OFFSET) \\\n"
+"    ((uint16_t)((*((PTR) + OFFSET + 0))      \\\n"
+"              | (*((PTR) + OFFSET + 1)) << 8))\n"
+"\n"
+"#define U4(PTR, OFFSET) \\\n"
+"    ((uint32_t)((*((PTR) + OFFSET + 0)) << 0  \\\n"
+"              | (*((PTR) + OFFSET + 1)) << 8  \\\n"
+"              | (*((PTR) + OFFSET + 2)) << 16 \\\n"
+"              | (*((PTR) + OFFSET + 3)) << 24))\n";
+#else
+"#define U2(PTR, OFFSET) \\\n"
+"    (*(uint16_t*)((PTR) + OFFSET))\n"
+"\n"
+"#define U4(PTR, OFFSET) \\\n"
+"    (*(uint32_t*)((PTR) + OFFSET))\n"
+"\n";
+#endif
 
 #include <stdio.h>
 /*
@@ -29,7 +49,6 @@ void WriteCmp(const char* kw, uint32_t kw_len)
 	uint32_t kw_pos = 0;
 	while (kw_len >= 4)
 	{
-        uint32_t index = (kw_pos / 4);
         kw_len -= 4;
 
         const char c1 = kw[kw_pos + 0];
@@ -41,8 +60,8 @@ void WriteCmp(const char* kw, uint32_t kw_len)
             printf("\n && ");
         else
             printf("\n    ");
-		printf("(*(((uint32_t*)identifier) + %u)) == C4('%c', '%c', '%c', '%c')",
-                                             index,      c1,   c2,   c3,   c4);
+		printf("U4(identifier, %u) == C4('%c', '%c', '%c', '%c')",
+                             kw_pos,      c1,   c2,   c3,   c4);
         kw_pos += 4;
 	}
 
@@ -57,16 +76,16 @@ void WriteCmp(const char* kw, uint32_t kw_len)
             const char c1 = kw[kw_pos];
             const char c2 = kw[kw_pos + 1];
             const char c3 = kw[kw_pos + 2];
-            printf("(*(((uint16_t*)identifier) + %u)) == C2('%c', '%c')\n",
-                                                 kw_pos / 2,  c1,  c2);
+            printf("U2(identifier, %u) == C2('%c', '%c')\n",
+                                    kw_pos,   c1,   c2);
             printf(" && ((*(identifier + %u)) == '%c')\n", kw_pos + 2, c3);
         } break;
         case 2 :
         {
             const char c1 = kw[kw_pos];
             const char c2 = kw[kw_pos + 1];
-            printf("(*(((uint16_t*)identifier) + %u)) == C2('%c', '%c')\n",
-                                                 kw_pos / 2,  c1,  c2);
+            printf("U2(identifier, %u) == C2('%c', '%c')\n",
+                                    kw_pos,   c1,   c2);
         } break;
         case 1 :
         {
@@ -85,9 +104,6 @@ void WriteMatchFunction(void)
     printf("#include \"metac_keyword_keys.h\"\n");
 
     printf("\n\n");
-    printf("#if !defined(__TINYC__) && !defined(_MSC_VER)\n");
-    printf("#  define memcmp __builtin_memcmp\n");
-    printf("#endif\n");
 
     printf("// void MetaCLexerMatchKeywordIdentifier(metac_token_t* tok, const char* identifier)\n");
     printf("{\n");
@@ -106,6 +122,8 @@ void WriteMatchFunction(void)
     printf("    break;\n");
 
     FOREACH_KEYWORD_TOKEN(KW_WRITE_CASE)
+
+    FOREACH_PREPROCESSOR_TOKEN(KW_WRITE_CASE)
 
 #undef KW_WRITE_CASE
     printf("    }\n");

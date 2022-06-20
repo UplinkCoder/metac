@@ -67,6 +67,11 @@ void MetaCParser_Init(metac_parser_t* self)
     self->CurrentTokenIndex = 0;
     IdentifierTableInit(&self->IdentifierTable, IDENTIFIER_LENGTH_SHIFT);
     IdentifierTableInit(&self->StringTable, STRING_LENGTH_SHIFT);
+
+    self->PackStackCapacity = 8;
+    self->PackStack = calloc(sizeof(*self->PackStack), self->PackStackCapacity);
+    self->PackStackTop = -1;
+
     self->Defines = self->inlineDefines;
     self->DefineCount = 0;
     self->DefineCapacity = ARRAY_SIZE(self->inlineDefines);
@@ -1205,7 +1210,7 @@ metac_expression_t* MetaCParser_ParseBinaryExpression(metac_parser_t* self,
 
         MetaCParser_Match(self, tok_rBracket);
     }
-    else 
+    else
 */
     if (peekTokenType == tok_lParen)
     {
@@ -1709,6 +1714,11 @@ metac_declaration_t* MetaCParser_ParseDeclaration(metac_parser_t* self, metac_de
     bool isExtern = false;
 
     decl_type_t* type = 0;
+
+    if (MetaCParser_PeekToken(self, pp_pragma))
+    {
+
+    }
 
     if (MetaCParser_PeekMatch(self, tok_kw_static, true))
     {

@@ -60,6 +60,10 @@ typedef struct metac_parser_t
 
     stmt_block_t* CurrentBlockStatement;
 
+    uint16_t* PackStack;
+    /// -1 means empty
+    int32_t  PackStackTop;
+
     metac_dot_printer_t* DotPrinter;
 
     metac_define_t inlineDefines[8];
@@ -69,6 +73,7 @@ typedef struct metac_parser_t
     uint32_t BlockStatementStackCapacity;
 
     uint32_t OpenParens;
+    uint32_t PackStackCapacity;
 
     metac_identifier_ptr_t SpecialNamePtr_Compiler;
     metac_identifier_ptr_t SpecialNamePtr_Context;

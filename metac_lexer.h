@@ -52,7 +52,7 @@ typedef struct metac_lexer_state_t
     M(tok_kw_struct)
 
 #define LAST_KEYWORD_TOKEN(M) \
-    M(tok_kw___METAC__)
+    M(tok_kw_yield)
 
 #define FIRST_BINARY_TOKEN(M) \
     M(tok_comma)
@@ -152,11 +152,6 @@ typedef struct metac_lexer_state_t
     M(tok_kw_continue) \
     M(tok_kw_until) \
     \
-    M(tok_kw_yield) \
-    M(tok_kw_scope) \
-    \
-    M(tok_kw___LINE__) \
-    M(tok_kw___FUNCTION__) \
     LAST_KEYWORD_TOKEN(M)
 
 #define FIRST_STATIC_TOKEN(M) \
@@ -164,6 +159,17 @@ typedef struct metac_lexer_state_t
 
 #define LAST_STATIC_TOKEN(M) \
     M(tok_eof)
+
+#define FIRST_PREPROCESSOR_TOKEN(M) \
+    M(tok_pp___LINE__)
+
+#define LAST_PREPROCESSOR_TOKEN(M) \
+    M(tok_pp___METAC__)
+
+#define FOREACH_PREPROCESSOR_TOKEN(M) \
+    FIRST_PREPROCESSOR_TOKEN(M) \
+    M(tok_pp___FUNCTION__) \
+    LAST_PREPROCESSOR_TOKEN(M)
 
 #define FOREACH_STATIC_TOKEN(M) \
     FIRST_STATIC_TOKEN(M) \
@@ -189,6 +195,8 @@ typedef struct metac_lexer_state_t
     M(tok_dotdotdot) \
     \
     FOREACH_KEYWORD_TOKEN(M) \
+    \
+    FOREACH_PREPROCESSOR_TOKEN(M) \
     \
     M(tok_comment_begin_multi) \
     M(tok_comment_end_multi) \
@@ -220,7 +228,10 @@ typedef struct metac_lexer_state_t
     \
     FOREACH_STATIC_TOKEN(M) \
     \
-    LAST_TOKEN(M)
+    LAST_TOKEN(M) \
+    \
+    M(pp_pragma)
+
 
 #define WITH_COMMA(TOK) \
     TOK,
