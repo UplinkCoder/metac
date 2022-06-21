@@ -20,10 +20,10 @@ extern int __stdout_enable = 0;
 // the watcher shoud allocate the worker contexts since it is responsible for distribution
 // and monitoring of the work
 
-#ifndef __STDC_NO_THREADS__
-# include <threads.h>
-#else
+#if defined(_MSC_VER) || defined(__STDC_NO_THREADS__)
 #  include "3rd_party/tinycthread/tinycthread.c"
+#else
+# include <threads.h>
 #endif
 
 #ifndef KILOBYTE
@@ -161,13 +161,13 @@ void RunWorkerThread(worker_context_t* worker, void (*specialFunc)(), void* spec
     fiber_pool_t fiberPool;
     FiberPool_Init(&fiberPool, worker);
     worker->FiberPool = &fiberPool;
-    uint32_t* fiberExecCounts = calloc(sizeof(uint32_t), FIBERS_PER_WORKER);
+    uint32_t* fiberExecCounts = (uint32_t*)calloc(sizeof(uint32_t), FIBERS_PER_WORKER);
 
     worker->KillWorker = false;
     bool terminationRequested = false;
     uint32_t nextFiberIdx = 0;
 
-    taskqueue_t const *q = &worker->Queue;
+    taskqueue_t *q = &worker->Queue;
     uint32_t* FreeBitfield = &fiberPool.FreeBitfield;
 
     for(;;)
@@ -218,17 +218,17 @@ void RunWorkerThread(worker_context_t* worker, void (*specialFunc)(), void* spec
 }
 
 /// Return Value thrd_success thingy
-uint32_t MakeWorkerThread(void (*workerFunc)(worker_context_t*), worker_context_t* workerContext)
+uint32_t MakeWorkerThread(void (*workerFunction)(worker_context_t*), worker_context_t* workerContext)
 {
     static uint32_t workerId = 1;
     workerContext->WorkerId = INC(workerId);
 
-    int (*const threadProc)(void*) = (int (*)(void*)) workerFunc;
+    int (*const threadProc)(void*) = (int (*)(void*)) workerFunction;
     return thrd_create(&workerContext->Thread, threadProc, workerContext);
 }
 
 
-void TaskSystem_Init(tasksystem_t* self, uint32_t workerThreads, void (*workerFn)(worker_context_t*))
+void TaskSystem_Init(tasksystem_t* self, uint32_t workerThreads, void (*workerFunction)(worker_context_t*))
 {
     // gQueue
     self->workerContexts = cast(worker_context_t*)
@@ -238,7 +238,7 @@ void TaskSystem_Init(tasksystem_t* self, uint32_t workerThreads, void (*workerFn
     {
         worker_context_t* ctx = self->workerContexts + i;
 
-        MakeWorkerThread((workerFn ? workerFn : 0), ctx);
+        MakeWorkerThread((workerFunction ? workerFunction : 0), ctx);
     }
     //thrd_creat
 
@@ -322,7 +322,7 @@ bool TaskQueue_Push(taskqueue_t* self, task_t* task)
         ReleaseTicket(&self->TicketLock, myTicket);
         return false;
     }
-    task_t* queueTask = (*self->QueueMemory) + INC(writePointer);
+    task_t* queueTask = (*self->QueueMemory) + writePointer;
     // ((*self->QueueMemory)[(writePointer + 1 <= TASK_QUEUE_SIZE) ? writePointer : 0]) = *task;
     *queueTask = *task;
 
@@ -331,12 +331,13 @@ bool TaskQueue_Push(taskqueue_t* self, task_t* task)
         assert(0);
     //    memcpy(task->ContextStorage, task->TaskParam, task->TaskParamSz);
     }
+    printf("ReadPtr: %u  WritePtr: %u\n", readPointer, writePointer);
     memcpy(queueTask->_inlineContext, task->Context, task->ContextSize);
     queueTask->Context = queueTask->_inlineContext;
     INC(self->writePointer);
     FENCE
     ReleaseTicket(&self->TicketLock, myTicket);
-
+    
     printf("Pushed task\n");
     return true;
 }
@@ -366,6 +367,7 @@ bool TaskQueue_Pull(taskqueue_t* self, task_t** taskP)
         ReleaseTicket(&self->TicketLock, myTicket);
         return false;
     }
+    printf("ReadPtr: %u  WritePtr: %u\n", readPointer, writePointer);
     printf("PullingTask %u\n", readPointer);
     *taskP = self->QueueMemory[readPointer];
     INC(self->readPointer);

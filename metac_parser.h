@@ -1,16 +1,7 @@
 #ifndef _METAC_PARSER_H_
 #define _METAC_PARSER_H_
 
-#ifndef ACCEL
-#  error "You must compile the parser with ACCEL set"
-#  error "Known values are ACCEL_TABLE"
-#else
-#  if ACCEL == ACCEL_TABLE
-#    include "metac_identifier_table.h"
-#  else
-#    error "Unknow ACCEL value " #ACCEL
-#  endif
-
+#include "metac_identifier_table.h"
 
 #define emptyPointer ((void*)0x1)
 
@@ -95,5 +86,4 @@ metac_expression_t* MetaCParser_ParseExpressionFromString(const char* exp);
 metac_declaration_t* MetaCParser_ParseDeclaration(metac_parser_t* self, metac_declaration_t* parent);
 
 const char* MetaCNodeKind_toChars(metac_node_kind_t type);
-#endif // ifndef ACCEL
 #endif

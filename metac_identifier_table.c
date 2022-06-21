@@ -69,8 +69,8 @@ metac_identifier_ptr_t GetOrAddIdentifier(metac_identifier_table_t* table,
     uint32_t length = (identifierKey >> table->LengthShift);
 
     metac_identifier_ptr_t result = {0};
-    metac_identifier_ptr_t insertPtr;
-    const uint32_t slotIndexMask = ((1 << table->SlotCount_Log2) - 1);
+
+	const uint32_t slotIndexMask = ((1 << table->SlotCount_Log2) - 1);
     const uint32_t initialSlotIndex = (identifierKey & slotIndexMask);
     // TracyCPlot("TargetIndex", initialSlotIndex);
     uint32_t displacement = 0;
@@ -301,13 +301,14 @@ metac_identifier_table_t ReadTable(const char* filename)
                                 ? sizeof (slot_t) : header.SizeofSlot );
 
     const uint32_t slotIndexMask = ((1 << result.SlotCount_Log2) - 1);
-
+#if __TINYC__
     char slotMem[slotMemorySize];
-
+#else
+#endif
     slot_t* readSlot = (slot_t*)malloc(slotMemorySize);
     memset(readSlot, 0, slotMemorySize);
 
-    for(int i = 0; i < header.NumberOfSlots; i++)
+    for(uint32_t i = 0; i < header.NumberOfSlots; i++)
     {
         fread(readSlot, 1, header.SizeofSlot, fd);
         InsertSlot(result.Slots, *readSlot, slotIndexMask);

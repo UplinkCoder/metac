@@ -9,6 +9,7 @@
 #include "metac_scope.h"
 //TODO get rid of exp_eval after testing
 #include "repl/exp_eval.h"
+#include "metac_coro.h"
 
 #ifndef AT
 #  define AT(...)
@@ -69,7 +70,7 @@ typedef struct metac_semantic_waiter_t
 {
     uint32_t FuncHash;
     uint32_t NodeHash;
-    void* continuation;
+    aco_t* continuation;
 } metac_semantic_waiter_t;
 
 typedef struct metac_semantic_waitlist_t

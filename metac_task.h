@@ -41,9 +41,9 @@ typedef struct taskcontext_t
 typedef void (*task_fn_t)(struct task_t*);
 
 #define CALL_TASK_FN(FN, CTX_STRUCT_PTR) do { \
-    void* ctxMem = alloca(sizeof(taskcontext_t) + sizeof(*(CTX_STRUCT_PTR))); \
+    uint8_t* ctxMem = cast(uint8_t*)alloca(sizeof(taskcontext_t) + sizeof(*(CTX_STRUCT_PTR))); \
     taskcontext_t* taskCtx = cast(taskcontext_t*) ctxMem; \
-    void* ctxPtr = ctxMem + sizeof(taskcontext_t); \
+    uint8_t* ctxPtr = ctxMem + sizeof(taskcontext_t); \
     \
     memcpy(ctxPtr, CTX_STRUCT_PTR, sizeof(*(CTX_STRUCT_PTR))); \
     \
@@ -55,7 +55,7 @@ typedef void (*task_fn_t)(struct task_t*);
         __FILE__, __LINE__ }; \
     \
     *taskCtx = ctx; \
-    (*cast(void**)(&CTX_STRUCT_PTR)) = ctxPtr; \
+    (*cast(void**)(&CTX_STRUCT_PTR)) = cast(void*)ctxPtr; \
 } while (0);
 
 
@@ -76,8 +76,8 @@ typedef struct task_origin_t
     uint32_t Line;
 } task_origin_t;
 
-#define ORIGIN \
-    ((task_origin_t) { __FILE__, __FUNCTION__,   __LINE__ })
+#define ORIGIN(VAR) \
+     ( VAR.File = __FILE__, VAR.Func = __FUNCTION__,   VAR.Line = __LINE__ )
 
 
 typedef struct task_t
@@ -153,7 +153,7 @@ typedef struct tasksystem_t
     uint32_t nWorkers;
 } tasksystem_t;
 
-void TaskSystem_Init(tasksystem_t* self, uint32_t workerThreads, void (*workerFn)(worker_context_t*));
+void TaskSystem_Init(tasksystem_t* self, uint32_t workerThreads, void (*workerFunction)(worker_context_t* worker));
 bool AddTask(task_t* task);
 worker_context_t* CurrentWorker(void);
 

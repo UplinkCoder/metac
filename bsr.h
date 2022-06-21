@@ -1,4 +1,5 @@
 #ifndef _BSR_H_
+#define _BSR_H_
 
 #define LOG2(X) \
     (BSR(X) + 1)
@@ -8,7 +9,7 @@
 
 #if defined(_MSC_VER)
 #include <intrin.h>
-    unsigned long BSR(uint32_t x)
+    static unsigned long BSR(uint32_t x)
     {
         unsigned long result;
         _BitScanReverse(&result, x);

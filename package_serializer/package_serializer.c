@@ -34,7 +34,7 @@ int main(int argc, const char* argv[])
     worker_context_t* contexts =
         (worker_context_t*)calloc(sizeof(worker_context_t), nWorkers);
 
-    MetaCTaskSystem_Init(&theTaskystem, nWorkers, contexts);
+    TaskSystem_Init(&theTaskystem, nWorkers, 0);
 
     for(int arg_idx = 1;
         arg_idx < argc;

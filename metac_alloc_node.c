@@ -205,3 +205,5 @@ metac_statement_t* AllocNewStatement_(metac_statement_kind_t kind, uint32_t node
 }
 
 #undef offsetof
+#undef REALLOC_BOILERPLATE
+#undef REALLOC_N_BOILERPLATE

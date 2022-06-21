@@ -39,7 +39,7 @@ static inline const bool EnumSlotsEqual(const metac_type_table_slot_t* a,
     if (slotA->MemberCount == slotB->MemberCount)
     {
         uint32_t count = slotA->MemberCount;
-        for(int i = 0; i < count; i++)
+        for(uint32_t i = 0; i < count; i++)
         {
             if (slotA->Members[i].Identifier.v != slotB->Members[i].Identifier.v
              || !Expression_IsEqual(slotA->Members[i].Value, slotB->Members[i].Value))
@@ -165,7 +165,7 @@ static inline const bool TupleSlotsEqual(const metac_type_table_slot_t* a,
    {
        result = true;
        const uint32_t typeCount = slotA->typeCount;
-       for(int i = 0; i < typeCount; i++)
+       for(uint32_t i = 0; i < typeCount; i++)
        {
            if (slotA->typeIndicies[i].v != slotB->typeIndicies[i].v)
            {

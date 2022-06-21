@@ -52,7 +52,7 @@ static inline void CheckAndRellocIfNeeded(metac_printer_t* self,
         (self->StringMemorySize + length + 1024);
     if (underflow < 0)
     {
-        uint32_t newCapa = self->StringMemoryCapacity * 1.3;
+        uint32_t newCapa = cast(uint32_t)(self->StringMemoryCapacity * 1.3);
         newCapa = ((newCapa + 4095) & ~4095);
         self->StringMemory = (char*)realloc(self->StringMemory, newCapa);
         if (self->StringMemory == 0)
@@ -645,7 +645,7 @@ static inline void PrintExpression(metac_printer_t* self, metac_expression_t* ex
         PrintChar(self, '{');
         exp_tuple_t* tupleElement =
             exp->TupleExpressionList;
-        for(int i = 0;
+        for(uint32_t i = 0;
             i < exp->TupleExpressionCount;
             i++)
         {
@@ -879,7 +879,7 @@ static inline void PrintSemaExpression(metac_printer_t* self,
         PrintChar(self, '{');
         metac_sema_expression_t* tupleElement =
             semaExp->TupleExpressions;
-        for(int i = 0;
+        for(uint32_t i = 0;
             i < semaExp->TupleExpressionCount;
             i++)
         {
@@ -1078,7 +1078,7 @@ static inline void PrintSemaVariable(metac_printer_t* self,
         PrintChar(self, '(');
         PrintChar(self, '{');
         const uint32_t paramCount = funcType->ParameterTypeCount;
-        for(int i = 0;
+        for(uint32_t i = 0;
             i < paramCount;
             i++)
         {

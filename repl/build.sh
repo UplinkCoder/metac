@@ -11,7 +11,7 @@ fi
 
 $CC repl.c \
     -DACOSW_EXTERNAL_ASM ../3rd_party/libaco/acosw.S \
-    -I.. -DACCEL=$ACCEL ../metac_coro.c ../metac_task.c \
+    -I.. -DACCEL=$ACCEL ../metac_task.c \
     -g3 -O0 -march=native -mtune=native \
     -lm -lpthread \
     -o repl $@

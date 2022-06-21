@@ -400,7 +400,8 @@ uint32_t MetaCTokenLength(metac_token_t token)
     {
         if (token.TokenType == tok_uint)
         {
-            uint64_t v = token.ValueU64;
+			assert(token.ValueU64 < 0xffffffff);
+            uint32_t v = token.ValueU64;
             return (uint32_t)(fastLog10(v) + 1);
         }
         else if (token.TokenType == tok_identifier)
@@ -446,18 +447,15 @@ void MetaCLexer_Init(metac_lexer_t* self)
     self->LocationStorage.LocationSize = 0;
     self->LocationStorage.Locations = self->inlineLocations;
 
-#ifdef ACCEL
     ACCEL_INIT(*self, Identifier, IDENTIFIER_LENGTH_SHIFT);
     ACCEL_INIT(*self, String, STRING_LENGTH_SHIFT);
-#endif
 }
 
 void MetaCLexer_Free(metac_lexer_t* self)
 {
-#ifdef ACCEL
     IdentifierTable_Free(&self->IdentifierTable);
     IdentifierTable_Free(&self->StringTable);
-#endif
+
     if (self->LocationStorage.Locations != self->inlineLocations)
         free(self->LocationStorage.Locations);
     if (self->Tokens != self->inlineTokens)
@@ -767,14 +765,8 @@ LcontinueLexnig:
 
                 if(token.TokenType == tok_identifier)
                 {
-#ifndef ACCEL
-                token.Identifier = identifierBegin;
-#elif ACCEL == ACCEL_TABLE
                     token.IdentifierPtr =
                         GetOrAddIdentifier(&self->IdentifierTable, token.IdentifierKey, identifierBegin);
-#else
-#   error ("Unkown ACCELERATOR")
-#endif
                 }
             }
             else if (IsNumericChar(c))
@@ -945,11 +937,7 @@ LcontinueLexnig:
                 assert(stringLength < 0xFFFFF);
 
                 token.Key = STRING_KEY(stringHash, stringLength);
-#if ACCEL == ACCEL_TABLE
                 token.StringPtr = GetOrAddIdentifier(&self->StringTable, token.Key, stringBegin);
-#else
-                token.String = stringBegin;
-#endif
             }
             //TODO special hack as long as we don't do proper preprocessing
             else if (c == '\\')

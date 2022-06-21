@@ -2,23 +2,13 @@
 #define _METAC_LEXER_H_
 #include "compat.h"
 
-#define ACCEL_TABLE 1
-#define ACCEL_TREE 2
-
-#ifndef ACCEL
-#else
-# if ACCEL == ACCEL_TABLE
-#  include "metac_identifier_table.h"
-#  define IDENTIFIER_TABLE
-#  define MEMBER_SUFFIX(X) X ## Table
-#  define MEMBER_INFIX(P, S) P ## Table # S
-#  define ACCELERATOR "Table"
-#  define ACCEL_SUFFIX Table
-#  define ACCEL_INIT(A, B, C) IdentifierTableInit(&((A).B ## Table), C)
-# else
-#  error "Unknown ACCEL value"
-# endif
-#endif
+#include "metac_identifier_table.h"
+#define IDENTIFIER_TABLE
+#define MEMBER_SUFFIX(X) X ## Table
+#define MEMBER_INFIX(P, S) P ## Table # S
+#define ACCELERATOR "Table"
+#define ACCEL_SUFFIX Table
+#define ACCEL_INIT(A, B, C) IdentifierTableInit(&((A).B ## Table), C)
 
 //#  define MEMBER_INIT(X) IdentifierTreeInit(## X ## ->IdentifierTree)
 
@@ -254,20 +244,12 @@ typedef struct metac_token_t {
         // case tok_identfier :
         struct {
             uint32_t IdentifierKey;
-#ifdef ACCEL
             metac_identifier_ptr_t IdentifierPtr;
-#else
-            const char* Identifier;
-#endif
         };
         // case tok_string :
         struct {
             uint32_t StringKey;
-#ifdef ACCEL
             metac_identifier_ptr_t StringPtr;
-#else
-            const char* String;
-#endif
         };
         // case tok_comment_begin, tok_comment_begin_single :
         struct {
@@ -375,10 +357,9 @@ typedef struct metac_lexer_t {
 
     metac_token_t       inlineTokens[32];
     metac_location_t inlineLocations[32];
-#if ACCEL == ACCEL_TABLE
+
     metac_identifier_table_t IdentifierTable;
     metac_identifier_table_t StringTable;
-#endif
 } metac_lexer_t;
 
 

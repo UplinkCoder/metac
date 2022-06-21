@@ -2,20 +2,7 @@
 #define _METAC_PARSER_C_
 
 #define TYPE_EXP
-
-#ifndef ACCEL
-#  error "You must compile the parser with ACCEL set"
-#  error "Known values are ACCEL_TABLE and ACCEL_TREE"
-#else
-#  if ACCEL == ACCEL_TABLE
-#    include "metac_identifier_table.c"
-#  else
-#    error "Unknow ACCEL value "
-#    define DO_NOT_COMPILE
-#  endif
-#endif
-
-#ifndef DO_NOT_COMPILE
+#include "metac_identifier_table.c"
 
 #include "metac_lexer.c"
 #include "metac_parser.h"
@@ -69,7 +56,8 @@ void MetaCParser_Init(metac_parser_t* self)
     IdentifierTableInit(&self->StringTable, STRING_LENGTH_SHIFT);
 
     self->PackStackCapacity = 8;
-    self->PackStack = calloc(sizeof(*self->PackStack), self->PackStackCapacity);
+    self->PackStack = (uint16_t*)
+        calloc(sizeof(*self->PackStack), self->PackStackCapacity);
     self->PackStackTop = -1;
 
     self->Defines = self->inlineDefines;
@@ -1249,7 +1237,6 @@ metac_expression_t* MetaCParser_ParseBinaryExpression(metac_parser_t* self,
     }
     else if (IsBinaryOperator(peekTokenType, eflags))
     {
-        metac_expression_kind_t exp_left;
         metac_expression_kind_t exp_right;
 
         while(IsBinaryOperator(peekTokenType, eflags)
@@ -1628,7 +1615,6 @@ decl_parameter_list_t ParseParamterList(metac_parser_t* self)
 {
     decl_parameter_list_t result = {0, (decl_parameter_t*)emptyPointer};
     uint32_t parameterCount = 0;
-    decl_parameter_t* dummy;
     decl_parameter_t** nextParam = &result.List;
 
     while (!MetaCParser_PeekMatch(self, tok_rParen, true))
@@ -2323,5 +2309,4 @@ int main(int argc, char* argv[])
 }
 
 #  endif
-#endif // ifndef DO_NOT_COMPILE
 #endif // _METAC_PARSER_C_

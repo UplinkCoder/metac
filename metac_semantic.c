@@ -12,8 +12,10 @@
 #  include "metac_simd.h"
 #endif
 #include "metac_task.h"
-#include "metac_coro.h"
+#include "metac_coro.c"
 const char* MetaCExpressionKind_toChars(metac_expression_kind_t);
+extern void* CurrentFiber(void);
+extern task_t* CurrentTask(void);
 
 bool IsExpressionNode(metac_node_kind_t);
 
@@ -535,7 +537,7 @@ static inline void HandoffType(metac_semantic_state_t* dstState,
             metac_type_functiontype_t* newSlot;
             metac_type_functiontype_t tmpSlot = *oldSlot;
             const uint32_t paramTypeCount = oldSlot->ParameterTypeCount;
-            metac_type_index_t* newParams =
+            metac_type_index_t* newParams = cast(metac_type_index_t*)
                 calloc(sizeof(metac_type_index_t), oldSlot->ParameterTypeCount);
             memcpy(newParams, oldSlot->ParameterTypes,
                 sizeof(metac_type_index_t) * paramTypeCount);
@@ -714,7 +716,8 @@ void MetaCSemantic_Init(metac_semantic_state_t* self, metac_parser_t* parser,
 
     self->Waiters.WaiterCapacity = 64;
     self->Waiters.WaiterCount = 0;
-    self->Waiters.Waiters = calloc(sizeof(*self->Waiters.Waiters), self->Waiters.WaiterCapacity);
+    self->Waiters.Waiters = cast(metac_semantic_waiter_t*) 
+		calloc(sizeof(*self->Waiters.Waiters), self->Waiters.WaiterCapacity);
 
     IdentifierTableInit(&self->SemanticIdentifierTable, IDENTIFIER_LENGTH_SHIFT);
     self->ParserIdentifierTable = &parser->IdentifierTable;
@@ -928,7 +931,7 @@ metac_sema_statement_t* MetaCSemantic_doStatementSemantic_(metac_semantic_state_
         // can share the same code as the layout is the same
         case stmt_yield:
         {
-            stmt_return_t* yieldStatement = (stmt_yield_t*) stmt;
+            stmt_yield_t* yieldStatement = (stmt_yield_t*) stmt;
             sema_stmt_yield_t* semaYieldStatement =
                 AllocNewSemaStatement(self, stmt_yield, &result);
 
@@ -1161,7 +1164,7 @@ scope_insert_error_t MetaCSemantic_RegisterInScope(metac_semantic_state_t* self,
     int16x8_t hashes;
     hashes = Load16(&self->LRU.LRUContentHashes);
     const int16x8_t hash12_8 = Set1_16(hash12);
-    const int16x8_t hashMask = Set1_16(0xFFF0);
+    const int16x8_t hashMask = Set1_16((uint16_t)0xFFF0);
     const int16x8_t maskedHashes = And16(hashes, hashMask);
     const int16x8_t clearMask = Eq16(maskedHashes, hash12_8);
     const int16x8_t cleared = Andnot16(clearMask, hashes);
@@ -1208,7 +1211,7 @@ bool MetaCSemantic_ComputeStructLayoutPopulateScope(metac_semantic_state_t* self
         if (!semaField->Type.v)
         {
             printf("FieldType couldn't be resolved\n yielding fiber\n");
-            void* me = CurrentFiber();
+            aco_t* me = (aco_t*)CurrentFiber();
             if (me != 0)
             {
                 metac_semantic_waiter_t waiter;
@@ -1273,7 +1276,7 @@ metac_type_index_t MetaCSemantic_GetPtrTypeOf(metac_semantic_state_t* self,
 {
     uint32_t hash = elementTypeIndex.v;
     metac_type_ptr_t key =
-            {(metac_type_header_t){node_decl_type_typedef, 0, hash, 0},
+            {{decl_type_typedef, 0, hash, 0},
              elementTypeIndex};
 
     metac_type_index_t result =
@@ -1294,7 +1297,7 @@ metac_type_aggregate_t* MetaCSemantic_PersistTemporaryAggregate(metac_semantic_s
     metac_type_index_t typeIndex =
         MetaCTypeTable_AddStructType(&self->StructTypeTable, tmpAgg);
     metac_type_aggregate_t* semaAgg = StructPtr(self, TYPE_INDEX_INDEX(typeIndex));
-    metac_type_aggregate_field_t* semaFields =
+    metac_type_aggregate_field_t* semaFields = cast(metac_type_aggregate_field_t*)
             calloc(sizeof(metac_type_aggregate_field_t), tmpAgg->FieldCount);
         //AllocAggregateFields(self, semaAgg, tmpAgg->Header.Kind, tmpAgg->FieldCount);
 
@@ -1314,7 +1317,7 @@ metac_type_index_t MetaCSemantic_GetArrayTypeOf(metac_semantic_state_t* state,
 {
     uint32_t hash = EntangleInts(TYPE_INDEX_INDEX(elementTypeIndex), dimension);
     metac_type_array_t key = {
-            (metac_type_header_t){decl_type_array, 0, hash}, elementTypeIndex, dimension};
+		{decl_type_array, 0, hash}, elementTypeIndex, dimension};
 
     metac_type_index_t result =
         MetaCTypeTable_GetOrEmptyArrayType(&state->ArrayTypeTable, &key);
@@ -1374,7 +1377,7 @@ metac_type_index_t MetaCSemantic_TypeSemantic(metac_semantic_state_t* self,
         uint32_t hash = elementTypeIndex.v;
 
         metac_type_typedef_t key = {
-            (metac_type_header_t){decl_type_typedef, 0, hash},
+            {decl_type_typedef, 0, hash},
             elementTypeIndex, typedef_->Identifier
         };
 
@@ -1411,13 +1414,14 @@ metac_type_index_t MetaCSemantic_TypeSemantic(metac_semantic_state_t* self,
         // where we then do the layout determination we need to look it up in the cache
 
 
-       metac_type_aggregate_field_t* tmpFields
-            = malloc(sizeof(metac_type_aggregate_field_t)
-            * agg->FieldCount);
+       metac_type_aggregate_field_t* tmpFields =
+            cast(metac_type_aggregate_field_t* )
+				malloc(sizeof(metac_type_aggregate_field_t)
+				* agg->FieldCount);
         // ideally it wouldn't matter if this memset was here or not
         memset(tmpFields, 0x0, sizeof(*tmpFields) * agg->FieldCount);
 
-        metac_type_aggregate_t tmpSemaAggMem = {0};
+        metac_type_aggregate_t tmpSemaAggMem = {(metac_declaration_kind_t)0};
         tmpSemaAggMem.Header.Kind = agg->DeclKind;
         metac_type_aggregate_t* tmpSemaAgg = &tmpSemaAggMem;
         tmpSemaAgg->Fields = tmpFields;
@@ -1507,7 +1511,7 @@ metac_type_index_t MetaCSemantic_TypeSemantic(metac_semantic_state_t* self,
         decl_parameter_t* currentParam = functionType->Parameters;
 
         const uint32_t nParams = functionType->ParameterCount;
-        metac_type_index_t* parameterTypes =
+        metac_type_index_t* parameterTypes = cast(metac_type_index_t*)
             malloc(sizeof(metac_type_index_t) * nParams);
 
         for(uint32_t i = 0;
@@ -1521,7 +1525,7 @@ metac_type_index_t MetaCSemantic_TypeSemantic(metac_semantic_state_t* self,
 
         hash = crc32c_nozero(hash, &parameterTypes, sizeof(*parameterTypes) * nParams);
         metac_type_functiontype_t key = {
-            (metac_type_header_t){hash, 0, decl_type_functiontype },
+            {decl_type_functiontype, hash, 0, },
             returnType, parameterTypes, nParams
         };
 
@@ -1536,7 +1540,7 @@ metac_type_index_t MetaCSemantic_TypeSemantic(metac_semantic_state_t* self,
     }
     else if (type->DeclKind == decl_type && type->TypeKind == type_identifier)
     {
-        printf("MetaCNodeKind_toChars: %s\n", MetaCNodeKind_toChars(type->DeclKind));
+        printf("MetaCNodeKind_toChars: %s\n", MetaCNodeKind_toChars((metac_node_kind_t)type->DeclKind));
         printf("TypeIdentifier: %s\n",
             IdentifierPtrToCharPtr(self->ParserIdentifierTable, type->TypeIdentifier));
 
@@ -1622,7 +1626,7 @@ metac_type_index_t MetaCSemantic_doTypeSemantic_(metac_semantic_state_t* self,
                                                  const char* callFile,
                                                  uint32_t callLine)
 {
-    metac_type_index_t result = {0, 0};
+    metac_type_index_t result = {0};
 
 
 
@@ -1637,13 +1641,14 @@ metac_type_index_t MetaCSemantic_doTypeSemantic_(metac_semantic_state_t* self,
         worker_context_t currentContext = *CurrentWorker();
 
         MetaCSemantic_doTypeSemantic_Fiber_t arg = {
-                self, type, callFile, callLine
+                self, type, callLine, callFile
         };
         MetaCSemantic_doTypeSemantic_Fiber_t* argPtr = &arg;
 
         CALL_TASK_FN(MetaCSemantic_doTypeSemantic, argPtr);
         task_t* typeSemTask;
-
+        assert(0);
+        
         while (!TaskQueue_Push(&currentContext.Queue, typeSemTask))
         {
             // yielding because queue is full;
@@ -1687,7 +1692,7 @@ sema_decl_function_t* MetaCSemantic_doFunctionSemantic(metac_semantic_state_t* s
             AllocFunctionParameters(self, f, func->ParameterCount);
 
     decl_parameter_t* currentParam = func->Parameters;
-    for(int i = 0;
+    for(uint32_t i = 0;
         i < func->ParameterCount;
         i++)
     {
@@ -1765,7 +1770,7 @@ typedef struct MetaCSemantic_doDeclSemantic_TaskContext_t
 metac_sema_declaration_t* MetaCSemantic_declSemantic(metac_semantic_state_t* self,
                                                      metac_declaration_t* decl)
 {
-    metac_sema_declaration_t* result = 0xFEFEFEFE;
+    metac_sema_declaration_t* result = cast(metac_sema_declaration_t*)0xFEFEFEFE;
     metac_identifier_ptr_t declId = {0};
 
     switch(decl->DeclKind)
@@ -1823,11 +1828,11 @@ metac_sema_declaration_t* MetaCSemantic_declSemantic(metac_semantic_state_t* sel
                 metac_node_t node =
                     NodeFromTypeIndex(self, type_index);
                 MetaCSemantic_RegisterInScope(self, declId, node);
-                result = node;
+				result = cast(metac_sema_declaration_t*)node;
             }
         } break;
     }
-    assert(result != 0xFEFEFEFE);
+    assert(result != cast(metac_sema_declaration_t*)0xFEFEFEFE);
     return result;
 }
 
@@ -1871,7 +1876,7 @@ metac_sema_declaration_t* MetaCSemantic_doDeclSemantic_(metac_semantic_state_t* 
 
         task_t declTask;
         declTask.TaskFunction = MetaCSemantic_doDeclSemantic_Task;
-        declTask.Origin = ORIGIN;
+		ORIGIN(declTask.Origin);
         assert(sizeof(CtxValue) < sizeof(declTask._inlineContext));
         (*(MetaCSemantic_doDeclSemantic_TaskContext_t*)declTask.Context) =
             CtxValue;
@@ -2155,8 +2160,9 @@ metac_type_index_t MetaCSemantic_CommonSubtype(metac_semantic_state_t* self,
                                                const metac_type_index_t a,
                                                const metac_type_index_t b)
 {
+	metac_type_index_t result = {-1};
     if (a.v == b.v)
-        return a;
+        result = a;
     else
     {
         if (TYPE_INDEX_KIND(a) == TYPE_INDEX_KIND(b))
@@ -2164,11 +2170,11 @@ metac_type_index_t MetaCSemantic_CommonSubtype(metac_semantic_state_t* self,
             switch(TYPE_INDEX_KIND(a))
             {
                 case type_index_basic:
-                    return CommonBasicType(a, b);
+                    result = CommonBasicType(a, b);
             }
         }
     }
-        return (metac_type_index_t){-1};
+	return result;
 }
 
 const metac_scope_t* GetAggregateScope(metac_type_aggregate_t* agg)
@@ -2191,7 +2197,7 @@ static bool IsAggregateType(metac_type_index_kind_t typeKind)
 
 static inline int32_t GetConstI32(metac_semantic_state_t* self, metac_sema_expression_t* index, bool *errored)
 {
-    int32_t result = INT32_MIN;
+    int32_t result = ~0;
 
     if (index->Kind == exp_signed_integer)
     {
@@ -2218,7 +2224,7 @@ metac_sema_expression_t* MetaCSemantic_doIndexSemantic_(metac_semantic_state_t* 
     {
         bool errored = false;
         int32_t idx = GetConstI32(self, index, &errored);
-        if (indexed->TupleExpressionCount > idx)
+        if ((int32_t)indexed->TupleExpressionCount > idx)
         {
             result = indexed->TupleExpressions + idx;
         }
@@ -2374,10 +2380,10 @@ metac_sema_expression_t* MetaCSemantic_doExprSemantic_(metac_semantic_state_t* s
             exp_tuple_t* tupleElement = expr->TupleExpressionList;
             const uint32_t tupleExpressionCount =
                 expr->TupleExpressionCount;
-            metac_sema_expression_t** resolvedExps = malloc(
-                sizeof(metac_sema_expression_t*) * tupleExpressionCount);
+            metac_sema_expression_t** resolvedExps = cast(metac_sema_expression_t**)
+				malloc(sizeof(metac_sema_expression_t*) * tupleExpressionCount);
 
-            for(int i = 0;
+            for(uint32_t i = 0;
                 i < expr->TupleExpressionCount;
                 i++)
             {
@@ -2389,7 +2395,7 @@ metac_sema_expression_t* MetaCSemantic_doExprSemantic_(metac_semantic_state_t* s
                 resolvedExps[i] = MetaCSemantic_doExprSemantic(self, e);
             }
 
-            metac_type_index_t* indicies =
+            metac_type_index_t* indicies = cast(metac_type_index_t*)
                 malloc(sizeof(metac_type_index_t) * expr->TupleExpressionCount);
 
             for(uint32_t i = 0; i < tupleExpressionCount; i++)
@@ -2402,7 +2408,7 @@ metac_sema_expression_t* MetaCSemantic_doExprSemantic_(metac_semantic_state_t* s
                 sizeof(metac_type_index_t) * expr->TupleExpressionCount);
 
             metac_type_tuple_t typeTuple;
-            typeTuple.Header.Kind = node_decl_type_tuple;
+            typeTuple.Header.Kind = decl_type_tuple;
             typeTuple.Header.Hash = hash;
             typeTuple.typeCount = tupleExpressionCount;
             typeTuple.typeIndicies = indicies;
