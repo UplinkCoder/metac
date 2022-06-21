@@ -273,7 +273,7 @@ bool TaskQueue_Pull(taskqueue_t* self, task_t** taskP)
         ReleaseTicket(&self->TicketLock, myTicket);
         return false;
     }
-
+    printf("PullingTask %u\n", readPointer);
     *taskP = self->QueueMemory[INC(readPointer)];
 
     FENCE

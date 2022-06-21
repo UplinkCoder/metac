@@ -18,17 +18,29 @@
 #include <stdio.h>
 #include <stdint.h>
 
+#ifndef _M_X64
+# ifdef _M_AMD64
+#  define _M_X64
+# endif
+#endif
+
+#if defined(__i386__)
+#  define _M_IX86
+#elif defined(__x86_64__)
+#  define _M_X64
+#endif
+
 // this header including should be at the last of the `include` directives list
 #include "aco_assert_override.h"
 
 void aco_runtime_test(void){
-#ifdef __i386__
+#if defined(_M_IX86)
     _Static_assert(sizeof(void*) == 4, "require 'sizeof(void*) == 4'");
-#elif  defined(__x86_64__) || defined(__aarch64__)
+#elif defined(_M_X64) || defined(__aarch64__)
     _Static_assert(sizeof(void*) == 8, "require 'sizeof(void*) == 8'");
     _Static_assert(sizeof(__uint128_t) == 16, "require 'sizeof(__uint128_t) == 16'");
 #else
-    #error "platform no support yet"
+#  error "platform no support yet"
 #endif
     _Static_assert(sizeof(int) >= 4, "require 'sizeof(int) >= 4'");
     assert(sizeof(int) >= 4);
@@ -317,24 +329,24 @@ aco_t* aco_create(
     if(main_co != NULL){ // non-main co
         assertptr(share_stack);
         p->share_stack = share_stack;
-#if defined (__i386__)
+#if   defined(_M_IX86)
         // POSIX.1-2008 (IEEE Std 1003.1-2008) - General Information - Data Types - Pointer Types
         // http://pubs.opengroup.org/onlinepubs/9699919799.2008edition/functions/V2_chap02.html#tag_15_12_03
         p->reg[ACO_REG_IDX_RETADDR] = (void*)fp;
         // push retaddr
         p->reg[ACO_REG_IDX_SP] = p->share_stack->align_retptr;
-        #ifndef ACO_CONFIG_SHARE_FPU_MXCSR_ENV
+#       ifndef ACO_CONFIG_SHARE_FPU_MXCSR_ENV
             p->reg[ACO_REG_IDX_FPU] = aco_gtls_fpucw_mxcsr[0];
             p->reg[ACO_REG_IDX_FPU + 1] = aco_gtls_fpucw_mxcsr[1];
-        #endif
-#elif  defined (__x86_64_) || defined(__aarch64__)
+#       endif
+#elif defined(_M_X64) || defined(__aarch64__)
         p->reg[ACO_REG_IDX_RETADDR] = (void*)fp;
         p->reg[ACO_REG_IDX_SP] = p->share_stack->align_retptr;
-        #ifndef ACO_CONFIG_SHARE_FPU_MXCSR_ENV
+#       ifndef ACO_CONFIG_SHARE_FPU_MXCSR_ENV
             p->reg[ACO_REG_IDX_FPU] = aco_gtls_fpucw_mxcsr[0];
-        #endif
+#       endif
 #else
-        #error "platform no support yet"
+#     error "platform no support yet"
 #endif
         p->main_co = main_co;
         p->arg = arg;
@@ -345,10 +357,10 @@ aco_t* aco_create(
         p->save_stack.ptr = malloc(save_stack_sz);
         assertalloc_ptr(p->save_stack.ptr);
         p->save_stack.sz = save_stack_sz;
-#if defined(__i386__) || defined(__x86_64__) || defined(__aarch64__)
+#if defined(_M_IX86) || defined(_M_X64) || defined(__aarch64__)
         p->save_stack.valid_sz = 0;
 #else
-        #error "platform no support yet"
+#   error "platform no support yet"
 #endif
         return p;
     } else { // main co

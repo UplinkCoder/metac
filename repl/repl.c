@@ -819,14 +819,20 @@ void GrabTaskAndExecute(worker_context_t* worker)
         printf("Pulled task trying execution\n");
         if (!taskP->Fiber)
         {
+            printf("Task has no fiber ...creating new fiber\n");
             aco_t* fiber;
             //fiber = FiberPool_NextFree(worker->FiberPool);
             // we aren't bothering with the fiberPool for now
             fiber = aco_create(worker->MainCo, worker->ShareStack,
                                0, FiberDoTask, taskP);
             taskP->Fiber = fiber;
+            ExecuteTask(taskP, taskP->Fiber);
         }
-        ExecuteTask(taskP, taskP->Fiber);
+        else
+        {
+            printf("Task has fiber ... resuming\n");
+            aco_resume(taskP->Fiber);
+        }
     }
     else
     {
