@@ -682,7 +682,7 @@ LswitchMode:
                 DeclSemaTask.TaskFunction = MetaCSemantic_doDeclSemantic_Task;
                 DeclSemaTask.Context = ctxPtr;
                 DeclSemaTask.ContextSize = sizeof(ctx);
-                DeclSemaTask.Origin = (task_origin_t){__LINE__, __FILE__, __FUNCTION__};
+                DeclSemaTask.Origin = ORIGIN;
                 worker_context_t* replWorker = CurrentWorker();
                 taskqueue_t* q = &replWorker->Queue;
                 uint32_t taskId =

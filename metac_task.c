@@ -113,6 +113,10 @@ void ExecuteTask(task_t* task, aco_t* fiber)
     assert(!(task->TaskFlags & Task_Complete));
     assert(task->Fiber == fiber);
     fiber->arg = task;
+    if (task->TaskFunction == 0)
+    {
+        assert(0);
+    }
     START(task->Fiber);
     assert((task->TaskFlags & Task_Complete) == Task_Complete);
     fiber->arg = 0;

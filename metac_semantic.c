@@ -473,11 +473,8 @@ sema_stmt_block_t* AllocNewSemaBlockStatement(metac_semantic_state_t* self,
 
         result = self->BlockStatements + POST_ADD(self->BlockStatements_size,
                                                         sizeInBlockStatements);
-        // result->Parent = 0;
-
         result->Serial = INC(_nodeCounter);
         result->Body = (metac_sema_statement_t*)(result + 1);
-        // result->TypeIndex.v = 0;
     }
     (*result_ptr) = result;
 
@@ -892,8 +889,8 @@ metac_sema_statement_t* MetaCSemantic_doStatementSemantic_(metac_semantic_state_
                                            BlockStatementIndex(self, semaBlockStatement))};
 
             MetaCSemantic_PushNewScope(self,
-                                    scope_parent_block,
-                                    (metac_node_t)semaBlockStatement);
+                                       scope_parent_block,
+                                       (metac_node_t)semaBlockStatement);
 
             metac_statement_t* currentStatement = blockStatement->Body;
             for(uint32_t i = 0;
@@ -906,6 +903,38 @@ metac_sema_statement_t* MetaCSemantic_doStatementSemantic_(metac_semantic_state_
             }
 
             MetaCSemantic_PopScope(self);
+        } break;
+
+        case stmt_for:
+        {
+            stmt_for_t* for_ = (stmt_for_t*) stmt;
+            sema_stmt_for_t* semaFor =
+                AllocNewSemaStatement(self, stmt_for, for_);
+
+            metac_scope_t* forScope = semaFor->Scope =
+                MetaCSemantic_PushNewScope(self,
+                                           scope_parent_statement,
+                                           METAC_NODE(semaFor));
+
+            metac_sema_declaration_t* ForInit =
+                MetaCSemantic_doDeclSemantic(self, for_->ForInit);
+            metac_sema_expression_t* ForCond =
+                MetaCSemantic_doExprSemantic(self, for_->ForCond);
+            metac_sema_expression_t* ForPostLoop =
+                MetaCSemantic_doExprSemantic(self, for_->ForCond);
+        } break;
+
+        //TODO for now stmt_yield and stmt_return
+        // can share the same code as the layout is the same
+        case stmt_yield:
+        {
+            stmt_return_t* yieldStatement = (stmt_yield_t*) stmt;
+            sema_stmt_yield_t* semaYieldStatement =
+                AllocNewSemaStatement(self, stmt_yield, &result);
+
+            metac_sema_expression_t* yieldValue =
+                MetaCSemantic_doExprSemantic(self, yieldStatement->Expression);
+            semaYieldStatement->Expression = yieldValue;
         } break;
 
         case stmt_return:
@@ -1190,7 +1219,7 @@ bool MetaCSemantic_ComputeStructLayoutPopulateScope(metac_semantic_state_t* self
                 assert(self->Waiters.WaiterCount < self->Waiters.WaiterCapacity);
                 self->Waiters.Waiters[self->Waiters.WaiterCount++] = waiter;
                 printf("We should Yield\n");
-                YIELD();
+                YIELD(watingOnTypeSemantic);
                 printf("Now we should be able to resolve\n");
                 semaField->Type =
                     MetaCSemantic_doTypeSemantic(self, declField->Field->VarType);
@@ -1300,9 +1329,10 @@ metac_type_index_t MetaCSemantic_GetArrayTypeOf(metac_semantic_state_t* state,
 }
 typedef struct MetaCSemantic_doTypeSemantic_Fiber_t
 {
-    int32_t ContextSz;
     metac_semantic_state_t* Sema;
     decl_type_t* Type;
+    uint32_t Line;
+    const char* Filename;
     metac_type_index_t Result;
 } MetaCSemantic_doTypeSemantic_Fiber_t;
 
@@ -1589,7 +1619,7 @@ void MetaCSemantic_doTypeSemantic_Fiber(void* caller, void* arg)
 
 metac_type_index_t MetaCSemantic_doTypeSemantic_(metac_semantic_state_t* self,
                                                  decl_type_t* type,
-                                                 const char* callFun,
+                                                 const char* callFile,
                                                  uint32_t callLine)
 {
     metac_type_index_t result = {0, 0};
@@ -1607,7 +1637,7 @@ metac_type_index_t MetaCSemantic_doTypeSemantic_(metac_semantic_state_t* self,
         worker_context_t currentContext = *CurrentWorker();
 
         MetaCSemantic_doTypeSemantic_Fiber_t arg = {
-                sizeof(arg), self, type, 0
+                self, type, callFile, callLine
         };
         MetaCSemantic_doTypeSemantic_Fiber_t* argPtr = &arg;
 
@@ -1617,7 +1647,7 @@ metac_type_index_t MetaCSemantic_doTypeSemantic_(metac_semantic_state_t* self,
         while (!TaskQueue_Push(&currentContext.Queue, typeSemTask))
         {
             // yielding because queue is full;
-            YIELD();
+            YIELD(QueueFull);
         }
 
         uint32_t funcHash = CRC32C_S("MetaCSemantic_doTypeSemantic");
@@ -1723,11 +1753,11 @@ metac_node_t NodeFromTypeIndex(metac_semantic_state_t* sema,
 
 typedef struct MetaCSemantic_doDeclSemantic_TaskContext_t
 {
-    int32_t ContextSz;
     metac_semantic_state_t* Sema;
     metac_declaration_t* Decl;
     const char* CallFile;
     uint32_t CallLine;
+
     metac_sema_declaration_t* Result;
 
 } MetaCSemantic_doDeclSemantic_TaskContext_t;
@@ -1836,7 +1866,7 @@ metac_sema_declaration_t* MetaCSemantic_doDeclSemantic_(metac_semantic_state_t* 
         taskqueue_t* q = &CurrentWorker()->Queue;
         printf("Couldn't do the decl Semantic, yielding to try again\n");
         MetaCSemantic_doDeclSemantic_TaskContext_t CtxValue = {
-            sizeof(CtxValue), self, decl, callFile, callLine, 0
+            self, decl, callFile, callLine
         };
 
         task_t declTask;

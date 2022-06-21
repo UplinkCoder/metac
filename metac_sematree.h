@@ -200,6 +200,8 @@ typedef struct sema_stmt_for_t
     metac_sema_expression_t* ForPostLoop;
 
     struct metac_sema_statement_t* ForBody;
+
+    metac_scope_t* Scope;
 } sema_stmt_for_t;
 
 typedef struct sema_stmt_while_t
