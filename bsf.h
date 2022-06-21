@@ -2,7 +2,7 @@
 #define _BSF_H_
 
 #if defined(_MSC_VER)
-    unsigned long BSF(uint32_t x)
+    static unsigned long BSF(uint32_t x)
     {
         unsigned long result;
         _BitScanForward(&result, x);

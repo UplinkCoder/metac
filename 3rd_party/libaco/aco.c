@@ -18,18 +18,6 @@
 #include <stdio.h>
 #include <stdint.h>
 
-#ifndef _M_X64
-# ifdef _M_AMD64
-#  define _M_X64
-# endif
-#endif
-
-#if defined(__i386__)
-#  define _M_IX86
-#elif defined(__x86_64__)
-#  define _M_X64
-#endif
-
 // this header including should be at the last of the `include` directives list
 #include "aco_assert_override.h"
 

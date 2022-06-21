@@ -179,3 +179,6 @@ __asm__ (
 #    error "platform not supported"
 #endif
 //}
+#ifndef __aarch64__
+__asm__ (".att_syntax prefix");
+#endif

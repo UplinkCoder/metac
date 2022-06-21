@@ -1,6 +1,7 @@
 #include "metac_task.h"
 #include <assert.h>
 #include <stdlib.h>
+#include "bsf.h"
 
 extern int __stdout_enable = 0;
 
@@ -25,6 +26,10 @@ extern int __stdout_enable = 0;
 #  include "3rd_party/tinycthread/tinycthread.c"
 #endif
 
+#ifndef KILOBYTE
+#define KILOBYTE(N) \
+    ((N) * 1024)
+#endif
 
 static bool watcherIntialized = 0;
 
@@ -36,7 +41,12 @@ _Thread_local void *_CurrentFiber;
 
 void* CurrentFiber()
 {
-    return _CurrentFiber;
+    return aco_get_co();
+}
+
+task_t* CurrentTask()
+{
+    return (task_t*)((aco_t*)CurrentFiber())->arg;
 }
 
 worker_context_t* CurrentWorker()
@@ -67,17 +77,34 @@ void Taskqueue_Init(taskqueue_t* queue)
 #endif
 }
 
-void FiberPool_Init(fiber_pool_t* self)
+void FiberDoTask(void)
 {
-    worker_context_t* ctx = CurrentWorker();
+    for(;;)
+    {
+        task_t* task = (task_t*) aco_get_arg();
+        printf("ExpectingFiber: %x\n", task->Fiber);
+        printf("ActualFiber: %x\n", aco_get_co());
+        assert(!(task->TaskFlags & Task_Running));
+        assert(task->Fiber == CurrentFiber());
+
+        task->TaskFlags |= Task_Running;
+        task->TaskFunction(task);
+        task->TaskFlags |= Task_Complete;
+
+        printf("When we get here the task is completed\n");
+        YIELD(YieldingBackAfterTaskCompletion);
+    }
+}
+
+void FiberPool_Init(fiber_pool_t* self, worker_context_t* worker)
+{
     self->FreeBitfield = ~0;
 
     for(uint32_t i = 0; i < sizeof(self->FreeBitfield) * 8; i++)
     {
-        self->fibers[i] = *aco_create(ctx->MainCo, ctx->ShareStack, 0, 0, 0);
+        self->ShareStacks[i] = *aco_share_stack_new(0);
+        self->MainCos[i] = *aco_create(worker->WorkerMain, self->ShareStacks + i, 0, FiberDoTask, worker);
     }
-
-    printf("Initialized FiberPool\n");
 }
 
 void ExecuteTask(task_t* task, aco_t* fiber)
@@ -85,34 +112,105 @@ void ExecuteTask(task_t* task, aco_t* fiber)
     assert(!(task->TaskFlags & Task_Running));
     assert(!(task->TaskFlags & Task_Complete));
     assert(task->Fiber == fiber);
-    aco_resume(task->Fiber);
+    fiber->arg = task;
+    START(task->Fiber);
+    assert((task->TaskFlags & Task_Complete) == Task_Complete);
+    fiber->arg = 0;
 }
 
-// the actual worker function
-void defaultWorkerFunction(worker_context_t* context)
+static inline uint32_t tasksInQueue(const uint32_t readP, const uint32_t writeP)
 {
-    threadContext = context;
-    Taskqueue_Init(&context->Queue);
+    if (writeP >= readP)
+    {
+        return (writeP - readP);
+    }
+    else
+    {
+        // wrap-around
+        // we go from readP to length and from zero to writeP
+        return ((TASK_QUEUE_SIZE - readP) + writeP);
+    }
+}
+
+
+void RunWorkerThread(worker_context_t* worker, void (*specialFunc)(), void* specialFuncCtx)
+{
+    aco_thread_init(0);
+
+    assert(threadContext == 0 || threadContext == worker);
+    threadContext = worker;
+
+    aco_t* threadFiber =
+        aco_create(0, 0, 0, specialFunc, worker);
+    worker->WorkerMain = threadFiber;
+
+    Taskqueue_Init(&worker->Queue);
+
+    aco_t* specialFiber = 0;
+    if (specialFunc)
+    {
+        specialFiber =
+            aco_create(threadFiber, aco_share_stack_new(KILOBYTE(256)), 0, specialFunc, specialFuncCtx);
+        RESUME(specialFiber);
+    }
 
     fiber_pool_t fiberPool;
-
-    FiberPool_Init(&fiberPool);
-    //context->FiberPool = &fiberPool;
+    FiberPool_Init(&fiberPool, worker);
+    worker->FiberPool = &fiberPool;
     uint32_t* fiberExecCounts = calloc(sizeof(uint32_t), FIBERS_PER_WORKER);
 
-    taskqueue_t const *q = &context->Queue;
-    task_t* taskP;
+    worker->KillWorker = false;
+    bool terminationRequested = false;
+    uint32_t nextFiberIdx = 0;
+
+    taskqueue_t const *q = &worker->Queue;
+    uint32_t* FreeBitfield = &fiberPool.FreeBitfield;
+
     for(;;)
     {
-        if (TaskQueue_Pull(q, &taskP))
+        uint32_t nextFiberIdx = -1;
+        task_t* taskP = 0;
+        aco_t* execFiber = 0;
+        // check if we have tasks in our Queue and if we have a free worker fiber
+        if (tasksInQueue(q->readPointer, q->writePointer)
+            && (*FreeBitfield) != 0)
         {
-            printf("Pulled task\n");
+            // we have a free fiber
+            nextFiberIdx = BSF(*FreeBitfield);
+            (*FreeBitfield) &= (~(1 << nextFiberIdx));
+            execFiber = fiberPool.MainCos + nextFiberIdx;
+            // mark fiber as used
+
+            {
+                if (TaskQueue_Pull(q, &taskP))
+                {
+                    printf("Pulled task\n");
+                    taskP->Fiber = execFiber;
+                    ExecuteTask(taskP, execFiber);
+                }
+                else
+                {
+                    printf("No task to be pulled\n");
+                }
+            }
         }
-        else
+
+        if (worker->KillWorker || terminationRequested)
+            break;
+
+        if (specialFiber)
         {
-            printf("No task to be pulled\n");
+            if (specialFiber->is_end)
+            {
+                terminationRequested = true;
+                continue;
+            }
+
+            RESUME(specialFiber);
         }
     }
+
+    printf("worker thread to be torn down\n");
 }
 
 /// Return Value thrd_success thingy
@@ -136,7 +234,7 @@ void TaskSystem_Init(tasksystem_t* self, uint32_t workerThreads, void (*workerFn
     {
         worker_context_t* ctx = self->workerContexts + i;
 
-        MakeWorkerThread((workerFn ? workerFn : defaultWorkerFunction), ctx);
+        MakeWorkerThread((workerFn ? workerFn : 0), ctx);
     }
     //thrd_creat
 
@@ -144,19 +242,6 @@ void TaskSystem_Init(tasksystem_t* self, uint32_t workerThreads, void (*workerFn
 }
 #define QUEUE_CUTOFF 960
 
-static inline uint32_t tasksInQueue(const uint32_t readP, const uint32_t writeP)
-{
-    if (writeP >= readP)
-    {
-        return (writeP - readP);
-    }
-    else
-    {
-        // wrap-around
-        // we go from readP to length and from zero to writeP
-        return ((TASK_QUEUE_SIZE - readP) + writeP);
-    }
-}
 
 #define ATOMIC_LOAD(VAR_PTR) \
     *(VAR_PTR)
@@ -236,15 +321,19 @@ bool TaskQueue_Push(taskqueue_t* self, task_t* task)
     task_t* queueTask = (*self->QueueMemory) + INC(writePointer);
     // ((*self->QueueMemory)[(writePointer + 1 <= TASK_QUEUE_SIZE) ? writePointer : 0]) = *task;
     *queueTask = *task;
+
     if (task->ContextSize >= sizeof(task->_inlineContext))
     {
         assert(0);
     //    memcpy(task->ContextStorage, task->TaskParam, task->TaskParamSz);
     }
-    queueTask->ContextSize = task->ContextSize;
+    memcpy(queueTask->_inlineContext, task->Context, task->ContextSize);
+    queueTask->Context = queueTask->_inlineContext;
     INC(self->writePointer);
     FENCE
     ReleaseTicket(&self->TicketLock, myTicket);
+
+    printf("Pushed task\n");
     return true;
 }
 
@@ -274,7 +363,8 @@ bool TaskQueue_Pull(taskqueue_t* self, task_t** taskP)
         return false;
     }
     printf("PullingTask %u\n", readPointer);
-    *taskP = self->QueueMemory[INC(readPointer)];
+    *taskP = self->QueueMemory[readPointer];
+    INC(self->readPointer);
 
     FENCE
     ReleaseTicket(&self->TicketLock, myTicket);
@@ -295,3 +385,4 @@ bool AddTaskToQueue(task_t* task)
 
     return result;
 }
+#undef KILOBYTE

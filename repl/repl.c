@@ -672,8 +672,27 @@ LswitchMode:
                 else
                     printf("Couldn't parse Declaration\n");
 
-                metac_sema_declaration_t* ds =
-                    MetaCSemantic_doDeclSemantic(&repl->sema, decl);
+                MetaCSemantic_doDeclSemantic_TaskContext_t ctx =
+                {
+                    sizeof(ctx), &repl->sema, decl, 0
+                };
+                MetaCSemantic_doDeclSemantic_TaskContext_t* ctxPtr =
+                    &ctx;
+                task_t DeclSemaTask = {0};
+                DeclSemaTask.TaskFunction = MetaCSemantic_doDeclSemantic_Task;
+                DeclSemaTask.Context = ctxPtr;
+                DeclSemaTask.ContextSize = sizeof(ctx);
+                DeclSemaTask.Origin = (task_origin_t){__LINE__, __FILE__, __FUNCTION__};
+                worker_context_t* replWorker = CurrentWorker();
+                taskqueue_t* q = &replWorker->Queue;
+                uint32_t taskId =
+                    TaskQueue_Push(q, &DeclSemaTask);
+                if (taskId == 0)
+                {
+                    printf("Couldn't Push\n");
+                }
+                //metac_sema_declaration_t* ds =
+                //    MetaCSemantic_doDeclSemantic(&repl->sema, decl);
                 goto LnextLine;
             }
 
@@ -765,7 +784,9 @@ void Repl_Fiber()
 
     while (Repl_Loop(repl) != false)
     {
-        aco_yield();
+#ifndef NO_FIBERS
+        YIELD(ReplYield);
+#endif
     }
 
     fprintf(stderr, "Repl_Loop exited this should only happen on quit\n");
@@ -782,114 +803,22 @@ void ReplMainFiber(void)
 void PrintNTask(task_t* task)
 {
     uint32_t n = *cast(uint32_t*) task->Context;
-    for(uint32_t i = 0; i < 20; i++)
+    for(uint32_t i = 0; i < 4; i++)
     {
         printf("n: %d\n", n++);
+        // before we yield we have to push ourselfs back into our Queue
         aco_yield();
     }
+
+    task->TaskFlags &= ~Task_Running;
+    task->TaskFlags |= Task_Complete;
+
     printf("We are done this task is going to exit now\n");
+    assert((task->TaskFlags & Task_Complete) == Task_Complete);
+    task->Fiber = 0;
     aco_exit();
 }
 
-void FiberDoTask(void)
-{
-    for(;;)
-    {
-        task_t* task = (task_t*) aco_get_arg();
-        printf("task: %p\n", task);
-        assert(!(task->TaskFlags & Task_Running));
-        assert(task->Fiber == aco_get_co());
-
-        task->TaskFlags |= Task_Running;
-        task->TaskFunction(task);
-        task->TaskFlags |= Task_Complete;
-
-        printf("When we get here the task is completed\n");
-    }
-}
-
-void GrabTaskAndExecute(worker_context_t* worker)
-{
-    printf("GrabTaskAndExecute\n");
-    task_t *taskP;
-    volatile taskqueue_t* q = &worker->Queue;
-
-    if (TaskQueue_Pull(q, &taskP))
-    {
-        printf("Pulled task trying execution\n");
-        if (!taskP->Fiber)
-        {
-            printf("Task has no fiber ...creating new fiber\n");
-            aco_t* fiber;
-            //fiber = FiberPool_NextFree(worker->FiberPool);
-            // we aren't bothering with the fiberPool for now
-            fiber = aco_create(worker->MainCo, worker->ShareStack,
-                               0, FiberDoTask, taskP);
-            taskP->Fiber = fiber;
-            ExecuteTask(taskP, taskP->Fiber);
-        }
-        else
-        {
-            printf("Task has fiber ... resuming\n");
-            aco_resume(taskP->Fiber);
-        }
-    }
-    else
-    {
-        task_t newTask = {0};
-        uint32_t n = 64;
-        newTask.TaskFunction = PrintNTask;
-        newTask.Context = &n;
-        newTask.ContextSize = sizeof(n);
-        printf("Pushing task\n");
-        TaskQueue_Push(q, &newTask);
-    }
-}
-
-void RunWorkerThread(worker_context_t* ctx, void (*specialFunc)(), void* specialFuncCtx)
-{
-    aco_thread_init(0);
-
-    void* shareStack = aco_share_stack_new(0);
-    aco_t* mainFiber =
-        aco_create(0, shareStack, 0, specialFunc, ctx);
-    ctx->MainCo = mainFiber;
-    ctx->ShareStack = shareStack;
-    Taskqueue_Init(&ctx->Queue);
-
-    aco_t* specialFiber = 0;
-    if (specialFunc)
-    {
-        specialFiber =
-            aco_create(mainFiber, shareStack, 0, specialFunc, specialFuncCtx);
-        aco_resume(specialFiber);
-    }
-
-    printf("Inital Repl run done\n");
-    ctx->KillWorker = false;
-    bool terminationRequested = false;
-
-    for(;;)
-    {
-        GrabTaskAndExecute(ctx);
-        if (ctx->KillWorker || terminationRequested)
-            break;
-
-        if (specialFiber)
-        {
-            if (specialFiber->is_end)
-            {
-                terminationRequested = true;
-                continue;
-            }
-
-            aco_resume(specialFiber);
-            printf("replFiberResume\n");
-        }
-    }
-
-    printf("worker thread to be torn down\n");
-}
 
 int main(int argc, const char* argv[])
 {

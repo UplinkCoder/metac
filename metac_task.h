@@ -59,7 +59,7 @@ typedef void (*task_fn_t)(struct task_t*);
 } while (0);
 
 
-typedef enum TaskFlags_t
+typedef enum task_flags_t
 {
     Task_None,
 
@@ -67,13 +67,24 @@ typedef enum TaskFlags_t
     Task_Suspended = (1 << 1),
     Task_Complete  = (1 << 2),
 
-} TaskFlags_t;
+} task_flags_t;
+
+typedef struct task_origin_t
+{
+    const char* File;
+    const char* Func;
+    uint32_t Line;
+} task_origin_t;
+
+#define ORIGIN \
+    ((task_origin_t) { __FILE__, __FUNCTION__,   __LINE__ })
+
 
 typedef struct task_t
 {
-    void (*TaskFunction)(taskcontext_t* taskContext);
+    void (*TaskFunction)(struct task_t* task);
     void* Context;
-    
+
     const char* (*PrintFunction)(struct task_t* task);
 
     volatile uint32_t TaskFlags;
@@ -81,17 +92,20 @@ typedef struct task_t
 
     struct task_t* Parent;
     struct task_t* Children;
-    
+
     uint8_t _inlineContext[64];
-    
+
     uint32_t ChildCount;
     uint32_t ChildrenCompleted;
 
     uint16_t QueueId;
     uint16_t CompletionAttempts;
-    
+
     uint16_t ContextSize;
     uint16_t ContextCapacity;
+
+    void* Continuation;
+    task_origin_t Origin;
 } task_t;
 
 typedef struct taskqueue_t
@@ -103,20 +117,19 @@ typedef struct taskqueue_t
     uint32_t writePointer; // tail
 
     task_t (*QueueMemory)[TASK_QUEUE_SIZE];
-    
+
     void* ContextStorage;
     uint32_t ContextStorageCapacity;
-    
+
 } taskqueue_t;
 
 typedef struct fiber_pool_t
 {
     uint32_t FreeBitfield;
 
-    aco_t   fibers[sizeof(uint32_t) * 8];
-    uint32_t stackLeft[sizeof(uint32_t) * 8];
-    uint32_t stackTop[sizeof(uint32_t) * 8];
 
+    aco_t MainCos[sizeof(uint32_t) * 8];
+    aco_share_stack_t ShareStacks[sizeof(uint32_t) * 8];
     //static_assert(sizeof(FreeBitfield) * 8 >= FIBERS_PER_WORKER);
 } fiber_pool_t;
 
@@ -130,12 +143,8 @@ typedef struct worker_context_t
     //PoolAllocator threadAlloc;
 
     thrd_t Thread;
-    aco_t* MainCo;
-    aco_share_stack_t* ShareStack;
-    //fiber_pool_t* FiberPool;
-    aco_t** FiberStack;
-    uint32_t FiberStackTop;
-    uint32_t FiberStackSize;
+    aco_t* WorkerMain;
+    fiber_pool_t* FiberPool;
 } worker_context_t;
 
 typedef struct tasksystem_t

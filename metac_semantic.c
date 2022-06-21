@@ -868,7 +868,7 @@ metac_scope_t* MetaCSemantic_PushNewScope(metac_semantic_state_t* self,
 
 metac_sema_statement_t* MetaCSemantic_doStatementSemantic_(metac_semantic_state_t* self,
                                                            metac_statement_t* stmt,
-                                                           const char* callFun,
+                                                           const char* callFile,
                                                            uint32_t callLine)
 {
     metac_sema_statement_t* result;
@@ -1190,7 +1190,7 @@ bool MetaCSemantic_ComputeStructLayoutPopulateScope(metac_semantic_state_t* self
                 assert(self->Waiters.WaiterCount < self->Waiters.WaiterCapacity);
                 self->Waiters.Waiters[self->Waiters.WaiterCount++] = waiter;
                 printf("We should Yield\n");
-                aco_yield();
+                YIELD();
                 printf("Now we should be able to resolve\n");
                 semaField->Type =
                     MetaCSemantic_doTypeSemantic(self, declField->Field->VarType);
@@ -1519,9 +1519,13 @@ metac_type_index_t MetaCSemantic_TypeSemantic(metac_semantic_state_t* self,
             if (node == emptyNode)
             {
 #ifndef NO_FIBERS
+                aco_t* me = (aco_t*)CurrentFiber();
+                task_t* task = CurrentTask();
                 printf("Yield!\n");
-                aco_yield();
+                YIELD(WaitOnResolve);
                 printf("Continue after yielding\n");
+#else
+                printf("No fiber support ... cannot deal with deferred lookup\n");
 #endif
             }
         }
@@ -1590,9 +1594,8 @@ metac_type_index_t MetaCSemantic_doTypeSemantic_(metac_semantic_state_t* self,
 {
     metac_type_index_t result = {0, 0};
 
-    MetaCSemantic_doTypeSemantic_Fiber_t arg = {
-        sizeof(arg), self, type, 0
-    };
+
+
 
 //   result =
 //        DO_TASK(MetaCSemantic_TypeSemantic, self, type);
@@ -1602,10 +1605,20 @@ metac_type_index_t MetaCSemantic_doTypeSemantic_(metac_semantic_state_t* self,
     {
 #ifndef NO_FIBERS
         worker_context_t currentContext = *CurrentWorker();
-        aco_t* typeSem = aco_create(currentContext.MainCo,
-                   &currentContext.ShareStack, 0,
-                   MetaCSemantic_doTypeSemantic_Fiber, &arg
-        );
+
+        MetaCSemantic_doTypeSemantic_Fiber_t arg = {
+                sizeof(arg), self, type, 0
+        };
+        MetaCSemantic_doTypeSemantic_Fiber_t* argPtr = &arg;
+
+        CALL_TASK_FN(MetaCSemantic_doTypeSemantic, argPtr);
+        task_t* typeSemTask;
+
+        while (!TaskQueue_Push(&currentContext.Queue, typeSemTask))
+        {
+            // yielding because queue is full;
+            YIELD();
+        }
 
         uint32_t funcHash = CRC32C_S("MetaCSemantic_doTypeSemantic");
         uint32_t nodeHash = type->TypeHeader.Hash;
@@ -1708,13 +1721,16 @@ metac_node_t NodeFromTypeIndex(metac_semantic_state_t* sema,
     return 0;
 }
 
-typedef struct MetaCSemantic_doDeclSemantic_Fiber_t
+typedef struct MetaCSemantic_doDeclSemantic_TaskContext_t
 {
     int32_t ContextSz;
     metac_semantic_state_t* Sema;
     metac_declaration_t* Decl;
+    const char* CallFile;
+    uint32_t CallLine;
     metac_sema_declaration_t* Result;
-} MetaCSemantic_doDeclSemantic_Fiber_t;
+
+} MetaCSemantic_doDeclSemantic_TaskContext_t;
 
 metac_sema_declaration_t* MetaCSemantic_declSemantic(metac_semantic_state_t* self,
                                                      metac_declaration_t* decl)
@@ -1789,8 +1805,8 @@ metac_sema_declaration_t* MetaCSemantic_declSemantic(metac_semantic_state_t* sel
 void MetaCSemantic_doDeclSemantic_Fiber(void)
 {
     void* me = aco_get_co();
-    MetaCSemantic_doDeclSemantic_Fiber_t* ctx =
-        cast(MetaCSemantic_doDeclSemantic_Fiber_t*) aco_get_arg();
+    MetaCSemantic_doDeclSemantic_TaskContext_t* ctx =
+        cast(MetaCSemantic_doDeclSemantic_TaskContext_t*) aco_get_arg();
     metac_semantic_state_t* sema = ctx->Sema;
     metac_declaration_t* decl = ctx->Decl;
 
@@ -1798,13 +1814,18 @@ void MetaCSemantic_doDeclSemantic_Fiber(void)
 }
 #endif
 
-void MetaCSemantic_doDeclSemantic_Task(task_fn_t task)
+void MetaCSemantic_doDeclSemantic_Task(task_t* task)
 {
-
+    MetaCSemantic_doDeclSemantic_TaskContext_t* ctx =
+        (MetaCSemantic_doDeclSemantic_TaskContext_t*)
+            task->Context;
+    ctx->Result =
+        MetaCSemantic_doDeclSemantic_(ctx->Sema, ctx->Decl, ctx->CallFile, ctx->CallLine);
 }
+
 metac_sema_declaration_t* MetaCSemantic_doDeclSemantic_(metac_semantic_state_t* self,
                                                         metac_declaration_t* decl,
-                                                        const char* callFun,
+                                                        const char* callFile,
                                                         uint32_t callLine)
 {
     metac_sema_declaration_t* result = 0;
@@ -1812,13 +1833,24 @@ metac_sema_declaration_t* MetaCSemantic_doDeclSemantic_(metac_semantic_state_t* 
     if (!result)
     {
 #if !defined(NO_FIBERS)
+        taskqueue_t* q = &CurrentWorker()->Queue;
         printf("Couldn't do the decl Semantic, yielding to try again\n");
-        MetaCSemantic_doDeclSemantic_Fiber_t CtxValue = {
-            self, decl, 0
+        MetaCSemantic_doDeclSemantic_TaskContext_t CtxValue = {
+            sizeof(CtxValue), self, decl, callFile, callLine, 0
         };
-        MetaCSemantic_doDeclSemantic_Fiber_t* CtxValuePtr = &CtxValue;
+
+        task_t declTask;
+        declTask.TaskFunction = MetaCSemantic_doDeclSemantic_Task;
+        declTask.Origin = ORIGIN;
+        assert(sizeof(CtxValue) < sizeof(declTask._inlineContext));
+        (*(MetaCSemantic_doDeclSemantic_TaskContext_t*)declTask.Context) =
+            CtxValue;
+        MetaCSemantic_doDeclSemantic_TaskContext_t* CtxValuePtr = &CtxValue;
         printf("We should yield now\n");
-        CALL_TASK_FN(MetaCSemantic_doDeclSemantic_Fiber, CtxValuePtr);
+        declTask.Continuation = CurrentTask();
+        TaskQueue_Push(q, &declTask);
+
+        YIELD(waiting_for_declSemantic);
         printf("We are back\n");
         result = CtxValuePtr->Result;
 #else

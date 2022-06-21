@@ -28,6 +28,19 @@
     #include <valgrind/valgrind.h>
 #endif
 
+
+#ifndef _M_X64
+# ifdef _M_AMD64
+#  define _M_X64
+# endif
+#endif
+
+#if defined(__i386__)
+#  define _M_IX86
+#elif defined(__x86_64__)
+#  define _M_X64
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -36,12 +49,12 @@ extern "C" {
 #define ACO_VERSION_MINOR 2
 #define ACO_VERSION_PATCH 4
 
-#if defined(__i386__) || defined(_M_IX86)
+#if defined(_M_IX86)
     #define ACO_REG_IDX_RETADDR 0
     #define ACO_REG_IDX_SP 1
     #define ACO_REG_IDX_BP 2
     #define ACO_REG_IDX_FPU 6
-#elif defined(__x86_64__) || defined(_M_X64)
+#elif defined(_M_X64)
     #define ACO_REG_IDX_RETADDR 4
     #define ACO_REG_IDX_SP 5
     #define ACO_REG_IDX_BP 7
@@ -97,19 +110,19 @@ typedef void (*aco_cofuncp_t)(void);
 
 struct aco_s{
     // cpu registers' state
-#ifdef __i386__
+#if defined(_M_IX86)
     #ifdef ACO_CONFIG_SHARE_FPU_MXCSR_ENV
         void*  reg[6];
     #else
         void*  reg[8];
     #endif
-#elif __x86_64__
+#elif defined(_M_X64)
     #ifdef ACO_CONFIG_SHARE_FPU_MXCSR_ENV
         void*  reg[8];
     #else
         void*  reg[9];
     #endif
-#elif __aarch64__
+#elif defined(__aarch64__)
     #ifdef ACO_CONFIG_SHARE_FPU_MXCSR_ENV
         void*  reg[15];
     #else
