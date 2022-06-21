@@ -796,6 +796,7 @@ void FiberDoTask(void)
     for(;;)
     {
         task_t* task = (task_t*) aco_get_arg();
+        printf("task: %p\n", task);
         assert(!(task->TaskFlags & Task_Running));
         assert(task->Fiber == aco_get_co());
 

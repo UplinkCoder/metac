@@ -277,12 +277,9 @@ aco_share_stack_t* aco_share_stack_new2(size_t sz, char guard_page_enabled){
     uintptr_t u_p = (uintptr_t)(p->sz - (sizeof(void*) << 1) + (uintptr_t)p->ptr);
     u_p = (u_p >> 4) << 4;
     p->align_highptr = (void*)u_p;
-#ifdef __aarch64__
-    // aarch64 hardware-enforces 16 byte stack alignment
+    // use 16 byte stack alignment
     p->align_retptr  = (void*)(u_p - 16);
-#else
-    p->align_retptr  = (void*)(u_p - sizeof(void*));
-#endif
+
     *((void**)(p->align_retptr)) = (void*)(aco_funcp_protector);
     assert(p->sz > (16 + (sizeof(void*) << 1) + sizeof(void*)));
     p->align_limit = p->sz - 16 - (sizeof(void*) << 1);
@@ -320,7 +317,7 @@ aco_t* aco_create(
     if(main_co != NULL){ // non-main co
         assertptr(share_stack);
         p->share_stack = share_stack;
-#ifdef __i386__
+#if defined (__i386__)
         // POSIX.1-2008 (IEEE Std 1003.1-2008) - General Information - Data Types - Pointer Types
         // http://pubs.opengroup.org/onlinepubs/9699919799.2008edition/functions/V2_chap02.html#tag_15_12_03
         p->reg[ACO_REG_IDX_RETADDR] = (void*)fp;
@@ -330,13 +327,7 @@ aco_t* aco_create(
             p->reg[ACO_REG_IDX_FPU] = aco_gtls_fpucw_mxcsr[0];
             p->reg[ACO_REG_IDX_FPU + 1] = aco_gtls_fpucw_mxcsr[1];
         #endif
-#elif  __x86_64__
-        p->reg[ACO_REG_IDX_RETADDR] = (void*)fp;
-        p->reg[ACO_REG_IDX_SP] = p->share_stack->align_retptr;
-        #ifndef ACO_CONFIG_SHARE_FPU_MXCSR_ENV
-            p->reg[ACO_REG_IDX_FPU] = aco_gtls_fpucw_mxcsr[0];
-        #endif
-#elif  __aarch64__
+#elif  defined (__x86_64_) || defined(__aarch64__)
         p->reg[ACO_REG_IDX_RETADDR] = (void*)fp;
         p->reg[ACO_REG_IDX_SP] = p->share_stack->align_retptr;
         #ifndef ACO_CONFIG_SHARE_FPU_MXCSR_ENV
@@ -450,7 +441,7 @@ void aco_resume(aco_t* resume_co){
         // TODO: optimize the performance penalty of memcpy function call
         //   for very short memory span
         if(resume_co->save_stack.valid_sz > 0) {
-    #ifdef __x86_64__
+#  if defined(__x86_64__)
             aco_amd64_optimized_memcpy_drop_in(
                 (void*)(
                     (uintptr_t)(resume_co->share_stack->align_retptr)
@@ -460,7 +451,7 @@ void aco_resume(aco_t* resume_co){
                 resume_co->save_stack.ptr,
                 resume_co->save_stack.valid_sz
             );
-    #else
+#  else
             memcpy(
                 (void*)(
                     (uintptr_t)(resume_co->share_stack->align_retptr)
@@ -470,7 +461,7 @@ void aco_resume(aco_t* resume_co){
                 resume_co->save_stack.ptr,
                 resume_co->save_stack.valid_sz
             );
-    #endif
+#  endif
             resume_co->save_stack.ct_restore++;
         }
         if(resume_co->save_stack.valid_sz > resume_co->save_stack.max_cpsz){

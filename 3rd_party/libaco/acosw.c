@@ -1,12 +1,14 @@
 // translated from acosw.S
 #include "aco.h"
-
-__attribute__((naked))
-void* acosw(aco_t* from_co, aco_t* to_co)
-{
+__asm__ ( ".text" );
+//__attribute__((naked))
+//void* acosw(aco_t* from_co, aco_t* to_co)
+//{
+__asm__ (".globl acosw");
 #ifndef __aarch64__
 __asm__ (".intel_syntax noprefix");
 #endif
+__asm__ ("acosw:");
 #ifdef __i386__
 /*
     0x00             -->               0xff
@@ -144,14 +146,16 @@ __asm__ (
 #else
 #    error "platform not supported"
 #endif
-}
+//}
 
-__attribute__((naked))
-void aco_save_fpucw_mxcsr(void* ptr)
-{
+//__attribute__((naked))
+//void aco_save_fpucw_mxcsr(void* ptr)
+__asm__ (".globl aco_save_fpucw_mxcsr");
+//{
 #ifndef __aarch64__
 __asm__ (".intel_syntax noprefix");
 #endif
+__asm__ ("aco_save_fpucw_mxcsr:");
 #ifdef __i386__
 __asm__ (
     "mov     eax,DWORD PTR [esp+0x4];"     // ptr
@@ -174,4 +178,4 @@ __asm__ (
 #else
 #    error "platform not supported"
 #endif
-}
+//}

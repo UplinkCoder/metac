@@ -1,2 +1,5 @@
 #include "3rd_party/libaco/aco.c"
-#include "3rd_party/libaco/acosw.c"
+
+#ifndef ACOSW_EXTERNAL_ASM
+#  include "3rd_party/libaco/acosw.c"
+#endif

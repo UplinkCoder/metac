@@ -50,9 +50,9 @@ void Taskqueue_Init(taskqueue_t* queue)
         calloc(sizeof(task_t), ARRAY_SIZE(*queue->QueueMemory));
     queue->TicketLock.currentlyServing = 0;
     queue->TicketLock.nextTicket = 0;
-    
+
     task_t* qMem = (*queue->QueueMemory);
-    for(uint32_t taskIdx = 0; 
+    for(uint32_t taskIdx = 0;
         taskIdx < ARRAY_SIZE(*queue->QueueMemory);
         taskIdx++)
     {
@@ -199,9 +199,12 @@ uint32_t TaskQueue_TasksInQueue_(taskqueue_t* self)
 {
     return tasksInQueue(self->readPointer, self->writePointer);
 }
-#ifdef X86
-#  define FENCE asm volatile ("mfence" ::: "memory");
-#  define MM_PAUSE asm volatile ("pause");
+#if defined(__i386__) || defined(__x86_64__)
+#  define FENCE __asm__ volatile ("mfence" ::: "memory");
+#  define MM_PAUSE __asm__ volatile ("pause");
+#elif defined(__aarch64__)
+# define FENCE __asm__ volatile("dmb sy" ::: "memory");
+# define MM_PAUSE __asm__ volatile("yield");
 #else
 #  define FENCE
 #  define MM_PAUSE
