@@ -329,10 +329,8 @@ typedef struct metac_location_t
     uint32_t StartLine;
 
     uint16_t LineSpan;
-
     uint16_t StartColumn;
     uint16_t EndColumn;
-
     uint16_t SourceId;
 } metac_location_t;
 
@@ -343,8 +341,9 @@ typedef struct metac_location_storage_t
 
     uint32_t LocationSize;
     uint32_t LocationCapacity;
-
 } metac_location_storage_t;
+
+typedef uint32_t metac_location_ptr;
 
 typedef struct metac_lexer_t {
     // inject array_methods(tokens, token_size, token_capacity);
@@ -376,6 +375,26 @@ const char* MetaCTokenEnum_toChars(metac_token_enum_t tok);
     ParseErrorBreak();
 
 void MetaCLexer_Init(metac_lexer_t* self);
+
+void MetaCLocation_Expand(metac_location_t* self, metac_location_t endLoc);
+void MetaCLocationStorage_Init(metac_location_storage_t* self);
+
+metac_location_ptr MetaCLocationStorage_StartLoc(
+        metac_location_storage_t* self,
+        uint32_t line, uint16_t column);
+
+void MetaCLocationStorage_EndLoc(
+        metac_location_storage_t* self,
+        metac_location_ptr locationId,
+        uint32_t line, uint16_t column);
+
+metac_location_t MetaCLocationStorage_FromPair(metac_location_storage_t *srcStorage,
+                                               metac_location_ptr startLocIdx,
+                                               metac_location_ptr endLocIdx);
+
+metac_location_ptr MetaCLocationStorage_Store(metac_location_storage_t* self,
+                                              metac_location_t loc);
+
 metac_lexer_state_t MetaCLexerStateFromString(uint32_t sourceId, const char* str);
 metac_lexer_state_t MetaCLexerStateFromBuffer(uint32_t sourceId, const char* buffer, uint32_t bufferLength);
 metac_token_t* MetaCLexerLexNextToken(metac_lexer_t* self, metac_lexer_state_t* state,

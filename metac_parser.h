@@ -67,6 +67,9 @@ typedef struct metac_parser_t
     uint32_t PackStackCapacity;
 
     decl_comment_t* CurrentComment;
+    decl_label_t* CurrentLabel;
+
+    metac_location_storage_t LocationStorage;
 
     metac_identifier_ptr_t SpecialNamePtr_Compiler;
     metac_identifier_ptr_t SpecialNamePtr_Context;
@@ -78,6 +81,7 @@ extern metac_parser_t g_lineParser;
 bool IsBinaryAssignExp(metac_expression_kind_t exp_kind);
 bool IsBinaryExp(metac_expression_kind_t exp_kind);
 
+void MetaCParser_Init(metac_parser_t* self);
 void MetaCParser_InitFromLexer(metac_parser_t* self, metac_lexer_t* lexer);
 /// p is the offset from the current position, 0 reads the current token
 /// negative offsets allow you to look back

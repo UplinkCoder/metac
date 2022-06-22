@@ -35,6 +35,7 @@
     \
     M(decl_function) \
     \
+    M(decl_label) \
     M(decl_comment)
 
 #define FOREACH_BINARY_EXP(M) \

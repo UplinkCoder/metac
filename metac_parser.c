@@ -72,6 +72,8 @@ void MetaCParser_Init(metac_parser_t* self)
 
     self->OpenParens = 0;
 
+    MetaCLocationStorage_Init(&self->LocationStorage);
+
     InitSpecialIdentifier(self);
 #ifndef NO_DOT_PRINTER
     self->DotPrinter = (metac_dot_printer_t*)malloc(sizeof(metac_dot_printer_t));
@@ -99,6 +101,12 @@ void MetaCParser_InitFromLexer(metac_parser_t* self, metac_lexer_t* lexer)
 #define HandleMacro(...)
 #define HandlePreprocessor(...)
 #define IsMacro(...) false
+
+static inline metac_location_t LocationFromToken(metac_parser_t* self,
+                                                 metac_token_t* tok)
+{
+    return self->Lexer->LocationStorage.Locations[tok->LocationId - 4];
+}
 
 metac_identifier_ptr_t RegisterIdentifier(metac_parser_t* self,
                                           metac_token_t* token)
@@ -747,7 +755,7 @@ static bool CouldBeCast(metac_parser_t* self, metac_token_enum_t tok)
 decl_type_t* MetaCParser_ParseTypeDeclaration(metac_parser_t* self,
                                               metac_declaration_t* parent,
                                               metac_declaration_t* prev);
-
+static const metac_location_t invalidLocation = {0,0,0,0,0};
 metac_expression_t* MetaCParser_ParsePrimaryExpression(metac_parser_t* self)
 {
     metac_expression_t* result = 0;
@@ -755,6 +763,10 @@ metac_expression_t* MetaCParser_ParsePrimaryExpression(metac_parser_t* self)
     metac_token_t* currentToken = MetaCParser_PeekToken(self, 1);
     metac_token_enum_t tokenType =
         (currentToken ? currentToken->TokenType : tok_eof);
+
+    metac_location_t loc = (currentToken ?
+        LocationFromToken(self, currentToken) :
+        invalidLocation);
 #ifdef TYPE_EXP
     if (tokenType != tok_identifier && tokenType != tok_star && IsTypeToken(tokenType))
     {
@@ -762,6 +774,8 @@ metac_expression_t* MetaCParser_ParsePrimaryExpression(metac_parser_t* self)
             MetaCParser_ParseTypeDeclaration(self, 0, 0);
         result = AllocNewExpression(exp_type);
         result->TypeExp = type;
+        MetaCLocation_Expand(&loc,
+            self->LocationStorage.Locations[result->TypeExp->LocationIdx - 4]);
     }
     else
 #endif
@@ -770,10 +784,11 @@ metac_expression_t* MetaCParser_ParsePrimaryExpression(metac_parser_t* self)
         // Not implemented right now
         result = AllocNewExpression(exp_cast);
         //typedef unsigned int b;
-        MetaCParser_Match(self, tok_lParen);
+        metac_token_t* lParen = MetaCParser_Match(self, tok_lParen);
         result->CastType = MetaCParser_ParseTypeDeclaration(self, 0, 0);
         MetaCParser_Match(self, tok_rParen);
         result->CastExp = MetaCParser_ParseExpression(self, expr_flags_none, 0);
+        MetaCLocation_Expand(&loc, self->LocationStorage.Locations[result->CastExp->LocationIdx - 4]);
     }
     else if (tokenType == tok_uint)
     {
@@ -826,7 +841,9 @@ metac_expression_t* MetaCParser_ParsePrimaryExpression(metac_parser_t* self)
         //PushOperator(exp_paren);
         result->Hash = Mix(crc32c_nozero(~0, "()", 2), result->E1->Hash);
         //PushOperand(result);
-        MetaCParser_Match(self, tok_rParen);
+        metac_token_t* endParen =
+            MetaCParser_Match(self, tok_rParen);
+        MetaCLocation_Expand(&loc, LocationFromToken(self, endParen));
         self->OpenParens--;
         //PopOperator(exp_paren);
     }
@@ -853,7 +870,9 @@ metac_expression_t* MetaCParser_ParsePrimaryExpression(metac_parser_t* self)
                 MetaCParser_Match(self, tok_comma);
             }
         }
-        MetaCParser_Match(self, tok_rBrace);
+        metac_token_t* endBrace =
+            MetaCParser_Match(self, tok_rBrace);
+        MetaCLocation_Expand(&loc, LocationFromToken(self, endBrace));
 
         result = AllocNewExpression(exp_tuple);
         result->TupleExpressionList = tupleList;
@@ -866,6 +885,8 @@ metac_expression_t* MetaCParser_ParsePrimaryExpression(metac_parser_t* self)
         assert(0); // Not a primary Expression;
     }
 
+    result->LocationIdx = MetaCLocationStorage_Store(&self->LocationStorage, loc);
+    printf("Parsed Primary Exp: Loc[{cols: %u - %u}]\n", loc.StartColumn, loc.EndColumn);
     return result;
 }
 
@@ -904,11 +925,12 @@ static inline metac_expression_t* ParseDotSpecialExpression(metac_parser_t* self
                                                             metac_expression_kind_t k)
 {
     metac_expression_t* result = 0;
+    metac_token_t* startToken;
 
     if (MetaCParser_PeekMatch(self, tok_dot, true))
     {
-        MetaCParser_Match(self, tok_dot);
-
+        startToken = MetaCParser_Match(self, tok_dot);
+        metac_location_t loc = LocationFromToken(self, startToken);
         metac_token_t* peek;
         peek = MetaCParser_PeekToken(self, 1);
         if (!peek)
@@ -919,6 +941,9 @@ static inline metac_expression_t* ParseDotSpecialExpression(metac_parser_t* self
         {
             result = AllocNewExpression(k);
             result->E1 = MetaCParser_ParseExpression(self, expr_flags_none, 0);
+            metac_location_t endLoc = self->LocationStorage.Locations[result->E1->LocationIdx - 4];
+            MetaCLocation_Expand(&loc, endLoc);
+            result->LocationIdx = MetaCLocationStorage_Store(&self->LocationStorage, loc);
         }
     }
 
@@ -1005,10 +1030,6 @@ metac_expression_t* MetaCParser_ParseUnaryExpression(metac_parser_t* self)
     {
         MetaCParser_Match(self, tok_dot);
         result = ParseUnaryDotExpression(self);
-    }
-    if (tokenType == tok_question)
-    {
-        int k = 12;
     }
     else if (tokenType == tok_kw_eject)
     {
@@ -1403,6 +1424,8 @@ decl_type_t* MetaCParser_ParseTypeDeclaration(metac_parser_t* self, metac_declar
     decl_type_t* type = AllocNewDeclaration(decl_type, &result);
     metac_type_modifiers typeModifiers = typemod_none;
     metac_token_t* currentToken = 0;
+    metac_location_t loc =
+        LocationFromToken(self, MetaCParser_PeekToken(self, 1));
 
 LnextToken:
     currentToken = MetaCParser_NextToken(self);
@@ -1611,6 +1634,10 @@ LnextToken:
             (currentToken ? currentToken->TokenType : tok_invalid);
     }
 
+    metac_location_t endLoc =
+        LocationFromToken(self, currentToken ? currentToken : MetaCParser_PeekToken(self, 0));
+    MetaCLocation_Expand(&loc, endLoc);
+    result->LocationIdx = MetaCLocationStorage_Store(&self->LocationStorage, loc);
     return result;
 }
 
@@ -1702,6 +1729,8 @@ metac_declaration_t* MetaCParser_ParseDeclaration(metac_parser_t* self, metac_de
     metac_token_t* currentToken = MetaCParser_PeekToken(self, 1);
     metac_token_enum_t tokenType =
         (currentToken ? currentToken->TokenType : tok_invalid);
+    metac_location_t loc =
+        currentToken ? LocationFromToken(self, currentToken) : invalidLocation;
 
     metac_declaration_t* result = 0;
     bool isStatic = false;
@@ -1710,9 +1739,34 @@ metac_declaration_t* MetaCParser_ParseDeclaration(metac_parser_t* self, metac_de
 
     decl_type_t* type = 0;
 
-    if (MetaCParser_PeekToken(self, pp_pragma))
+    // Let's deal with labels right at the start.
+    if (MetaCParser_PeekMatch(self, tok_identifier, true))
     {
+        metac_token_t* peek2 = MetaCParser_PeekToken(self, 2);
+        if (peek2->TokenType == tok_colon)
+        {
+            metac_token_t* idToken = MetaCParser_Match(self, tok_identifier);
+            metac_token_t* colon = MetaCParser_Match(self, tok_colon);
+            decl_label_t* label = AllocNewDeclaration(decl_label, &result);
+            label->LocationIdx = MetaCLocationStorage_Store(&self->LocationStorage,
+                MetaCLocationStorage_FromPair(&self->Lexer->LocationStorage,
+                                              idToken->LocationId, colon->LocationId));
 
+            label->Identifier = RegisterIdentifier(self, idToken);
+            self->CurrentLabel = label;
+            return result;
+        }
+    }
+    // Right after let's deal with comments
+    else if (tokenType == tok_comment_multi
+          || tokenType == tok_comment_single)
+    {
+        metac_token_t* tok = MetaCParser_Match(self, tokenType);
+        decl_comment_t* comment = AllocNewDeclaration(decl_comment, &result);
+        comment->Text = tok->CommentBegin;
+        comment->Length = tok->CommentLength;
+        self->CurrentComment = comment;
+        return result;
     }
 
     if (MetaCParser_PeekMatch(self, tok_kw_static, true))
@@ -1850,15 +1904,6 @@ metac_declaration_t* MetaCParser_ParseDeclaration(metac_parser_t* self, metac_de
                 }
             }
         }
-    }
-    else if (tokenType == tok_comment_multi
-          || tokenType == tok_comment_single)
-    {
-        metac_token_t* tok = MetaCParser_Match(self, tokenType);
-        decl_comment_t* comment = AllocNewDeclaration(decl_comment, &result);
-        comment->Text = tok->CommentBegin;
-        comment->Length = tok->CommentLength;
-        self->CurrentComment = comment;
     }
     else
     {

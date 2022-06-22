@@ -191,6 +191,11 @@ void RunWorkerThread(worker_context_t* worker, void (*specialFunc)(), void* spec
                     printf("Pulled task\n");
                     taskP->Fiber = execFiber;
                     ExecuteTask(taskP, execFiber);
+                    if ((taskP->TaskFlags & Task_Complete) == Task_Complete)
+                    {
+                        printf("Execution finished freeing fiber\n");
+                        *(FreeBitfield) |= (1 << nextFiberIdx);
+                    }
                 }
                 else
                 {
@@ -331,7 +336,7 @@ bool TaskQueue_Push(taskqueue_t* self, task_t* task)
     // ((*self->QueueMemory)[(writePointer + 1 <= TASK_QUEUE_SIZE) ? writePointer : 0]) = *task;
     *queueTask = *task;
 
-    if (task->ContextSize >= sizeof(task->_inlineContext))
+    if (task->ContextSize > sizeof(task->_inlineContext))
     {
         assert(0);
     //    memcpy(task->ContextStorage, task->TaskParam, task->TaskParamSz);
@@ -374,7 +379,7 @@ bool TaskQueue_Pull(taskqueue_t* self, task_t** taskP)
         return false;
     }
 
-    *taskP = self->QueueMemory[readP];
+    *taskP = (*self->QueueMemory) + readP;
     INC(self->readPointer);
 
     FENCE

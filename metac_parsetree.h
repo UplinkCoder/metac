@@ -306,6 +306,15 @@ typedef struct decl_comment_t
     uint32_t Length;
 } decl_comment_t;
 
+typedef struct decl_label_t
+{
+    DECLARATION_HEADER
+
+    metac_identifier_ptr_t Identifier;
+
+    struct metac_declaration_t* Decl;
+} decl_label_t;
+
 typedef struct decl_variable_t
 {
     DECLARATION_HEADER

@@ -641,18 +641,42 @@ bool IsValidEscapeChar(char c)
 
 typedef uint32_t metac_location_ptr;
 
+void MetaCLocationStorage_Init(metac_location_storage_t* self)
+{
+    self->LocationCapacity = 128;
+    self->LocationSize = 0;
+    self->Locations =
+        calloc(sizeof(metac_location_storage_t), self->LocationCapacity);
+}
+
+metac_location_ptr MetaCLocationStorage_Store(metac_location_storage_t* self,
+                                              metac_location_t loc)
+{
+    if (self->LocationSize >= self->LocationCapacity)
+    {
+        _newMemRealloc((void**)&self->Locations, &self->LocationCapacity, sizeof(metac_location_t));
+    }
+
+    assert(self->LocationSize < self->LocationCapacity);
+
+    uint32_t result = self->LocationSize++;
+    self->Locations[result] = loc;
+
+    return result + 4;
+}
+
 void MetaCLocationStorage_EndLoc(
-        metac_location_storage_t* locationStorage,
+        metac_location_storage_t* self,
         metac_location_ptr locationId,
         uint32_t line, uint16_t column)
 {
 #ifndef NO_LOCATION_TRACKING
     assert(locationId >= 4);
-    assert((locationId - 4) < locationStorage->LocationSize);
+    assert((locationId - 4) < self->LocationSize);
 
     uint32_t idx = locationId - 4;
     metac_location_t *location =
-        locationStorage->Locations + idx;
+        self->Locations + idx;
 
     assert((line - location->StartLine) < 0xFFFF);
 
@@ -662,18 +686,28 @@ void MetaCLocationStorage_EndLoc(
 #endif
 }
 
+void MetaCLocation_Expand(metac_location_t* self, metac_location_t endLoc)
+{
+    self->LineSpan = (endLoc.StartLine + endLoc.LineSpan) - self->StartLine;
+    self->EndColumn = endLoc.EndColumn;
+}
+
 metac_location_ptr MetaCLocationStorage_StartLoc(
-        metac_location_storage_t* locationStorage,
+        metac_location_storage_t* self,
         uint32_t line, uint16_t column)
 {
 #ifndef NO_LOCATION_TRACKING
-    assert(locationStorage->LocationSize <
-        locationStorage->LocationCapacity);
+    if (self->LocationSize >= self->LocationCapacity)
+    {
+        _newMemRealloc((void**)&self->Locations, &self->LocationCapacity, sizeof(metac_location_t));
+    }
 
-    uint32_t result = locationStorage->LocationSize++;
+    assert(self->LocationSize < self->LocationCapacity);
 
-    locationStorage->Locations[result].StartLine = line;
-    locationStorage->Locations[result].StartColumn = column;
+    uint32_t result = self->LocationSize++;
+
+    self->Locations[result].StartLine = line;
+    self->Locations[result].StartColumn = column;
 
     return result + 4;
 #else
@@ -681,6 +715,20 @@ metac_location_ptr MetaCLocationStorage_StartLoc(
 #endif
 }
 
+metac_location_t MetaCLocationStorage_FromPair(metac_location_storage_t *srcStorage,
+                                               metac_location_ptr startLocIdx,
+                                               metac_location_ptr endLocIdx)
+{
+    metac_location_t result;
+
+    result = srcStorage->Locations[startLocIdx - 4];
+    const metac_location_t endLoc = srcStorage->Locations[endLocIdx - 4];
+
+    result.LineSpan = (endLoc.StartLine + endLoc.LineSpan) - result.StartLine;
+    result.EndColumn = endLoc.EndColumn;
+
+    return result;
+}
 
 metac_token_t* MetaCLexerLexNextToken(metac_lexer_t* self,
                                       metac_lexer_state_t* state,
@@ -826,6 +874,7 @@ LcontinueLexnig:
                 }
             LParseNumberDone:
                 token.ValueU64 = value;
+                state->Column += eatenChars;
             }
             else if (c == '\'')
             {
@@ -935,7 +984,7 @@ LcontinueLexnig:
                 stringHash = crc32c_nozero(~0, stringBegin, stringLength);
 #endif
                 assert(stringLength < 0xFFFFF);
-
+                state->Column = column;
                 token.Key = STRING_KEY(stringHash, stringLength);
                 token.StringPtr = GetOrAddIdentifier(&self->StringTable, token.Key, stringBegin);
             }

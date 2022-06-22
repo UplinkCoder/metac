@@ -152,6 +152,13 @@ int MetaCDeclaration_Walk_Real(metac_declaration_t* decl, walker_function_t walk
             if (result)
                 return result;
         } break;
+
+        case decl_label:
+        {
+            assert(0);
+            // not implemented at the moment
+        } break;
+        case decl_comment: {} break; // no children to visit
     }
 
     return 0;

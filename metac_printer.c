@@ -623,6 +623,12 @@ static inline void PrintDeclaration(metac_printer_t* self,
             decl_comment_t* comment = (decl_comment_t*) decl;
             PrintComment(self, comment->Text, comment->Length);
         } break;
+        case decl_label:
+        {
+            decl_label_t* label = (decl_label_t*) decl;
+            PrintIdentifier(self, label->Identifier);
+            PrintChar(self, ':');
+        } break;
     }
     if (!!printSemicolon) PrintChar(self, ';');
     PrintNewline(self);

@@ -716,7 +716,7 @@ void MetaCSemantic_Init(metac_semantic_state_t* self, metac_parser_t* parser,
 
     self->Waiters.WaiterCapacity = 64;
     self->Waiters.WaiterCount = 0;
-    self->Waiters.Waiters = cast(metac_semantic_waiter_t*) 
+    self->Waiters.Waiters = cast(metac_semantic_waiter_t*)
 		calloc(sizeof(*self->Waiters.Waiters), self->Waiters.WaiterCapacity);
 
     IdentifierTableInit(&self->SemanticIdentifierTable, IDENTIFIER_LENGTH_SHIFT);
@@ -1334,8 +1334,6 @@ typedef struct MetaCSemantic_doTypeSemantic_Fiber_t
 {
     metac_semantic_state_t* Sema;
     decl_type_t* Type;
-    uint32_t Line;
-    const char* Filename;
     metac_type_index_t Result;
 } MetaCSemantic_doTypeSemantic_Fiber_t;
 
@@ -1641,14 +1639,14 @@ metac_type_index_t MetaCSemantic_doTypeSemantic_(metac_semantic_state_t* self,
         worker_context_t currentContext = *CurrentWorker();
 
         MetaCSemantic_doTypeSemantic_Fiber_t arg = {
-                self, type, callLine, callFile
+                self, type
         };
         MetaCSemantic_doTypeSemantic_Fiber_t* argPtr = &arg;
 
         CALL_TASK_FN(MetaCSemantic_doTypeSemantic, argPtr);
         task_t* typeSemTask;
         assert(0);
-        
+
         while (!TaskQueue_Push(&currentContext.Queue, typeSemTask))
         {
             // yielding because queue is full;
@@ -1760,9 +1758,6 @@ typedef struct MetaCSemantic_doDeclSemantic_TaskContext_t
 {
     metac_semantic_state_t* Sema;
     metac_declaration_t* Decl;
-    const char* CallFile;
-    uint32_t CallLine;
-
     metac_sema_declaration_t* Result;
 
 } MetaCSemantic_doDeclSemantic_TaskContext_t;
@@ -1854,8 +1849,9 @@ void MetaCSemantic_doDeclSemantic_Task(task_t* task)
     MetaCSemantic_doDeclSemantic_TaskContext_t* ctx =
         (MetaCSemantic_doDeclSemantic_TaskContext_t*)
             task->Context;
+    task_origin_t Origin = task->Origin;
     ctx->Result =
-        MetaCSemantic_doDeclSemantic_(ctx->Sema, ctx->Decl, ctx->CallFile, ctx->CallLine);
+        MetaCSemantic_doDeclSemantic_(ctx->Sema, ctx->Decl, Origin.File, Origin.Line);
 }
 
 metac_sema_declaration_t* MetaCSemantic_doDeclSemantic_(metac_semantic_state_t* self,
@@ -1871,12 +1867,13 @@ metac_sema_declaration_t* MetaCSemantic_doDeclSemantic_(metac_semantic_state_t* 
         taskqueue_t* q = &CurrentWorker()->Queue;
         printf("Couldn't do the decl Semantic, yielding to try again\n");
         MetaCSemantic_doDeclSemantic_TaskContext_t CtxValue = {
-            self, decl, callFile, callLine
+            self, decl
         };
 
         task_t declTask;
         declTask.TaskFunction = MetaCSemantic_doDeclSemantic_Task;
-		ORIGIN(declTask.Origin);
+		declTask.Origin.File = callFile;
+        declTask.Origin.Line = callFile;
         assert(sizeof(CtxValue) < sizeof(declTask._inlineContext));
         (*(MetaCSemantic_doDeclSemantic_TaskContext_t*)declTask.Context) =
             CtxValue;

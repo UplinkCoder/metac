@@ -93,7 +93,7 @@ typedef struct task_t
     struct task_t* Parent;
     struct task_t* Children;
 
-    uint8_t _inlineContext[64];
+    uint8_t _inlineContext[24];
 
     uint32_t ChildCount;
     uint32_t ChildrenCompleted;
