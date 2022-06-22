@@ -414,7 +414,7 @@ uint32_t MetaCTokenLength(metac_token_t token)
         }
         else if (token.TokenType == tok_comment_single)
         {
-            return token.CommentLength + 3;
+            return token.CommentLength + 2;
         }
         else if (token.TokenType == tok_comment_multi)
         {
@@ -967,15 +967,12 @@ LcontinueLexnig:
         uint32_t commentLength = (newlinePtr - text);
         if (!newlinePtr)
         {
-            commentLength = len - eatenChars - 1;
+            commentLength = len - eatenChars;
             c = '\0';
         }
-        else
-        {
-        }
-        eatenChars += commentLength + 1;
+        eatenChars += commentLength + !!newlinePtr;
         token.CommentLength = commentLength;
-        token.CommentBegin = text + 2;
+        token.CommentBegin = text;
         state->Column += commentLength + 1;
     }
     else if (token.TokenType == tok_comment_begin_multi)
