@@ -250,6 +250,9 @@ void TaskSystem_Init(tasksystem_t* self, uint32_t workerThreads, void (*workerFu
 #define ATOMIC_LOAD(VAR_PTR) \
     *(VAR_PTR)
 
+#define RELAXED_LOAD(VAR_PTR) \
+    *(VAR_PTR)
+
 bool ServingMe(volatile ticket_lock_t* lock, uint32_t myTicket)
 {
 #ifdef THREAD_MUTEX
@@ -302,10 +305,11 @@ uint32_t TaskQueue_TasksInQueue_(taskqueue_t* self)
 //         false if the queue was already full
 bool TaskQueue_Push(taskqueue_t* self, task_t* task)
 {
+    uint32_t readP = RELAXED_LOAD(&self->readPointer) & (TASK_QUEUE_SIZE - 1);
+    uint32_t writeP = RELAXED_LOAD(&self->writePointer) & (TASK_QUEUE_SIZE - 1);
+
     // if this is true the Queue is full
-    uint32_t readPointer = self->readPointer & (TASK_QUEUE_SIZE - 1);
-    uint32_t writePointer = self->writePointer & (TASK_QUEUE_SIZE - 1);
-    if (readPointer == writePointer + 1)
+    if (readP == writeP + 1)
         return false;
     FENCE
     uint32_t myTicket = DrawTicket(&self->TicketLock);
@@ -315,14 +319,15 @@ bool TaskQueue_Push(taskqueue_t* self, task_t* task)
         MM_PAUSE
     }
     FENCE
-    readPointer = self->readPointer & (TASK_QUEUE_SIZE - 1);
-    writePointer = self->readPointer & (TASK_QUEUE_SIZE - 1);
-    if (readPointer == writePointer + 1)
+    readP = ATOMIC_LOAD(&self->readPointer) & (TASK_QUEUE_SIZE - 1);
+    writeP = ATOMIC_LOAD(&self->writePointer) & (TASK_QUEUE_SIZE - 1);
+    printf("WriteP: %u\n", writeP);
+    if (readP == writeP + 1)
     {
         ReleaseTicket(&self->TicketLock, myTicket);
         return false;
     }
-    task_t* queueTask = (*self->QueueMemory) + writePointer;
+    task_t* queueTask = (*self->QueueMemory) + writeP;
     // ((*self->QueueMemory)[(writePointer + 1 <= TASK_QUEUE_SIZE) ? writePointer : 0]) = *task;
     *queueTask = *task;
 
@@ -331,14 +336,12 @@ bool TaskQueue_Push(taskqueue_t* self, task_t* task)
         assert(0);
     //    memcpy(task->ContextStorage, task->TaskParam, task->TaskParamSz);
     }
-    printf("ReadPtr: %u  WritePtr: %u\n", readPointer, writePointer);
     memcpy(queueTask->_inlineContext, task->Context, task->ContextSize);
     queueTask->Context = queueTask->_inlineContext;
     INC(self->writePointer);
     FENCE
     ReleaseTicket(&self->TicketLock, myTicket);
-    
-    printf("Pushed task\n");
+
     return true;
 }
 
@@ -346,11 +349,11 @@ bool TaskQueue_Push(taskqueue_t* self, task_t* task)
 /// false if no task is pulled
 bool TaskQueue_Pull(taskqueue_t* self, task_t** taskP)
 {
-    uint32_t readPointer = self->readPointer & (TASK_QUEUE_SIZE - 1);
-    uint32_t writePointer = self->writePointer & (TASK_QUEUE_SIZE - 1);
+    uint32_t readP = RELAXED_LOAD(&self->readPointer) & (TASK_QUEUE_SIZE - 1);
+    uint32_t writeP = RELAXED_LOAD(&self->writePointer) & (TASK_QUEUE_SIZE - 1);
 
     // check if queue is empty
-    if (readPointer == writePointer)
+    if (readP == writeP)
         return false;
 
     FENCE
@@ -362,14 +365,16 @@ bool TaskQueue_Pull(taskqueue_t* self, task_t** taskP)
     }
     FENCE
 
-    if (readPointer == writePointer)
+    readP = ATOMIC_LOAD(&self->readPointer);
+    writeP = ATOMIC_LOAD(&self->writePointer);
+
+    if (readP == writeP)
     {
         ReleaseTicket(&self->TicketLock, myTicket);
         return false;
     }
-    printf("ReadPtr: %u  WritePtr: %u\n", readPointer, writePointer);
-    printf("PullingTask %u\n", readPointer);
-    *taskP = self->QueueMemory[readPointer];
+
+    *taskP = self->QueueMemory[readP];
     INC(self->readPointer);
 
     FENCE
