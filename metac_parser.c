@@ -1245,9 +1245,19 @@ metac_expression_t* MetaCParser_ParseBinaryExpression(metac_parser_t* self,
             exp_right = BinExpTypeFromTokenType(peekTokenType);
             uint32_t opPrecedence = OpToPrecedence(exp_right);
             MetaCParser_Match(self, peekTokenType);
-            metac_expression_t* rhs = MetaCParser_ParseUnaryExpression(self);
+            metac_expression_t* rhs;
+            if (exp_right == exp_index)
+            {
+                rhs = MetaCParser_ParseExpression(self, 0, 0);
+                MetaCParser_Match(self, tok_rBracket);
+            }
+            else
+            {
+                rhs = MetaCParser_ParseUnaryExpression(self);
+            }
             peekToken = MetaCParser_PeekToken(self, 1);
             peekTokenType = (peekToken ? peekToken->TokenType : tok_eof);
+
             while(IsBinaryOperator(peekTokenType, eflags)
                && opPrecedence <
                   OpToPrecedence(BinExpTypeFromTokenType(peekTokenType)))
@@ -1256,8 +1266,7 @@ metac_expression_t* MetaCParser_ParseBinaryExpression(metac_parser_t* self,
                 peekToken = MetaCParser_PeekToken(self, 1);
                 peekTokenType = (peekToken ? peekToken->TokenType : tok_eof);
             }
-            if (exp_right == exp_index)
-                MetaCParser_Match(self, tok_rBracket);
+
             result = AllocNewExpression(exp_right);
             result->E1 = left;
             result->E2 = rhs;
