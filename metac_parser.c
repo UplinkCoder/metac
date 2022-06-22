@@ -1849,6 +1849,7 @@ metac_declaration_t* MetaCParser_ParseDeclaration(metac_parser_t* self, metac_de
         decl_comment_t* comment = AllocNewDeclaration(decl_comment, &result);
         comment->Text = tok->CommentBegin;
         comment->Length = tok->CommentLength;
+        self->CurrentComment = comment;
     }
     else
     {

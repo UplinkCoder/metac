@@ -322,6 +322,15 @@ const char* StatementKind_toChars(metac_statement_kind_t kind)
 }
 
 #undef CASE_MACRO
+
+static inline void PrintComment(metac_printer_t* self,
+                                const char* Text, uint32_t Length)
+{
+    // bool isMultiline = (memchr(Text, '\n', Length) != 0);
+    PrintString(self, "/*", 2);
+    PrintString(self, Text, Length);
+    PrintString(self, "*/", 2);
+}
 static inline void PrintStatement(metac_printer_t* self, metac_statement_t* stmt)
 {
     // printf("StmtKind: %s\n", StatementKind_toChars(stmt->StmtKind));
@@ -608,6 +617,11 @@ static inline void PrintDeclaration(metac_printer_t* self,
                 PrintStatement(self, (metac_statement_t*)function_->FunctionBody);
                 printSemicolon = false;
             }
+        } break;
+        case decl_comment:
+        {
+            decl_comment_t* comment = (decl_comment_t*) decl;
+            PrintComment(self, comment->Text, comment->Length);
         } break;
     }
     if (!!printSemicolon) PrintChar(self, ';');

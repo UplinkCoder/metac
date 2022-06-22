@@ -66,6 +66,8 @@ typedef struct metac_parser_t
     uint32_t OpenParens;
     uint32_t PackStackCapacity;
 
+    decl_comment_t* CurrentComment;
+
     metac_identifier_ptr_t SpecialNamePtr_Compiler;
     metac_identifier_ptr_t SpecialNamePtr_Context;
     metac_identifier_ptr_t SpecialNamePtr_Target;
