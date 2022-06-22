@@ -11,6 +11,6 @@
 } while(0);
 
 #define YIELD(REASON) do { \
-    printf("Yielding %x from {%s:%d} %s\n",  ({(void)0; aco_gtls_co;}), __FILE__, __LINE__, #REASON); \
+    printf("Yielding %x from {%s:%d} %s\n",  (GET_CO()), __FILE__, __LINE__, #REASON); \
     aco_yield(); \
 } while(0)

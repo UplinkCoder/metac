@@ -792,7 +792,7 @@ void Repl_Fiber()
 
     fprintf(stderr, "Repl_Loop exited this should only happen on quit\n");
 #ifndef NO_FIBERS
-    aco_exit1(aco_gtls_co);
+    aco_exit1(GET_CO());
 #endif
 }
 

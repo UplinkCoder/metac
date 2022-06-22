@@ -81,18 +81,18 @@ void FiberDoTask(void)
 {
     for(;;)
     {
+        aco_t* fiber = CurrentFiber();
         task_t* task = (task_t*) aco_get_arg();
-        printf("ExpectingFiber: %x\n", task->Fiber);
-        printf("ActualFiber: %x\n", aco_get_co());
         assert(!(task->TaskFlags & Task_Running));
-        assert(task->Fiber == CurrentFiber());
+        assert(task->Fiber == fiber);
 
         task->TaskFlags |= Task_Running;
         task->TaskFunction(task);
         task->TaskFlags |= Task_Complete;
 
-        printf("When we get here the task is completed\n");
         YIELD(YieldingBackAfterTaskCompletion);
+
+        // FiberReport(fiber);
     }
 }
 
@@ -118,8 +118,13 @@ void ExecuteTask(task_t* task, aco_t* fiber)
         assert(0);
     }
     START(task->Fiber);
-    assert((task->TaskFlags & Task_Complete) == Task_Complete);
-    fiber->arg = 0;
+
+    printf("StackSz: %u\n", fiber->save_stack.max_cpsz );
+
+    if ((task->TaskFlags & Task_Complete) == Task_Complete)
+    {
+        fiber->arg = 0;
+    }
 }
 
 static inline uint32_t tasksInQueue(const uint32_t readP, const uint32_t writeP)

@@ -886,7 +886,6 @@ metac_expression_t* MetaCParser_ParsePrimaryExpression(metac_parser_t* self)
     }
 
     result->LocationIdx = MetaCLocationStorage_Store(&self->LocationStorage, loc);
-    printf("Parsed Primary Exp: Loc[{cols: %u - %u}]\n", loc.StartColumn, loc.EndColumn);
     return result;
 }
 

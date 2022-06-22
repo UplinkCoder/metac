@@ -1606,6 +1606,18 @@ metac_type_index_t MetaCSemantic_TypeSemantic(metac_semantic_state_t* self,
     return result;
 }
 
+void MetaCSemantic_doTypeSemantic_Task(task_t* task)
+{
+    MetaCSemantic_doTypeSemantic_Fiber_t* ctx =
+        cast(MetaCSemantic_doTypeSemantic_Fiber_t*) task->Context;
+    metac_semantic_state_t* sema = ctx->Sema;
+    decl_type_t* type = ctx->Type;
+
+    ctx->Result = MetaCSemantic_TypeSemantic(sema, type);
+
+}
+
+
 #ifndef NO_FIBERS
 void MetaCSemantic_doTypeSemantic_Fiber(void* caller, void* arg)
 {
@@ -1644,10 +1656,13 @@ metac_type_index_t MetaCSemantic_doTypeSemantic_(metac_semantic_state_t* self,
         MetaCSemantic_doTypeSemantic_Fiber_t* argPtr = &arg;
 
         CALL_TASK_FN(MetaCSemantic_doTypeSemantic, argPtr);
-        task_t* typeSemTask;
-        assert(0);
+        task_t typeSemTask = {0};
 
-        while (!TaskQueue_Push(&currentContext.Queue, typeSemTask))
+        typeSemTask.Context = argPtr;
+        typeSemTask.ContextSize = sizeof(arg);
+        typeSemTask.TaskFunction = MetaCSemantic_doTypeSemantic_Task;
+
+        while (!TaskQueue_Push(&currentContext.Queue, &typeSemTask))
         {
             // yielding because queue is full;
             YIELD(QueueFull);

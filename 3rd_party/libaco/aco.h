@@ -213,8 +213,6 @@ extern aco_t* aco_create(
         aco_cofuncp_t fp, void* arg
     );
 
-// aco's Global Thread Local Storage variable `co`
-
 #if defined(HAS_TLS)
 // aco's Global Thread Local Storage variable `co`
 extern __thread aco_t* aco_gtls_co_;
