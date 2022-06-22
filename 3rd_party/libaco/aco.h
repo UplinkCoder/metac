@@ -15,6 +15,10 @@
 #ifndef ACO_H
 #define ACO_H
 
+#ifndef __TINYC__
+#  define HAS_TLS
+#endif
+
 #include <string.h>
 #include <stdint.h>
 #include <limits.h>
@@ -210,15 +214,35 @@ extern aco_t* aco_create(
     );
 
 // aco's Global Thread Local Storage variable `co`
-extern __thread aco_t* aco_gtls_co;
+
+#if defined(HAS_TLS)
+// aco's Global Thread Local Storage variable `co`
+extern __thread aco_t* aco_gtls_co_;
+#elif HAS_THREADS
+extern tss_key aco_tss_key_co;
+#else
+extern aco_t* aco_g_co;
+#endif
 
 aco_attr_no_asan
 extern void aco_resume(aco_t* resume_co);
 
 //extern void aco_yield1(aco_t* yield_co);
 
+
+#if defined(HAS_TLS)
+#  define GET_CO() (aco_gtls_co_)
+#  define SET_CO(CO) (aco_gtls_co_ = (CO))
+#elif HAS_THREADS
+#  define GET_CO() ((aco_t*) tss_get(aco_tss_key_co))
+#  define SET_CO(CO) ((tss_set(aco_tss_key_co, ((void*)(CO))) == thrd_success) ? (CO) :>
+#else
+#  define GET_CO() (aco_g_co)
+#  define SET_CO(CO) (aco_g_co = (CO))
+#endif
+
 #define aco_yield2(target_co) do { \
-    acosw(aco_gtls_co, target_co); \
+    acosw(GET_CO(), target_co); \
 } while(0);
 
 #define aco_yield1(yield_co) do             \
@@ -229,14 +253,12 @@ extern void aco_resume(aco_t* resume_co);
 } while(0)
 
 #define aco_yield() do {        \
-    aco_yield1(aco_gtls_co);    \
+    aco_yield1(GET_CO());    \
 } while(0)
 
-#define aco_get_arg() (aco_gtls_co->arg)
+#define aco_get_arg() (GET_CO()->arg)
 
-#define aco_get_co() ({(void)0; aco_gtls_co;})
-
-#define aco_co() ({(void)0; aco_gtls_co;})
+#define aco_get_co() (GET_CO())
 
 extern void aco_destroy(aco_t* co);
 
@@ -252,7 +274,7 @@ extern void aco_destroy(aco_t* co);
 } while(0)
 
 #define aco_exit() do {       \
-    aco_exit1(aco_gtls_co); \
+    aco_exit1(GET_CO()); \
 } while(0)
 
 #ifdef __cplusplus

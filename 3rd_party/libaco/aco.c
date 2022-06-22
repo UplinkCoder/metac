@@ -156,8 +156,18 @@ void aco_runtime_test(void){
     } \
 } while(0)
 
+#if defined(HAS_TLS)
+// aco's Global Thread Local Storage variable `co`
+__thread aco_t* aco_gtls_co_;
+#elif HAS_THREADS
+tss_key aco_tss_key_co;
+#else
+aco_t* aco_g_co;
+#endif
+
+
 static void aco_default_protector_last_word(void){
-    aco_t* co = aco_get_co();
+    aco_t* co = GET_CO();
     // do some log about the offending `co`
     fprintf(stderr,"error: aco_default_protector_last_word triggered\n");
     fprintf(stderr, "error: co:%p should call `aco_exit()` instead of direct "
@@ -165,9 +175,7 @@ static void aco_default_protector_last_word(void){
     assert(0);
 }
 
-// aco's Global Thread Local Storage variable `co`
-__thread aco_t* aco_gtls_co;
-static __thread aco_cofuncp_t aco_gtls_last_word_fp = aco_default_protector_last_word;
+static aco_cofuncp_t aco_gtls_last_word_fp = aco_default_protector_last_word;
 
 #ifdef __i386__
     static __thread void* aco_gtls_fpucw_mxcsr[2];
@@ -473,9 +481,9 @@ void aco_resume(aco_t* resume_co){
         #error "platform no support yet"
 #endif
     }
-    aco_gtls_co = resume_co;
+    SET_CO(resume_co);
     acosw(resume_co->main_co, resume_co);
-    aco_gtls_co = resume_co->main_co;
+    SET_CO(resume_co->main_co);
 }
 
 void aco_destroy(aco_t* co){
