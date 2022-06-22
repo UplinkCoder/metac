@@ -58,8 +58,8 @@ void Taskqueue_Init(taskqueue_t* queue)
 {
     queue->QueueMemory = cast(task_t (*)[1024])
         calloc(sizeof(task_t), ARRAY_SIZE(*queue->QueueMemory));
-    queue->TicketLock.currentlyServing = 0;
-    queue->TicketLock.nextTicket = 0;
+    queue->QueueLock.currentlyServing = 0;
+    queue->QueueLock.nextTicket = 0;
 
     task_t* qMem = (*queue->QueueMemory);
     for(uint32_t taskIdx = 0;
@@ -73,7 +73,7 @@ void Taskqueue_Init(taskqueue_t* queue)
         task->ContextSize = 0;
     }
 #if THREAD_MUTEX
-    mtx_init(&queue->TicketLock.Mutex);
+    mtx_init(&queue->QueueLock.Mutex);
 #endif
 }
 
@@ -209,6 +209,30 @@ void RunWorkerThread(worker_context_t* worker, void (*specialFunc)(), void* spec
             }
         }
 
+        // try to finish started tasks without starting new ones
+        {
+            // the completion goal is the number of active tasks
+            const uint32_t completionGoal = ~(*FreeBitfield);
+
+            uint32_t tryMask0 = 0; // tasks which have been tried once
+            uint32_t tryMask1 = 0; // tasks which have been twice once
+
+            // do not allow the creation of new tasks for this run
+            worker->Flags |= Worker_YieldOnTaskCreation;
+
+            // try fibers until all of them have been tried twice
+            for(;;)
+            {
+                if (tryMask1 == completionGoal)
+                    break;
+            }
+
+            assert(tryMask0 == tryMask1);
+        }
+
+        // if we couldn't finish all the tasks it's likely
+        // that we need to spawn new tasks in order to succseed
+
         if (worker->KillWorker || terminationRequested)
             break;
 
@@ -322,9 +346,9 @@ bool TaskQueue_Push(taskqueue_t* self, task_t* task)
     if (readP == writeP + 1)
         return false;
     FENCE
-    uint32_t myTicket = DrawTicket(&self->TicketLock);
+    uint32_t myTicket = DrawTicket(&self->QueueLock);
     FENCE
-    while (!ServingMe(&self->TicketLock, myTicket))
+    while (!ServingMe(&self->QueueLock, myTicket))
     {
         MM_PAUSE
     }
@@ -334,7 +358,7 @@ bool TaskQueue_Push(taskqueue_t* self, task_t* task)
     printf("WriteP: %u\n", writeP);
     if (readP == writeP + 1)
     {
-        ReleaseTicket(&self->TicketLock, myTicket);
+        ReleaseTicket(&self->QueueLock, myTicket);
         return false;
     }
     task_t* queueTask = (*self->QueueMemory) + writeP;
@@ -350,7 +374,7 @@ bool TaskQueue_Push(taskqueue_t* self, task_t* task)
     queueTask->Context = queueTask->_inlineContext;
     INC(self->writePointer);
     FENCE
-    ReleaseTicket(&self->TicketLock, myTicket);
+    ReleaseTicket(&self->QueueLock, myTicket);
 
     return true;
 }
@@ -367,9 +391,9 @@ bool TaskQueue_Pull(taskqueue_t* self, task_t** taskP)
         return false;
 
     FENCE
-    uint32_t myTicket = DrawTicket(&self->TicketLock);
+    uint32_t myTicket = DrawTicket(&self->QueueLock);
     FENCE
-    while (!ServingMe(&self->TicketLock, myTicket))
+    while (!ServingMe(&self->QueueLock, myTicket))
     {
         MM_PAUSE
     }
@@ -380,7 +404,7 @@ bool TaskQueue_Pull(taskqueue_t* self, task_t** taskP)
 
     if (readP == writeP)
     {
-        ReleaseTicket(&self->TicketLock, myTicket);
+        ReleaseTicket(&self->QueueLock, myTicket);
         return false;
     }
 
@@ -388,7 +412,7 @@ bool TaskQueue_Pull(taskqueue_t* self, task_t** taskP)
     INC(self->readPointer);
 
     FENCE
-    ReleaseTicket(&self->TicketLock, myTicket);
+    ReleaseTicket(&self->QueueLock, myTicket);
     return true;
 }
 

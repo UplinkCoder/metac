@@ -58,7 +58,6 @@ typedef void (*task_fn_t)(struct task_t*);
     (*cast(void**)(&CTX_STRUCT_PTR)) = cast(void*)ctxPtr; \
 } while (0);
 
-
 typedef enum task_flags_t
 {
     Task_None,
@@ -110,7 +109,7 @@ typedef struct task_t
 
 typedef struct taskqueue_t
 {
-    ticket_lock_t TicketLock;
+    ticket_lock_t QueueLock;
     uint8_t padding[sizeof(ticket_lock_t) % 16];
 
     uint32_t readPointer; // head
@@ -120,7 +119,6 @@ typedef struct taskqueue_t
 
     void* ContextStorage;
     uint32_t ContextStorageCapacity;
-
 } taskqueue_t;
 
 typedef struct fiber_pool_t
@@ -133,6 +131,14 @@ typedef struct fiber_pool_t
     //static_assert(sizeof(FreeBitfield) * 8 >= FIBERS_PER_WORKER);
 } fiber_pool_t;
 
+typedef enum worker_flags_t
+{
+    None = 0,
+    Worker_YieldOnTaskCreation = (1 << 0),
+
+    Worker_Max = (1 << 0)
+} worker_flags_t;
+
 typedef struct worker_context_t
 {
     taskqueue_t Queue;
@@ -141,6 +147,8 @@ typedef struct worker_context_t
     uint32_t KillWorker;
 
     //PoolAllocator threadAlloc;
+
+    volatile uint32_t Flags;
 
     thrd_t Thread;
     aco_t* WorkerMain;

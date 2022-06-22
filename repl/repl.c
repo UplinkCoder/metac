@@ -1,4 +1,3 @@
-#ifdef ACCEL
 #include "../compat.h"
 #include "../metac_parser_obj.c"
 #include "../metac_semantic_obj.c"
@@ -450,12 +449,6 @@ LswitchMode:
                     repl->parseMode = parse_mode_ss;
                     goto LswitchMode;
                 }
-            case 'i' :
-#ifdef ACCEL
-                printf("Accelerator: %s\n", ACCELERATOR);
-#else
-                printf("MetaC compiled without Accelerator\n");
-#endif
                 break;
             default :
                 printf("Command :%c unknown type :h for help\n", *(repl->line + 1));
@@ -671,7 +664,7 @@ LswitchMode:
                     printf("decl = %s\n", MetaCPrinter_PrintDeclaration(&repl->printer, decl));
                 else
                     printf("Couldn't parse Declaration\n");
-
+#ifndef NO_FIBERS
                 MetaCSemantic_doDeclSemantic_TaskContext_t ctx =
                 {
                     &repl->sema, decl, 0
@@ -692,8 +685,10 @@ LswitchMode:
                 {
                     printf("Couldn't Push\n");
                 }
-                //metac_sema_declaration_t* ds =
-                //    MetaCSemantic_doDeclSemantic(&repl->sema, decl);
+#else
+                metac_sema_declaration_t* ds =
+                    MetaCSemantic_doDeclSemantic(&repl->sema, decl);
+#endif
                 goto LnextLine;
             }
 
@@ -718,11 +713,7 @@ LlexSrcBuffer: {}
 
                 if (token.TokenType == tok_identifier)
                 {
-#if ACCEL == ACCEL_TABLE
                     printf("    %.*s\n", LENGTH_FROM_IDENTIFIER_KEY(token.Key), IDENTIFIER_PTR(&repl->lexer.MEMBER_SUFFIX(Identifier), token));
-#elif ACCEL == ACCEL_TREE
-                    printf("    %.*s\n", LENGTH_FROM_IDENTIFIER_KEY(token.Key), IDENTIFIER_PTR(&repl->lexer.IdentifierTree, token));
-#endif
                 }
                 else if (token.TokenType == tok_char)
                 {
@@ -848,4 +839,3 @@ int main(int argc, const char* argv[])
 #endif
     return 1;
 }
-#endif

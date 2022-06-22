@@ -20,8 +20,6 @@ typedef struct int16x8_t
     };
 } int16x8_t;
 #  pragma pack(pop)
-# define E16(SIMD_VAR, IDX) \
-    SIMD_VAR.E[IDX]
 #elif defined (NEON)
 #  include <arm_neon.h>
 #  define E16(SIMD_REG, IDX) \

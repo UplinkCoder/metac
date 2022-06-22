@@ -1598,7 +1598,7 @@ metac_type_index_t MetaCSemantic_TypeSemantic(metac_semantic_state_t* self,
         if (self->Waiters.Waiters[waiterIdx].FuncHash == funcHash
          && self->Waiters.Waiters[waiterIdx].NodeHash == nodeHash)
         {
-
+            printf("Found someone waiting for me\n");
         }
     }
 
@@ -1774,8 +1774,24 @@ typedef struct MetaCSemantic_doDeclSemantic_TaskContext_t
     metac_semantic_state_t* Sema;
     metac_declaration_t* Decl;
     metac_sema_declaration_t* Result;
-
 } MetaCSemantic_doDeclSemantic_TaskContext_t;
+
+const char* doDeclSemantic_PrintFunction(task_t* task)
+{
+    MetaCSemantic_doDeclSemantic_TaskContext_t* ctx =
+         (MetaCSemantic_doDeclSemantic_TaskContext_t*)
+            task->Context;
+    char* buffer = cast(char*)malloc(256);
+    metac_printer_t printer;
+    //MetaCPrinter_Init(&printer, ctx->)
+    const char* declPrint = 0;
+//        MetaCPrinter_PrintDeclaration(&printer, ctx->Decl);
+
+    sprintf(buffer, "doDeclSemantic {Sema: %p, Decl: %s}\n\0",
+                    ctx->Sema, declPrint);
+
+    return buffer;
+}
 
 metac_sema_declaration_t* MetaCSemantic_declSemantic(metac_semantic_state_t* self,
                                                      metac_declaration_t* decl)
@@ -1846,21 +1862,12 @@ metac_sema_declaration_t* MetaCSemantic_declSemantic(metac_semantic_state_t* sel
     return result;
 }
 
-#ifndef NO_FIBERS
-void MetaCSemantic_doDeclSemantic_Fiber(void)
-{
-    void* me = aco_get_co();
-    MetaCSemantic_doDeclSemantic_TaskContext_t* ctx =
-        cast(MetaCSemantic_doDeclSemantic_TaskContext_t*) aco_get_arg();
-    metac_semantic_state_t* sema = ctx->Sema;
-    metac_declaration_t* decl = ctx->Decl;
-
-    ctx->Result = MetaCSemantic_declSemantic(sema, decl);
-}
-#endif
-
 void MetaCSemantic_doDeclSemantic_Task(task_t* task)
 {
+    const char* taskPrint = doDeclSemantic_PrintFunction(task);
+    printf("Task: %s\n", taskPrint);
+    free(taskPrint);
+
     MetaCSemantic_doDeclSemantic_TaskContext_t* ctx =
         (MetaCSemantic_doDeclSemantic_TaskContext_t*)
             task->Context;
@@ -1887,6 +1894,7 @@ metac_sema_declaration_t* MetaCSemantic_doDeclSemantic_(metac_semantic_state_t* 
 
         task_t declTask;
         declTask.TaskFunction = MetaCSemantic_doDeclSemantic_Task;
+        declTask.PrintFunction = doDeclSemantic_PrintFunction;
 		declTask.Origin.File = callFile;
         declTask.Origin.Line = callFile;
         assert(sizeof(CtxValue) < sizeof(declTask._inlineContext));
