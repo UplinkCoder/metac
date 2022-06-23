@@ -12,7 +12,7 @@
 #  include "3rd_party/bsf.c"
 #else
 #  define BSF(X) \
-    (__builtin_ctz(X) + 1)
+    (__builtin_ctz(X))
 #endif
 
 #endif // _BSF_H_

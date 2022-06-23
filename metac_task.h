@@ -60,12 +60,12 @@ typedef void (*task_fn_t)(struct task_t*);
 
 typedef enum task_flags_t
 {
-    Task_None,
+    Task_Halted,
 
     Task_Running   = (1 << 0),
-    Task_Suspended = (1 << 1),
+    Task_Resumable = (1 << 1),
     Task_Complete  = (1 << 2),
-
+    Task_Waiting   = Task_Resumable | Task_Running,
 } task_flags_t;
 
 typedef struct task_origin_t
@@ -86,7 +86,7 @@ typedef struct task_t
 
     const char* (*PrintFunction)(struct task_t* task);
 
-    volatile uint32_t TaskFlags;
+    volatile task_flags_t TaskFlags;
     aco_t* Fiber;
 
     struct task_t* Parent;

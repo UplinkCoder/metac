@@ -1173,10 +1173,22 @@ scope_insert_error_t MetaCSemantic_RegisterInScope(metac_semantic_state_t* self,
     if (self->CurrentScope != 0)
         result = MetaCScope_RegisterIdentifier(self->CurrentScope, idPtr, node);
 
+    for(uint32_t i = 0; i < self->Waiters.WaiterCount; i++)
+    {
+        metac_semantic_waiter_t waiter = self->Waiters.Waiters[i];
+        if (waiter.FuncHash == CRC32C_S("MetaCSemantic_LookupIdentifier")
+         && waiter.NodeHash == CRC32C_VALUE(~0, idPtr))
+        {
+            task_t* waitingTask = ((task_t*)waiter.continuation->arg);
+            assert(waitingTask->TaskFlags == Task_Waiting);
+            printf("Found matching waiter\n");
+            waitingTask->TaskFlags &= (~Task_Waiting);
+            waitingTask->TaskFlags |= Task_Resumable;
+        }
+    }
+
     return result;
 }
-
-#define YIELD_ON(NODE, FUNC);
 
 bool ComputeStructLayout(metac_semantic_state_t* self, decl_type_t* type)
 {
@@ -1222,6 +1234,7 @@ bool MetaCSemantic_ComputeStructLayoutPopulateScope(metac_semantic_state_t* self
                 assert(self->Waiters.WaiterCount < self->Waiters.WaiterCapacity);
                 self->Waiters.Waiters[self->Waiters.WaiterCount++] = waiter;
                 printf("We should Yield\n");
+                (cast(task_t*)(me->arg))->TaskFlags |= Task_Waiting;
                 YIELD(watingOnTypeSemantic);
                 printf("Now we should be able to resolve\n");
                 semaField->Type =
@@ -1538,10 +1551,9 @@ metac_type_index_t MetaCSemantic_TypeSemantic(metac_semantic_state_t* self,
     }
     else if (type->DeclKind == decl_type && type->TypeKind == type_identifier)
     {
-        printf("MetaCNodeKind_toChars: %s\n", MetaCNodeKind_toChars((metac_node_kind_t)type->DeclKind));
-        printf("TypeIdentifier: %s\n",
-            IdentifierPtrToCharPtr(self->ParserIdentifierTable, type->TypeIdentifier));
-
+        //printf("MetaCNodeKind_toChars: %s\n", MetaCNodeKind_toChars((metac_node_kind_t)type->DeclKind));
+        //printf("TypeIdentifier: %s\n", IdentifierPtrToCharPtr(self->ParserIdentifierTable, type->TypeIdentifier));
+LtryAgian: {}
         metac_node_t node =
             MetaCSemantic_LookupIdentifier(self, type->TypeIdentifier);
         {
@@ -1554,8 +1566,14 @@ metac_type_index_t MetaCSemantic_TypeSemantic(metac_semantic_state_t* self,
                 aco_t* me = (aco_t*)CurrentFiber();
                 task_t* task = CurrentTask();
                 printf("Yield!\n");
+                metac_semantic_waiter_t* meWaiter = &self->Waiters.Waiters[INC(self->Waiters.WaiterCount)];
+                meWaiter->FuncHash = CRC32C_S("MetaCSemantic_LookupIdentifier");
+                meWaiter->NodeHash = CRC32C_VALUE(~0, type->TypeIdentifier);
+                meWaiter->continuation = me;
+                task->TaskFlags |= Task_Waiting;
                 YIELD(WaitOnResolve);
-                printf("Continue after yielding\n");
+                printf("Trying agian after yielding\n");
+                goto LtryAgian;
 #else
                 printf("No fiber support ... cannot deal with deferred lookup\n");
 #endif
@@ -1595,10 +1613,12 @@ metac_type_index_t MetaCSemantic_TypeSemantic(metac_semantic_state_t* self,
         waiterIdx < self->Waiters.WaiterCount;
         waiterIdx++)
     {
-        if (self->Waiters.Waiters[waiterIdx].FuncHash == funcHash
-         && self->Waiters.Waiters[waiterIdx].NodeHash == nodeHash)
+        metac_semantic_waiter_t waiter = self->Waiters.Waiters[waiterIdx];
+        if (waiter.FuncHash == funcHash
+         && waiter.NodeHash == nodeHash)
         {
             printf("Found someone waiting for me\n");
+            RESUME(waiter.continuation);
         }
     }
 
@@ -1764,6 +1784,8 @@ metac_node_t NodeFromTypeIndex(metac_semantic_state_t* sema,
             return (metac_node_t)StructPtr(sema, index);
         case type_index_union:
             return (metac_node_t)UnionPtr(sema, index);
+        case type_index_typedef:
+            return (metac_node_t)(TypedefPtr(sema, index));
     }
 
     return 0;
@@ -1849,7 +1871,7 @@ metac_sema_declaration_t* MetaCSemantic_declSemantic(metac_semantic_state_t* sel
         {
             metac_type_index_t type_index =
                 MetaCSemantic_doTypeSemantic(self, (decl_type_t*)decl);
-                if (declId.v != 0 && declId.v != -1)
+            if (declId.v != 0 && declId.v != -1)
             {
                 metac_node_t node =
                     NodeFromTypeIndex(self, type_index);
@@ -1893,18 +1915,21 @@ metac_sema_declaration_t* MetaCSemantic_doDeclSemantic_(metac_semantic_state_t* 
         };
 
         task_t declTask;
+        task_t* currentTask = CurrentTask();
         declTask.TaskFunction = MetaCSemantic_doDeclSemantic_Task;
         declTask.PrintFunction = doDeclSemantic_PrintFunction;
 		declTask.Origin.File = callFile;
         declTask.Origin.Line = callFile;
+        declTask.Context = declTask._inlineContext;
+        declTask.ContextSize = sizeof(CtxValue);
         assert(sizeof(CtxValue) < sizeof(declTask._inlineContext));
         (*(MetaCSemantic_doDeclSemantic_TaskContext_t*)declTask.Context) =
             CtxValue;
         MetaCSemantic_doDeclSemantic_TaskContext_t* CtxValuePtr = &CtxValue;
         printf("We should yield now\n");
-        declTask.Continuation = CurrentTask();
+        declTask.Continuation = currentTask;
         TaskQueue_Push(q, &declTask);
-
+        currentTask->TaskFlags |= Task_Waiting;
         YIELD(waiting_for_declSemantic);
         printf("We are back\n");
         result = CtxValuePtr->Result;
@@ -2009,7 +2034,7 @@ metac_node_t MetaCSemantic_LRU_LookupIdentifier(metac_semantic_state_t* self,
 /// Returns _emptyNode to signifiy it could not be found
 /// a valid node otherwise
 metac_node_t MetaCSemantic_LookupIdentifier(metac_semantic_state_t* self,
-                                             metac_identifier_ptr_t identifierPtr)
+                                            metac_identifier_ptr_t identifierPtr)
 {
 
     metac_node_t result = emptyNode;
