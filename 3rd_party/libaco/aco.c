@@ -176,7 +176,7 @@ static void aco_default_protector_last_word(void){
 }
 
 static aco_cofuncp_t aco_gtls_last_word_fp = aco_default_protector_last_word;
-
+#ifdef HAS_TLS
 #ifdef __i386__
     static __thread void* aco_gtls_fpucw_mxcsr[2];
 #elif  defined(__x86_64__) || defined(__aarch64__)
@@ -184,7 +184,15 @@ static aco_cofuncp_t aco_gtls_last_word_fp = aco_default_protector_last_word;
 #else
     #error "platform no support yet"
 #endif
-
+#else
+#ifdef __i386__
+    static void* aco_gtls_fpucw_mxcsr[2];
+#elif  defined(__x86_64__) || defined(__aarch64__)
+    static void* aco_gtls_fpucw_mxcsr[1];
+#else
+    #error "platform no support yet"
+#endif
+#endif
 void aco_thread_init(aco_cofuncp_t last_word_co_fp){
     aco_save_fpucw_mxcsr(aco_gtls_fpucw_mxcsr);
 

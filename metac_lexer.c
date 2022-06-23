@@ -652,10 +652,12 @@ void MetaCLocationStorage_Init(metac_location_storage_t* self)
 metac_location_ptr MetaCLocationStorage_Store(metac_location_storage_t* self,
                                               metac_location_t loc)
 {
+#ifndef TEST_LEXER
     if (self->LocationSize >= self->LocationCapacity)
     {
         _newMemRealloc((void**)&self->Locations, &self->LocationCapacity, sizeof(metac_location_t));
     }
+#endif
 
     assert(self->LocationSize < self->LocationCapacity);
 
@@ -697,11 +699,12 @@ metac_location_ptr MetaCLocationStorage_StartLoc(
         uint32_t line, uint16_t column)
 {
 #ifndef NO_LOCATION_TRACKING
+#ifndef TEST_LEXER
     if (self->LocationSize >= self->LocationCapacity)
     {
         _newMemRealloc((void**)&self->Locations, &self->LocationCapacity, sizeof(metac_location_t));
     }
-
+#endif
     assert(self->LocationSize < self->LocationCapacity);
 
     uint32_t result = self->LocationSize++;

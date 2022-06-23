@@ -16,7 +16,12 @@
 extern bool g_exernalIdentifierTable;
 extern metac_lexer_t g_lineLexer;
 extern void LineLexerInit();
+
+#ifdef HAS_TLS
 extern __thread worker_context_t *threadContext;
+#else
+extern worker_context_t *threadContext;
+#endif
 
 metac_statement_t* MetaCParser_ParseStatementFromString(const char* str);
 metac_declaration_t* MetaCParser_ParseDeclarationFromString(const char* str);

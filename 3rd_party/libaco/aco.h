@@ -45,6 +45,10 @@
 #  define _M_X64
 #endif
 
+#if defined(_MSC_VER) || defined(__TINYC__)
+#  define __PRETTY_FUNCTION__ __FUNCTION__
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif
