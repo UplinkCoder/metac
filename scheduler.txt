@@ -1,0 +1,14 @@
+Right now it works like this.
+
+
+On the first run through the work loop we allocate the fibers
+and run one iteration of the repl to get the inital source
+after that the loop goes like this:
+
+If there are resumeable tasks try to make progress on them
+by trying to finish them, we try to finish the pending tasks at most 2 times 
+after that we assume that we are dependent on work which has not been schduled yet
+so we pull from the taskQueue
+then we try to execute the task we just pulled if there was one
+
+at the end we run the repl fiber again to get more source code

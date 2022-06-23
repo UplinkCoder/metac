@@ -102,28 +102,34 @@ void FiberPool_Init(fiber_pool_t* self, worker_context_t* worker)
 
     for(uint32_t i = 0; i < sizeof(self->FreeBitfield) * 8; i++)
     {
-        self->ShareStacks[i] = *aco_share_stack_new(0);
+        self->ShareStacks[i] = *aco_share_stack_new(KILOBYTE(512));
         self->MainCos[i] = *aco_create(worker->WorkerMain, self->ShareStacks + i, 0, FiberDoTask, worker);
     }
 }
 
-void ExecuteTask(task_t* task, aco_t* fiber)
+void ExecuteTask(worker_context_t* worker, task_t* task, aco_t* fiber)
 {
     assert(!(task->TaskFlags & Task_Running));
     assert(!(task->TaskFlags & Task_Complete));
     assert(task->Fiber == fiber);
     fiber->arg = task;
+    fiber_pool_t* fiberPool = worker->FiberPool;
     if (task->TaskFunction == 0)
     {
         assert(0);
     }
     START(task->Fiber);
 
-    printf("StackSz: %u\n", fiber->save_stack.max_cpsz );
-
     if ((task->TaskFlags & Task_Complete) == Task_Complete)
     {
+        uint32_t fiberIdx = fiber - fiberPool->MainCos;
+        assert(fiberIdx >= 0 && fiberIdx < sizeof(fiberPool->FreeBitfield) * 8);
+        fiberPool->FreeBitfield &= ~(1 << fiberIdx);
         fiber->arg = 0;
+    }
+    else
+    {
+        assert((task->TaskFlags & Task_Suspended) == Task_Suspended);
     }
 }
 
@@ -195,7 +201,7 @@ void RunWorkerThread(worker_context_t* worker, void (*specialFunc)(), void* spec
                 {
                     printf("Pulled task\n");
                     taskP->Fiber = execFiber;
-                    ExecuteTask(taskP, execFiber);
+                    ExecuteTask(worker, taskP, execFiber);
                     if ((taskP->TaskFlags & Task_Complete) == Task_Complete)
                     {
                         printf("Execution finished freeing fiber\n");
@@ -213,18 +219,52 @@ void RunWorkerThread(worker_context_t* worker, void (*specialFunc)(), void* spec
         {
             // the completion goal is the number of active tasks
             const uint32_t completionGoal = ~(*FreeBitfield);
+            // holds the information for which fibers should be executed next
 
             uint32_t tryMask0 = 0; // tasks which have been tried once
-            uint32_t tryMask1 = 0; // tasks which have been twice once
+            uint32_t tryMask1 = 0; // tasks which have been tried twice
 
             // do not allow the creation of new tasks for this run
             worker->Flags |= Worker_YieldOnTaskCreation;
 
             // try fibers until all of them have been tried twice
+            uint32_t nextFiberBitfield = completionGoal;
             for(;;)
             {
-                if (tryMask1 == completionGoal)
+                nextFiberIdx = BSF(nextFiberBitfield);
+                nextFiberBitfield &= ~(1 << nextFiberIdx);
+                execFiber = &fiberPool.MainCos[nextFiberIdx];
+
+                if (tryMask0 == completionGoal)
+                {
+                    assert(nextFiberBitfield == 0);
                     break;
+                }
+
+                ExecuteTask(worker, (task_t*)execFiber->arg, execFiber);
+
+                tryMask0 |= (1 << nextFiberIdx);
+            }
+            const uint32_t CompletedTasks = (~completionGoal) & *FreeBitfield;
+
+            // set all tasks which have been completed in the tryMask1
+            nextFiberBitfield = ~CompletedTasks;
+
+            for(;;)
+            {
+                nextFiberIdx = BSF(nextFiberBitfield);
+                nextFiberBitfield &= ~(1 << nextFiberIdx);
+                execFiber = &fiberPool.MainCos[nextFiberIdx];
+
+                if (tryMask1 == completionGoal)
+                {
+                    assert(nextFiberBitfield == 0);
+                    break;
+                }
+
+                ExecuteTask(worker, (task_t*)execFiber->arg, execFiber);
+
+                tryMask1 |= (1 << nextFiberIdx);
             }
 
             assert(tryMask0 == tryMask1);
