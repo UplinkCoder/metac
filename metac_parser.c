@@ -1468,6 +1468,12 @@ LnextToken:
                     MetaCParser_Match(self, tok_kw_double);
                     type->TypeKind = type_long_double;
                 }
+
+                // eat the int behind long int and long long int
+                if (MetaCParser_PeekMatch(self, tok_kw_int, 1))
+                {
+                    MetaCParser_Match(self, tok_kw_int);
+                }
             }
             break;
         }
@@ -1811,13 +1817,22 @@ metac_declaration_t* MetaCParser_ParseDeclaration(metac_parser_t* self, metac_de
         decl_type_typedef_t* typdef = AllocNewDeclaration(decl_type_typedef, &result);
 
         typdef->Type = MetaCParser_ParseTypeDeclaration(self, (metac_declaration_t*) typdef, 0);
-        metac_token_t* name = MetaCParser_Match(self, tok_identifier);
-        if (!name || name->TokenType != tok_identifier)
+        metac_token_t* name = MetaCParser_PeekToken(self, 1);
+        if (!name || (name->TokenType != tok_identifier && name->TokenType != tok_kw_size_t))
         {
             printf("Expecting an identifier to follow the type definition of a typedef\n");
             return ErrorDeclaration();
         }
-        typdef->Identifier = RegisterIdentifier(self, name);
+        if (name->TokenType == tok_kw_size_t)
+        {
+            MetaCParser_Match(self, tok_kw_size_t);
+            typdef->Identifier = empty_identifier;
+        }
+        else
+        {
+            MetaCParser_Match(self, tok_identifier);
+            typdef->Identifier = RegisterIdentifier(self, name);
+        }
         goto LendDecl;
     }
 

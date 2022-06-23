@@ -546,7 +546,10 @@ static inline void PrintDeclaration(metac_printer_t* self,
             PrintString(self, "typedef ", sizeof("typedef ") - 1);
             level++;
             PrintDeclaration(self, (metac_declaration_t*)typdef->Type, level);
-            PrintIdentifier(self, typdef->Identifier);
+            if (typdef->Identifier.v != empty_identifier.v)
+            {
+                PrintIdentifier(self, typdef->Identifier);
+            }
             level--;
         } break;
         case decl_type:
