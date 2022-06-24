@@ -1840,6 +1840,8 @@ uint32_t HashDecl(metac_declaration_t* decl)
     if (decl->Hash)
         assert(decl->Hash == result);
     assert(result != 0);
+
+    return result;
 }
 
 metac_declaration_t* MetaCParser_ParseDeclaration(metac_parser_t* self, metac_declaration_t* parent)
