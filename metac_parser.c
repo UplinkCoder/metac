@@ -540,7 +540,7 @@ static inline bool IsPostfixOperator(metac_token_enum_t t)
 
 static inline bool IsBinaryOperator(metac_token_enum_t t, parse_expression_flags_t flags)
 {
-    if ((flags & expr_flags_call) != 0
+    if ((flags & (expr_flags_call | expr_flags_enum)) != 0
      && (t == tok_comma))
         return false;
 
@@ -1291,6 +1291,7 @@ metac_expression_t* MetaCParser_ParseBinaryExpression(metac_parser_t* self,
             result = AllocNewExpression(exp_right);
             result->E1 = left;
             result->E2 = rhs;
+            result->Hash = CRC32C_VALUE(left->Hash, rhs->Hash);
             left = result;
         }
     }
@@ -1344,7 +1345,7 @@ metac_expression_t* MetaCParser_ParseExpression(metac_parser_t* self,
 
         tokenType = peekNext->TokenType;
         //within a call we must not treat a comma as a binary expression
-        if ((eflags & (expr_flags_call | expr_flags_enum)) && tokenType == tok_comma)
+        if (((eflags & (expr_flags_call | expr_flags_enum)) != 0) && tokenType == tok_comma)
             goto LreturnExp;
 
         if ((eflags & expr_flags_unary))
