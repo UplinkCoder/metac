@@ -5,8 +5,8 @@
 #  define FENCE() __asm__ volatile ("mfence" ::: "memory");
 #  define MM_PAUSE() __asm__ volatile ("pause");
 #elif defined(__aarch64__)
-# define FENCE() __asm__ volatile("dmb sy" ::: "memory");
-# define MM_PAUSE() __asm__ volatile("yield");
+# define FENCE() __asm__ volatile ("dmb sy" ::: "memory");
+# define MM_PAUSE() __asm__ volatile ("yield");
 #else
 #  define FENCE()
 #  define MM_PAUSE()

@@ -62,7 +62,7 @@ static inline void RWLock_ReleaseWriteLock(RWLock *self)
 #define RLOCK(LOCK) do { \
     while (!RWLock_TryReadLock(LOCK)) \
     { \
-        MM_PAUSE() \
+        MM_PAUSE(); \
     } \
 } while (0) \
 FENCE()
@@ -70,16 +70,35 @@ FENCE()
 #define WLOCK(LOCK) do { \
     while (!RWLock_TryWriteLock(LOCK)) \
     { \
-        MM_PAUSE() \
+        MM_PAUSE(); \
     } \
-} while (0) \
+} while (0); \
 FENCE()
 
 #define RWLOCK(LOCK) do { \
     RWLock_ReleaseReadLock(LOCK); \
     while (!RWLock_TryWriteLock(LOCK)) \
     { \
-        MM_PAUSE() \
+        MM_PAUSE(); \
     } \
-} while (0) \
+} while (0); \
 FENCE()
+
+#define RWUNLOCK(LOCK) \
+    FENCE(); do { \
+    RWLock_ReleaseWriteLock(LOCK); \
+    while (!RWLock_TryReadLock()) \
+    { \
+        MM_PAUSE(); \
+    } \
+} while (0);
+
+#define RUNLOCK(LOCK) \
+    FENCE() do { \
+    RWLock_ReleaseReadLock(LOCK); \
+} while(0)
+
+#define WUNLOCK(LOCK) \
+    FENCE() do { \
+    RWLock_ReleaseWriteLock(LOCK); \
+} while(0)
