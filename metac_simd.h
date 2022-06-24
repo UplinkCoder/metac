@@ -1,36 +1,42 @@
 #ifndef _METAC_SIMD_H_
 #define _METAC_SIMD_H_
+
+#if __aarch64__
+#  define NEON
+#endif
+
 #include "compat.h"
-#if !defined(NEON)
-#  if defined(SSE2)
-#    include <xmmintrin.h>
-#  endif
 
-#  define E16(SIMD_REG, IDX) \
-       SIMD_REG.E[IDX]
+#  if !defined(NEON)
+#    if defined(SSE2)
+#      include <xmmintrin.h>
+#    endif
 
-#  pragma pack(push, 16)
+#    define E16(SIMD_REG, IDX) \
+         SIMD_REG.E[IDX]
+
+#    pragma pack(push, 16)
 typedef struct int16x8_t
 {
     union {
       uint16_t E[8];
       uint64_t EX[2];
-#  if defined(SSE2)
+#    if defined(SSE2)
     __m128i  XMM;
-#  endif
+#    endif
     };
 } int16x8_t;
-#  pragma pack(pop)
-#elif defined (NEON)
-#  include <arm_neon.h>
-#  define E16(SIMD_REG, IDX) \
-    SIMD_REG[IDX]
-#else
-# error "this can't happen"
-#endif
+#    pragma pack(pop)
+#  elif defined (NEON)
+#    include <arm_neon.h>
+#    define E16(SIMD_REG, IDX) \
+        SIMD_REG[IDX]
+#  else
+#    error "this can't happen"
+#  endif
 
 
-#if defined (SSE2)
+#  if defined (SSE2)
 /// taken from https://github.com/AuburnSounds/intel-intrinsics/blob/master/source/inteli/emmintrin.d
 /// Thanks Guillaume!
 static inline uint32_t MoveMask16( const int16x8_t a )
@@ -75,9 +81,9 @@ static inline int16x8_t Load16(const int16x8_t* ptr)
 
 static inline void Store16(int16x8_t* ptr, const int16x8_t value)
 {
-    _mm_storeu_si128(ptr, value.XMM);
+    _mm_storeu_si128((__m128i*)ptr, value.XMM);
 }
-#elif defined(NEON)
+#  elif defined(NEON)
 static inline uint32_t MoveMask16(const int16x8_t a)
 {
     const int16x8_t multi = {1 << 0, 1 << 1, 1 << 2, 1 << 3,
@@ -116,7 +122,7 @@ static inline void Store16(int16x8_t* ptr, const int16x8_t value)
 {
     *ptr = value;
 }
-#else // no supported SIMD_PLATFROM
+#  else // no supported SIMD_PLATFROM
 static inline uint32_t MoveMask16(const int16x8_t a)
 {
     uint32_t result = 0;
@@ -187,5 +193,6 @@ static inline void Store16(int16x8_t* ptr, const int16x8_t value)
 {
     *ptr = value;
 }
-#endif
+#  endif
+
 #endif // _METAC_SIMD_H_
