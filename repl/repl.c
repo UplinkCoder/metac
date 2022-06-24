@@ -356,11 +356,13 @@ LswitchMode:
     while(0)
     {
     }
-
-    repl->line = linenoise(repl->promt);
+    
+    {
+        repl->line = linenoise(repl->promt);
+        linenoiseHistoryAdd(repl->line);
+    }
 
     {
-        linenoiseHistoryAdd(repl->line);
         uint32_t line_length = strlen(repl->line);
         if (*repl->line == ':')
         {
@@ -550,8 +552,40 @@ LswitchMode:
                     MetaCParser_ParseExpressionFromString(repl->line);
 
                 const char* str = MetaCPrinter_PrintExpression(&repl->printer, exp);
+#ifndef NO_FIBERS
+#define CAT2(A, B) \
+    A ## B
+
+#define CAT(A, B) \
+    CAT2(A, B)
+
+#define CTX_NAME2(FUNC, FILE, LINE) \
+    CAT(FUNC, LINE)
+
+#define CTX_TYPE(FUNC) \
+    FUNC ## task_context_t
+
+#define CTX_NAME(FUNC) \
+    CTX_NAME2(FUNC, __FILE__, __LINE__)
+
+#define SPWAN_TASK(RESULT, FUNC, ...) do { \
+    task_t task = {0}; \
+    CTX_TYPE(FUNC) ctx = {__VA_ARGS__}; \
+    CTX_TYPE(FUNC)* ctxPtr = &ctx; \
+    STATIC_ASSERT(sizeof(task._inlineContext) >= sizeof(CTX_TYPE(FUNC)), \
+        "Context size too large for inline context storage"); \
+    task.Parent = CurrentTask(); \
+    ORIGIN(task.Origin); \
+    (*(cast(CTX_TYPE(FUNC)*)task.Context)) = ctx; \
+    RESULT = ctxPtr->Result; \
+} while(0);
+        
+                metac_sema_expression_t* result;
+                SPWAN_TASK(result, MetaCSemantic_doExprSemantic_, &repl->sema, exp);
+#else
                 metac_sema_expression_t* result =
                     MetaCSemantic_doExprSemantic(&repl->sema, exp);
+#endif
                 printf("typeIndex.v: %x\n", result->TypeIndex.v);
                 const char* type_str = TypeToChars(&repl->sema, result->TypeIndex);
 
@@ -670,11 +704,11 @@ LswitchMode:
                 else
                     printf("Couldn't parse Declaration\n");
 #ifndef NO_FIBERS
-                MetaCSemantic_doDeclSemantic_TaskContext_t ctx =
+                MetaCSemantic_doDeclSemantic_task_context_t ctx =
                 {
                     &repl->sema, decl, 0
                 };
-                MetaCSemantic_doDeclSemantic_TaskContext_t* ctxPtr =
+                MetaCSemantic_doDeclSemantic_task_context_t* ctxPtr =
                     &ctx;
                 task_t DeclSemaTask = {0};
                 DeclSemaTask.TaskFunction = MetaCSemantic_doDeclSemantic_Task;

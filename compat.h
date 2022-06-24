@@ -20,6 +20,19 @@
 #  include <stdint.h>
 #endif
 
+#if !defined( __STDC_VERSION__ ) || __STDC_VERSION__ < 201112L
+# ifdef __COUNTER__
+  /* microsoft */
+#  define STATIC_ASSERT(E, M) \
+    enum { CAT(static_assert_, __COUNTER__) = 1/(int)(!!(E)) }
+# else
+#  define STATIC_ASSERT(E, M) \
+    enum { CAT(assert_line_, __LINE__) = 1/(int)(!!(E)) }
+# endif
+#else
+# define STATIC_ASSERT(E, M) _Static_assert(E, M)
+#endif
+
 #  ifdef __CC65__
 #  define bool _Bool
 typedef unsigned char _Bool;

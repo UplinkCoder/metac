@@ -1179,7 +1179,7 @@ scope_insert_error_t MetaCSemantic_RegisterInScope(metac_semantic_state_t* self,
         if (waiter.FuncHash == CRC32C_S("MetaCSemantic_LookupIdentifier")
          && waiter.NodeHash == CRC32C_VALUE(~0, idPtr))
         {
-            task_t* waitingTask = ((task_t*)waiter.continuation->arg);
+            task_t* waitingTask = ((task_t*)waiter.Continuation->arg);
             assert(waitingTask->TaskFlags == Task_Waiting);
             printf("Found matching waiter\n");
             waitingTask->TaskFlags &= (~Task_Waiting);
@@ -1229,7 +1229,7 @@ bool MetaCSemantic_ComputeStructLayoutPopulateScope(metac_semantic_state_t* self
                 metac_semantic_waiter_t waiter;
                 waiter.FuncHash = CRC32C_S("MetaCSemantic_doTypeSemantic");
                 waiter.NodeHash = declField->Field->VarType->TypeHeader.Hash;
-                waiter.continuation = me;
+                waiter.Continuation = me;
 
                 assert(self->Waiters.WaiterCount < self->Waiters.WaiterCapacity);
                 self->Waiters.Waiters[self->Waiters.WaiterCount++] = waiter;
@@ -1569,7 +1569,7 @@ LtryAgian: {}
                 metac_semantic_waiter_t* meWaiter = &self->Waiters.Waiters[INC(self->Waiters.WaiterCount)];
                 meWaiter->FuncHash = CRC32C_S("MetaCSemantic_LookupIdentifier");
                 meWaiter->NodeHash = CRC32C_VALUE(~0, type->TypeIdentifier);
-                meWaiter->continuation = me;
+                meWaiter->Continuation = me;
                 task->TaskFlags |= Task_Waiting;
                 YIELD(WaitOnResolve);
                 printf("Trying agian after yielding\n");
@@ -1618,7 +1618,7 @@ LtryAgian: {}
          && waiter.NodeHash == nodeHash)
         {
             printf("Found someone waiting for me\n");
-            RESUME(waiter.continuation);
+            RESUME(waiter.Continuation);
         }
     }
 
@@ -1698,7 +1698,7 @@ metac_type_index_t MetaCSemantic_doTypeSemantic_(metac_semantic_state_t* self,
             metac_semantic_waiter_t waiter = self->Waiters.Waiters[waiterIdx];
             if (funcHash == waiter.FuncHash && nodeHash == waiter.NodeHash)
             {
-                aco_yield2(waiter.continuation);
+                aco_yield2(waiter.Continuation);
             }
         }
 
@@ -1791,17 +1791,17 @@ metac_node_t NodeFromTypeIndex(metac_semantic_state_t* sema,
     return 0;
 }
 
-typedef struct MetaCSemantic_doDeclSemantic_TaskContext_t
+typedef struct MetaCSemantic_doDeclSemantic_task_context_t
 {
     metac_semantic_state_t* Sema;
     metac_declaration_t* Decl;
     metac_sema_declaration_t* Result;
-} MetaCSemantic_doDeclSemantic_TaskContext_t;
+} MetaCSemantic_doDeclSemantic_task_context_t;
 
 const char* doDeclSemantic_PrintFunction(task_t* task)
 {
-    MetaCSemantic_doDeclSemantic_TaskContext_t* ctx =
-         (MetaCSemantic_doDeclSemantic_TaskContext_t*)
+    MetaCSemantic_doDeclSemantic_task_context_t* ctx =
+         (MetaCSemantic_doDeclSemantic_task_context_t*)
             task->Context;
     char* buffer = cast(char*)malloc(256);
     metac_printer_t printer;
@@ -1890,8 +1890,8 @@ void MetaCSemantic_doDeclSemantic_Task(task_t* task)
     printf("Task: %s\n", taskPrint);
     free(taskPrint);
 
-    MetaCSemantic_doDeclSemantic_TaskContext_t* ctx =
-        (MetaCSemantic_doDeclSemantic_TaskContext_t*)
+    MetaCSemantic_doDeclSemantic_task_context_t* ctx =
+        (MetaCSemantic_doDeclSemantic_task_context_t*)
             task->Context;
     task_origin_t Origin = task->Origin;
     ctx->Result =
@@ -1910,7 +1910,7 @@ metac_sema_declaration_t* MetaCSemantic_doDeclSemantic_(metac_semantic_state_t* 
 #if !defined(NO_FIBERS)
         taskqueue_t* q = &CurrentWorker()->Queue;
         printf("Couldn't do the decl Semantic, yielding to try again\n");
-        MetaCSemantic_doDeclSemantic_TaskContext_t CtxValue = {
+        MetaCSemantic_doDeclSemantic_task_context_t CtxValue = {
             self, decl
         };
 
@@ -1923,9 +1923,9 @@ metac_sema_declaration_t* MetaCSemantic_doDeclSemantic_(metac_semantic_state_t* 
         declTask.Context = declTask._inlineContext;
         declTask.ContextSize = sizeof(CtxValue);
         assert(sizeof(CtxValue) < sizeof(declTask._inlineContext));
-        (*(MetaCSemantic_doDeclSemantic_TaskContext_t*)declTask.Context) =
+        (*(MetaCSemantic_doDeclSemantic_task_context_t*)declTask.Context) =
             CtxValue;
-        MetaCSemantic_doDeclSemantic_TaskContext_t* CtxValuePtr = &CtxValue;
+        MetaCSemantic_doDeclSemantic_task_context_t* CtxValuePtr = &CtxValue;
         printf("We should yield now\n");
         declTask.Continuation = currentTask;
         TaskQueue_Push(q, &declTask);
@@ -2286,6 +2286,13 @@ metac_sema_expression_t* MetaCSemantic_doIndexSemantic_(metac_semantic_state_t* 
 
     return  result;
 }
+
+typedef struct MetaCSemantic_doExprSemantic_task_context_t
+{
+    metac_semantic_state_t* Sema;
+    metac_expression_t* Expr;
+    metac_sema_expression_t* Result;
+} MetaCSemantic_doExprSemantic_task_context_t;
 
 metac_sema_expression_t* MetaCSemantic_doExprSemantic_(metac_semantic_state_t* self,
                                                        metac_expression_t* expr,

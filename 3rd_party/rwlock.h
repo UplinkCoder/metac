@@ -8,7 +8,7 @@
 /// bits 0..30 keep a count of the number of active readers (ok to be inexact transitorily)
 /// the lock becomes racy once the active reader count hits 2^31 - 1
 
-#include "metac_atomic.h"
+#include "../metac_atomic.h"
 #include "../compat.h"
 #include <assert.h>
 
@@ -81,4 +81,5 @@ FENCE()
     { \
         MM_PAUSE() \
     } \
-} while (0)
+} while (0) \
+FENCE()
