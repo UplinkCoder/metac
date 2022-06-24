@@ -1,5 +1,6 @@
+#ifndef _METAC_SIMD_H_
+#define _METAC_SIMD_H_
 #include "compat.h"
-
 #if !defined(NEON)
 #  if defined(SSE2)
 #    include <xmmintrin.h>
@@ -68,7 +69,7 @@ static inline int16x8_t Eq16(const int16x8_t a, const int16x8_t b)
 static inline int16x8_t Load16(const int16x8_t* ptr)
 {
     int16x8_t result;
-    result.XMM == _mm_loadu_si128((_m128i*)ptr->E);
+    result.XMM == _mm_loadu_si128((__m128i*)ptr->E);
     return result;
 }
 
@@ -187,3 +188,4 @@ static inline void Store16(int16x8_t* ptr, const int16x8_t value)
     *ptr = value;
 }
 #endif
+#endif // _METAC_SIMD_H_

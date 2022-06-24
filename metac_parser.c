@@ -1268,7 +1268,7 @@ metac_expression_t* MetaCParser_ParseBinaryExpression(metac_parser_t* self,
             metac_expression_t* rhs;
             if (exp_right == exp_index)
             {
-                rhs = MetaCParser_ParseExpression(self, 0, 0);
+                rhs = MetaCParser_ParseExpression(self, eflags, 0);
                 MetaCParser_Match(self, tok_rBracket);
             }
             else

@@ -105,7 +105,7 @@ uint32_t FieldHash(metac_type_aggregate_field_t* field)
 {
 #if NDEBUG
     if (field->Hash)
-        return field->Hash;
+        return field->Header.Hash;
 #endif
     uint32_t hash = ~0;
     hash = CRC32C_VALUE(hash, field->Type);

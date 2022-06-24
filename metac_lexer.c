@@ -645,7 +645,7 @@ void MetaCLocationStorage_Init(metac_location_storage_t* self)
 {
     self->LocationCapacity = 128;
     self->LocationSize = 0;
-    self->Locations =
+    self->Locations = cast(metac_location_storage_t*)
         calloc(sizeof(metac_location_storage_t), self->LocationCapacity);
 }
 
