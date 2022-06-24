@@ -645,7 +645,8 @@ static inline uint32_t OpToPrecedence(metac_expression_kind_t exp)
           || exp == exp_string
           || exp == exp_identifier
           || exp == exp_char
-          || exp == exp_tuple)
+          || exp == exp_tuple
+          || exp == exp_type)
     {
         return 18;
     }
@@ -1602,8 +1603,8 @@ LnextToken:
                 MetaCParser_Match(self, tok_colon);
                 enum_->BaseType =
                     MetaCParser_ParseTypeDeclaration(self, 0, 0);
+                hash = CRC32C_VALUE(hash, enum_->BaseType->Hash);
             }
-            hash = CRC32C_VALUE(hash, enum_->BaseType->Hash);
 
             if (MetaCParser_PeekMatch(self, tok_lBrace, 1))
             {
@@ -1681,7 +1682,7 @@ bool IsTypeDecl(metac_declaration_kind_t kind)
           & (kind <= LAST_DECL_TYPE(TOK_SELF)));
 }
 
-decl_parameter_list_t ParseParamterList(metac_parser_t* self)
+decl_parameter_list_t ParseParameterList(metac_parser_t* self)
 {
     decl_parameter_list_t result = {0, (decl_parameter_t*)emptyPointer};
     uint32_t parameterCount = 0;
@@ -1696,17 +1697,20 @@ decl_parameter_list_t ParseParamterList(metac_parser_t* self)
         parameterCount++;
         (*nextParam) = param;
 
-        metac_declaration_t* decl =
-            MetaCParser_ParseDeclaration(self, 0);
-        if (decl->DeclKind == decl_variable)
+        metac_identifier_ptr_t name = empty_identifier;
+        metac_declaration_t* type =
+            MetaCParser_ParseTypeDeclaration(self, 0, 0);
+        if (MetaCParser_PeekMatch(self, tok_identifier, 1))
         {
-            param->Parameter = (decl_variable_t*)decl;
+            name =
+                RegisterIdentifier(self, MetaCParser_Match(self, tok_identifier));
         }
-        else if (IsTypeDecl(decl->DeclKind))
+
+        if (type && IsTypeDecl(type->DeclKind))
         {
             AllocNewDeclaration(decl_variable, &param->Parameter);
-            param->Parameter->VarType = (decl_type_t*)decl;
-            param->Parameter->VarIdentifier = empty_identifier;
+            param->Parameter->VarType = (decl_type_t*)type;
+            param->Parameter->VarIdentifier = name;
         }
         else
         {
@@ -1746,7 +1750,7 @@ decl_function_t* ParseFunctionDeclaration(metac_parser_t* self, decl_type_t* typ
     funcDecl->ReturnType = type;
     funcDecl->Identifier = identifier;
     funcDecl->FunctionBody = (stmt_block_t*) _emptyPointer;
-    decl_parameter_list_t parameterList = ParseParamterList(self);
+    decl_parameter_list_t parameterList = ParseParameterList(self);
     funcDecl->Parameters = parameterList.List;
     funcDecl->ParameterCount = parameterList.ParameterCount;
 
@@ -1984,7 +1988,7 @@ metac_declaration_t* MetaCParser_ParseDeclaration(metac_parser_t* self, metac_de
                     MetaCParser_Match(self, tok_lParen);
                     decl_type_t* returnType = type;
                     decl_parameter_list_t paramterList =
-                        ParseParamterList(self);
+                        ParseParameterList(self);
 
                     decl_type_functiontype_t* functionType =
                         AllocNewDeclaration(decl_type_functiontype, &fPtrVar->VarType);

@@ -30,11 +30,11 @@ int main(int argc, const char* argv[])
 
     uint32_t nWorkers = 3;
 
-    tasksystem_t theTaskystem;
-    worker_context_t* contexts =
-        (worker_context_t*)calloc(sizeof(worker_context_t), nWorkers);
+    //tasksystem_t theTaskystem;
+    //worker_context_t* contexts =
+    //    (worker_context_t*)calloc(sizeof(worker_context_t), nWorkers);
 
-    TaskSystem_Init(&theTaskystem, nWorkers, 0);
+    // TaskSystem_Init(&theTaskystem, nWorkers, 0);
 
     for(int arg_idx = 1;
         arg_idx < argc;

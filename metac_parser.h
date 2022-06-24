@@ -21,6 +21,7 @@ typedef enum parse_expression_flags_t
     expr_flags_call = (1 << 0),
     expr_flags_unary = (1 << 1),
     expr_flags_enum = (1 << 2),
+    expr_flags_type = (1 << 3),
 } parse_expression_flags_t;
 
 
