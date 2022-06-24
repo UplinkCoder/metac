@@ -1,8 +1,10 @@
 #ifndef _METAC_TASK_H_
 #define _METAC_TASK_H_
+
 #include "compat.h"
 #include "3rd_party/tinycthread/tinycthread.h"
 #include "metac_coro.h"
+#include "3rd_party/rwlock.h"
 
 #define FIBERS_PER_WORKER 32
 #define TASK_PAGE_SIZE 4096

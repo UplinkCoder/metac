@@ -8,6 +8,7 @@
 /// bits 0..30 keep a count of the number of active readers (ok to be inexact transitorily)
 /// the lock becomes racy once the active reader count hits 2^31 - 1
 
+#include "metac_atomic.h"
 #include "../compat.h"
 #include <assert.h>
 
@@ -20,21 +21,6 @@ typedef struct RWLock
 #endif
 } RWLock;
 
-#ifdef _MSC_VER
-#  include <intrin.h>
-#else
-#  define _InterlockedIncrement(PTR) \
-      (__sync_add_and_fetch((PTR), 1))
-
-#  define _InterlockedDecrement(PTR) \
-      (__sync_sub_and_fetch((PTR), 1))
-
-#  define _InterlockedCompareExchange(PTR, NEWVAL, OLDVAL) \
-      (__sync_val_compare_and_swap((PTR), (OLDVAL), (NEWVAL)))
-
-#  define _InterlockedExchangeAdd(PTR, VAL) \
-    (__sync_fetch_and_add((PTR), VAL))
-#endif
 
 static inline bool RWLock_TryReadLock(RWLock *self)
 {
@@ -72,3 +58,27 @@ static inline void RWLock_ReleaseWriteLock(RWLock *self)
   }
 }
 #endif
+
+#define RLOCK(LOCK) do { \
+    while (!RWLock_TryReadLock(LOCK)) \
+    { \
+        MM_PAUSE() \
+    } \
+} while (0) \
+FENCE()
+
+#define WLOCK(LOCK) do { \
+    while (!RWLock_TryWriteLock(LOCK)) \
+    { \
+        MM_PAUSE() \
+    } \
+} while (0) \
+FENCE()
+
+#define RWLOCK(LOCK) do { \
+    RWLock_ReleaseReadLock(LOCK); \
+    while (!RWLock_TryWriteLock(LOCK)) \
+    { \
+        MM_PAUSE() \
+    } \
+} while (0)

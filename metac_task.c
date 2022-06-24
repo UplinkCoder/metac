@@ -5,18 +5,6 @@
 
 extern int __stdout_enable = 0;
 
-#if !defined(ATOMIC)
-#define INC(v) \
-    (v++)
-#elif __GNUC__
-#  define INC(v) \
-    (__builtin_atomic_fetch_add(&v, __ATOMIC_RELEASE))
-#elif _MSC_VER
-#  define INC(v) \
-  _InterlockedIncrement(&v);
-#else
-#  error("No atomic supported")
-#endif
 // the watcher shoud allocate the worker contexts since it is responsible for distribution
 // and monitoring of the work
 
@@ -418,16 +406,7 @@ uint32_t TaskQueue_TasksInQueue_(taskqueue_t* self)
 {
     return tasksInQueue(self->readPointer, self->writePointer);
 }
-#if defined(__i386__) || defined(__x86_64__)
-#  define FENCE __asm__ volatile ("mfence" ::: "memory");
-#  define MM_PAUSE __asm__ volatile ("pause");
-#elif defined(__aarch64__)
-# define FENCE __asm__ volatile("dmb sy" ::: "memory");
-# define MM_PAUSE __asm__ volatile("yield");
-#else
-#  define FENCE
-#  define MM_PAUSE
-#endif
+
 // Returns true if task was pushed
 //         false if the queue was already full
 bool TaskQueue_Push(taskqueue_t* self, task_t* task)
