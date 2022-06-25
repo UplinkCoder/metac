@@ -21,6 +21,8 @@ if [ -d $DST ]; then
        metac_type.c metac_type.h \
        metac_scope.c metac_scope.h \
        metac_semantic.c metac_semantic.h \
+       metac_expr_semantic.c metac_expt_semantic.h \
+       metac_type_semantic.c metac_type_semantic.h \
        metac_semantic_lru.h \
        metac_type_table.c metac_type_table.h \
        metac_task.c metac_task.h \

@@ -10,6 +10,7 @@
 //TODO get rid of exp_eval after testing
 #include "repl/exp_eval.h"
 #include "metac_coro.h"
+#include "3rd_party/rwlock.h"
 
 #ifndef AT
 #  define AT(...)
@@ -75,6 +76,7 @@ typedef struct metac_semantic_waiter_t
 
 typedef struct metac_semantic_waitlist_t
 {
+    RWLock WaiterLock;
     metac_semantic_waiter_t* Waiters;
     uint32_t WaiterCount;
     uint32_t WaiterCapacity;
@@ -136,6 +138,9 @@ typedef struct metac_semantic_state_t
     uint32_t FrameOffset;
 } metac_semantic_state_t;
 
+#include "metac_type_semantic.h"
+#include "metac_expr_semantic.h"
+
 #define SemanticError(STATE, MSG, ...) \
     fprintf(stderr, "SemanticError[%s:%u]: "  MSG  "\n", __FILE__, __LINE__, __VA_ARGS__)
 
@@ -145,9 +150,6 @@ void MetaCSemantic_Init(metac_semantic_state_t* self,
                         metac_parser_t* parser,
                         metac_type_aggregate_t* compilerStruct);
 
-void MetaCSemantic_PushExpr(metac_semantic_state_t* self, metac_sema_expression_t* expr);
-void MetaCSemantic_PopExpr(metac_semantic_state_t* self,  metac_sema_expression_t* expr);
-
 #define MetaCSemantic_doIndexSemantic(SELF, EXPR) \
     MetaCSemantic_doIndexSemantic_(SELF, EXPR, \
                                    __FILE__, __LINE__)
@@ -156,16 +158,6 @@ metac_sema_expression_t* MetaCSemantic_doIndexSemantic_(metac_semantic_state_t* 
                                                         metac_expression_t* expr,
                                                         const char* callFile,
                                                         uint32_t callLine);
-
-#define MetaCSemantic_doExprSemantic(SELF, NODE) \
-    MetaCSemantic_doExprSemantic_(SELF, ((metac_expression_t*)(NODE)), \
-                                  __FILE__, __LINE__)
-
-metac_sema_expression_t* MetaCSemantic_doExprSemantic_(metac_semantic_state_t* self,
-                                                       metac_expression_t* expr,
-                                                       const char* callFile,
-                                                       uint32_t callLine);
-
 #define MetaCSemantic_doStatementSemantic(SELF, NODE) \
     MetaCSemantic_doStatementSemantic_(SELF, ((metac_statement_t*)(NODE)), \
                                        __FILE__, __LINE__)
@@ -271,5 +263,24 @@ metac_type_tuple_t* TupleTypePtr(metac_semantic_state_t* self, uint32_t index);
 metac_scope_t* MetaCScope_PushNewScope(metac_semantic_state_t* sema,
                                        metac_scope_t* parent,
                                        metac_scope_parent_t owner);
+
+scope_insert_error_t MetaCSemantic_RegisterInScope(metac_semantic_state_t* self,
+                                                   metac_identifier_ptr_t idPtr,
+                                                   metac_node_t node);
+#define MetaCSemantic_PushTemporaryScope(SELF, TMPSCOPE) \
+    MetaCSemantic_PushTemporaryScope_(SELF, TMPSCOPE, __LINE__, __FILE__)
+
+metac_scope_t* MetaCSemantic_PushTemporaryScope_(metac_semantic_state_t* self,
+                                                 metac_scope_t* tmpScope,
+                                                 uint32_t line,
+                                                 const char* file);
+
+#define MetaCSemantic_PopTemporaryScope(SELF) \
+    MetaCSemantic_PopTemporaryScope_(SELF, __LINE__, __FILE__)
+
+void MetaCSemantic_PopTemporaryScope_(metac_semantic_state_t* self,
+//                                      metac_scope_t* tmpScope,
+                                      uint32_t line,
+                                      const char* file);
 
 #endif
