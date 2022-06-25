@@ -70,34 +70,33 @@ typedef enum task_flags_t
     Task_Waiting   = Task_Resumable | Task_Running,
 } task_flags_t;
 
+#pragma pack(push, 1)
 typedef struct task_origin_t
 {
     const char* File;
     const char* Func;
     uint32_t Line;
 } task_origin_t;
+#pragma pack(pop)
 
 #define ORIGIN(VAR) \
      ( VAR.File = __FILE__, VAR.Func = __FUNCTION__,   VAR.Line = __LINE__ )
 
+#define INLINE_TASK_CTX_SZ 40
 
 typedef struct task_t
 {
     void (*TaskFunction)(struct task_t* task);
     void* Context;
+    struct task_t* Parent;
+    aco_t* Fiber;
+    struct task_t* Continuation;
 
-    const char* (*PrintFunction)(struct task_t* task);
+    uint8_t _inlineContext[INLINE_TASK_CTX_SZ];
+
+    task_origin_t Origin;
 
     volatile task_flags_t TaskFlags;
-    aco_t* Fiber;
-
-    struct task_t* Parent;
-    struct task_t* Children;
-
-    uint8_t _inlineContext[24];
-
-    uint32_t ChildCount;
-    uint32_t ChildrenCompleted;
 
     uint16_t QueueId;
     uint16_t CompletionAttempts;
@@ -105,8 +104,10 @@ typedef struct task_t
     uint16_t ContextSize;
     uint16_t ContextCapacity;
 
-    void* Continuation;
-    task_origin_t Origin;
+    uint32_t ChildCount;
+    uint32_t ChildrenCompleted;
+
+    struct task_t* Children;
 } task_t;
 
 typedef struct taskqueue_t
@@ -166,8 +167,15 @@ typedef struct tasksystem_t
 void TaskSystem_Init(tasksystem_t* self, uint32_t workerThreads, void (*workerFunction)(worker_context_t* worker));
 bool AddTask(task_t* task);
 worker_context_t* CurrentWorker(void);
+void* CurrentFiber(void);
+extern task_t* CurrentTask(void);
 
-bool TaskQueue_Push(taskqueue_t* self, task_t* task);
+
+/// copies the task pointed to by *taskP the queue and updates the pointer
+/// to reflect it's new home
+bool TaskQueue_Push(taskqueue_t* self, task_t** taskP);
+
+/// writes a pointer to the memory in the queue into taskP
 bool TaskQueue_Pull(taskqueue_t* self, task_t** taskP);
 
 #endif

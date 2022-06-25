@@ -27,7 +27,7 @@ taskqueue_t gQueue;
 
 _Thread_local void *_CurrentFiber;
 
-void* CurrentFiber()
+void* CurrentFiber(void)
 {
     return aco_get_co();
 }
@@ -409,11 +409,11 @@ uint32_t TaskQueue_TasksInQueue_(taskqueue_t* self)
 
 // Returns true if task was pushed
 //         false if the queue was already full
-bool TaskQueue_Push(taskqueue_t* self, task_t* task)
+bool TaskQueue_Push(taskqueue_t* self, task_t** taskP)
 {
     uint32_t readP = RELAXED_LOAD(&self->readPointer) & (TASK_QUEUE_SIZE - 1);
     uint32_t writeP = RELAXED_LOAD(&self->writePointer) & (TASK_QUEUE_SIZE - 1);
-
+    task_t* task = *taskP;
     // if this is true the Queue is full
     if (readP == writeP + 1)
         return false;
@@ -427,7 +427,7 @@ bool TaskQueue_Push(taskqueue_t* self, task_t* task)
     FENCE()
     readP = ATOMIC_LOAD(&self->readPointer) & (TASK_QUEUE_SIZE - 1);
     writeP = ATOMIC_LOAD(&self->writePointer) & (TASK_QUEUE_SIZE - 1);
-    printf("WriteP: %u\n", writeP);
+
     if (readP == writeP + 1)
     {
         ReleaseTicket(&self->QueueLock, myTicket);
@@ -445,6 +445,8 @@ bool TaskQueue_Push(taskqueue_t* self, task_t* task)
     memcpy(queueTask->_inlineContext, task->Context, task->ContextSize);
     queueTask->Context = queueTask->_inlineContext;
     INC(self->writePointer);
+
+    *taskP = queueTask;
     FENCE()
     ReleaseTicket(&self->QueueLock, myTicket);
 
@@ -502,4 +504,37 @@ bool AddTaskToQueue(task_t* task)
 
     return result;
 }
+
+void* SpawnTask(void (*taskFn)(task_t*), const uint32_t contextSz, const uint32_t resultOffset,
+                const task_origin_t origin,
+                uint8_t ctxMem[INLINE_TASK_CTX_SZ])
+{
+    taskqueue_t* q = &CurrentWorker()->Queue;
+    task_t task = {0};
+    task_t* taskP = &task;
+    task.TaskFunction = taskFn;
+    task.Parent = CurrentTask();
+    if (contextSz <= INLINE_TASK_CTX_SZ)
+    {
+
+    }
+}
+
+#define SPWAN_TASK(RESULT, FUNC, ...) do { \
+    taskqueue_t* q = &CurrentWorker()->Queue; \
+    task_t task = {0}; \
+    CTX_TYPE(FUNC) ctx = {__VA_ARGS__}; \
+    CTX_TYPE(FUNC)* ctxPtr = &ctx; \
+    STATIC_ASSERT(sizeof(task._inlineContext) >= sizeof(CTX_TYPE(FUNC)), \
+        "Context size too large for inline context storage"); \
+    task.Context = task._inlineContext; \
+    task.TaskFunction = CAT(FUNC, Task); \
+    task.Parent = CurrentTask(); \
+    ORIGIN(task.Origin); \
+    (*(cast(CTX_TYPE(FUNC)*)task.Context)) = ctx; \
+    TaskQueue_Push(q, &task); \
+    WAIT_FOR(task.Parent, &task, FUNC); \
+    RESULT = ctxPtr->Result; \
+} while(0);
+
 #undef KILOBYTE

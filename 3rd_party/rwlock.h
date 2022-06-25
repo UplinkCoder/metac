@@ -3,14 +3,16 @@
 // Written by Bruce Carneal
 // Ported to C by Stefan Koch
 
+#include "../metac_atomic.h"
+#include "../compat.h"
+#include <assert.h>
+
+
+
 /// the lock is not reentrant wrt writing but reentrant read acquisition is fine
 /// bit 31, the sign bit, indicates a writer is active
 /// bits 0..30 keep a count of the number of active readers (ok to be inexact transitorily)
 /// the lock becomes racy once the active reader count hits 2^31 - 1
-
-#include "../metac_atomic.h"
-#include "../compat.h"
-#include <assert.h>
 
 typedef struct RWLock
 {
@@ -64,7 +66,7 @@ static inline void RWLock_ReleaseWriteLock(RWLock *self)
     { \
         MM_PAUSE(); \
     } \
-} while (0) \
+} while (0); \
 FENCE()
 
 #define WLOCK(LOCK) do { \
@@ -87,7 +89,7 @@ FENCE()
 #define RWUNLOCK(LOCK) \
     FENCE(); do { \
     RWLock_ReleaseWriteLock(LOCK); \
-    while (!RWLock_TryReadLock()) \
+    while (!RWLock_TryReadLock(LOCK)) \
     { \
         MM_PAUSE(); \
     } \
