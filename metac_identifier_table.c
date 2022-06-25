@@ -10,9 +10,7 @@
 #include <string.h>
 #include <stdio.h>
 
-#ifdef _MSC_VER
-#include <intrin.h>
-#endif
+#include "metac_atomic.h"
 
 #include "3rd_party/tracy/TracyC.h"
 
@@ -130,10 +128,10 @@ metac_identifier_ptr_t GetOrAddIdentifier(metac_identifier_table_t* table,
             TracyCPlot("LoadFactor", (float)table->SlotsUsed / (float)slotIndexMask);
             TracyCPlot("StringMemorySize", table->StringMemorySize);
 #else
-            } while(!__atomic_compare_exchange(&table->StringMemorySize, &expected, &newValue,
-                false, __ATOMIC_ACQUIRE, __ATOMIC_ACQUIRE));
+            } while(_InterlockedCompareExchange(&table->StringMemorySize, newValue, expected)
+                    != expected))
             // atomic compare exchange has been done.
-            __atomic_add_fetch(&table->SlotsUsed, 1, __ATOMIC_ACQUIRE);
+            _InterlockedIncrement(&table->SlotsUsed);
 #endif
             char* tableMem = (table->StringMemory + (result.v - 4));
             memcpy(tableMem, identifier, length);
