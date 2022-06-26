@@ -356,7 +356,7 @@ LswitchMode:
     while(0)
     {
     }
-    
+
     {
         repl->line = linenoise(repl->promt);
         linenoiseHistoryAdd(repl->line);
@@ -552,41 +552,26 @@ LswitchMode:
                     MetaCParser_ParseExpressionFromString(repl->line);
 
                 const char* str = MetaCPrinter_PrintExpression(&repl->printer, exp);
-#ifndef NO_FIBERS
-#define CAT2(A, B) \
-    A ## B
 
-#define CAT(A, B) \
-    CAT2(A, B)
+                metac_sema_expression_t* result =
+                    MetaCSemantic_doExprSemantic(&repl->sema, exp, 0);
+            Lcontinuation:
+                {
+                    printf("typeIndex.v: %x\n", result->TypeIndex.v);
+                    const char* type_str = TypeToChars(&repl->sema, result->TypeIndex);
 
-#define CTX_NAME2(FUNC, FILE, LINE) \
-    CAT(FUNC, LINE)
+                    metac_printer_t printer;
+                    MetaCPrinter_InitSz(&printer,
+                                        &repl->lexer.IdentifierTable,
+                                        &repl->lexer.StringTable, 512);
 
-#define CTX_TYPE(FUNC) \
-    FUNC ## task_context_t
-
-#define CTX_NAME(FUNC) \
-    CTX_NAME2(FUNC, __FILE__, __LINE__)
-
-#define WAIT_FOR(ME_PTR, TASK_PTR, FUNC) \
-    (TASK_PTR)->Continuation = ME_PTR->Fiber; \
-    YIELD(FUNC)
-
-       
-                metac_sema_expression_t* result;
-
-                task_t continuation = {0};
-                MetaCRepl_PrintExprSemanticResult_context_t continuationCtx = { repl, &result, exp };
-                continuation.TaskFunction = MetaCRepl_PrintExprSemanticResult_Task;
-                continuation.Context = continuation._inlineContext;
-                (*((MetaCRepl_PrintExprSemanticResult_context_t*)continuation.Context))
-                    = continuationCtx;
-                continuation.ContextSize = sizeof(continuationCtx);
+                    printf("typeof(%s) = %s\n",
+                           MetaCPrinter_PrintExpression(&repl->printer, exp), type_str);
+                }
 #if 0
 
-                EQUEUE_WITH_CONT(MetaCSemantic_doExprSemantic_, &continuation, &repl->sema, exp);
-                
-#else
+//                EQUEUE_WITH_CONT(MetaCSemantic_doExprSemantic_, &continuation, &repl->sema, exp);
+
                 do {
                     taskqueue_t* q = &CurrentWorker()->Queue;
                     task_t task = {0};
@@ -601,11 +586,7 @@ LswitchMode:
                     ( task.Origin.File = "repl.c", task.Origin.Func = __FUNCTION__, task.Origin.Line = 593 );
                     (*((MetaCSemantic_doExprSemantic_task_context_t*)task.Context)) = ctx;
                     TaskQueue_Push(q, &task);
-                } while(0); 
-#endif
-#else
-                metac_sema_expression_t* result =
-                    MetaCSemantic_doExprSemantic(&repl->sema, exp);
+                } while(0);
 #endif
                 goto LnextLine;
             }
