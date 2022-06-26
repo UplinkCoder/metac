@@ -28,20 +28,22 @@ static bool IsAggregateType(metac_type_index_kind_t typeKind)
 
 metac_sema_expression_t* MetaCSemantic_doExprSemantic_(metac_semantic_state_t* self,
                                                        metac_expression_t* expr,
+                                                       metac_sema_expression_t* result,
                                                        const char* callFun,
                                                        uint32_t callLine)
 {
-    metac_sema_expression_t* result = 0;
-
-    result = AllocNewSemaExpression(self, expr);
+    if (!result)
+    {
+        result = AllocNewSemaExpression(self, expr);
+    }
 
     if (IsBinaryExp(expr->Kind)
         && (expr->Kind != exp_arrow && expr->Kind != exp_dot))
     {
         MetaCSemantic_PushExpr(self, result);
 
-        result->E1 = MetaCSemantic_doExprSemantic(self, expr->E1);
-        result->E2 = MetaCSemantic_doExprSemantic(self, expr->E2);
+        result->E1 = MetaCSemantic_doExprSemantic(self, expr->E1, 0);
+        result->E2 = MetaCSemantic_doExprSemantic(self, expr->E2, 0);
 
         MetaCSemantic_PopExpr(self, result);
     }
@@ -54,7 +56,7 @@ metac_sema_expression_t* MetaCSemantic_doExprSemantic_(metac_semantic_state_t* s
         case exp_arrow:
         case exp_dot:
         {
-            result->E1 = MetaCSemantic_doExprSemantic(self, expr->E1);
+            result->E1 = MetaCSemantic_doExprSemantic(self, expr->E1, 0);
             // for the semantic of E2 we need to do the lookup in the scope of
             // the type of E1
             const metac_type_index_kind_t typeIndexKind
@@ -96,7 +98,7 @@ metac_sema_expression_t* MetaCSemantic_doExprSemantic_(metac_semantic_state_t* s
                 }
 #else
                 result->AggExp =
-                    MetaCSemantic_doExprSemantic(self, expr->E1);
+                    MetaCSemantic_doExprSemantic(self, expr->E1, 0);
 
                 metac_type_aggregate_field_t* fields = agg->Fields;
                 for(uint32_t i = 0;
@@ -119,7 +121,7 @@ metac_sema_expression_t* MetaCSemantic_doExprSemantic_(metac_semantic_state_t* s
         case exp_typeof:
         {
             metac_sema_expression_t* E1 =
-                MetaCSemantic_doExprSemantic(self, expr->E1);
+                MetaCSemantic_doExprSemantic(self, expr->E1, 0);
             //result->Kind = exp_type;
             result->TypeIndex.v =
                 TYPE_INDEX_V(type_index_basic, type_type);
@@ -129,7 +131,7 @@ metac_sema_expression_t* MetaCSemantic_doExprSemantic_(metac_semantic_state_t* s
         case exp_paren:
         {
             metac_sema_expression_t* E1 =
-                MetaCSemantic_doExprSemantic(self, expr->E1);
+                MetaCSemantic_doExprSemantic(self, expr->E1, 0);
             //result->Kind = exp_paren;
             result->TypeIndex = E1->TypeIndex;
             result->E1 = E1;
@@ -164,38 +166,39 @@ metac_sema_expression_t* MetaCSemantic_doExprSemantic_(metac_semantic_state_t* s
             exp_tuple_t* tupleElement = expr->TupleExpressionList;
             const uint32_t tupleExpressionCount =
                 expr->TupleExpressionCount;
-            metac_sema_expression_t** resolvedExps = cast(metac_sema_expression_t**)
-				malloc(sizeof(metac_sema_expression_t*) * tupleExpressionCount);
-
+            if (expr->TupleExpressionCount > 128)
+            {
+                SemanticError(0,
+                    "Tuples with more than 128 elements are currently not supported, given %u\n",
+                    tupleExpressionCount);
+                return 0;
+            }
+            result->TupleExpressionCount = tupleExpressionCount;
             for(uint32_t i = 0;
                 i < expr->TupleExpressionCount;
                 i++)
             {
                 metac_expression_t *e = tupleElement->Expression;
                 tupleElement = tupleElement->Next;
-                metac_printer_t printer;
-                MetaCPrinter_Init(&printer, self->ParserIdentifierTable, self->ParserStringTable);
-                printf("Doing semantic on tuple Element: %s\n", MetaCPrinter_PrintExpression(&printer, e));
-                resolvedExps[i] = MetaCSemantic_doExprSemantic(self, e);
+                metac_sema_expression_t* resultElem = result->TupleExpressions + i;
+                MetaCSemantic_doExprSemantic(self, e, resultElem);
             }
 
-            metac_type_index_t* indicies = cast(metac_type_index_t*)
-                malloc(sizeof(metac_type_index_t) * expr->TupleExpressionCount);
+            metac_type_index_t typeIndicies[128];
 
             for(uint32_t i = 0; i < tupleExpressionCount; i++)
             {
-                *(result->TupleExpressions + i) = *resolvedExps[i];
-                indicies[i] = resolvedExps[i]->TypeIndex;
+                typeIndicies[i] = (result->TupleExpressions + i)->TypeIndex;
             }
 
-           uint32_t hash = crc32c(~0, indicies,
+           uint32_t hash = crc32c(~0, typeIndicies,
                 sizeof(metac_type_index_t) * expr->TupleExpressionCount);
 
             metac_type_tuple_t typeTuple;
             typeTuple.Header.Kind = decl_type_tuple;
             typeTuple.Header.Hash = hash;
             typeTuple.typeCount = tupleExpressionCount;
-            typeTuple.typeIndicies = indicies;
+            typeTuple.typeIndicies = typeIndicies;
 
            // AllocNewTupleType()
             metac_type_index_t tupleIdx =
@@ -204,15 +207,13 @@ metac_sema_expression_t* MetaCSemantic_doExprSemantic_(metac_semantic_state_t* s
             {
                 metac_type_index_t* newIndicies = (metac_type_index_t*)
                     malloc(expr->TupleExpressionCount * sizeof(metac_type_index_t));
-                memcpy(newIndicies, indicies,
+                memcpy(newIndicies, typeIndicies,
                     expr->TupleExpressionCount * sizeof(metac_type_index_t));
                 typeTuple.typeIndicies = newIndicies;
                 tupleIdx =
                     MetaCTypeTable_AddTupleType(&self->TupleTypeTable, &typeTuple);
             }
-            free(indicies);
             result->TypeIndex = tupleIdx;
-            free(resolvedExps);
         }
         break;
         case exp_dot_compiler:
@@ -273,7 +274,7 @@ metac_sema_expression_t* MetaCSemantic_doExprSemantic_(metac_semantic_state_t* s
         {
             uint32_t size = -1;
             metac_sema_expression_t* e1 =
-                MetaCSemantic_doExprSemantic(self, expr->E1);
+                MetaCSemantic_doExprSemantic(self, expr->E1, 0);
             metac_type_index_t type = e1->TypeIndex;
             if (type.v == TYPE_INDEX_V(type_index_basic, type_type))
             {
@@ -314,7 +315,7 @@ metac_sema_expression_t* MetaCSemantic_doExprSemantic_(metac_semantic_state_t* s
         break;
         case exp_addr:
             MetaCSemantic_PushExpr(self, result);
-            result->E1 = MetaCSemantic_doExprSemantic(self, expr->E1);
+            result->E1 = MetaCSemantic_doExprSemantic(self, expr->E1, 0);
             MetaCSemantic_PopExpr(self, result);
             assert(result->E1->TypeIndex.v != 0 && result->E1->TypeIndex.v != ERROR_TYPE_INDEX_V);
             if (!MetaCSemantic_CanHaveAddress(self, expr->E1))

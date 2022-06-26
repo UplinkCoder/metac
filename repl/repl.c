@@ -523,7 +523,7 @@ LswitchMode:
                 const char* str = MetaCPrinter_PrintExpression(&repl->printer, exp);
 
                 metac_sema_expression_t* result =
-                    MetaCSemantic_doExprSemantic(&repl->sema, exp);
+                    MetaCSemantic_doExprSemantic(&repl->sema, exp, 0);
 
                 metac_expression_t printExpStorage;
 
@@ -662,7 +662,7 @@ LswitchMode:
                         }
 
                         metac_sema_expression_t* ae =
-                            MetaCSemantic_doExprSemantic(&repl->sema, assignExp);
+                            MetaCSemantic_doExprSemantic(&repl->sema, assignExp, 0);
                         if (ae)
                         {
                             if (ae->E1->Kind == exp_identifier)

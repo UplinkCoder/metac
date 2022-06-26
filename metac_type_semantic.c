@@ -408,7 +408,7 @@ metac_type_index_t MetaCSemantic_TypeSemantic(metac_semantic_state_t* self,
         metac_type_index_t elementType =
             MetaCSemantic_doTypeSemantic(self, arrayType->ElementType);
         metac_sema_expression_t* dim =
-            MetaCSemantic_doExprSemantic(self, arrayType->Dim);
+            MetaCSemantic_doExprSemantic(self, arrayType->Dim, 0);
         if (dim->Kind != exp_signed_integer)
         {
             printf("Array dimension should eval to integer but it is: %s\n",

@@ -104,7 +104,7 @@ typedef struct handoff_walker_context_t
     (v += b, v - b)
 #else
 #define POST_ADD(v, b)
-    (__builtin_atomic_fetch_add(&v, b))
+    (__sync_fetch_and_add(&v, b))
 #endif
 
 metac_sema_expression_t* AllocNewSemaExpression(metac_semantic_state_t* self, metac_expression_t* expr)
@@ -118,10 +118,6 @@ metac_sema_expression_t* AllocNewSemaExpression(metac_semantic_state_t* self, me
         (*(metac_expression_header_t*) result) = (*(metac_expression_header_t*) expr);
 
         result->TypeIndex.v = 0;
-        memcpy(
-               ((char*)result) + sizeof(metac_sema_expression_header_t),
-               ((char*)expr) + sizeof(metac_expression_header_t),
-               sizeof(metac_expression_t) - sizeof(metac_expression_header_t));
         result->Serial = INC(_nodeCounter);
     }
 
@@ -130,15 +126,40 @@ metac_sema_expression_t* AllocNewSemaExpression(metac_semantic_state_t* self, me
         const uint32_t tupleExpCount = expr->TupleExpressionCount;
         REALLOC_N_BOILERPLATE(self->Expressions, tupleExpCount);
 
+        uint32_t allocPos = POST_ADD(self->Expressions_size, tupleExpCount);
         metac_sema_expression_t* elements =
-            self->Expressions + POST_ADD(self->Expressions_size, tupleExpCount);
+            self->Expressions + allocPos;
+        exp_tuple_t* expList = expr->TupleExpressionList;
+
+        metac_expression_t* elemExpr;
         for(uint32_t i = 0;
             i < tupleExpCount;
             i++)
         {
-            (elements + i)->Kind = exp_invalid;
-            //(elements + i)->Serial = INC(_nodeCounter);
+            elemExpr = expList->Expression;
+            metac_sema_expression_t* semaElem = elements + i;
+            semaElem->Serial = INC(_nodeCounter);
+
+            (*(metac_expression_header_t*) semaElem) = (*(metac_expression_header_t*) elemExpr);
+
+            memcpy(
+                ((char*)semaElem) + sizeof(metac_sema_expression_header_t),
+                ((char*)elemExpr) + sizeof(metac_expression_header_t),
+                sizeof(metac_expression_t) - sizeof(metac_expression_header_t)
+            );
+
+            expList = expList->Next;
+
         }
+        result->TupleExpressions = elements;
+    }
+    else
+    {
+        memcpy(
+            ((char*)result) + sizeof(metac_sema_expression_header_t),
+            ((char*)expr) + sizeof(metac_expression_header_t),
+            sizeof(metac_expression_t) - sizeof(metac_expression_header_t)
+        );
     }
 
     return result;
@@ -888,9 +909,9 @@ metac_sema_statement_t* MetaCSemantic_doStatementSemantic_(metac_semantic_state_
             metac_sema_declaration_t* ForInit =
                 MetaCSemantic_doDeclSemantic(self, for_->ForInit);
             metac_sema_expression_t* ForCond =
-                MetaCSemantic_doExprSemantic(self, for_->ForCond);
+                MetaCSemantic_doExprSemantic(self, for_->ForCond, 0);
             metac_sema_expression_t* ForPostLoop =
-                MetaCSemantic_doExprSemantic(self, for_->ForCond);
+                MetaCSemantic_doExprSemantic(self, for_->ForPostLoop, 0);
         } break;
 
         //TODO for now stmt_yield and stmt_return
@@ -902,7 +923,7 @@ metac_sema_statement_t* MetaCSemantic_doStatementSemantic_(metac_semantic_state_
                 AllocNewSemaStatement(self, stmt_yield, &result);
 
             metac_sema_expression_t* yieldValue =
-                MetaCSemantic_doExprSemantic(self, yieldStatement->Expression);
+                MetaCSemantic_doExprSemantic(self, yieldStatement->Expression, 0);
             semaYieldStatement->Expression = yieldValue;
         } break;
 
@@ -913,7 +934,7 @@ metac_sema_statement_t* MetaCSemantic_doStatementSemantic_(metac_semantic_state_
                 AllocNewSemaStatement(self, stmt_return, &result);
 
             metac_sema_expression_t* returnValue =
-                MetaCSemantic_doExprSemantic(self, returnStatement->Expression);
+                MetaCSemantic_doExprSemantic(self, returnStatement->Expression, 0);
             semaReturnStatement->Expression = returnValue;
         } break;
     }
@@ -1117,7 +1138,7 @@ metac_sema_declaration_t* MetaCSemantic_declSemantic(metac_semantic_state_t* sel
             var->TypeIndex = MetaCSemantic_doTypeSemantic(self, v->VarType);
             if (METAC_NODE(v->VarInitExpression) != emptyNode)
             {
-                var->VarInitExpression = MetaCSemantic_doExprSemantic(self, v->VarInitExpression);
+                var->VarInitExpression = MetaCSemantic_doExprSemantic(self, v->VarInitExpression, 0);
             }
             else
             {
@@ -1382,8 +1403,8 @@ metac_sema_expression_t* MetaCSemantic_doIndexSemantic_(metac_semantic_state_t* 
 {
     metac_sema_expression_t* result = 0;
 
-    metac_sema_expression_t* indexed = MetaCSemantic_doExprSemantic(self, expr->E1/*, expr_asAddress*/);
-    metac_sema_expression_t* index = MetaCSemantic_doExprSemantic(self, expr->E2);
+    metac_sema_expression_t* indexed = MetaCSemantic_doExprSemantic(self, expr->E1, 0/*, expr_asAddress*/);
+    metac_sema_expression_t* index = MetaCSemantic_doExprSemantic(self, expr->E2, 0);
     if (indexed->Kind ==  exp_tuple)
     {
         bool errored = false;
