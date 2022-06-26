@@ -141,7 +141,7 @@ typedef struct metac_semantic_state_t
 #include "metac_type_semantic.h"
 #include "metac_expr_semantic.h"
 
-#define SemanticError(STATE, MSG, ...) \
+#define SemanticError(LOC, MSG, ...) \
     fprintf(stderr, "SemanticError[%s:%u]: "  MSG  "\n", __FILE__, __LINE__, __VA_ARGS__)
 
 void RegisterType(metac_semantic_state_t* state, decl_type_t* type);

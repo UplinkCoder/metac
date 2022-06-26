@@ -440,14 +440,10 @@ uint32_t DrawTicket(volatile ticket_lock_t* lock)
     return INC(lock->nextTicket);
 }
 
-uint32_t TaskQueue_TasksInQueue_(taskqueue_t* self)
-{
-    return tasksInQueueFront(self->readPointer, self->writePointer);
-}
-
 uint32_t TaskQueue_TasksInQueueFront_(taskqueue_t* self)
 {
-    return tasksInQueueFront(self->readPointer, self->writePointer);
+    return tasksInQueueFront((self->readPointer  & (TASK_QUEUE_SIZE - 1)),
+                             (self->writePointer & (TASK_QUEUE_SIZE - 1)));
 }
 
 // Returns true if task was pushed
@@ -539,7 +535,7 @@ bool AddTaskToQueue(task_t* task)
 
     taskqueue_t* preferredQ =
         threadContext ? &threadContext->Queue : &gQueue;
-    if (TaskQueue_TasksInQueue_(preferredQ) < QUEUE_CUTOFF)
+    if (TaskQueue_TasksInQueueFront_(preferredQ) < QUEUE_CUTOFF)
     {
         result = TaskQueue_Push(preferredQ, task);
     }
