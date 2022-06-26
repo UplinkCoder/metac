@@ -11,7 +11,7 @@ if [ -d $DST ]; then
        crc32c.c crc32c.h \
        bsr.h bsf.h \
        metac_node.h \
-       metac_simd.h \
+       metac_simd.h metac_atomic.h \
        metac_lexer.c metac_lexer.h metac_parser.c metac_parser.h \
        metac_alloc_node.c metac_alloc_node.h \
        metac_parsetree.c metac_parsetree.h \
@@ -21,11 +21,12 @@ if [ -d $DST ]; then
        metac_type.c metac_type.h \
        metac_scope.c metac_scope.h \
        metac_semantic.c metac_semantic.h \
-       metac_expr_semantic.c metac_expt_semantic.h \
+       metac_expr_semantic.c metac_expr_semantic.h \
        metac_type_semantic.c metac_type_semantic.h \
        metac_semantic_lru.h \
        metac_type_table.c metac_type_table.h \
        metac_task.c metac_task.h \
+       test_task_queue.c \
        metac_parser_obj.c metac_semantic_obj.c \
        metac_target_info.c metac_target_info.h \
        metac_default_target_info.h \
