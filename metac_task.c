@@ -3,8 +3,6 @@
 #include <stdlib.h>
 #include "bsf.h"
 
-extern int __stdout_enable = 0;
-
 // the watcher shoud allocate the worker contexts since it is responsible for distribution
 // and monitoring of the work
 
@@ -49,6 +47,10 @@ void Taskqueue_Init(taskqueue_t* queue)
     queue->QueueLock.currentlyServing = 0;
     queue->QueueLock.nextTicket = 0;
 
+    queue->readPointer = 0;
+    queue->writePointer = 0;
+    queue->writePointerEnd = 0;
+
     task_t* qMem = (*queue->QueueMemory);
     for(uint32_t taskIdx = 0;
         taskIdx < ARRAY_SIZE(*queue->QueueMemory);
@@ -81,6 +83,17 @@ void FiberDoTask(void)
         task->TaskFunction(task);
         task->TaskFlags |= Task_Complete;
 
+        fiber->arg = 0;
+
+        if (task->Continuation)
+        {
+            task_t* continuation = task->Continuation;
+            fiber->arg = (void*)(continuation);
+            continuation->Fiber = thisFiber;
+            continuation->TaskFlags |= Task_Running;
+            continuation->TaskFunction(continuation);
+            continuation->TaskFlags |= Task_Complete;
+        }
         YIELD(YieldingBackAfterTaskCompletion);
 
         // FiberReport(fiber);
@@ -113,7 +126,8 @@ void ExecuteTask(worker_context_t* worker, task_t* task, aco_t* fiber)
 
     if (task->TaskFunction == 0)
     {
-        assert(0);
+        printf("The function pointer is null that's no good\n");
+        //assert(0);
     }
     assert((fiberPool->FreeBitfield & (1 << fiberIdx)) == 0);
     if (task->TaskFlags == Task_Halted)
@@ -137,7 +151,7 @@ void ExecuteTask(worker_context_t* worker, task_t* task, aco_t* fiber)
     }
 }
 
-static inline uint32_t tasksInQueue(const uint32_t readP, const uint32_t writeP)
+static inline uint32_t tasksInQueueFront(const uint32_t readP, const uint32_t writeP)
 {
     if (writeP >= readP)
     {
@@ -151,6 +165,20 @@ static inline uint32_t tasksInQueue(const uint32_t readP, const uint32_t writeP)
     }
 }
 
+
+static inline uint32_t tasksInQueueBack(const uint32_t writePEnd, const uint32_t writeP)
+{
+    if (writePEnd <= writeP)
+    {
+        return writeP - writePEnd;
+    }
+    else
+    {
+        return ((TASK_QUEUE_SIZE - writePEnd) + writeP);
+    }
+}
+
+//|  | RW  |   | ET | eT  |
 void WatcherFunc(void)
 {
 
@@ -192,11 +220,15 @@ void RunWorkerThread(worker_context_t* worker, void (*specialFunc)(),  void* spe
     for(;;)
     {
         uint32_t nextFiberIdx = -1;
-        task_t* taskP = 0;
         aco_t* execFiber = 0;
-        // check if we have tasks in our Queue and if we have a free worker fiber
-        if (tasksInQueue(q->readPointer, q->writePointer)
-            && ((*FreeBitfield) != 0))
+        // do we have a free fiber ?
+        if ((*FreeBitfield) == 0)
+        {
+            goto LscheduleNextTask;
+        }
+
+        // if we end up here we still have a free fiber
+        if (tasksInQueueFront(q->readPointer, q->writePointer))
         {
             // we have a free fiber
             // printf("Freebitfield %x\n", *FreeBitfield);
@@ -207,7 +239,8 @@ void RunWorkerThread(worker_context_t* worker, void (*specialFunc)(),  void* spe
             // mark fiber as used
 
             {
-                if (TaskQueue_Pull(q, &taskP))
+                task_t* taskP = &fiberPool.Tasks[nextFiberIdx];
+                if (TaskQueue_Pull(q, taskP))
                 {
                     // printf("Pulled task\n");
                     taskP->Fiber = execFiber;
@@ -223,10 +256,15 @@ void RunWorkerThread(worker_context_t* worker, void (*specialFunc)(),  void* spe
                     printf("No task to be pulled\n");
                 }
             }
+            goto LscheduleNextTask;
         }
+        // if we do end up here we have a fiber to spare
+        // but no work in the front queue let's check the back of our queue
+        if (tasksInQueueBack(q->readPointer, q->writePointer))
         execFiber = 0;
 
         // try to finish started tasks without starting new ones
+    LscheduleNextTask:
         {
             // the completion goal is the number of active tasks
             const uint32_t completionGoal = ~(*FreeBitfield);
@@ -404,16 +442,21 @@ uint32_t DrawTicket(volatile ticket_lock_t* lock)
 
 uint32_t TaskQueue_TasksInQueue_(taskqueue_t* self)
 {
-    return tasksInQueue(self->readPointer, self->writePointer);
+    return tasksInQueueFront(self->readPointer, self->writePointer);
+}
+
+uint32_t TaskQueue_TasksInQueueFront_(taskqueue_t* self)
+{
+    return tasksInQueueFront(self->readPointer, self->writePointer);
 }
 
 // Returns true if task was pushed
 //         false if the queue was already full
-bool TaskQueue_Push(taskqueue_t* self, task_t** taskP)
+bool TaskQueue_Push(taskqueue_t* self, task_t* task)
 {
     uint32_t readP = RELAXED_LOAD(&self->readPointer) & (TASK_QUEUE_SIZE - 1);
     uint32_t writeP = RELAXED_LOAD(&self->writePointer) & (TASK_QUEUE_SIZE - 1);
-    task_t* task = *taskP;
+
     // if this is true the Queue is full
     if (readP == writeP + 1)
         return false;
@@ -446,7 +489,6 @@ bool TaskQueue_Push(taskqueue_t* self, task_t** taskP)
     queueTask->Context = queueTask->_inlineContext;
     INC(self->writePointer);
 
-    *taskP = queueTask;
     FENCE()
     ReleaseTicket(&self->QueueLock, myTicket);
 
@@ -455,7 +497,7 @@ bool TaskQueue_Push(taskqueue_t* self, task_t** taskP)
 
 /// returns true if task could be pulled
 /// false if no task is pulled
-bool TaskQueue_Pull(taskqueue_t* self, task_t** taskP)
+bool TaskQueue_Pull(taskqueue_t* self, task_t* taskP)
 {
     uint32_t readP = RELAXED_LOAD(&self->readPointer) & (TASK_QUEUE_SIZE - 1);
     uint32_t writeP = RELAXED_LOAD(&self->writePointer) & (TASK_QUEUE_SIZE - 1);
@@ -481,9 +523,10 @@ bool TaskQueue_Pull(taskqueue_t* self, task_t** taskP)
         ReleaseTicket(&self->QueueLock, myTicket);
         return false;
     }
-
-    *taskP = (*self->QueueMemory) + readP;
+    task_t* queueTask = (*self->QueueMemory) + readP;
+    *taskP = *queueTask;
     INC(self->readPointer);
+    queueTask->TaskFunction = 0;
 
     FENCE()
     ReleaseTicket(&self->QueueLock, myTicket);
@@ -504,37 +547,5 @@ bool AddTaskToQueue(task_t* task)
 
     return result;
 }
-
-void* SpawnTask(void (*taskFn)(task_t*), const uint32_t contextSz, const uint32_t resultOffset,
-                const task_origin_t origin,
-                uint8_t ctxMem[INLINE_TASK_CTX_SZ])
-{
-    taskqueue_t* q = &CurrentWorker()->Queue;
-    task_t task = {0};
-    task_t* taskP = &task;
-    task.TaskFunction = taskFn;
-    task.Parent = CurrentTask();
-    if (contextSz <= INLINE_TASK_CTX_SZ)
-    {
-
-    }
-}
-
-#define SPWAN_TASK(RESULT, FUNC, ...) do { \
-    taskqueue_t* q = &CurrentWorker()->Queue; \
-    task_t task = {0}; \
-    CTX_TYPE(FUNC) ctx = {__VA_ARGS__}; \
-    CTX_TYPE(FUNC)* ctxPtr = &ctx; \
-    STATIC_ASSERT(sizeof(task._inlineContext) >= sizeof(CTX_TYPE(FUNC)), \
-        "Context size too large for inline context storage"); \
-    task.Context = task._inlineContext; \
-    task.TaskFunction = CAT(FUNC, Task); \
-    task.Parent = CurrentTask(); \
-    ORIGIN(task.Origin); \
-    (*(cast(CTX_TYPE(FUNC)*)task.Context)) = ctx; \
-    TaskQueue_Push(q, &task); \
-    WAIT_FOR(task.Parent, &task, FUNC); \
-    RESULT = ctxPtr->Result; \
-} while(0);
 
 #undef KILOBYTE

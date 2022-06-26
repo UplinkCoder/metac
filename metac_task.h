@@ -84,6 +84,11 @@ typedef struct task_origin_t
 
 #define INLINE_TASK_CTX_SZ 40
 
+typedef struct task_inline_ctx_t
+{
+    uint8_t data[INLINE_TASK_CTX_SZ];
+} task_inline_ctx_t;
+
 typedef struct task_t
 {
     void (*TaskFunction)(struct task_t* task);
@@ -92,7 +97,10 @@ typedef struct task_t
     aco_t* Fiber;
     struct task_t* Continuation;
 
-    uint8_t _inlineContext[INLINE_TASK_CTX_SZ];
+    union {
+        uint8_t _inlineContext[INLINE_TASK_CTX_SZ];
+        task_inline_ctx_t inlineContext;
+    };
 
     task_origin_t Origin;
 
@@ -115,8 +123,9 @@ typedef struct taskqueue_t
     ticket_lock_t QueueLock;
     uint8_t padding[sizeof(ticket_lock_t) % 16];
 
-    uint32_t readPointer; // head
-    uint32_t writePointer; // tail
+    uint16_t readPointer; // head
+    uint16_t writePointer; // tail1
+    uint16_t writePointerEnd; //tail2
 
     task_t (*QueueMemory)[TASK_QUEUE_SIZE];
 
@@ -131,6 +140,7 @@ typedef struct fiber_pool_t
 
     aco_t MainCos[sizeof(uint32_t) * 8];
     aco_share_stack_t ShareStacks[sizeof(uint32_t) * 8];
+    task_t Tasks[sizeof(uint32_t) * 8];
     //static_assert(sizeof(FreeBitfield) * 8 >= FIBERS_PER_WORKER);
 } fiber_pool_t;
 
@@ -170,12 +180,31 @@ worker_context_t* CurrentWorker(void);
 void* CurrentFiber(void);
 extern task_t* CurrentTask(void);
 
+/// copies the task pointed to by *taskP the queue
+bool TaskQueue_Push(taskqueue_t* self, task_t* taskP);
 
-/// copies the task pointed to by *taskP the queue and updates the pointer
-/// to reflect it's new home
-bool TaskQueue_Push(taskqueue_t* self, task_t** taskP);
-
-/// writes a pointer to the memory in the queue into taskP
-bool TaskQueue_Pull(taskqueue_t* self, task_t** taskP);
+/// writes a task into the memory taskP points to
+/// the queue slot is considered empty after this
+bool TaskQueue_Pull(taskqueue_t* self, task_t* taskP);
 
 #endif
+
+
+#define EQUEUE_WITH_CONT(FUNC, CONT, CONT_ARG, ...) do { \
+    taskqueue_t* q = &CurrentWorker()->Queue; \
+    CTX_TYPE(FUNC) ctx = {__VA_ARGS__}; \
+    task_t task = {0}; \
+    STATIC_ASSERT(sizeof(task._inlineContext) >= sizeof(CTX_TYPE(FUNC)), \
+        "Context size too large for inline context storage"); \
+    task.Context = task._inlineContext; \
+    task.TaskFunction = CAT(FUNC, Task); \
+    task.Parent = CurrentTask(); \
+    ORIGIN(task.Origin); \
+    (*(cast(CTX_TYPE(FUNC)*)task.Context)) = ctx; \
+    task.Continuation = CONT; \
+    TaskQueue_Push(q, &task); \
+} while(0);
+
+#define ENQUEUE_TASK(RESULT, FUNC, ...) \
+    EQUEUE_WITH_CONT(RESULT, FUNC, 0, __VA_ARGS__)
+    

@@ -14,3 +14,8 @@
 /*    printf("Yielding %x from {%s:%d} %s\n",  (GET_CO()), __FILE__, __LINE__, #REASON);*/ \
     aco_yield(); \
 } while(0)
+
+#define RETURN() do { \
+/*    printf("Yielding %x from {%s:%d} %s\n",  (GET_CO()), __FILE__, __LINE__, #REASON);*/ \
+    aco_exit(); \
+} while(0)

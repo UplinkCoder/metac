@@ -680,6 +680,7 @@ void MetaCSemantic_Init(metac_semantic_state_t* self, metac_parser_t* parser,
     self->ExpressionStack = (metac_sema_expression_t*)
         calloc(sizeof(metac_sema_expression_t), self->ExpressionStackCapacity);
 
+    self->Waiters.WaiterLock._rwctr = 0;
     self->Waiters.WaiterCapacity = 64;
     self->Waiters.WaiterCount = 0;
     self->Waiters.Waiters = cast(metac_semantic_waiter_t*)
@@ -1215,14 +1216,6 @@ metac_sema_declaration_t* MetaCSemantic_doDeclSemantic_(metac_semantic_state_t* 
     }
     return result;
 }
-
-#ifndef ATOMIC
-#define INC(v) \
-    (v++)
-#else
-#define INC(v)
-    (__builtin_atomic_fetch_add(&v, __ATOMIC_RELEASE))
-#endif
 
 #include "metac_printer.h"
 

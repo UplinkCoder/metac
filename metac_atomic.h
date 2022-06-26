@@ -31,16 +31,15 @@
 #endif
 
 #if !defined(ATOMIC)
-#define INC(v) \
-    (v++)
-#elif __GNUC__
 #  define INC(v) \
-    (__builtin_atomic_fetch_add(&v, __ATOMIC_RELEASE))
-#elif _MSC_VER
+    (v++)
+#  define DEC(v) \
+    (v--)
+#else
 #  define INC(v) \
   _InterlockedIncrement(&v);
-#else
-#  error("No atomic supported")
+#  define DEC(v) \
+  _InterlockedDecrement(&v);
 #endif
 
 

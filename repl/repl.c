@@ -568,31 +568,45 @@ LswitchMode:
 #define CTX_NAME(FUNC) \
     CTX_NAME2(FUNC, __FILE__, __LINE__)
 
-#define SPWAN_TASK(RESULT, FUNC, ...) do { \
-    task_t task = {0}; \
-    CTX_TYPE(FUNC) ctx = {__VA_ARGS__}; \
-    CTX_TYPE(FUNC)* ctxPtr = &ctx; \
-    STATIC_ASSERT(sizeof(task._inlineContext) >= sizeof(CTX_TYPE(FUNC)), \
-        "Context size too large for inline context storage"); \
-    task.Parent = CurrentTask(); \
-    ORIGIN(task.Origin); \
-    (*(cast(CTX_TYPE(FUNC)*)task.Context)) = ctx; \
-    RESULT = ctxPtr->Result; \
-} while(0);
-        
+#define WAIT_FOR(ME_PTR, TASK_PTR, FUNC) \
+    (TASK_PTR)->Continuation = ME_PTR->Fiber; \
+    YIELD(FUNC)
+
+       
                 metac_sema_expression_t* result;
-                SPWAN_TASK(result, MetaCSemantic_doExprSemantic_, &repl->sema, exp);
+
+                task_t continuation = {0};
+                MetaCRepl_PrintExprSemanticResult_context_t continuationCtx = { repl, &result, exp };
+                continuation.TaskFunction = MetaCRepl_PrintExprSemanticResult_Task;
+                continuation.Context = continuation._inlineContext;
+                (*((MetaCRepl_PrintExprSemanticResult_context_t*)continuation.Context))
+                    = continuationCtx;
+                continuation.ContextSize = sizeof(continuationCtx);
+#if 0
+
+                EQUEUE_WITH_CONT(MetaCSemantic_doExprSemantic_, &continuation, &repl->sema, exp);
+                
+#else
+                do {
+                    taskqueue_t* q = &CurrentWorker()->Queue;
+                    task_t task = {0};
+                    MetaCSemantic_doExprSemantic_task_context_t ctx = {&repl->sema, exp};
+                    MetaCSemantic_doExprSemantic_task_context_t* ctxPtr = &ctx;
+                    _Static_assert(sizeof(task._inlineContext) >= sizeof(MetaCSemantic_doExprSemantic_task_context_t), "Context size");
+                    task.Context = task._inlineContext;
+                    task.TaskFunction = MetaCSemantic_doExprSemantic_Task;
+                    task.Parent = CurrentTask();
+                    task.Continuation = &continuation;
+                    task.ContextSize = sizeof(MetaCSemantic_doExprSemantic_task_context_t);
+                    ( task.Origin.File = "repl.c", task.Origin.Func = __FUNCTION__, task.Origin.Line = 593 );
+                    (*((MetaCSemantic_doExprSemantic_task_context_t*)task.Context)) = ctx;
+                    TaskQueue_Push(q, &task);
+                } while(0); 
+#endif
 #else
                 metac_sema_expression_t* result =
                     MetaCSemantic_doExprSemantic(&repl->sema, exp);
 #endif
-                printf("typeIndex.v: %x\n", result->TypeIndex.v);
-                const char* type_str = TypeToChars(&repl->sema, result->TypeIndex);
-
-                printf("typeof(%s) = %s\n", str, type_str);
-                // XXX static and fixed size state like _ReadContext
-                // should do away soon.
-                _ReadContextSize = 0;
                 goto LnextLine;
             }
 
