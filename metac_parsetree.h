@@ -178,6 +178,7 @@ typedef struct stmt_while_t
     STATEMENT_HEADER
 
     metac_expression_t* E1;
+    struct metac_statement_t* WhileBody;
 } stmt_while_t;
 
 typedef struct stmt_case_t
@@ -185,6 +186,7 @@ typedef struct stmt_case_t
     STATEMENT_HEADER
 
     metac_expression_t* E1;
+    struct metac_statement_t* CaseBody;
 } stmt_case_t;
 
 typedef struct stmt_goto_t

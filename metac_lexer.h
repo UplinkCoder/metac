@@ -261,12 +261,17 @@ typedef struct metac_token_t {
             uint32_t charLength;
             char chars[8];
         };
-        uint64_t ValueU64;
-        int64_t ValueI64;
-        uint32_t ValueU32;
-        int32_t ValueI32;
-        float ValueF23;
-        double ValueF52;
+        struct {
+            union {
+                uint64_t ValueU64;
+                int64_t ValueI64;
+                uint32_t ValueU32;
+                int32_t ValueI32;
+                float ValueF23;
+                double ValueF52;
+            };
+            uint32_t ValueLength;
+        };
     };
 } metac_token_t;
 
@@ -366,12 +371,11 @@ typedef struct metac_lexer_t {
 
 const char* MetaCTokenEnum_toChars(metac_token_enum_t tok);
 
-#define ParseErrorF(STATE, MSG, ...) \
-    fprintf(stderr, "ParseError[%s:%u]: {%u:%u}"  MSG  "\n", __FILE__, __LINE__, (STATE ? STATE->Line : 0), (STATE ? STATE->Column : 0), __VA_ARGS__); \
+#define ParseErrorF(LOC, MSG, ...) \
+    fprintf(stderr, "ParseError[%s:%u]: {%u:%u}"  MSG  "\n", __FILE__, __LINE__, (LOC.StartLine), (LOC.StartColumn), __VA_ARGS__); \
     ParseErrorBreak();
-
-#define ParseError(STATE, MSG) \
-    fprintf(stderr, "ParseError[%s:%u]: {%u:%u}"  MSG  "\n", __FILE__, __LINE__, (STATE ? STATE->Line : 0), (STATE ? STATE->Column : 0)); \
+#define ParseError(LOC, MSG) \
+    fprintf(stderr, "ParseError[%s:%u]: {%u:%u}"  MSG  "\n", __FILE__, __LINE__, (LOC.StartLine), (LOC.StartColumn)); \
     ParseErrorBreak();
 
 void MetaCLexer_Init(metac_lexer_t* self);

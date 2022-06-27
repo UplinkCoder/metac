@@ -72,6 +72,8 @@ typedef struct metac_parser_t
 
     metac_location_storage_t LocationStorage;
 
+    metac_printer_t DebugPrinter;
+
     metac_identifier_ptr_t SpecialNamePtr_Compiler;
     metac_identifier_ptr_t SpecialNamePtr_Context;
     metac_identifier_ptr_t SpecialNamePtr_Target;

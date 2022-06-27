@@ -400,9 +400,7 @@ uint32_t MetaCTokenLength(metac_token_t token)
     {
         if (token.TokenType == tok_uint)
         {
-			assert(token.ValueU64 < 0xffffffff);
-            uint32_t v = token.ValueU64;
-            return (uint32_t)(fastLog10(v) + 1);
+            return token.ValueLength;
         }
         else if (token.TokenType == tok_identifier)
         {
@@ -627,6 +625,7 @@ void ParseErrorBreak(void)
     int k = 2;
 }
 
+/// is it valid for c to follow a \ in character or string literal
 bool IsValidEscapeChar(char c)
 {
     // printf("Calling %s with '%c'\n", __FUNCTION__, c);
@@ -699,12 +698,12 @@ metac_location_ptr MetaCLocationStorage_StartLoc(
         uint32_t line, uint16_t column)
 {
 #ifndef NO_LOCATION_TRACKING
-#ifndef TEST_LEXER
+#  ifndef TEST_LEXER
     if (self->LocationSize >= self->LocationCapacity)
     {
         _newMemRealloc((void**)&self->Locations, &self->LocationCapacity, sizeof(metac_location_t));
     }
-#endif
+#  endif
     assert(self->LocationSize < self->LocationCapacity);
 
     uint32_t result = self->LocationSize++;
@@ -780,8 +779,10 @@ LcontinueLexnig:
     state->Position += eatenChars;
     eatenChars = 0;
     token.Position = state->Position;
+
     token.LocationId =
         MetaCLocationStorage_StartLoc(&self->LocationStorage, state->Line, state->Column);
+    metac_location_t loc = self->LocationStorage.Locations[token.LocationId - 4];
 
     if ((token.TokenType = MetaCLexFixedLengthToken(text)) == tok_invalid)
     {
@@ -825,6 +826,7 @@ LcontinueLexnig:
                 token.TokenType = tok_uint;
                 bool isHex;
                 uint64_t value;
+                uint32_t initialPos = eatenChars;
 //             LparseDigits:
                 value = 0;
                 isHex = false;
@@ -840,10 +842,12 @@ LcontinueLexnig:
                         eatenChars++;
                         if (!ParseHex(&text, &eatenChars, &value))
                         {
-                            ParseErrorF(state, "invalid hex literal %.*s", 4, text - 1);
+                            ParseErrorF(loc, "invalid hex literal %.*s", 4, text - 1);
                             result = &err_token;
                             goto Lreturn;
                         }
+                        c = *text++;
+                        //printf("eaten_chars: %u -- C: %c\n", eatenChars, c);
                         goto LParseNumberDone;
                     }
                     else if (!IsNumericChar(c))
@@ -855,10 +859,11 @@ LcontinueLexnig:
                     {
                         if (!ParseOctal(&text, &eatenChars, &value))
                         {
-                            ParseErrorF(state, "invalid octal literal %.*s", 4, text - 1);
+                            ParseErrorF(loc, "invalid octal literal %.*s", 4, text - 1);
                             result = &err_token;
                             goto Lreturn;
                         }
+                        c = *text++;
                         goto LParseNumberDone;
                     }
                 }
@@ -869,14 +874,15 @@ LcontinueLexnig:
                     value *= 10;
                     value += c - '0';
                 }
+            LParseNumberDone:
                 c |= 32;
                 while (c == 'u' ||  c == 'l')
                 {
                     eatenChars++;
                     c = (*text++ | 32);
                 }
-            LParseNumberDone:
                 token.ValueU64 = value;
+                token.ValueLength = eatenChars - initialPos;
                 state->Column += eatenChars;
             }
             else if (c == '\'')
@@ -889,7 +895,7 @@ LcontinueLexnig:
                 eatenChars++;
                 if (c == '\'')
                 {
-                    ParseError(state, "Empty character Literal");
+                    ParseError(loc, "Empty character Literal");
                     result = &err_token;
                     goto Lreturn;
                 }
@@ -898,7 +904,7 @@ LcontinueLexnig:
                     token.chars[charLength++] = c;
                     if (charLength > 8)
                     {
-                        ParseError(state, "Char literal too long.");
+                        ParseError(loc, "Char literal too long.");
                         token.TokenType = tok_error;
                         goto Lreturn;
                     }
@@ -910,7 +916,7 @@ LcontinueLexnig:
                         eatenChars++;
                         if (!IsValidEscapeChar(c))
                         {
-                            ParseErrorF(state, "Invalid escape seqeunce '%.*s'", 4, (text - 2));
+                            ParseErrorF(loc, "Invalid escape seqeunce '%.*s'", 4, (text - 2));
                         }
                         if (c == 'U')
                         {
@@ -961,7 +967,7 @@ LcontinueLexnig:
                         if (!IsValidEscapeChar(c))
                         {
                             state->Column = column;
-                            ParseErrorF(state, "Invalid escape seqeunce '%.*s'", 4, (text - 2));
+                            ParseErrorF(loc, "Invalid escape seqeunce '%.*s'", 4, (text - 2));
                         }
                         if (c == '\n')
                         {
@@ -975,7 +981,7 @@ LcontinueLexnig:
 
                 if (c != matchTo)
                 {
-                    ParseErrorF(state, "Unterminated string literal '%.*s' \n", 10, text - eatenChars - 1);
+                    ParseErrorF(loc, "Unterminated string literal '%.*s' \n", 10, text - eatenChars - 1);
                     result = &err_token;
                     goto Lreturn;
                 }
@@ -1026,6 +1032,7 @@ LcontinueLexnig:
         token.CommentLength = commentLength;
         token.CommentBegin = text;
         state->Column += commentLength + 1;
+        state->Line += 1;
     }
     else if (token.TokenType == tok_comment_begin_multi)
     {
