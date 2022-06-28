@@ -542,7 +542,7 @@ metac_type_index_t MetaCSemantic_TypeSemantic(metac_semantic_state_t* self,
         decl_type_ptr_t* typePtr = (decl_type_ptr_t*) type;
         elementTypeIndex =
             MetaCSemantic_doTypeSemantic(self, typePtr->ElementType);
-
+        assert(elementTypeIndex.v && elementTypeIndex.v != -1);
         result = MetaCSemantic_GetPtrTypeOf(self, elementTypeIndex);
     }
     else if (type->DeclKind == decl_type_functiontype)
@@ -603,6 +603,10 @@ LtryAgian: {}
             if (node == emptyNode)
             {
 #ifndef NO_FIBERS
+#if 0
+                WaitForSignal(MetaCSemantic_RegisterInScope, type->TypeIdentifier);
+                CancelIf(self->CurrentScope->Closed);
+#endif
                 aco_t* me = (aco_t*)CurrentFiber();
                 task_t* task = CurrentTask();
                 printf("Yield!\n");

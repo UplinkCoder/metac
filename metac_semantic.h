@@ -122,7 +122,7 @@ typedef struct metac_semantic_state_t
 
     AT(transient) uint32_t TemporaryScopeDepth;
 
-    AT(transient) metac_scope_t* CurrentScope;
+    AT(TaskLocal) AT(transient) metac_scope_t* CurrentScope;
 
     AT(transient) metac_semantic_lru_t LRU;
 
@@ -136,9 +136,6 @@ typedef struct metac_semantic_state_t
     AT(transient) uint32_t ExpressionStackCapacity;
 
     metac_type_aggregate_t* CompilerInterface;
-
-    AT(valid_if, CurrentScope->Parent.Owner.Kind == scope_parent_function)
-    uint32_t FrameOffset;
 } metac_semantic_state_t;
 
 #include "metac_type_semantic.h"

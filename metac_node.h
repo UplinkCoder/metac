@@ -1,3 +1,6 @@
+#include "compat.h"
+
+
 #define FIRST_BINARY_EXP(M) \
     M(exp_comma)
 
@@ -249,3 +252,7 @@ typedef metac_node_header_t* metac_node_t;
 #define METAC_NODE(N) \
     (*(metac_node_t*)(&N))
 #endif
+
+static inline bool MetaCNode_IsExpression(metac_node_t node);
+static inline bool MetaCNode_IsStatement(metac_node_t node);
+static inline bool MetaCNode_IsDeclaration(metac_node_t node);

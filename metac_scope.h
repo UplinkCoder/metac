@@ -99,7 +99,10 @@ typedef enum metac_scope_flags_t
     /// which get mounted over the current scope
     scope_flag_mounted   = (1 << 1),
 
-    scope_flag_max = (1 << 2)
+    /// a closed scope cannot be added to anymore
+    scope_flag_closed    = (1 << 2),
+
+    scope_flag_max = (1 << 3)
 } metac_scope_flags_t;
 
 typedef struct metac_scope_t
@@ -112,6 +115,8 @@ typedef struct metac_scope_t
         const struct metac_scope_t* MountedScope;
     } ;
     uint32_t Serial;
+    /// when true the scope can no longer be added to
+    bool Closed;
 } metac_scope_t;
 
 /// Returns 0 to keep looking upwards

@@ -451,7 +451,30 @@ static inline void PrintStatement(metac_printer_t* self, metac_statement_t* stmt
         case stmt_for:
         {
             stmt_for_t* stmt_for = cast(stmt_for_t*) stmt;
+            PrintKeyword(self, tok_kw_for);
+            PrintChar(self, '(');
+            if (stmt_for->ForInit != cast(metac_declaration_t*) emptyPointer)
+            {
+                PrintDeclaration(self, stmt_for->ForInit, 0);
+            }
+            else
+            {
+                PrintChar(self, ';');
+            }
 
+            if (stmt_for->ForCond != cast(metac_expression_t*) emptyPointer)
+            {
+                PrintExpression(self, stmt_for->ForCond);
+            }
+            PrintChar(self, ';');
+            if (stmt_for->ForPostLoop != cast(metac_expression_t*) emptyPointer)
+            {
+                PrintExpression(self, stmt_for->ForPostLoop);
+            }
+            PrintChar(self, ')');
+            PrintNewline(self);
+            PrintIndent(self);
+            PrintStatement(self, stmt_for->ForBody);
         } break;
         case stmt_break:
         {
@@ -519,6 +542,7 @@ static inline void PrintStatement(metac_printer_t* self, metac_statement_t* stmt
             PrintString(self, comment->Text, comment->Length);
             PrintString(self, "*/", 2);
         } break;
+
         default : {
             fprintf(stderr,
                 "Statement Kind: not handled by printer %s\n",

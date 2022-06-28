@@ -364,6 +364,11 @@ typedef struct sema_decl_function_t
     sema_decl_variable_t* Parameters;
 
     sema_stmt_block_t* FunctionBody;
+
+    /// non-null if this function is nested
+    struct sema_decl_function_t* ParentFunc;
+    
+    uint32_t FrameOffset;
 } sema_decl_function_t;
 
 typedef struct sema_decl_type_ptr_t

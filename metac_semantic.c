@@ -989,6 +989,9 @@ scope_insert_error_t MetaCSemantic_RegisterInScope(metac_semantic_state_t* self,
     if (self->CurrentScope != 0)
         result = MetaCScope_RegisterIdentifier(self->CurrentScope, idPtr, node);
 #ifndef NO_FIBERS
+#if 0
+    EmitSignal(MetaCScope_RegisterIdentifier, idPtr);
+#endif
     //RLOCK(&self->Waiters.WaiterLock);
     for(uint32_t i = 0; i < self->Waiters.WaiterCount; i++)
     {
@@ -1055,7 +1058,8 @@ sema_decl_function_t* MetaCSemantic_doFunctionSemantic(metac_semantic_state_t* s
     f->Scope = MetaCSemantic_PushNewScope(self, scope_parent_function, (metac_node_t)f);
     // now we compute the position on the stack and Register them in the scope.
 
-    uint32_t frameOffset = 0;
+    uint32_t frameOffset = ((f->ParentFunc != (decl_function_t*)emptyNode)
+                           ? f->ParentFunc->FrameOffset : 0);
 
     for(uint32_t i = 0;
         i < func->ParameterCount;
@@ -1069,7 +1073,7 @@ sema_decl_function_t* MetaCSemantic_doFunctionSemantic(metac_semantic_state_t* s
             MetaCScope_RegisterIdentifier(f->Scope, params[i].VarIdentifier,
                                           ptr);
     }
-    self->FrameOffset = frameOffset;
+    f->FrameOffset = frameOffset;
     f->FunctionBody = (sema_stmt_block_t*)
         MetaCSemantic_doStatementSemantic(self, func->FunctionBody);
 
@@ -1203,7 +1207,8 @@ void MetaCSemantic_doDeclSemantic_Task(task_t* task)
         MetaCSemantic_doDeclSemantic_(ctx->Sema, ctx->Decl, Origin.File, Origin.Line);
 }
 #endif
-
+#define TracyMessage(MSG) \
+    TracyCMessage(MSG, sizeof(MSG) - 1)
 metac_sema_declaration_t* MetaCSemantic_doDeclSemantic_(metac_semantic_state_t* self,
                                                         metac_declaration_t* decl,
                                                         const char* callFile,
@@ -1222,6 +1227,10 @@ metac_sema_declaration_t* MetaCSemantic_doDeclSemantic_(metac_semantic_state_t* 
 
         task_t declTask;
         task_t* currentTask = CurrentTask();
+        if (currentTask->TaskFunction == MetaCSemantic_doDeclSemantic_Task)
+        {
+            TracyMessage("pay attenetion now");
+        }
         declTask.TaskFunction = MetaCSemantic_doDeclSemantic_Task;
                 declTask.Origin.File = callFile;
         declTask.Origin.Line = callFile;

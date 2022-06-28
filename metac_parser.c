@@ -1363,7 +1363,16 @@ metac_expression_t* MetaCParser_ParseBinaryExpression(metac_parser_t* self,
     }
     if (!result->Hash)
     {
-        result->Hash = CRC32C_VALUE(result->E1->Hash, result->E2->Hash);
+        if (result->E2 == emptyPointer)
+        {
+            result->Hash = result->E1->Hash;
+        }
+        else
+        {
+            result->Hash = ~0;
+            result->Hash = CRC32C_VALUE(result->E1->Hash, result->E2->Hash);
+        }
+
         result->LocationIdx = MetaCLocationStorage_Store(&self->LocationStorage, loc);
     }
     return result;
@@ -1977,6 +1986,9 @@ metac_declaration_t* MetaCParser_ParseDeclaration(metac_parser_t* self, metac_de
 
     decl_type_t* type = 0;
 
+    if (tokenType == tok_eof)
+        return 0;
+
     // Let's deal with labels right at the start.
     if (MetaCParser_PeekMatch(self, tok_identifier, true))
     {
@@ -2211,6 +2223,7 @@ static metac_statement_t* MetaCParser_ParseStatement(metac_parser_t* self,
         (currentToken ? currentToken->TokenType : tok_invalid);
     metac_location_t loc = LocationFromToken(self, currentToken);
     metac_token_t* peek2;
+    uint32_t hash = 0;
 
     if (tokenType == tok_invalid)
     {
@@ -2227,48 +2240,78 @@ static metac_statement_t* MetaCParser_ParseStatement(metac_parser_t* self,
         stmt_comment_t* comment = AllocNewStatement(stmt_comment, &result);
         comment->Text = self->CurrentComment.CommentBegin;
         comment->Length = self->CurrentComment.CommentLength;
+        comment->Hash = ~0;
     }
     else if (tokenType == tok_kw_if)
     {
         stmt_if_t* if_stmt = AllocNewStatement(stmt_if, &result);
         MetaCParser_Match(self, tok_kw_if);
+        hash = if_key;
         if (!MetaCParser_PeekMatch(self, tok_lParen, 0))
         {
             ParseError(loc, "execpected ( after if\n");
             return ErrorStatement();
         }
         MetaCParser_Match(self, tok_lParen);
-        metac_expression_t* condExpP =
+        if_stmt->IfCond =
             MetaCParser_ParseExpression(self, expr_flags_none, 0);
+        hash = CRC32C_VALUE(hash, if_stmt->IfCond);
         MetaCParser_Match(self, tok_rParen);
-        if_stmt->IfCond = condExpP;
         if_stmt->IfBody = MetaCParser_ParseStatement(self, (metac_statement_t*)result, 0);
+        hash = CRC32C_VALUE(self, if_stmt->IfBody->Hash);
+
         if (MetaCParser_PeekMatch(self, tok_kw_else, 1))
         {
             MetaCParser_Match(self, tok_kw_else);
             if_stmt->ElseBody = (metac_statement_t*)MetaCParser_ParseStatement(self, (metac_statement_t*)result, 0);
+            hash = CRC32C_VALUE(hash, if_stmt->ElseBody->Hash);
         }
         else
         {
             if_stmt->ElseBody = (metac_statement_t*)_emptyPointer;
         }
+        result->Hash = hash;
         goto LdoneWithStatement;
     }
     else if (tokenType == tok_kw_for)
     {
         MetaCParser_Match(self, tok_kw_for);
+        hash = for_key;
         stmt_for_t* for_ = AllocNewStatement(stmt_for, &result);
         MetaCParser_Match(self, tok_lParen);
 
-        uint32_t hash = crc32c_nozero(~0, "for", sizeof("for") - 1);
 
-        for_->ForInit = MetaCParser_ParseDeclaration(self, 0);
-        for_->ForCond = MetaCParser_ParseExpression(self, expr_flags_none, 0);
+        if (!MetaCParser_PeekMatch(self, tok_semicolon, 1))
+        {
+            for_->ForInit = MetaCParser_ParseDeclaration(self, 0);
+            hash = CRC32C_VALUE(hash, for_->ForInit->Hash);
+        }
+        else
+        {
+            for_->ForInit = (metac_declaration_t*)emptyPointer;
+            MetaCParser_Match(self, tok_semicolon);
+        }
+        if (!MetaCParser_PeekMatch(self, tok_semicolon, 1))
+        {
+            for_->ForCond = MetaCParser_ParseExpression(self, expr_flags_none, 0);
+            hash = CRC32C_VALUE(hash, for_->ForCond->Hash);
+        }
+        else
+        {
+            for_->ForCond = (metac_expression_t*)emptyPointer;
+        }
         MetaCParser_Match(self, tok_semicolon);
-
-        for_->ForPostLoop = MetaCParser_ParseExpression(self, expr_flags_none, 0);
+        if (!MetaCParser_PeekMatch(self, tok_rParen, 1))
+        {
+            for_->ForPostLoop = MetaCParser_ParseExpression(self, expr_flags_none, 0);
+            hash = CRC32C_VALUE(hash, for_->ForPostLoop->Hash);
+        }
+        else
+        {
+            for_->ForPostLoop = (metac_expression_t*)emptyPointer;
+        }
         MetaCParser_Match(self, tok_rParen);
-
+        for_->ForBody = MetaCParser_ParseStatement(self, for_, 0);
         result->Hash = hash;
     }
     else if (tokenType == tok_kw_switch)

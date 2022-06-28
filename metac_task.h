@@ -104,7 +104,7 @@ typedef struct task_t
         struct {
             void* ResultPtr;
             aco_t* Caller;
-        }
+        };
     };
     union {
         uint8_t _inlineContext[INLINE_TASK_CTX_SZ];

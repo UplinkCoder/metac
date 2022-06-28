@@ -13,6 +13,10 @@
 #include "../metac_type_table.h"
 #include "../metac_task.h"
 
+#ifdef __linux__
+    const char* get_current_dir_name(void);
+#endif
+
 extern bool g_exernalIdentifierTable;
 extern metac_lexer_t g_lineLexer;
 extern void LineLexerInit();
@@ -126,6 +130,19 @@ static inline int TranslateIdentifiers(metac_node_t node, void* ctx)
     return 0;
 }
 
+static inline int FindStatementCb(metac_node_t node, void* ctx)
+{
+    switch(cast(metac_statement_kind_t)node->Kind)
+    {
+        case stmt_if:
+        {
+            stmt_if_t* stmt_if = cast(stmt_if_t*) node;
+            printf("Found if statement: if (%s)", stmt_if->IfCond);
+        } break;
+    }
+    return 0;
+}
+
 typedef struct presemantic_context_t
 {
     int32_t sz;
@@ -171,6 +188,8 @@ typedef struct repl_state_t
 
     char* srcBuffer;
     void* freePtr;
+
+    uint32_t lineSz;
     uint32_t srcBufferLength;
 
     metac_printer_t printer;
@@ -391,7 +410,9 @@ LswitchMode:
 
     {
         repl->line = linenoise(repl->promt);
+        repl->lineSz = strlen(repl->line);
         linenoiseHistoryAdd(repl->line);
+        TracyCMessage(repl->line, repl->lineSz)
     }
 
     {
@@ -411,8 +432,12 @@ LswitchMode:
                 FILE* fd = fopen(filename, "rb");
                 if (!fd)
                 {
-                    perror("loading file failed");
-                    // printf("cwd: %s\n", get_current_dir_name());
+                    perror(filename);
+#if defined(__linux__) && defined(TRACY_ENABLE)
+                    char message[256];
+                    uint32_t sz = sprintf(message, "%s/%s", get_current_dir_name(), filename);
+#endif
+                    TracyCMessage(message, sz);
                 }
                 else
                 {

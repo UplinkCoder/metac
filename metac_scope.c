@@ -33,6 +33,8 @@ metac_scope_table_slot_t* MetaCScopeTable_Lookup(metac_scope_table_t* self,
                                                  const uint32_t idPtrHash,
                                                  metac_identifier_ptr_t idPtr)
 {
+   TracyCZone(ctx, true);
+
     const uint32_t slotIndexMask = ((1 << self->SlotCount_Log2) - 1);
     const uint32_t initialSlotIndex = (idPtrHash & slotIndexMask);
 
@@ -45,6 +47,7 @@ metac_scope_table_slot_t* MetaCScopeTable_Lookup(metac_scope_table_t* self,
             &self->Slots[(slotIndex - 1) & slotIndexMask];
         if (slot->Hash == idPtrHash && idPtr.v == slot->Ptr.v)
         {
+            TracyCZoneEnd(ctx);
             return slot;
         }
         else if (slot->Hash == 0)
@@ -52,7 +55,7 @@ metac_scope_table_slot_t* MetaCScopeTable_Lookup(metac_scope_table_t* self,
             break;
         }
     }
-
+    TracyCZoneEnd(ctx);
     return 0;
 }
 #define existsPointer ((metac_scope_table_slot_t*) 2)

@@ -3,7 +3,7 @@
 
 #if defined(__i386__) || defined(__x86_64__)
 #  define FENCE() __asm__ volatile ("mfence" ::: "memory");
-#  define MM_PAUSE() __asm__ volatile ("pause");
+#  define MM_PAUSE()
 #elif defined(__aarch64__)
 # define FENCE() __asm__ volatile ("dmb sy" ::: "memory");
 # define MM_PAUSE() __asm__ volatile ("yield");
