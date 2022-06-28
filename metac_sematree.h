@@ -173,7 +173,7 @@ typedef struct sema_stmt_yield_t
 {
     SEMA_STATEMENT_HEADER
 
-    metac_sema_expression_t* Expression;
+    metac_sema_expression_t* YieldExp;
 } sema_stmt_yield_t;
 
 typedef struct sema_stmt_scope_t
@@ -188,7 +188,7 @@ typedef struct sema_stmt_defer_t
 {
     SEMA_STATEMENT_HEADER
 
-    struct metac_sema_statement_t* Stmt;
+    struct metac_sema_statement_t* DeferStmt;
 } sema_stmt_defer_t;
 
 typedef struct sema_stmt_for_t
@@ -208,21 +208,21 @@ typedef struct sema_stmt_while_t
 {
     SEMA_STATEMENT_HEADER
 
-    metac_sema_expression_t* E1;
+    metac_sema_expression_t* WhileExp;
 } sema_stmt_while_t;
 
 typedef struct sema_stmt_case_t
 {
     SEMA_STATEMENT_HEADER
 
-    metac_sema_expression_t* E1;
+    metac_sema_expression_t* CaseExp;
 } sema_stmt_case_t;
 
 typedef struct sema_stmt_goto_t
 {
     SEMA_STATEMENT_HEADER
 
-    metac_identifier_ptr_t Label;
+    metac_identifier_ptr_t GotoLabel;
 } sema_stmt_goto_t;
 
 typedef struct sema_stmt_exp_t
@@ -259,22 +259,23 @@ typedef struct sema_stmt_return_t
 {
     SEMA_STATEMENT_HEADER
 
-    metac_sema_expression_t* Expression;
+    metac_sema_expression_t* ReturnExp;
 } sema_stmt_return_t;
 
 typedef struct sema_stmt_switch_t
 {
     SEMA_STATEMENT_HEADER
 
-    metac_sema_expression_t* Expression;
+    metac_sema_expression_t* SwitchExp;
+    struct metac_sema_statement_t* SwitchBody;
 } sema_stmt_switch_t;
 
 typedef struct sema_stmt_do_while_t
 {
     SEMA_STATEMENT_HEADER
 
-    metac_sema_expression_t* Expression;
-    struct metac_sema_statement_t* Body;
+    metac_sema_expression_t* WhileExp;
+    struct metac_sema_statement_t* WhileBody;
 } sema_stmt_do_while_t;
 
 typedef struct metac_sema_statement_t

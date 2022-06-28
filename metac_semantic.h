@@ -190,7 +190,7 @@ metac_node_header_t* MetaCSemantic_LookupIdentifier(metac_semantic_state_t* self
                                                     metac_identifier_ptr_t identifierPtr);
 #ifndef Expression_IsEqual
 #define Expression_IsEqual(A, B) \
-    (A == B ? true : Expression_IsEqual_( \
+    ((A == B) ? true : Expression_IsEqual_( \
     ((const metac_sema_expression_t*)(A)), ((const metac_sema_expression_t*)(B)))
 #endif
 

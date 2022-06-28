@@ -170,7 +170,8 @@
     M(stmt_return) \
     \
     M(stmt_exp) \
-    M(stmt_decl)
+    M(stmt_decl) \
+    M(stmt_comment)
 
 
 #define FOREACH_NODE_KIND(M) \

@@ -344,8 +344,35 @@ void Repl_Init(repl_state_t* self)
     _ReadContexts = (ReadI32_Ctx*)
         malloc(sizeof(ReadI32_Ctx) * _ReadContextCapacity);
     _ReadContextSize = 0;
-
 }
+typedef struct MetaCRepl_ExprSemantic_context_t
+{
+    repl_state_t* Repl;
+    metac_expression_t* Exp;
+} MetaCRepl_ExprSemantic_context_t;
+
+void MetaCRepl_ExprSemantic_Task(task_t* task)
+{
+    MetaCRepl_ExprSemantic_context_t* ctx =
+        (MetaCRepl_ExprSemantic_context_t*)
+            task->Context;
+
+    metac_sema_expression_t* result;
+
+    ENQUEUE_TASK(result, MetaCSemantic_doExprSemantic_,
+                 (&ctx->Repl->sema), ctx->Exp, 0);
+
+    task->TaskFlags |= Task_Waiting;
+    printf("Just before yield\n");
+    YIELD(WaitForExprSemantic);
+
+    printf("typeIndex.v: %x\n", result->TypeIndex.v);
+    const char* type_str = TypeToChars(&ctx->Repl->sema, result->TypeIndex);
+
+    printf("typeof(%s) = %s\n",
+           MetaCPrinter_PrintExpression(&ctx->Repl->printer, ctx->Exp));
+}
+
 /// returns false if the repl is done running
 bool Repl_Loop(repl_state_t* repl)
 {
@@ -555,6 +582,7 @@ LswitchMode:
 
                 metac_sema_expression_t* result =
                     MetaCSemantic_doExprSemantic(&repl->sema, exp, 0);
+
             Lcontinuation:
                 {
                     printf("typeIndex.v: %x\n", result->TypeIndex.v);

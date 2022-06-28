@@ -144,7 +144,7 @@ typedef struct stmt_yield_t
 {
     STATEMENT_HEADER
 
-    metac_expression_t* Expression;
+    metac_expression_t* YieldExp;
 } stmt_yield_t;
 
 typedef struct stmt_scope_t
@@ -177,7 +177,7 @@ typedef struct stmt_while_t
 {
     STATEMENT_HEADER
 
-    metac_expression_t* E1;
+    metac_expression_t* WhileExp;
     struct metac_statement_t* WhileBody;
 } stmt_while_t;
 
@@ -185,7 +185,7 @@ typedef struct stmt_case_t
 {
     STATEMENT_HEADER
 
-    metac_expression_t* E1;
+    metac_expression_t* CaseExp;
     struct metac_statement_t* CaseBody;
 } stmt_case_t;
 
@@ -193,7 +193,7 @@ typedef struct stmt_goto_t
 {
     STATEMENT_HEADER
 
-    metac_identifier_ptr_t Label;
+    metac_identifier_ptr_t GotoLabel;
 } stmt_goto_t;
 
 typedef struct stmt_exp_t
@@ -230,23 +230,32 @@ typedef struct stmt_return_t
 {
     STATEMENT_HEADER
 
-    metac_expression_t* Expression;
+    metac_expression_t* ReturnExp;
 } stmt_return_t;
 
 typedef struct stmt_switch_t
 {
     STATEMENT_HEADER
 
-    metac_expression_t* Expression;
+    metac_expression_t* SwitchExp;
+    struct metac_statement_t* SwitchBody;
 } stmt_switch_t;
 
 typedef struct stmt_do_while_t
 {
     STATEMENT_HEADER
 
-    metac_expression_t* Expression;
-    struct metac_statement_t* Body;
+    metac_expression_t* DoWhileExp;
+    struct metac_statement_t* DoWhileBody;
 } stmt_do_while_t;
+
+typedef struct stmt_comment_t
+{
+    STATEMENT_HEADER
+
+    const char* Text;
+    uint32_t Length;
+} stmt_comment_t;
 
 #define MEMBER(KIND) \
     KIND##_t KIND;

@@ -133,6 +133,7 @@ typedef struct metac_lexer_state_t
     M(tok_kw_assert) \
     \
     M(tok_kw_case) \
+    M(tok_kw_default) \
     M(tok_kw_goto) \
     M(tok_kw_static) \
     M(tok_kw_inline) \

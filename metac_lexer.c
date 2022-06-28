@@ -318,6 +318,7 @@ static uint32_t MetaCStaticTokenLength(metac_token_enum_t t)
         case tok_kw_assert   : return 6;
         case tok_kw_typedef  : return 7;
         case tok_kw_case     : return 4;
+        case tok_kw_default  : return 7;
         case tok_kw_static   : return 6;
         case tok_kw_inline   : return 6;
         case tok_kw_else     : return 4;
@@ -644,8 +645,8 @@ void MetaCLocationStorage_Init(metac_location_storage_t* self)
 {
     self->LocationCapacity = 128;
     self->LocationSize = 0;
-    self->Locations = cast(metac_location_storage_t*)
-        calloc(sizeof(metac_location_storage_t), self->LocationCapacity);
+    self->Locations = cast(metac_location_t*)
+        calloc(sizeof(metac_location_t), self->LocationCapacity);
 }
 
 metac_location_ptr MetaCLocationStorage_Store(metac_location_storage_t* self,
@@ -1245,6 +1246,7 @@ void test_lexer()
         "eject",
         "assert",
         "case",
+        "default",
         "goto",
         "static",
         "inline",

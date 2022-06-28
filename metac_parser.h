@@ -22,6 +22,8 @@ typedef enum parse_expression_flags_t
     expr_flags_unary = (1 << 1),
     expr_flags_enum = (1 << 2),
     expr_flags_type = (1 << 3),
+    expr_flags_addr = (1 << 4),
+    expr_flags_sizeof = (1 << 5),
 } parse_expression_flags_t;
 
 
@@ -67,7 +69,7 @@ typedef struct metac_parser_t
     uint32_t OpenParens;
     uint32_t PackStackCapacity;
 
-    decl_comment_t* CurrentComment;
+    metac_token_t CurrentComment;
     decl_label_t* CurrentLabel;
 
     metac_location_storage_t LocationStorage;

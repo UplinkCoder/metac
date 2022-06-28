@@ -85,10 +85,12 @@ void FiberDoTask(void)
 
         fiber->arg = 0;
 
-        if (task->Continuation)
+        if ((task->TaskFlags & Task_Continuation_Task) == Task_Continuation_Task)
         {
             task_t* continuation = task->Continuation;
             fiber->arg = (void*)(continuation);
+            // let's set the dynamic parent
+            continuation->Parent = task;
             continuation->Fiber = thisFiber;
             continuation->TaskFlags |= Task_Running;
             continuation->TaskFunction(continuation);
@@ -231,9 +233,9 @@ void RunWorkerThread(worker_context_t* worker, void (*specialFunc)(),  void* spe
         if (tasksInQueueFront(q->readPointer, q->writePointer))
         {
             // we have a free fiber
-            // printf("Freebitfield %x\n", *FreeBitfield);
+            printf("Freebitfield %x\n", *FreeBitfield);
             nextFiberIdx = BSF(*FreeBitfield);
-            // printf("Grabbing Fiber: %u\n", nextFiberIdx);
+            printf("Grabbing Fiber: %u\n", nextFiberIdx);
             (*FreeBitfield) &= (~(1 << (nextFiberIdx)));
             execFiber = fiberPool.MainCos + nextFiberIdx;
             // mark fiber as used
@@ -242,14 +244,15 @@ void RunWorkerThread(worker_context_t* worker, void (*specialFunc)(),  void* spe
                 task_t* taskP = &fiberPool.Tasks[nextFiberIdx];
                 if (TaskQueue_Pull(q, taskP))
                 {
-                    // printf("Pulled task\n");
+                    printf("Pulled task\n");
                     taskP->Fiber = execFiber;
                     ExecuteTask(worker, taskP, execFiber);
                     if ((taskP->TaskFlags & Task_Complete) == Task_Complete)
                     {
-                        // printf("Execution finished freeing fiber\n");
+                        printf("Execution finished freeing fiber\n");
                         *(FreeBitfield) |= (1 << nextFiberIdx);
                     }
+                    continue;
                 }
                 else
                 {
@@ -261,8 +264,12 @@ void RunWorkerThread(worker_context_t* worker, void (*specialFunc)(),  void* spe
         // if we do end up here we have a fiber to spare
         // but no work in the front queue let's check the back of our queue
         if (tasksInQueueBack(q->readPointer, q->writePointer))
-        execFiber = 0;
+            execFiber = 0;
 
+    LhandleContinutionLabel:
+        {
+
+        }
         // try to finish started tasks without starting new ones
     LscheduleNextTask:
         {

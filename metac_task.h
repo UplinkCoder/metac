@@ -68,6 +68,9 @@ typedef enum task_flags_t
     Task_Resumable = (1 << 1),
     Task_Complete  = (1 << 2),
     Task_Waiting   = Task_Resumable | Task_Running,
+
+    Task_Continuation_JumpToLabel = (1 << 4),
+    Task_Continuation_Task        = (1 << 5),
 } task_flags_t;
 
 #pragma pack(push, 1)
@@ -82,7 +85,7 @@ typedef struct task_origin_t
 #define ORIGIN(VAR) \
      ( VAR.File = __FILE__, VAR.Func = __FUNCTION__,   VAR.Line = __LINE__ )
 
-#define INLINE_TASK_CTX_SZ 40
+#define INLINE_TASK_CTX_SZ 32
 
 typedef struct task_inline_ctx_t
 {
@@ -95,8 +98,13 @@ typedef struct task_t
     void* Context;
     struct task_t* Parent;
     aco_t* Fiber;
-    struct task_t* Continuation;
-
+    union {
+        struct task_t* Continuation;
+        struct {
+            void* ResultPtr;
+            aco_t* Caller;
+        }
+    };
     union {
         uint8_t _inlineContext[INLINE_TASK_CTX_SZ];
         task_inline_ctx_t inlineContext;
@@ -189,22 +197,49 @@ bool TaskQueue_Pull(taskqueue_t* self, task_t* taskP);
 
 #endif
 
+#define CAT2(A, B) \
+    A ## B
 
-#define EQUEUE_WITH_CONT(FUNC, CONT, CONT_ARG, ...) do { \
+#define CAT(A, B) \
+    CAT2(A, B)
+
+#define CTX_TYPE(FUNC) \
+    FUNC ## task_context_t
+
+
+#define ENQUEUE_TASK(RESULT, FUNC, ...) do { \
+    taskqueue_t* q = &CurrentWorker()->Queue; \
+    CTX_TYPE(FUNC) _ctx = {__VA_ARGS__}; \
+    task_t task = {0}; \
+    STATIC_ASSERT(sizeof(task._inlineContext) >= sizeof(CTX_TYPE(FUNC)), \
+        "Context size too large for inline context storage"); \
+    task.Context = task._inlineContext; \
+    task.TaskFunction = (FUNC ## Task); \
+    task.Parent = CurrentTask(); \
+    ORIGIN(task.Origin); \
+    (*(cast(CTX_TYPE(FUNC)*)task.Context)) = _ctx; \
+    TaskQueue_Push(q, &task); \
+} while(0);
+/*
+#define SPAWN_TASK_CL(RESULT, FUNC, CONT_LABEL, ...) do { \
     taskqueue_t* q = &CurrentWorker()->Queue; \
     CTX_TYPE(FUNC) ctx = {__VA_ARGS__}; \
     task_t task = {0}; \
     STATIC_ASSERT(sizeof(task._inlineContext) >= sizeof(CTX_TYPE(FUNC)), \
         "Context size too large for inline context storage"); \
+    task.TaskFlags |= Task_Continuation_JumpToLabel; \
     task.Context = task._inlineContext; \
-    task.TaskFunction = CAT(FUNC, Task); \
+    task.TaskFunction = (FUNC ## Task); \
     task.Parent = CurrentTask(); \
     ORIGIN(task.Origin); \
     (*(cast(CTX_TYPE(FUNC)*)task.Context)) = ctx; \
-    task.Continuation = CONT; \
+    task.ResultPtr = (void*)&RESULT; \
+    task.Caller = CurrentFiber(); \
     TaskQueue_Push(q, &task); \
+    YIELD(); \
+    if (CurrentFiber == task.Caller) \
+    { \
+       goto CONT_LABEL; \
+    } \
 } while(0);
-
-#define ENQUEUE_TASK(RESULT, FUNC, ...) \
-    EQUEUE_WITH_CONT(RESULT, FUNC, 0, __VA_ARGS__)
-    
+*/

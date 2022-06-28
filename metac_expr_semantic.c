@@ -9,7 +9,11 @@
 
 void MetaCSemantic_doExprSemantic_Task(task_t* task)
 {
+    MetaCSemantic_doExprSemantic_task_context_t* ctx
+        = (MetaCSemantic_doExprSemantic_task_context_t*) task->Context;
     
+    ctx->Result = MetaCSemantic_doExprSemantic_(ctx->Sema, ctx->Expr, ctx->Result,
+                                                task->Origin.Func, task->Origin.File);
 }
 
 

@@ -330,6 +330,7 @@ static inline void PrintComment(metac_printer_t* self,
     PrintString(self, "/*", 2);
     PrintString(self, Text, Length);
     PrintString(self, "*/", 2);
+
 }
 static inline void PrintStatement(metac_printer_t* self, metac_statement_t* stmt)
 {
@@ -342,8 +343,8 @@ static inline void PrintStatement(metac_printer_t* self, metac_statement_t* stmt
 
             PrintKeyword(self, tok_kw_return);
             PrintSpace(self);
-            if (stmt_return->Expression != emptyPointer)
-                PrintExpression(self, stmt_return->Expression);
+            if (stmt_return->ReturnExp != emptyPointer)
+                PrintExpression(self, stmt_return->ReturnExp);
             PrintChar(self, ';');
         } break;
         case stmt_yield :
@@ -352,7 +353,8 @@ static inline void PrintStatement(metac_printer_t* self, metac_statement_t* stmt
 
             PrintKeyword(self, tok_kw_yield);
             PrintSpace(self);
-            PrintExpression(self, stmt_yield->Expression);
+            if (stmt_yield->YieldExp != emptyPointer)
+                PrintExpression(self, stmt_yield->YieldExp);
             PrintChar(self, ';');
         } break;
         case stmt_block :
@@ -448,13 +450,79 @@ static inline void PrintStatement(metac_printer_t* self, metac_statement_t* stmt
         } break;
         case stmt_for:
         {
-            stmt_return_t* stmt_return = cast(stmt_return_t*) stmt;
+            stmt_for_t* stmt_for = cast(stmt_for_t*) stmt;
 
+        } break;
+        case stmt_break:
+        {
+            stmt_break_t* stmt_break = cast(stmt_break_t*) stmt;
+            PrintKeyword(self, tok_kw_break);
+        } break;
+        case stmt_continue:
+        {
+            stmt_continue_t* stmt_continue = cast(stmt_continue_t*) stmt;
+            PrintKeyword(self, tok_kw_continue);
+        } break;
+        case stmt_case:
+        {
+            stmt_case_t* stmt_case = cast(stmt_case_t*) stmt;
+            PrintKeyword(self, tok_kw_case);
+            PrintSpace(self);
+            PrintExpression(self, stmt_case->CaseExp);
+            PrintChar(self, ':');
+            if (stmt_case->CaseBody->StmtKind != stmt_block)
+            {
+                ++self->IndentLevel;
+                PrintNewline(self);
+                PrintIndent(self);
+                metac_statement_t* stmt = stmt_case->CaseBody;
+                while(stmt && stmt != emptyPointer)
+                {
+                    PrintStatement(self, stmt);
+                    stmt = stmt->Next;
+                    if (stmt)
+                    {
+                        PrintNewline(self);
+                        PrintIndent(self);
+                    }
+                }
+            }
+            else
+            {
+                PrintStatement(self, stmt_case->CaseBody);
+            }
+            if (stmt_case->CaseBody->StmtKind != stmt_block)
+                --self->IndentLevel;
+        } break;
+        case stmt_label:
+        {
+            stmt_label_t* stmt_label = cast(stmt_label_t*) stmt;
+            PrintIdentifier(self, stmt_label->Label);
+            PrintChar(self, ':');
+        } break;
+        case stmt_switch:
+        {
+            stmt_switch_t* stmt_switch = cast(stmt_switch_t*) stmt;
+            PrintKeyword(self, tok_kw_switch);
+            PrintSpace(self);
+            PrintChar(self, '(');
+            PrintExpression(self, stmt_switch->SwitchExp);
+            PrintChar(self, ')');
+            PrintNewline(self);
+            PrintIndent(self);
+            PrintStatement(self, stmt_switch->SwitchBody);
+        } break;
+        case stmt_comment:
+        {
+            stmt_comment_t* comment = (stmt_comment_t*)stmt;
+            PrintString(self, "/*", 2);
+            PrintString(self, comment->Text, comment->Length);
+            PrintString(self, "*/", 2);
         } break;
         default : {
             fprintf(stderr,
-                "Statement Kind: not handled by printer\n");
-                //MetaCStatementKind_toChars(stmt->StmtKind));
+                "Statement Kind: not handled by printer %s\n",
+                    StatementKind_toChars(stmt->StmtKind));
             assert(0);
         }
     }

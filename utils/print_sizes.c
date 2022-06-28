@@ -11,6 +11,7 @@ void main()
     printf("%d node types are defined\n", (int)node_max);
 
     printf("\n\n");
+    printf("sizeof(metac_token_t): %d\n", (int) sizeof(metac_token_t));
     printf("sizeof(metac_lexer_t): %d\n", (int) sizeof(metac_lexer_t));
     printf("sizeof(scope_kind_t): %d\n", (int) sizeof(scope_kind_t));
     printf("sizeof(metac_location_t): %d\n", (int) sizeof(metac_location_t));

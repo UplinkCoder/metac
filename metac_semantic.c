@@ -923,8 +923,8 @@ metac_sema_statement_t* MetaCSemantic_doStatementSemantic_(metac_semantic_state_
                 AllocNewSemaStatement(self, stmt_yield, &result);
 
             metac_sema_expression_t* yieldValue =
-                MetaCSemantic_doExprSemantic(self, yieldStatement->Expression, 0);
-            semaYieldStatement->Expression = yieldValue;
+                MetaCSemantic_doExprSemantic(self, yieldStatement->YieldExp, 0);
+            semaYieldStatement->YieldExp = yieldValue;
         } break;
 
         case stmt_return:
@@ -934,8 +934,8 @@ metac_sema_statement_t* MetaCSemantic_doStatementSemantic_(metac_semantic_state_
                 AllocNewSemaStatement(self, stmt_return, &result);
 
             metac_sema_expression_t* returnValue =
-                MetaCSemantic_doExprSemantic(self, returnStatement->Expression, 0);
-            semaReturnStatement->Expression = returnValue;
+                MetaCSemantic_doExprSemantic(self, returnStatement->ReturnExp, 0);
+            semaReturnStatement->ReturnExp = returnValue;
         } break;
     }
 
@@ -984,7 +984,7 @@ scope_insert_error_t MetaCSemantic_RegisterInScope(metac_semantic_state_t* self,
     if (self->CurrentScope != 0)
         result = MetaCScope_RegisterIdentifier(self->CurrentScope, idPtr, node);
 
-    RLOCK(&self->Waiters.WaiterLock);
+    //RLOCK(&self->Waiters.WaiterLock);
     for(uint32_t i = 0; i < self->Waiters.WaiterCount; i++)
     {
         metac_semantic_waiter_t *waiter = &self->Waiters.Waiters[i];
@@ -996,14 +996,14 @@ scope_insert_error_t MetaCSemantic_RegisterInScope(metac_semantic_state_t* self,
             printf("Found matching waiter\n");
             waitingTask->TaskFlags &= (~Task_Waiting);
             waitingTask->TaskFlags |= Task_Resumable;
-            RWLOCK(&self->Waiters.WaiterLock);
+            //RWLOCK(&self->Waiters.WaiterLock);
             {
                 *waiter = self->Waiters.Waiters[--self->Waiters.WaiterCount];
             }
-            RWUNLOCK(&self->Waiters.WaiterLock);
+            //RWUNLOCK(&self->Waiters.WaiterLock);
         }
     }
-    RUNLOCK(&self->Waiters.WaiterLock);
+    //RUNLOCK(&self->Waiters.WaiterLock);
 
     return result;
 }
