@@ -13,14 +13,19 @@
 #endif
 
 #include "metac_task.h"
-#include "metac_coro.c"
+
+#ifndef NO_FIBERS
+#  include "metac_coro.c"
+#endif
 
 #include "metac_type_semantic.c"
 #include "metac_expr_semantic.c"
 
+#ifndef NO_FIBERS
 const char* MetaCExpressionKind_toChars(metac_expression_kind_t);
 extern void* CurrentFiber(void);
 extern task_t* CurrentTask(void);
+#endif
 
 bool IsExpressionNode(metac_node_kind_t);
 
@@ -705,7 +710,7 @@ void MetaCSemantic_Init(metac_semantic_state_t* self, metac_parser_t* parser,
     self->Waiters.WaiterCapacity = 64;
     self->Waiters.WaiterCount = 0;
     self->Waiters.Waiters = cast(metac_semantic_waiter_t*)
-		calloc(sizeof(*self->Waiters.Waiters), self->Waiters.WaiterCapacity);
+                calloc(sizeof(*self->Waiters.Waiters), self->Waiters.WaiterCapacity);
 
     IdentifierTableInit(&self->SemanticIdentifierTable, IDENTIFIER_LENGTH_SHIFT);
     self->ParserIdentifierTable = &parser->IdentifierTable;
@@ -983,7 +988,7 @@ scope_insert_error_t MetaCSemantic_RegisterInScope(metac_semantic_state_t* self,
 
     if (self->CurrentScope != 0)
         result = MetaCScope_RegisterIdentifier(self->CurrentScope, idPtr, node);
-
+#ifndef NO_FIBERS
     //RLOCK(&self->Waiters.WaiterLock);
     for(uint32_t i = 0; i < self->Waiters.WaiterCount; i++)
     {
@@ -1004,7 +1009,7 @@ scope_insert_error_t MetaCSemantic_RegisterInScope(metac_semantic_state_t* self,
         }
     }
     //RUNLOCK(&self->Waiters.WaiterLock);
-
+#endif
     return result;
 }
 
@@ -1089,7 +1094,7 @@ metac_node_t NodeFromTypeIndex(metac_semantic_state_t* sema,
 
     return 0;
 }
-
+#ifndef NO_FIBERS
 typedef struct MetaCSemantic_doDeclSemantic_task_context_t
 {
     metac_semantic_state_t* Sema;
@@ -1108,11 +1113,12 @@ const char* doDeclSemantic_PrintFunction(task_t* task)
     const char* declPrint = 0;
 //        MetaCPrinter_PrintDeclaration(&printer, ctx->Decl);
 
-    sprintf(buffer, "doDeclSemantic {Sema: %p, Decl: %s}\n\0",
+    sprintf(buffer, "doDeclSemantic {Sema: %p, Decl: %s}\n",
                     ctx->Sema, declPrint);
 
     return buffer;
 }
+#endif
 
 metac_sema_declaration_t* MetaCSemantic_declSemantic(metac_semantic_state_t* self,
                                                      metac_declaration_t* decl)
@@ -1175,14 +1181,14 @@ metac_sema_declaration_t* MetaCSemantic_declSemantic(metac_semantic_state_t* sel
                 metac_node_t node =
                     NodeFromTypeIndex(self, type_index);
                 MetaCSemantic_RegisterInScope(self, declId, node);
-				result = cast(metac_sema_declaration_t*)node;
+                                result = cast(metac_sema_declaration_t*)node;
             }
         } break;
     }
     assert(result != cast(metac_sema_declaration_t*)0xFEFEFEFE);
     return result;
 }
-
+#ifndef NO_FIBERS
 void MetaCSemantic_doDeclSemantic_Task(task_t* task)
 {
     const char* taskPrint = doDeclSemantic_PrintFunction(task);
@@ -1196,6 +1202,7 @@ void MetaCSemantic_doDeclSemantic_Task(task_t* task)
     ctx->Result =
         MetaCSemantic_doDeclSemantic_(ctx->Sema, ctx->Decl, Origin.File, Origin.Line);
 }
+#endif
 
 metac_sema_declaration_t* MetaCSemantic_doDeclSemantic_(metac_semantic_state_t* self,
                                                         metac_declaration_t* decl,
@@ -1216,7 +1223,7 @@ metac_sema_declaration_t* MetaCSemantic_doDeclSemantic_(metac_semantic_state_t* 
         task_t declTask;
         task_t* currentTask = CurrentTask();
         declTask.TaskFunction = MetaCSemantic_doDeclSemantic_Task;
-		declTask.Origin.File = callFile;
+                declTask.Origin.File = callFile;
         declTask.Origin.Line = callFile;
         declTask.Context = declTask._inlineContext;
         declTask.ContextSize = sizeof(CtxValue);

@@ -5,7 +5,6 @@
 #include "../metac_semantic_obj.c"
 #include "../metac_driver.c"
 #include "../3rd_party/tracy/TracyC.h"
-#include "../metac_task.c"
 
 #include <stdlib.h>
 #include <stdio.h>

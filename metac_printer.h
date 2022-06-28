@@ -42,6 +42,8 @@ const char* MetaCPrinter_PrintDeclaration(metac_printer_t* self, metac_declarati
 const char* MetaCPrinter_PrintStatement(metac_printer_t* self, metac_statement_t* stmt);
 const char* MetaCPrinter_PrintNode(metac_printer_t* self, metac_node_t node);
 
+const char* StatementKind_toChars(metac_statement_kind_t kind);
+
 void MetacPrinter_PrintI64(metac_printer_t* self, const int64_t value);
 void MetacPrinter_PrintStringLiteral(metac_printer_t* self, const char* str);
 

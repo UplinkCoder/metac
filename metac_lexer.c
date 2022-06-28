@@ -1011,7 +1011,7 @@ LcontinueLexnig:
                 }
                 else
                 {
-                    printf("escaping '%c' in wild code '%.*s' \n", c, 8, text - 4);
+                    ParseErrorF(loc, "escaping '%c' in wild code '%.*s' \n", c, 8, text - 4);
                     assert(0); // this is not to escape a newline
                 }
             }

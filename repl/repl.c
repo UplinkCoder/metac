@@ -17,10 +17,12 @@ extern bool g_exernalIdentifierTable;
 extern metac_lexer_t g_lineLexer;
 extern void LineLexerInit();
 
+#ifndef NO_FIBERS
 #ifdef HAS_TLS
 extern __thread worker_context_t *threadContext;
 #else
 extern worker_context_t *threadContext;
+#endif
 #endif
 
 metac_statement_t* MetaCParser_ParseStatementFromString(const char* str);
@@ -345,6 +347,8 @@ void Repl_Init(repl_state_t* self)
         malloc(sizeof(ReadI32_Ctx) * _ReadContextCapacity);
     _ReadContextSize = 0;
 }
+
+#ifndef NO_FIBERS
 typedef struct MetaCRepl_ExprSemantic_context_t
 {
     repl_state_t* Repl;
@@ -372,6 +376,7 @@ void MetaCRepl_ExprSemantic_Task(task_t* task)
     printf("typeof(%s) = %s\n",
            MetaCPrinter_PrintExpression(&ctx->Repl->printer, ctx->Exp));
 }
+#endif
 
 /// returns false if the repl is done running
 bool Repl_Loop(repl_state_t* repl)
@@ -853,26 +858,6 @@ void ReplMainFiber(void)
 {
     printf("I am the repl main fiber\n");
 }
-
-void PrintNTask(task_t* task)
-{
-    uint32_t n = *cast(uint32_t*) task->Context;
-    for(uint32_t i = 0; i < 4; i++)
-    {
-        printf("n: %d\n", n++);
-        // before we yield we have to push ourselfs back into our Queue
-        aco_yield();
-    }
-
-    task->TaskFlags &= ~Task_Running;
-    task->TaskFlags |= Task_Complete;
-
-    printf("We are done this task is going to exit now\n");
-    assert((task->TaskFlags & Task_Complete) == Task_Complete);
-    task->Fiber = 0;
-    aco_exit();
-}
-
 
 int main(int argc, const char* argv[])
 {

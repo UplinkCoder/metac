@@ -68,7 +68,7 @@ metac_identifier_ptr_t GetOrAddIdentifier(metac_identifier_table_t* table,
 
     metac_identifier_ptr_t result = {0};
 
-	const uint32_t slotIndexMask = ((1 << table->SlotCount_Log2) - 1);
+        const uint32_t slotIndexMask = ((1 << table->SlotCount_Log2) - 1);
     const uint32_t initialSlotIndex = (identifierKey & slotIndexMask);
     // TracyCPlot("TargetIndex", initialSlotIndex);
     uint32_t displacement = 0;

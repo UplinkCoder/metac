@@ -7,15 +7,16 @@
 #  define emptyNode (metac_node_t) _emptyPointer
 #endif
 
+#ifndef NO_FIBERS
 void MetaCSemantic_doExprSemantic_Task(task_t* task)
 {
     MetaCSemantic_doExprSemantic_task_context_t* ctx
         = (MetaCSemantic_doExprSemantic_task_context_t*) task->Context;
-    
+
     ctx->Result = MetaCSemantic_doExprSemantic_(ctx->Sema, ctx->Expr, ctx->Result,
                                                 task->Origin.Func, task->Origin.File);
 }
-
+#endif
 
 static bool IsAggregateType(metac_type_index_kind_t typeKind)
 {

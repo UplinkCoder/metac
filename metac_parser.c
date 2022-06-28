@@ -683,6 +683,8 @@ static inline bool IsDeclarationFirstToken(metac_token_enum_t tokenType)
                   || tokenType == tok_comment_multi
                   || tokenType == tok_comment_single
                   || IsTypeToken(tokenType)  );
+
+    return result;
 }
 
 
@@ -712,7 +714,7 @@ static inline bool IsPunctuationToken(metac_token_enum_t tok)
         return false;
     else
     return (
-        (IsBinaryOperator(tok, 0) && tok != tok_star)
+        (IsBinaryOperator(tok, expr_flags_none) && tok != tok_star)
         ||  tok == tok_dotdot
         ||  tok == tok_comma
         ||  tok == tok_semicolon
@@ -749,7 +751,7 @@ static bool CouldBeCast(metac_parser_t* self, metac_token_enum_t tok)
             if (peekCount == 2)
                 return false;
         }
-        else if (IsBinaryOperator(peek->TokenType, 0))
+        else if (IsBinaryOperator(peek->TokenType, expr_flags_none))
         {
             return false;
         }
@@ -822,13 +824,13 @@ metac_expression_t* MetaCParser_ParsePrimaryExpression(metac_parser_t* self)
         // only hash 32bit if the value could fit into an i32
         if (val32 == currentToken->ValueI64)
         {
-			result->Hash = CRC32C_VALUE(~0, val32);
-		}
-		else
-		{
-			result->Hash =
-				CRC32C_VALUE(~0, currentToken->ValueI64);
-		}
+                        result->Hash = CRC32C_VALUE(~0, val32);
+                }
+                else
+                {
+                        result->Hash =
+                                CRC32C_VALUE(~0, currentToken->ValueI64);
+                }
         //PushOperand(result);
     }
     else if (tokenType == tok_string)
@@ -1757,7 +1759,7 @@ LnextToken:
         decl_type_t* elementType = result;
         decl_type_ptr_t* ptr = AllocNewDeclaration(decl_type_ptr, &result);
         if (nextIsConst)
-            ptr->TypeModifiers |= typemod_const;
+            U32(ptr->TypeModifiers) |= typemod_const;
         ptr->ElementType = elementType;
         ptr->Hash = hash = CRC32C_VALUE(CRC32C_S("*"), hash);
         currentToken = MetaCParser_PeekToken(self, 1);
@@ -1795,7 +1797,7 @@ decl_parameter_list_t ParseParameterList(metac_parser_t* self)
         (*nextParam) = param;
 
         metac_identifier_ptr_t name = empty_identifier;
-        metac_declaration_t* type =
+                metac_declaration_t* type = cast(metac_declaration_t*)
             MetaCParser_ParseTypeDeclaration(self, 0, 0);
         if (MetaCParser_PeekMatch(self, tok_identifier, 1))
         {
@@ -1911,34 +1913,34 @@ uint32_t HashDecl(metac_declaration_t* decl)
             goto LhashAgg;
         LhashAgg:
         {
-            decl_type_struct_t* agg = (decl_type_struct_t*) decl;
+            decl_type_struct_t* agg = cast(decl_type_struct_t*) decl;
             result = CRC32C_VALUE(result, agg->Identifier);
             result = CRC32C_VALUE(result, agg->BaseIdentifier);
             decl_field_t* field = agg->Fields;
             for(uint32_t i = 0; i < agg->FieldCount; i++)
             {
-                uint32_t fieldHash = HashDecl(field->Field);
+                uint32_t fieldHash = HashDecl(cast(metac_declaration_t*)field->Field);
                 result = CRC32C_VALUE(result, fieldHash);
                 field = field->Next;
             }
-            assert(field->Next = emptyPointer);
+            assert(field->Next = cast(decl_field_t*)emptyPointer);
         } break;
         case decl_variable:
         {
-            decl_variable_t* variable = (decl_variable_t*) decl;
-            result = HashDecl(variable->VarType);
+            decl_variable_t* variable = cast(decl_variable_t*) decl;
+            result = HashDecl(cast(metac_declaration_t*)variable->VarType);
             result = CRC32C_VALUE(result, variable->VarIdentifier);
         } break;
         case decl_type_ptr:
         {
-            decl_type_ptr_t* type_ptr = (decl_type_ptr_t*) decl;
-            uint32_t ElementTypeHash = HashDecl(type_ptr->ElementType);
+            decl_type_ptr_t* type_ptr = cast(decl_type_ptr_t*) decl;
+            uint32_t ElementTypeHash = HashDecl(cast(metac_declaration_t*)type_ptr->ElementType);
             result = CRC32C_VALUE(CRC32C_STAR, ElementTypeHash);
         } break;
         case decl_type_array:
         {
-            decl_type_array_t* type_array = (decl_type_array_t*) decl;
-            uint32_t ElementTypeHash = HashDecl(type_array->ElementType);
+            decl_type_array_t* type_array = cast(decl_type_array_t*) decl;
+            uint32_t ElementTypeHash = HashDecl(cast(metac_declaration_t*)type_array->ElementType);
             if (type_array->Dim->Kind == exp_signed_integer)
             {
                 uint32_t dimToHash = (uint32_t)type_array->Dim->ValueU64;
@@ -2339,7 +2341,7 @@ static metac_statement_t* MetaCParser_ParseStatement(metac_parser_t* self,
         MetaCParser_Match(self, tok_colon);
         metac_token_t* peek = MetaCParser_PeekToken(self, 1);
 
-        case_->CaseBody = _emptyPointer;
+        case_->CaseBody = (metac_statement_t*)_emptyPointer;
         metac_statement_t** nextStmtP = &case_->CaseBody;
 
         while (peek->TokenType != tok_kw_case
@@ -2348,7 +2350,7 @@ static metac_statement_t* MetaCParser_ParseStatement(metac_parser_t* self,
         {
             metac_statement_t* nextStmt =
                 MetaCParser_ParseStatement(self, (metac_statement_t*)case_, 0);
-			caseHash = CRC32C_VALUE(caseHash, nextStmt->Hash);
+                        caseHash = CRC32C_VALUE(caseHash, nextStmt->Hash);
             nextStmt->Next = (metac_statement_t*)_emptyPointer;
             (*nextStmtP) = nextStmt;
             nextStmtP = &nextStmt->Next;
@@ -2405,6 +2407,11 @@ static metac_statement_t* MetaCParser_ParseStatement(metac_parser_t* self,
         }
     }
 
+    if (result && !result->Hash)
+    {
+        printf("Hash for %s unimplemented\n", StatementKind_toChars(result->StmtKind));
+    }
+
     // if we didn't parse as a declaration try an expression as the last resort
     if (!result || result == emptyPointer)
     {
@@ -2444,9 +2451,9 @@ static inline void MetaCParser_PopBlockStatement(metac_parser_t* self,
     //DEBUG CODE
     if (stmt != self->CurrentBlockStatement)
     {
-        const char *stmt_ = MetaCPrinter_PrintStatement(&self->DebugPrinter, stmt);
+                const char *stmt_ = MetaCPrinter_PrintStatement(&self->DebugPrinter, cast(metac_statement_t*)stmt);
         MetaCPrinter_Reset(&self->DebugPrinter);
-        const char *current_ = MetaCPrinter_PrintStatement(&self->DebugPrinter, self->CurrentBlockStatement);
+        const char *current_ = MetaCPrinter_PrintStatement(&self->DebugPrinter, cast(metac_statement_t*)self->CurrentBlockStatement);
 
         printf("Should be popping block statement: [%u] %s\n\n"
                 "But the current statement is  [%u] %s\n\n\n",
@@ -2470,6 +2477,7 @@ static stmt_block_t* MetaCParser_ParseBlockStatement(metac_parser_t* self,
     metac_statement_t* firstStatement = 0;
     metac_statement_t* nextStatement = 0;
     stmt_block_t* result = AllocNewStatement(stmt_block, &result);
+    result->Hash = ~0;
 
     MetaCParser_PushBlockStatement(self, result);
 
@@ -2502,6 +2510,7 @@ static stmt_block_t* MetaCParser_ParseBlockStatement(metac_parser_t* self,
         }
         else
         {
+
             MetaCParser_ParseStatement(self, (metac_statement_t*)result, nextStatement);
             result->Hash = CRC32C_VALUE(result->Hash, nextStatement->Hash);
             if (nextStatement->Next && nextStatement->Next != emptyPointer)

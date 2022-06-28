@@ -1,5 +1,6 @@
 #ifndef _METAC_TASK_H_
 #define _METAC_TASK_H_
+#ifndef NO_FIBERS
 
 #include "compat.h"
 #include "3rd_party/tinycthread/tinycthread.h"
@@ -195,6 +196,7 @@ bool TaskQueue_Push(taskqueue_t* self, task_t* taskP);
 /// the queue slot is considered empty after this
 bool TaskQueue_Pull(taskqueue_t* self, task_t* taskP);
 
+#endif // NO FIBERS
 #endif
 
 #define CAT2(A, B) \

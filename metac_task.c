@@ -1,3 +1,5 @@
+#ifndef NO_FIBERS
+
 #include "metac_task.h"
 #include <assert.h>
 #include <stdlib.h>
@@ -552,3 +554,4 @@ bool AddTaskToQueue(task_t* task)
 }
 
 #undef KILOBYTE
+#endif // NO_FIBERS

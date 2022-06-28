@@ -3,7 +3,7 @@
 #include "crc32c.h"
 #undef walker_fn
 
-int MetaCSemaTree_Walk_Debug(metac_sema_declaration_t* decl, struct metac_sema_decl_state_t* sema, 
+int MetaCSemaTree_Walk_Debug(metac_sema_declaration_t* decl, struct metac_sema_decl_state_t* sema,
                              const char* fn_name, walker_function_t walker_fn, void* ctx)
 {
     // make sure the context confusion cookie is set
@@ -47,15 +47,15 @@ metac_type_t TypePtrToNode(metac_type_index_t typeIdx,metac_semantic_state_t* se
         break;
         default:
             assert(0); // Not currently supported
-            
+
     }
     return result;
 }
 
-int MetaCSemaTree_Walk_Real(metac_sema_declaration_t* decl, struct metac_semantic_state_t* sema, 
+int MetaCSemaTree_Walk_Real(metac_sema_declaration_t* decl, struct metac_semantic_state_t* sema,
                             walker_function_t walker_fn, void* ctx)
 {
-    
+
 #define walker_fn(DECL, CTX) \
     walker_fn((metac_node_t) DECL, CTX)
 
@@ -103,14 +103,14 @@ int MetaCSemaTree_Walk_Real(metac_sema_declaration_t* decl, struct metac_semanti
         case decl_type_struct:
         {
             metac_type_aggregate_t* type_struct = (metac_type_aggregate_t*) decl;
-            
+
             for(uint32_t i = 0; i < type_struct->FieldCount; i++)
             {
                 metac_type_aggregate_field_t* field;
                 result = walker_fn(field, ctx);
                 if (result)
                     return result;
-            
+
             }
             result = MetaCSemaTree_Walk_Real(type_struct->Fields, sema, walker_fn, ctx);
             if (result)
@@ -161,7 +161,7 @@ int MetaCSemaTree_Walk_Real(metac_sema_declaration_t* decl, struct metac_semanti
                 metac_type_t parameterType = TypePtrToNode(parameterTypeIdx, sema);
                 result = MetaCSemaTree_Walk_Real(parameterType, sema, walker_fn, ctx);
             }
-            
+
             if (result)
                 return result;
         } break;
@@ -176,10 +176,10 @@ int MetaCSemaTree_Walk_Real(metac_sema_declaration_t* decl, struct metac_semanti
         case decl_function:
         {
             sema_decl_function_t* function_ = (sema_decl_function_t*) decl;
-            
+
             metac_type_functiontype_t* functionType =
                 (metac_type_functiontype_t*)TypePtrToNode(function_->TypeIndex, sema);
-            
+
             for(int32_t i = 0; i < functionType->ParameterTypeCount; i++)
             {
                 sema_decl_variable_t* param = function_->Parameters + i;

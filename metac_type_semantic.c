@@ -193,7 +193,7 @@ metac_type_index_t MetaCSemantic_CommonSubtype(metac_semantic_state_t* self,
                                                const metac_type_index_t a,
                                                const metac_type_index_t b)
 {
-	metac_type_index_t result = {-1};
+        metac_type_index_t result = {-1};
     if (a.v == b.v)
         result = a;
     else
@@ -207,7 +207,7 @@ metac_type_index_t MetaCSemantic_CommonSubtype(metac_semantic_state_t* self,
             }
         }
     }
-	return result;
+        return result;
 }
 
 uint32_t FieldHash(metac_type_aggregate_field_t* field)
@@ -467,8 +467,8 @@ metac_type_index_t MetaCSemantic_TypeSemantic(metac_semantic_state_t* self,
 
        metac_type_aggregate_field_t* tmpFields =
             cast(metac_type_aggregate_field_t* )
-				malloc(sizeof(metac_type_aggregate_field_t)
-				* agg->FieldCount);
+                                malloc(sizeof(metac_type_aggregate_field_t)
+                                * agg->FieldCount);
         // ideally it wouldn't matter if this memset was here or not
         memset(tmpFields, 0x0, sizeof(*tmpFields) * agg->FieldCount);
 
@@ -643,7 +643,7 @@ LtryAgian: {}
     {
         assert(0); // me not no what do do.
     }
-
+#ifndef NO_FIBERS
     const uint32_t funcHash = crc32c(~0, "MetaCSemantic_doTypeSemantic",
                                   sizeof("MetaCSemantic_doTypeSemantic") -1);
 
@@ -661,11 +661,12 @@ LtryAgian: {}
             RESUME(waiter.Continuation);
         }
     }
-
+#endif
     assert(result.v != 0);
     return result;
 }
 
+#ifndef NO_FIBERS
 void MetaCSemantic_doTypeSemantic_Task(task_t* task)
 {
     MetaCSemantic_doTypeSemantic_Fiber_t* ctx =
@@ -678,7 +679,6 @@ void MetaCSemantic_doTypeSemantic_Task(task_t* task)
 }
 
 
-#ifndef NO_FIBERS
 void MetaCSemantic_doTypeSemantic_Fiber(void* caller, void* arg)
 {
     MetaCSemantic_doTypeSemantic_Fiber_t* ctx =
@@ -756,7 +756,7 @@ metac_type_index_t MetaCSemantic_GetArrayTypeOf(metac_semantic_state_t* state,
 {
     uint32_t hash = EntangleInts(TYPE_INDEX_INDEX(elementTypeIndex), dimension);
     metac_type_array_t key = {
-		{decl_type_array, 0, hash}, elementTypeIndex, dimension};
+                {decl_type_array, 0, hash}, elementTypeIndex, dimension};
 
     metac_type_index_t result =
         MetaCTypeTable_GetOrEmptyArrayType(&state->ArrayTypeTable, &key);

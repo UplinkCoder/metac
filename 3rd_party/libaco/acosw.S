@@ -1,3 +1,4 @@
+#ifndef NO_FIBERS
 .text
 .globl acosw
 #if defined(__APPLE__)
@@ -242,5 +243,6 @@ aco_funcp_protector_asm:
             bl      abort
             ret
 #else
-    #error "platform not support"
+#    error "platform not support"
 #endif
+#endif // NO_FIBERS

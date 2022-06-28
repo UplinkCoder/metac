@@ -67,11 +67,14 @@ if (VAR ## _capacity <= (VAR ## _size + (N))) \
         ); \
     }
 
+
 typedef struct metac_semantic_waiter_t
 {
     uint32_t FuncHash;
     uint32_t NodeHash;
-    aco_t* Continuation;
+#ifndef NO_FIBERS
+	aco_t* Continuation;
+#endif
 } metac_semantic_waiter_t;
 
 typedef struct metac_semantic_waitlist_t
