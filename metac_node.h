@@ -63,7 +63,6 @@
     M(exp_xor) \
     M(exp_or) \
     M(exp_and) \
-    M(exp_cat) \
     M(exp_lsh) \
     M(exp_rsh)
 
@@ -76,7 +75,6 @@
     M(exp_xor_ass) \
     M(exp_or_ass) \
     M(exp_and_ass) \
-    M(exp_cat_ass) \
     M(exp_lsh_ass) \
     M(exp_rsh_ass)
 

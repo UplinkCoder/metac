@@ -395,7 +395,6 @@ const char* BinExpTypeToChars(metac_binary_expression_kind_t t)
         case exp_xor       : return "^";
         case exp_or        : return "|";
         case exp_and       : return "&";
-        case exp_cat       : return "~";
         case exp_lsh       : return "<<";
         case exp_rsh       : return ">>";
 
@@ -412,7 +411,6 @@ const char* BinExpTypeToChars(metac_binary_expression_kind_t t)
         case exp_xor_ass   : return "^=";
         case exp_or_ass    : return "|=";
         case exp_and_ass   : return "&=";
-        case exp_cat_ass   : return "~=";
         case exp_lsh_ass   : return "<<=";
         case exp_rsh_ass   : return ">>=";
 
@@ -1341,7 +1339,8 @@ metac_expression_t* MetaCParser_ParseUnaryExpression(metac_parser_t* self)
 
     return result;
 }
-metac_expression_t* MetaCParser_ParseArgumentList(metac_parser_t* self)
+
+exp_argument_t* MetaCParser_ParseArgumentList(metac_parser_t* self)
 {
     metac_token_t* peekToken = MetaCParser_PeekToken(self, 1);
     exp_argument_t* arguments = (exp_argument_t*) _emptyPointer;
@@ -1362,7 +1361,8 @@ metac_expression_t* MetaCParser_ParseArgumentList(metac_parser_t* self)
             MetaCParser_Match(self, tok_comma);
         }
     }
-    metac_token_t* rParen = MetaCParser_Match(self, tok_rParen);
+
+    return arguments;
 }
 metac_expression_t* MetaCParser_ParseBinaryExpression(metac_parser_t* self,
                                                       parse_expression_flags_t eflags,
@@ -1398,7 +1398,7 @@ metac_expression_t* MetaCParser_ParseBinaryExpression(metac_parser_t* self,
     }
     else
 */
-
+/*
     if (peekTokenType == tok_lParen)
     {
         self->OpenParens++;
@@ -1434,8 +1434,9 @@ metac_expression_t* MetaCParser_ParseBinaryExpression(metac_parser_t* self,
         MetaCLocation_Expand(&loc, LocationFromToken(self, rParen));
         //PopOperator(exp_call);
     }
-    else if (IsBinaryOperator(peekTokenType, eflags))
+    else*/ if (IsBinaryOperator(peekTokenType, eflags))
     {
+        bool rhsIsArgs = false;
         metac_expression_kind_t exp_right;
 
         while(IsBinaryOperator(peekTokenType, eflags)
@@ -1443,17 +1444,28 @@ metac_expression_t* MetaCParser_ParseBinaryExpression(metac_parser_t* self,
         {
             exp_right = BinExpTypeFromTokenType(peekTokenType);
             uint32_t opPrecedence = OpToPrecedence(exp_right);
-            MetaCParser_Match(self, peekTokenType);
+            metac_token_t*  startTok = MetaCParser_Match(self, peekTokenType);
+            metac_location_t rhsLoc = LocationFromToken(self, startTok);
             metac_expression_t* rhs;
+
             if (exp_right == exp_index)
             {
                 rhs = MetaCParser_ParseExpression(self, eflags, 0);
-                MetaCParser_Match(self, tok_rBracket);
+                metac_token_t* rBracket =
+                    MetaCParser_Match(self, tok_rBracket);
+                MetaCLocation_Expand(&rhsLoc,
+                    LocationFromToken(self, rBracket));
             }
             else if (exp_right == exp_call)
             {
                 rhs = MetaCParser_ParseArgumentList(self);
-                MetaCParser_Match(self, tok_rParen);
+                if (rhs != emptyPointer)
+                    rhsIsArgs = true;
+
+                metac_token_t* rParen =
+                    MetaCParser_Match(self, tok_rParen);
+                MetaCLocation_Expand(&rhsLoc,
+                    LocationFromToken(self, rParen));
             }
             else
             {
@@ -1475,9 +1487,11 @@ metac_expression_t* MetaCParser_ParseBinaryExpression(metac_parser_t* self,
             result->E1 = left;
             result->E2 = rhs;
             result->Hash = CRC32C_VALUE(left->Hash, rhs->Hash);
-            metac_location_t rhsLoc =
-                self->LocationStorage.Locations[rhs->LocationIdx - 4];
-
+            if (rhs->LocationIdx && !rhsIsArgs)
+            {
+                MetaCLocation_Expand(&rhsLoc,
+                    self->LocationStorage.Locations[rhs->LocationIdx - 4]);
+            }
             MetaCLocation_Expand(&loc, rhsLoc);
             result->LocationIdx =
                 MetaCLocationStorage_Store(&self->LocationStorage, loc);
@@ -1974,6 +1988,7 @@ decl_function_t* ParseFunctionDeclaration(metac_parser_t* self, decl_type_t* typ
     decl_function_t result;
 
     metac_token_t* id = MetaCParser_Match(self, tok_identifier);
+    metac_location_t loc = LocationFromToken(self, id);
     metac_identifier_ptr_t identifier = RegisterIdentifier(self, id);
 
     MetaCParser_Match(self, tok_lParen);
@@ -2549,9 +2564,7 @@ static metac_statement_t* MetaCParser_ParseStatement(metac_parser_t* self,
         case_->CaseBody = (metac_statement_t*)_emptyPointer;
         metac_statement_t** nextStmtP = &case_->CaseBody;
 
-        while (peek->TokenType != tok_kw_case
-            && peek->TokenType != tok_rBrace
-            && peek->TokenType != tok_kw_default)
+        do
         {
             metac_statement_t* nextStmt =
                 MetaCParser_ParseStatement(self, (metac_statement_t*)case_, 0);
@@ -2560,7 +2573,11 @@ static metac_statement_t* MetaCParser_ParseStatement(metac_parser_t* self,
             (*nextStmtP) = nextStmt;
             nextStmtP = &nextStmt->Next;
             peek = MetaCParser_PeekToken(self, 1);
-        }
+            peek2 = MetaCParser_PeekToken(self, 2);
+        } while((peek->TokenType != tok_kw_case
+            && peek->TokenType != tok_rBrace
+            && peek->TokenType != tok_kw_default
+            && (peek2 == 0 || peek2->TokenType != tok_colon)));
 
         case_->Hash = hash;
     }
@@ -2685,7 +2702,8 @@ static stmt_block_t* MetaCParser_ParseBlockStatement(metac_parser_t* self,
 
     metac_statement_t* firstStatement = 0;
     metac_statement_t* nextStatement = 0;
-    stmt_block_t* result = AllocNewStatement(stmt_block, &result);
+    stmt_block_t* result;
+    AllocNewStatement(stmt_block, &result);
     result->Hash = ~0;
 
     MetaCParser_PushBlockStatement(self, result);

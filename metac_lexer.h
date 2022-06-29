@@ -62,7 +62,6 @@ typedef struct metac_lexer_state_t
     M(tok_xor) \
     M(tok_or) \
     M(tok_and) \
-    M(tok_cat) \
     M(tok_lsh) \
     M(tok_rsh) \
     \
@@ -82,7 +81,6 @@ typedef struct metac_lexer_state_t
     M(tok_xor_ass) \
     M(tok_or_ass) \
     M(tok_and_ass) \
-    M(tok_cat_ass) \
     M(tok_lsh_ass) \
     M(tok_rsh_ass) \
     \
@@ -180,6 +178,7 @@ typedef struct metac_lexer_state_t
     M(tok_semicolon) \
     M(tok_colon) \
     M(tok_dollar) \
+    M(tok_cat) \
     \
     FOREACH_BINARY_TOKEN(M) \
     \

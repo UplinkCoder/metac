@@ -234,8 +234,8 @@ static inline metac_token_enum_t MetaCLexFixedLengthToken(const char _chrs[3])
         {
         default:
             return tok_cat;
-        case '=':
-            return tok_cat_ass;
+//        case '=':
+//            return tok_cat_ass;
         }
 
     case '\n':
@@ -1156,6 +1156,7 @@ void test_lexer()
         ";",
         ":",
         "$",
+        "~",
 
         ",",
         ".",
@@ -1169,7 +1170,6 @@ void test_lexer()
         "^",
         "|",
         "&",
-        "~",
 
         "<<",
         ">>",
@@ -1191,7 +1191,7 @@ void test_lexer()
         "^=",
         "|=",
         "&=",
-        "~=",
+//        "~=",
 
         "<<=",
         ">>=",
