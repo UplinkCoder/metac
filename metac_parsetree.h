@@ -166,7 +166,8 @@ typedef struct stmt_for_t
 {
     STATEMENT_HEADER
 
-    struct metac_declaration_t* ForInit;
+    /// can be either an expression or a declaration
+    metac_node_t ForInit;
     metac_expression_t* ForCond;
     metac_expression_t* ForPostLoop;
 

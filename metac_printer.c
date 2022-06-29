@@ -533,6 +533,14 @@ static inline void PrintStatement(metac_printer_t* self, metac_statement_t* stmt
             PrintIdentifier(self, stmt_label->Label);
             PrintChar(self, ':');
         } break;
+        case stmt_goto:
+        {
+            stmt_goto_t* stmt_goto = cast(stmt_goto_t*) stmt;
+            PrintKeyword(self, tok_kw_goto);
+            PrintSpace(self);
+            PrintIdentifier(self, stmt_goto->GotoLabel);
+            PrintChar(self, ';');
+        } break;
         case stmt_switch:
         {
             stmt_switch_t* stmt_switch = cast(stmt_switch_t*) stmt;
@@ -544,6 +552,18 @@ static inline void PrintStatement(metac_printer_t* self, metac_statement_t* stmt
             PrintNewline(self);
             PrintIndent(self);
             PrintStatement(self, stmt_switch->SwitchBody);
+        } break;
+        case stmt_while:
+        {
+            stmt_while_t* stmt_while = (stmt_while_t*)stmt;
+            PrintKeyword(self, tok_kw_while);
+            PrintSpace(self);
+            PrintChar(self, '(');
+            PrintExpression(self, stmt_while->WhileExp);
+            PrintChar(self, ')');
+            PrintNewline(self);
+            PrintIndent(self);
+            PrintStatement(self, stmt_while->WhileBody);
         } break;
         case stmt_comment:
         {

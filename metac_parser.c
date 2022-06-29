@@ -679,6 +679,9 @@ static inline bool IsTypeToken(metac_token_enum_t tokenType)
 
 static inline bool IsDeclarationFirstToken(metac_token_enum_t tokenType)
 {
+    if (tokenType == tok_star)
+        return false;
+
    bool result = (   tokenType == tok_kw_static
                   || tokenType == tok_kw_inline
                   || tokenType == tok_kw_extern
@@ -1338,7 +1341,29 @@ metac_expression_t* MetaCParser_ParseUnaryExpression(metac_parser_t* self)
 
     return result;
 }
+metac_expression_t* MetaCParser_ParseArgumentList(metac_parser_t* self)
+{
+    metac_token_t* peekToken = MetaCParser_PeekToken(self, 1);
+    exp_argument_t* arguments = (exp_argument_t*) _emptyPointer;
+    exp_argument_t** nextArgument = &arguments;
+    uint32_t nArguments = 0;
 
+    while (!MetaCParser_PeekMatch(self, tok_rParen, true))
+    {
+        nArguments++;
+        assert((*nextArgument) == _emptyPointer);
+
+        (*nextArgument) = (exp_argument_t*)AllocNewExpression(exp_argument);
+        ((*nextArgument)->Expression) = MetaCParser_ParseExpression(self, expr_flags_call, 0);
+        nextArgument = &((*nextArgument)->Next);
+        (*nextArgument) = (exp_argument_t*) _emptyPointer;
+        if(MetaCParser_PeekMatch(self, tok_comma, true))
+        {
+            MetaCParser_Match(self, tok_comma);
+        }
+    }
+    metac_token_t* rParen = MetaCParser_Match(self, tok_rParen);
+}
 metac_expression_t* MetaCParser_ParseBinaryExpression(metac_parser_t* self,
                                                       parse_expression_flags_t eflags,
                                                       metac_expression_t* left,
@@ -1373,6 +1398,7 @@ metac_expression_t* MetaCParser_ParseBinaryExpression(metac_parser_t* self,
     }
     else
 */
+
     if (peekTokenType == tok_lParen)
     {
         self->OpenParens++;
@@ -1423,6 +1449,11 @@ metac_expression_t* MetaCParser_ParseBinaryExpression(metac_parser_t* self,
             {
                 rhs = MetaCParser_ParseExpression(self, eflags, 0);
                 MetaCParser_Match(self, tok_rBracket);
+            }
+            else if (exp_right == exp_call)
+            {
+                rhs = MetaCParser_ParseArgumentList(self);
+                MetaCParser_Match(self, tok_rParen);
             }
             else
             {
@@ -1677,6 +1708,7 @@ LnextToken:
         }
         else if (tokenType == tok_star)
         {
+            ParseError(loc, "* is unexpected to start a type declaration");
             assert(0); // this is not supposed to happen
         }
         else if (tokenType == tok_kw_struct || tokenType == tok_kw_union)
@@ -2349,7 +2381,7 @@ static metac_statement_t* MetaCParser_ParseStatement(metac_parser_t* self,
         hash = CRC32C_VALUE(hash, if_stmt->IfCond);
         MetaCParser_Match(self, tok_rParen);
         if_stmt->IfBody = MetaCParser_ParseStatement(self, (metac_statement_t*)result, 0);
-        hash = CRC32C_VALUE(self, if_stmt->IfBody->Hash);
+        hash = CRC32C_VALUE(hash, if_stmt->IfBody->Hash);
 
         if (MetaCParser_PeekMatch(self, tok_kw_else, 1))
         {
@@ -2363,6 +2395,20 @@ static metac_statement_t* MetaCParser_ParseStatement(metac_parser_t* self,
         }
         result->Hash = hash;
         goto LdoneWithStatement;
+    }
+    else if (tokenType == tok_kw_while)
+    {
+        stmt_while_t * while_stmt = AllocNewStatement(stmt_while, &result);
+        MetaCParser_Match(self, tok_kw_while);
+        MetaCParser_Match(self, tok_lParen);
+        while_stmt->WhileExp =
+            MetaCParser_ParseExpression(self, expr_flags_none, 0);
+        hash = CRC32C_VALUE(hash, while_stmt->WhileExp->Hash);
+        MetaCParser_Match(self, tok_rParen);
+        while_stmt->WhileBody =
+            MetaCParser_ParseStatement(self, while_stmt, 0);
+        hash = CRC32C_VALUE(hash, while_stmt->WhileBody->Hash);
+        while_stmt->Hash = hash;
     }
     else if (tokenType == tok_kw_for)
     {
@@ -2382,6 +2428,11 @@ static metac_statement_t* MetaCParser_ParseStatement(metac_parser_t* self,
             {
                 for_->ForInit = MetaCParser_ParseDeclaration(self, 0);
             }
+            else
+            {
+                for_->ForInit = MetaCParser_ParseExpression(self, expr_flags_none, 0);
+                MetaCParser_Match(self, tok_semicolon);
+            }
 
             hash = CRC32C_VALUE(hash, for_->ForInit->Hash);
         }
@@ -2400,6 +2451,7 @@ static metac_statement_t* MetaCParser_ParseStatement(metac_parser_t* self,
             for_->ForCond = (metac_expression_t*)emptyPointer;
         }
         MetaCParser_Match(self, tok_semicolon);
+
         if (!MetaCParser_PeekMatch(self, tok_rParen, 1))
         {
             for_->ForPostLoop = MetaCParser_ParseExpression(self, expr_flags_none, 0);
@@ -2553,7 +2605,7 @@ static metac_statement_t* MetaCParser_ParseStatement(metac_parser_t* self,
         metac_token_t* peek2 = MetaCParser_PeekToken(self, 2);
         metac_token_t* peek3 = MetaCParser_PeekToken(self, 3);
         if (peek2 && IsDeclarationFirstToken(peek2->TokenType)
-            && peek3 && peek3->TokenType != tok_assign)
+            /*&& peek3 && peek3->TokenType != tok_assign*/)
         {
             metac_declaration_t* decl = MetaCParser_ParseDeclaration(self, 0);
             stmt_decl_t* declStmt = AllocNewStatement(stmt_decl, &result);
