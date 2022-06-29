@@ -139,7 +139,7 @@ static uint32_t _nodeCounter = 1;
 #define REALLOC_BOILERPLATE(PREFIX) \
 if (PREFIX ## _capacity <= PREFIX ## _size) \
     { \
-    printf("[%u]Preforming realloc from:%u\n", __LINE__, PREFIX ##_capacity); \
+    printf("[%s]Preforming realloc from:%u\n", __FUNCTION__, PREFIX ##_capacity); \
         _newMemRealloc( \
             (void**)&  PREFIX ## _mem, \
             &PREFIX## _capacity, \

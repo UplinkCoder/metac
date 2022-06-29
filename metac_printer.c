@@ -489,33 +489,43 @@ static inline void PrintStatement(metac_printer_t* self, metac_statement_t* stmt
         case stmt_case:
         {
             stmt_case_t* stmt_case = cast(stmt_case_t*) stmt;
-            PrintKeyword(self, tok_kw_case);
-            PrintSpace(self);
-            PrintExpression(self, stmt_case->CaseExp);
-            PrintChar(self, ':');
-            if (stmt_case->CaseBody->StmtKind != stmt_block)
+            if (stmt_case->CaseExp == (metac_expression_t*) emptyPointer)
             {
-                ++self->IndentLevel;
-                PrintNewline(self);
-                PrintIndent(self);
-                metac_statement_t* stmt = stmt_case->CaseBody;
-                while(stmt && stmt != emptyPointer)
-                {
-                    PrintStatement(self, stmt);
-                    stmt = stmt->Next;
-                    if (stmt)
-                    {
-                        PrintNewline(self);
-                        PrintIndent(self);
-                    }
-                }
+                PrintKeyword(self, tok_kw_default);
             }
             else
             {
-                PrintStatement(self, stmt_case->CaseBody);
+                PrintKeyword(self, tok_kw_case);
+                PrintSpace(self);
+                PrintExpression(self, stmt_case->CaseExp);
             }
-            if (stmt_case->CaseBody->StmtKind != stmt_block)
-                --self->IndentLevel;
+            PrintChar(self, ':');
+            if (stmt_case->CaseBody != cast(metac_statement_t*) emptyPointer)
+            {
+                if (stmt_case->CaseBody->StmtKind != stmt_block)
+                {
+                    ++self->IndentLevel;
+                    PrintNewline(self);
+                    PrintIndent(self);
+                    metac_statement_t* stmt = stmt_case->CaseBody;
+                    while(stmt && stmt != emptyPointer)
+                    {
+                        PrintStatement(self, stmt);
+                        stmt = stmt->Next;
+                        if (stmt)
+                        {
+                            PrintNewline(self);
+                            PrintIndent(self);
+                        }
+                    }
+                }
+                else
+                {
+                    PrintStatement(self, stmt_case->CaseBody);
+                }
+                if (stmt_case->CaseBody->StmtKind != stmt_block)
+                    --self->IndentLevel;
+            }
         } break;
         case stmt_label:
         {

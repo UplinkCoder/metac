@@ -632,12 +632,14 @@ static inline uint32_t OpToPrecedence(metac_expression_kind_t exp)
     {
         return 14;
     }
-    else if (exp == exp_ptr || exp == exp_arrow || exp == exp_dot || exp == exp_addr)
+    else if (exp == exp_ptr || exp == exp_arrow || exp == exp_dot || exp == exp_addr
+          || exp == exp_increment || exp == exp_decrement)
     {
         return 15;
     }
     else if (exp == exp_call || exp == exp_index
-          || exp == exp_compl)
+          || exp == exp_compl || exp == exp_post_increment
+          || exp == exp_post_decrement)
     {
         return 16;
     }
@@ -698,6 +700,8 @@ static inline bool IsPrimaryExpressionToken(metac_token_enum_t tokenType)
     {
     case tok_lParen:
     case tok_uint:
+    case tok_pp___FUNCTION__:
+    case tok_pp___LINE__:
     case tok_string:
     case tok_char:
     case tok_identifier:
@@ -777,10 +781,66 @@ static bool CouldBeCast(metac_parser_t* self, metac_token_enum_t tok)
     return true;
 }
 
+typedef enum typescan_flags_t
+{
+    TypeScan_None               = 0,
+    TypeScan_SeenStar           = (1 << 1),
+    TypeScan_FirstWasIdentifier = (1 << 2),
+} typescan_flags_t;
+
+#define U32(VAR) \
+    (*(uint32_t*)(&VAR))
+
+static inline bool CouldBeType(metac_parser_t* self, metac_token_enum_t tok)
+{
+    bool result = false;
+    metac_token_t* peek = 0;
+    uint32_t peekN = 2;
+    typescan_flags_t flags = TypeScan_None;
+
+    if (tok == tok_identifier)
+    {
+        U32(flags) |= TypeScan_FirstWasIdentifier;
+    }
+    if (tok == tok_star)
+    {
+        result = false;
+    }
+    else while (IsTypeToken(tok))
+    {
+        result |= true;
+        // if we see a * set the seen_star flag
+        // if we then see an identifier after the star
+        // the expression cannot be a type literal
+        if (tok == tok_star)
+            U32(flags) |= TypeScan_SeenStar;
+        else if (((flags & TypeScan_SeenStar) != 0)
+              && tok == tok_identifier)
+        {
+            result = false;
+            break;
+        }
+        peek = MetaCParser_PeekToken(self, peekN++);
+        tok = (peek ? peek->TokenType : tok_eof);
+    }
+    // if we just had a single identifier don't
+    // treat it as a type
+    if ((flags & TypeScan_FirstWasIdentifier) != 0
+      && peekN <= 3)
+    {
+        result = false;
+    }
+
+    return result;
+}
+
+
 decl_type_t* MetaCParser_ParseTypeDeclaration(metac_parser_t* self,
                                               metac_declaration_t* parent,
                                               metac_declaration_t* prev);
+
 static const metac_location_t invalidLocation = {0,0,0,0,0};
+
 metac_expression_t* MetaCParser_ParsePrimaryExpression(metac_parser_t* self)
 {
     metac_expression_t* result = 0;
@@ -793,7 +853,7 @@ metac_expression_t* MetaCParser_ParsePrimaryExpression(metac_parser_t* self)
         LocationFromToken(self, currentToken) :
         invalidLocation);
 #ifdef TYPE_EXP
-    if (tokenType != tok_identifier && tokenType != tok_star && IsTypeToken(tokenType))
+    if (CouldBeType(self, tokenType))
     {
         decl_type_t* type =
             MetaCParser_ParseTypeDeclaration(self, 0, 0);
@@ -824,13 +884,13 @@ metac_expression_t* MetaCParser_ParsePrimaryExpression(metac_parser_t* self)
         // only hash 32bit if the value could fit into an i32
         if (val32 == currentToken->ValueI64)
         {
-                        result->Hash = CRC32C_VALUE(~0, val32);
-                }
-                else
-                {
-                        result->Hash =
-                                CRC32C_VALUE(~0, currentToken->ValueI64);
-                }
+                result->Hash = CRC32C_VALUE(~0, val32);
+        }
+        else
+        {
+                result->Hash =
+                        CRC32C_VALUE(~0, currentToken->ValueI64);
+        }
         //PushOperand(result);
     }
     else if (tokenType == tok_string)
@@ -914,6 +974,20 @@ metac_expression_t* MetaCParser_ParsePrimaryExpression(metac_parser_t* self)
         result->TupleExpressionCount = nElements;
 
         //PopOperator(exp_call);
+    }
+    else if (tokenType == tok_pp___FUNCTION__)
+    {
+        MetaCParser_Match(self, tok_pp___FUNCTION__);
+        result = AllocNewExpression(exp_string);
+        const char* chars = "__FUNCTION__";
+        const uint32_t length = strlen(chars);
+        const uint32_t hash = crc32c_nozero(~0, chars, length);
+        const uint32_t stringKey = STRING_KEY(hash, length);
+
+        metac_identifier_ptr_t stringPtr =
+            GetOrAddIdentifier(&self->StringTable, stringKey, chars);
+        result->StringKey = stringKey;
+        result->StringPtr = stringPtr;
     }
     else
     {
@@ -1152,6 +1226,28 @@ metac_expression_t* MetaCParser_ParseUnaryExpression(metac_parser_t* self)
     {
         MetaCParser_Match(self, tok_minus);
         result = AllocNewExpression(exp_umin);
+        //PushOperator(exp_addr);
+        result->E1 = MetaCParser_ParseExpression(self, expr_flags_unary, result);
+        result->Hash = CRC32C_VALUE(
+            crc32c_nozero(~0, "-", 1),
+            result->E1->Hash
+        );
+    }
+    else if (tokenType == tok_minusminus)
+    {
+        MetaCParser_Match(self, tok_minusminus);
+        result = AllocNewExpression(exp_decrement);
+        //PushOperator(exp_addr);
+        result->E1 = MetaCParser_ParseExpression(self, expr_flags_unary, result);
+        result->Hash = CRC32C_VALUE(
+            crc32c_nozero(~0, "-", 1),
+            result->E1->Hash
+        );
+    }
+    else if (tokenType == tok_plusplus)
+    {
+        MetaCParser_Match(self, tok_plusplus);
+        result = AllocNewExpression(exp_increment);
         //PushOperator(exp_addr);
         result->E1 = MetaCParser_ParseExpression(self, expr_flags_unary, result);
         result->Hash = CRC32C_VALUE(
@@ -1497,8 +1593,6 @@ static inline bool IsDeclType(metac_declaration_t* decl)
 #define ErrorTypeDeclaration() \
     (decl_type_t*)0
 
-#define U32(VAR) \
-    (*(uint32_t*)(&VAR))
 
 static decl_type_array_t* ParseArraySuffix(metac_parser_t* self, decl_type_t* type);
 
@@ -1517,8 +1611,6 @@ LnextToken:
     currentToken = MetaCParser_NextToken(self);
     metac_token_enum_t tokenType =
         (currentToken ? currentToken->TokenType : tok_invalid);
-
-    bool postType = false;
 
 
     while(IsTypeToken(tokenType))
@@ -1790,7 +1882,8 @@ bool IsTypeDecl(metac_declaration_kind_t kind)
           & (kind <= LAST_DECL_TYPE(TOK_SELF)));
 }
 
-decl_parameter_list_t ParseParameterList(metac_parser_t* self)
+decl_parameter_list_t ParseParameterList(metac_parser_t* self,
+                                         decl_function_t* parent)
 {
     decl_parameter_list_t result = {0, (decl_parameter_t*)emptyPointer};
     uint32_t parameterCount = 0;
@@ -1805,24 +1898,18 @@ decl_parameter_list_t ParseParameterList(metac_parser_t* self)
         parameterCount++;
         (*nextParam) = param;
 
-        metac_identifier_ptr_t name = empty_identifier;
-                metac_declaration_t* type = cast(metac_declaration_t*)
-            MetaCParser_ParseTypeDeclaration(self, 0, 0);
-        if (MetaCParser_PeekMatch(self, tok_identifier, 1))
+        metac_declaration_t* paramDecl =
+            MetaCParser_ParseDeclaration(self, parent);
+        if (paramDecl->DeclKind == decl_variable)
         {
-            name =
-                RegisterIdentifier(self, MetaCParser_Match(self, tok_identifier));
-        }
-
-        if (type && IsTypeDecl(type->DeclKind))
-        {
-            AllocNewDeclaration(decl_variable, &param->Parameter);
-            param->Parameter->VarType = (decl_type_t*)type;
-            param->Parameter->VarIdentifier = name;
+            param->Parameter = (decl_variable_t*)
+                paramDecl;
         }
         else
         {
-            fprintf(stderr, "Couldn't parse Parameter\n");
+            metac_token_t* peek = MetaCParser_PeekToken(self , 1);
+            metac_location_t loc = LocationFromToken(self, peek);
+            ParseError(loc, "Invalid parameter");
         }
         nextParam = &param->Next;
         (*nextParam) = (decl_parameter_t*) _emptyPointer;
@@ -1859,7 +1946,7 @@ decl_function_t* ParseFunctionDeclaration(metac_parser_t* self, decl_type_t* typ
     funcDecl->Identifier = identifier;
 
     funcDecl->FunctionBody = (stmt_block_t*) _emptyPointer;
-    decl_parameter_list_t parameterList = ParseParameterList(self);
+    decl_parameter_list_t parameterList = ParseParameterList(self, funcDecl);
     funcDecl->Parameters = parameterList.List;
     funcDecl->ParameterCount = parameterList.ParameterCount;
 
@@ -2104,7 +2191,7 @@ metac_declaration_t* MetaCParser_ParseDeclaration(metac_parser_t* self, metac_de
                     MetaCParser_Match(self, tok_lParen);
                     decl_type_t* returnType = type;
                     decl_parameter_list_t paramterList =
-                        ParseParameterList(self);
+                        ParseParameterList(self, 0);
 
                     decl_type_functiontype_t* functionType =
                         AllocNewDeclaration(decl_type_functiontype, &fPtrVar->VarType);
@@ -2280,10 +2367,18 @@ static metac_statement_t* MetaCParser_ParseStatement(metac_parser_t* self,
         stmt_for_t* for_ = AllocNewStatement(stmt_for, &result);
         MetaCParser_Match(self, tok_lParen);
 
-
+        //TODO FIXME forInit can be an expression as well
         if (!MetaCParser_PeekMatch(self, tok_semicolon, 1))
         {
-            for_->ForInit = MetaCParser_ParseDeclaration(self, 0);
+            metac_token_t* peek = MetaCParser_PeekToken(self, 1);
+            metac_token_t* peek2 = MetaCParser_PeekToken(self, 2);
+
+            if (IsDeclarationFirstToken(peek->TokenType)
+             && IsDeclarationFirstToken(peek2->TokenType))
+            {
+                for_->ForInit = MetaCParser_ParseDeclaration(self, 0);
+            }
+
             hash = CRC32C_VALUE(hash, for_->ForInit->Hash);
         }
         else
@@ -2316,14 +2411,14 @@ static metac_statement_t* MetaCParser_ParseStatement(metac_parser_t* self,
     }
     else if (tokenType == tok_kw_switch)
     {
-        uint32_t switchHash = switch_key;
+        hash = switch_key;
         stmt_switch_t* switch_ = AllocNewStatement(stmt_switch, &result);
 
         MetaCParser_Match(self, tok_kw_switch);
         MetaCParser_Match(self, tok_lParen);
         switch_->SwitchExp =
             MetaCParser_ParseExpression(self, expr_flags_none, 0);
-        switchHash = CRC32C_VALUE(switchHash, switch_->SwitchExp->Hash);
+        hash = CRC32C_VALUE(hash, switch_->SwitchExp->Hash);
         MetaCParser_Match(self, tok_rParen);
         if (!MetaCParser_PeekMatch(self, tok_lBrace, 0))
         {
@@ -2333,54 +2428,65 @@ static metac_statement_t* MetaCParser_ParseStatement(metac_parser_t* self,
 
         switch_->SwitchBody =
             (metac_statement_t*)MetaCParser_ParseBlockStatement(self, result, 0);
-        switchHash = CRC32C_VALUE(switchHash, switch_->SwitchBody->Hash);
-        switch_->Hash = switchHash;
+        hash = CRC32C_VALUE(hash, switch_->SwitchBody->Hash);
+        switch_->Hash = hash;
     }
     else if (tokenType == tok_identifier
         && (peek2 = MetaCParser_PeekToken(self, 2))
         && (peek2->TokenType == tok_colon))
     {
-            metac_token_t* label_tok = MetaCParser_Match(self, tok_identifier);
-            MetaCParser_Match(self, tok_colon);
+        hash = CRC32C_COLON;
+        metac_token_t* label_tok = MetaCParser_Match(self, tok_identifier);
+        MetaCParser_Match(self, tok_colon);
 
-            stmt_label_t* label = AllocNewStatement(stmt_label, &result);
+        stmt_label_t* label = AllocNewStatement(stmt_label, &result);
 
-            label->Label = RegisterIdentifier(self, label_tok);
+        label->Label = RegisterIdentifier(self, label_tok);
+        hash = CRC32C_VALUE(hash, label->Label);
+        label->Hash = hash;
     }
     else if (tokenType == tok_kw_goto)
     {
         stmt_goto_t* goto_ = AllocNewStatement(stmt_goto, &result);
-        uint32_t gotoHash = goto_key;
+        hash = goto_key;
 
         MetaCParser_Match(self, tok_kw_goto);
         metac_token_t* label = MetaCParser_Match(self, tok_identifier);
         goto_->GotoLabel = RegisterIdentifier(self, label);
-        goto_->Hash = CRC32C_VALUE(gotoHash, label->IdentifierKey);
+        goto_->Hash = CRC32C_VALUE(hash, label->IdentifierPtr);
     }
     else if (tokenType == tok_kw_break)
     {
         stmt_break_t* break_ = AllocNewStatement(stmt_break, &result);
-        uint32_t hash = break_key;
+        hash = break_key;
         MetaCParser_Match(self, tok_kw_break);
         result->Hash = hash;
     }
     else if (tokenType == tok_kw_continue)
     {
         stmt_continue_t* continue_ = AllocNewStatement(stmt_continue, &result);
-        uint32_t hash = continue_key;
+        hash = continue_key;
         MetaCParser_Match(self, tok_kw_continue);
         result->Hash = hash;
     }
-    else if (tokenType == tok_kw_case)
+    else if (tokenType == tok_kw_case || tokenType == tok_kw_default)
     {
-        uint32_t caseHash = case_key;
+        bool isCase = tokenType == tok_kw_case;
+        hash = (isCase ? case_key : default_key);
         stmt_case_t* case_ = AllocNewStatement(stmt_case, &result);
 
-        MetaCParser_Match(self, tok_kw_case);
-        case_->CaseExp =
-            MetaCParser_ParseExpression(self, expr_flags_none, 0);
-        caseHash = CRC32C_VALUE(caseHash, case_->CaseExp->Hash);
+        MetaCParser_Match(self, tokenType);
+        if (isCase)
+        {
+            case_->CaseExp =
+                MetaCParser_ParseExpression(self, expr_flags_none, 0);
 
+            hash = CRC32C_VALUE(hash, case_->CaseExp->Hash);
+        }
+        else
+        {
+            case_->CaseExp = (metac_expression_t*)emptyPointer;
+        }
         MetaCParser_Match(self, tok_colon);
         metac_token_t* peek = MetaCParser_PeekToken(self, 1);
 
@@ -2393,18 +2499,18 @@ static metac_statement_t* MetaCParser_ParseStatement(metac_parser_t* self,
         {
             metac_statement_t* nextStmt =
                 MetaCParser_ParseStatement(self, (metac_statement_t*)case_, 0);
-                        caseHash = CRC32C_VALUE(caseHash, nextStmt->Hash);
+            hash = CRC32C_VALUE(hash, nextStmt->Hash);
             nextStmt->Next = (metac_statement_t*)_emptyPointer;
             (*nextStmtP) = nextStmt;
             nextStmtP = &nextStmt->Next;
             peek = MetaCParser_PeekToken(self, 1);
         }
 
-        case_->Hash = caseHash;
+        case_->Hash = hash;
     }
     else if (tokenType == tok_kw_return)
     {
-        uint32_t returnHash = return_key;
+        hash = return_key;
         stmt_return_t* return_ = AllocNewStatement(stmt_return, &result);
         MetaCParser_Match(self, tok_kw_return);
         if (MetaCParser_PeekMatch(self, tok_semicolon, true))
@@ -2414,12 +2520,13 @@ static metac_statement_t* MetaCParser_ParseStatement(metac_parser_t* self,
         else
         {
             return_->ReturnExp = MetaCParser_ParseExpression(self, expr_flags_none, 0);
-            returnHash = CRC32C_VALUE(returnHash, return_->ReturnExp->Hash);
+            hash = CRC32C_VALUE(hash, return_->ReturnExp->Hash);
         }
+        return_->Hash = hash;
     }
     else if (tokenType == tok_kw_yield)
     {
-        uint32_t yieldHash = yield_key;
+        hash = yield_key;
         stmt_yield_t* yield_ = AllocNewStatement(stmt_yield, &result);
         MetaCParser_Match(self, tok_kw_yield);
         if (MetaCParser_PeekMatch(self, tok_semicolon, true))
@@ -2429,8 +2536,9 @@ static metac_statement_t* MetaCParser_ParseStatement(metac_parser_t* self,
         else
         {
             yield_->YieldExp = MetaCParser_ParseExpression(self, expr_flags_none, 0);
-            yieldHash = CRC32C_VALUE(yieldHash, yield_->YieldExp->Hash);
+            hash = CRC32C_VALUE(hash, yield_->YieldExp->Hash);
         }
+        yield_->Hash = hash;
     }
     else if (tokenType == tok_lBrace)
     {
@@ -2445,8 +2553,10 @@ static metac_statement_t* MetaCParser_ParseStatement(metac_parser_t* self,
         {
             metac_declaration_t* decl = MetaCParser_ParseDeclaration(self, 0);
             stmt_decl_t* declStmt = AllocNewStatement(stmt_decl, &result);
+            assert(decl && decl->Hash);
             declStmt->Declaration = decl;
             //result = MetaCParser_ParseDeclarationStatement(self, parent);
+            declStmt->Hash = decl->Hash;
         }
     }
 

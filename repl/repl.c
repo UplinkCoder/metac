@@ -402,11 +402,6 @@ bool Repl_Loop(repl_state_t* repl)
 {
 LswitchMode:
     Repl_SwtichMode(repl);
-    // while(0) makes sure we can only call free
-    // in the case we jumped to the LnextLine label
-    while(0)
-    {
-    }
 
     {
         repl->line = linenoise(repl->promt);
@@ -427,6 +422,7 @@ LswitchMode:
                 return false;
             case 'l' :
             {
+                repl->parseMode = parse_mode_file;
                 const char* filename = repl->line + 3;
                 printf("loading and lexing: '%s'\n", filename);
                 FILE* fd = fopen(filename, "rb");

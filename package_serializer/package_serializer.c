@@ -1,3 +1,5 @@
+#define NO_FIBERS
+
 #include "../compat.h"
 #include "../utils/read_file.c"
 #include "../crc32c.h"
