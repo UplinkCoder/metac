@@ -1538,12 +1538,27 @@ metac_expression_t* MetaCParser_ParseExpression(metac_parser_t* self,
             if (prec < min_prec)
                 return result;
             result = MetaCParser_ParseBinaryExpression(self, eflags, result, min_prec);
+            peekNext = MetaCParser_PeekToken(self, 1);
+            tokenType = (peekNext ? peekNext->TokenType : tok_eof);
         }
         else if (IsPostfixOperator(tokenType))
         {
             result = MetaCParser_ParsePostfixExpression(self, result);
         }
-        else if (tokenType == tok_question)
+        else if (peekNext->TokenType == tok_lParen)
+        {
+            result = MetaCParser_ParseBinaryExpression(self, eflags, result, OpToPrecedence(exp_call));
+        }
+        else if (tokenType == tok_lBracket)
+        {
+            result = MetaCParser_ParseBinaryExpression(self, eflags, result, OpToPrecedence(exp_index));
+        }
+        else if (tokenType == tok_rBracket || tokenType == tok_rParen)
+        {
+            // there's nothing to see here crray on
+        }
+
+        if (tokenType == tok_question)
         {
             // inline parse Ternary Expression
             MetaCParser_Match(self, tok_question);
@@ -1558,18 +1573,7 @@ metac_expression_t* MetaCParser_ParseExpression(metac_parser_t* self,
             result->E2 = E2;
             result->Econd = Econd;
         }
-        else if (peekNext->TokenType == tok_lParen)
-        {
-            result = MetaCParser_ParseBinaryExpression(self, eflags, result, OpToPrecedence(exp_call));
-        }
-        else if (tokenType == tok_lBracket)
-        {
-            result = MetaCParser_ParseBinaryExpression(self, eflags, result, OpToPrecedence(exp_index));
-        }
-        else if (tokenType == tok_rBracket || tokenType == tok_rParen)
-        {
-            // there's nothing to see here crray on
-        }
+
         //else assert(!"Stray Input");
     }
 
