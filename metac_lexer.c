@@ -1078,14 +1078,15 @@ LcontinueLexnig:
         //printf("Comment ends at line: %u:%u\n", state->Line, state->Column);
         //printf("Comment was: \"%.*s\"\n", eatenChars - 4,  text + 2);
     }
-#if 0
+#if 1 // this is only active for as long as the parser can't do deal
+      // with preprocessor stuff
     else if (token.TokenType == tok_hash)
     {
         uint32_t lines = 0;
-        const char* newlinePtr = text;
+        const char* newlinePtr = text + 1;
         uint32_t offset = 0;
 
-    LskiptoNewline
+    LskiptoNewline:
         for(;;)
         {
             newlinePtr = (char*)memchr(newlinePtr + 1, '\n', len - offset);
@@ -1100,13 +1101,14 @@ LcontinueLexnig:
             lines++;
 
         }
-        ++offset;
         //printf("skipping %u chars\n", offset);
         //printf("Just Skipped '%.*s'\n", offset,  text);
         //printf("NextChars 8: '%.*s'\n", 8,  text + offset);
-        eatenChars = offset + 1;
         state->Line += lines;
         state->Column = 1;
+        text += offset;
+        state->Position += offset;
+        c = *text++;
         goto LcontinueLexnig;
     }
 #endif
