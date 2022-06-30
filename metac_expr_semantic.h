@@ -12,11 +12,11 @@ void MetaCSemantic_doExprSemantic_Task(task_t* task);
 #endif
 
 #define MetaCSemantic_doExprSemantic(SELF, NODE, RESULT) \
-    MetaCSemantic_doExprSemantic_(SELF, ((metac_expression_t*)(NODE)), RESULT, \
+    MetaCSemantic_doExprSemantic_(SELF, (NODE), RESULT, \
                                   __FILE__, __LINE__)
 
 metac_sema_expression_t* MetaCSemantic_doExprSemantic_(metac_semantic_state_t* self,
-                                                       metac_expression_t* expr,
+                                                       metac_expression_ptr_t expr,
                                                        metac_sema_expression_t* result,
                                                        const char* callFun,
                                                        uint32_t callLine);

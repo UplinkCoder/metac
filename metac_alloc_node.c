@@ -64,20 +64,13 @@ typedef struct chunk_ptr_t
     }
 } chunk_ptr_t;
 */
-#pragma pack(push, 2)
-typedef struct node_ptr_t
-{
-    uint32_t          Ptr;
-    metac_node_kind_t Kind : 7;
-} ndoe_ptr_t;
-#pragma pack(pop)
 
 noinline void _newMemRealloc(void** memP, uint32_t* capacityP, const uint32_t elementSize)
 {
     uint32_t capacity;
     if (!*memP)
     {
-        capacity = cast(int)(1024 / 1.6f);
+        capacity = cast(int)(4096 / 1.6f);
     }
     else
     {
@@ -157,19 +150,34 @@ if (PREFIX ## _capacity <= (PREFIX ## _size + (N))) \
             sizeof(* PREFIX ## _mem) \
         ); \
     }
-metac_expression_t* AllocNewExpression(metac_expression_kind_t kind)
+
+metac_expression_ptr_t AllocNewExpression(metac_expression_kind_t kind)
 {
-    metac_expression_t* result = 0;
+    metac_expression_ptr_t result = {0};
+    metac_expression_t* p;
 
     REALLOC_BOILERPLATE(_newExp)
 
     {
-        result = _newExp_mem + INC(_newExp_size);
-        result->Kind = kind;
-        result->Serial = INC(_nodeCounter);
+        p = _newExp_mem + INC(_newExp_size);
+        p->Kind = kind;
+        p->Serial = INC(_nodeCounter);
     }
 
+    result.v = EXPR_PTR_V(p - _newExp_mem);
+
     return result;
+}
+
+uint32_t ExpressionIndex(metac_expression_t* ptr)
+{
+    return ptr - _newExp_mem;
+}
+
+metac_expression_t* ToExpressionPtr(metac_expression_ptr_t exp)
+{
+    uint32_t idx = (exp.v & ((1 << 29) - 1));
+    return _newExp_mem + idx;
 }
 
 metac_declaration_t* AllocNewDeclaration_(metac_declaration_kind_t kind, uint32_t nodeSize, void** result_ptr, uint32_t line)

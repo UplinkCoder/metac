@@ -249,7 +249,8 @@ typedef struct metac_node_header_t
 typedef metac_node_header_t* metac_node_t;
 #define METAC_NODE(N) \
     (*(metac_node_t*)(&N))
-#endif
+
+#endif // _METAC_NODE_H_
 
 static inline bool MetaCNode_IsExpression(metac_node_t node);
 static inline bool MetaCNode_IsStatement(metac_node_t node);

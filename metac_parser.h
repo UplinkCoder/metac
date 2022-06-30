@@ -92,8 +92,8 @@ void MetaCParser_InitFromLexer(metac_parser_t* self, metac_lexer_t* lexer);
 /// negative offsets allow you to look back
 metac_token_t* MetaCParser_PeekToken(metac_parser_t* self, int32_t p);
 uint32_t MetaCParser_HowMuchLookahead(metac_parser_t* self);
-metac_expression_t* MetaCParser_ParseExpression(metac_parser_t* self, parse_expression_flags_t flags, metac_expression_t* prev);
-metac_expression_t* MetaCParser_ParseExpressionFromString(const char* exp);
+metac_expression_ptr_t MetaCParser_ParseExpression(metac_parser_t* self, parse_expression_flags_t flags, metac_expression_ptr_t prev);
+metac_expression_ptr_t MetaCParser_ParseExpressionFromString(const char* exp);
 metac_declaration_t* MetaCParser_ParseDeclaration(metac_parser_t* self, metac_declaration_t* parent);
 
 const char* MetaCNodeKind_toChars(metac_node_kind_t type);

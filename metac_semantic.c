@@ -126,8 +126,10 @@ metac_sema_expression_t* AllocNewSemaExpression(metac_semantic_state_t* self, me
         result->Serial = INC(_nodeCounter);
     }
 
+/*
     if (expr->Kind == exp_tuple)
     {
+
         const uint32_t tupleExpCount = expr->TupleExpressionCount;
         REALLOC_N_BOILERPLATE(self->Expressions, tupleExpCount);
 
@@ -158,7 +160,7 @@ metac_sema_expression_t* AllocNewSemaExpression(metac_semantic_state_t* self, me
         }
         result->TupleExpressions = elements;
     }
-    else
+    else */
     {
         memcpy(
             ((char*)result) + sizeof(metac_sema_expression_header_t),
@@ -911,8 +913,8 @@ metac_sema_statement_t* MetaCSemantic_doStatementSemantic_(metac_semantic_state_
                                            scope_parent_statement,
                                            METAC_NODE(semaFor));
 
-            metac_sema_declaration_t* ForInit =
-                MetaCSemantic_doDeclSemantic(self, for_->ForInit);
+            //metac_sema_declaration_t* ForInit =
+            //    MetaCSemantic_doDeclSemantic(self, for_->ForInit);
             metac_sema_expression_t* ForCond =
                 MetaCSemantic_doExprSemantic(self, for_->ForCond, 0);
             metac_sema_expression_t* ForPostLoop =

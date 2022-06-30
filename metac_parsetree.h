@@ -4,10 +4,65 @@
 #include "compat.h"
 #include "metac_identifier_table.h"
 #include "metac_type_table.h"
-
 #include "metac_node.h"
 
 #pragma pack(push, 1)
+
+typedef enum metac_node_ptr_kind_t
+{
+    NodeKind_invalid,
+
+    NodeKind_Expression,
+    NodeKind_Statement,
+    NodeKind_Declaration,
+
+    NodeKind_SemaInvalid,
+
+    NodeKind_Sema_Expression,
+    NodeKind_Sema_Statement,
+    NodeKind_Sema_Declaration
+} metac_node_ptr_kind_t;
+
+typedef union metac_node_ptr_t metac_node_ptr_t;
+
+typedef union metac_expression_ptr_t
+{
+    uint32_t v;
+    struct {
+        uint32_t          Ptr     : 29;
+        metac_node_ptr_kind_t Kind : 3;
+    } ;
+} metac_expression_ptr_t;
+
+typedef union metac_statement_ptr_t
+{
+    uint32_t v;
+    struct {
+        uint32_t          Ptr     : 29;
+        metac_node_ptr_kind_t Kind : 3;
+    } ;
+} metac_statement_ptr_t;
+
+typedef union metac_declaration_ptr_t
+{
+    uint32_t v;
+    struct {
+        uint32_t          Ptr     : 29;
+        metac_node_ptr_kind_t Kind : 3;
+    };
+} metac_declaration_ptr_t;
+
+typedef union metac_node_ptr_t
+{
+    uint32_t v;
+    struct {
+        uint32_t          Ptr     : 29;
+        metac_node_ptr_kind_t Kind : 3;
+    } ;
+    metac_expression_ptr_t exp;
+    metac_statement_ptr_t stmt;
+    metac_declaration_ptr_t decl;
+} metac_node_ptr_t;
 
 #define EXPRESSION_HEADER \
     metac_expression_kind_t Kind; \
@@ -24,7 +79,7 @@ typedef struct exp_argument_t
 {
     EXPRESSION_HEADER
 
-    struct metac_expression_t* Expression;
+    metac_expression_ptr_t Expression;
     struct exp_argument_t* Next;
 } exp_argument_t;
 
@@ -32,7 +87,7 @@ typedef struct exp_tuple_t
 {
     EXPRESSION_HEADER
 
-    struct metac_expression_t* Expression;
+    metac_expression_ptr_t Expression;
     struct exp_tuple_t* Next;
 } exp_tuple_t;
 
@@ -47,22 +102,22 @@ typedef struct metac_expression_t
         // case exp_add, exp_sub, exp_mul, exp_div, exp_cat, exp_catAss, exp_assign,
         // exp_lt, exp_gt, exp_le, exp_ge, exp_spaceShip :
         struct {
-            struct metac_expression_t* _E1;
-            struct metac_expression_t* E2;
+            metac_expression_ptr_t _E1;
+            metac_expression_ptr_t E2;
         };
         //case exp_ternary:
         struct {
-            struct metac_expression_t* _E1_;
-            struct metac_expression_t* _E2;
-            struct metac_expression_t* Econd;
+            metac_expression_ptr_t _E1_;
+            metac_expression_ptr_t _E2;
+            metac_expression_ptr_t Econd;
         };
         // case  exp_inject, exp_eject, exp_assert, exp_outerParen, exp_outer :
         struct {
-            struct metac_expression_t* E1;
+            metac_expression_ptr_t E1;
         };
         // case exp_sizeof:
         struct {
-            struct metac_expression_t* SizeofExp;
+            metac_expression_ptr_t SizeofExp;
         };
         // case exp_tuple:
         struct {
@@ -71,7 +126,7 @@ typedef struct metac_expression_t
         };
         // case exp_cast:
         struct {
-            struct metac_expression_t* CastExp;
+            metac_expression_ptr_t CastExp;
             struct decl_type_t* CastType;
         };
         // case exp_type:
@@ -148,7 +203,7 @@ typedef struct stmt_yield_t
 {
     STATEMENT_HEADER
 
-    metac_expression_t* YieldExp;
+    metac_expression_ptr_t YieldExp;
 } stmt_yield_t;
 
 typedef struct stmt_scope_t
@@ -171,9 +226,9 @@ typedef struct stmt_for_t
     STATEMENT_HEADER
 
     /// can be either an expression or a declaration
-    metac_node_t ForInit;
-    metac_expression_t* ForCond;
-    metac_expression_t* ForPostLoop;
+    metac_node_ptr_t ForInit;
+    metac_expression_ptr_t ForCond;
+    metac_expression_ptr_t ForPostLoop;
 
     struct metac_statement_t* ForBody;
 } stmt_for_t;
@@ -182,7 +237,7 @@ typedef struct stmt_while_t
 {
     STATEMENT_HEADER
 
-    metac_expression_t* WhileExp;
+    metac_expression_ptr_t WhileExp;
     struct metac_statement_t* WhileBody;
 } stmt_while_t;
 
@@ -190,7 +245,7 @@ typedef struct stmt_case_t
 {
     STATEMENT_HEADER
 
-    metac_expression_t* CaseExp;
+    metac_expression_ptr_t CaseExp;
     struct metac_statement_t* CaseBody;
 } stmt_case_t;
 
@@ -205,7 +260,7 @@ typedef struct stmt_exp_t
 {
     STATEMENT_HEADER
 
-    metac_expression_t* Expression;
+    metac_expression_ptr_t Expression;
 } stmt_exp_t;
 
 typedef struct stmt_decl_t
@@ -219,7 +274,7 @@ typedef struct stmt_if_t
 {
     STATEMENT_HEADER
 
-    struct metac_expression_t* IfCond;
+    metac_expression_ptr_t IfCond;
     struct metac_statement_t* IfBody;
     struct metac_statement_t* ElseBody;
 } stmt_if_t;
@@ -235,14 +290,14 @@ typedef struct stmt_return_t
 {
     STATEMENT_HEADER
 
-    metac_expression_t* ReturnExp;
+    metac_expression_ptr_t ReturnExp;
 } stmt_return_t;
 
 typedef struct stmt_switch_t
 {
     STATEMENT_HEADER
 
-    metac_expression_t* SwitchExp;
+    metac_expression_ptr_t SwitchExp;
     struct metac_statement_t* SwitchBody;
 } stmt_switch_t;
 
@@ -250,7 +305,7 @@ typedef struct stmt_do_while_t
 {
     STATEMENT_HEADER
 
-    metac_expression_t* DoWhileExp;
+    metac_expression_ptr_t DoWhileExp;
     struct metac_statement_t* DoWhileBody;
 } stmt_do_while_t;
 
@@ -339,7 +394,7 @@ typedef struct decl_variable_t
 
     metac_identifier_ptr_t VarIdentifier;
 
-    metac_expression_t* VarInitExpression;
+    metac_expression_ptr_t VarInitExpression;
 
 } decl_variable_t;
 
@@ -398,7 +453,7 @@ typedef struct decl_enum_member_t
 
     metac_identifier_ptr_t Name;
 
-    metac_expression_t* Value;
+    metac_expression_ptr_t Value;
 
     struct decl_enum_member_t* Next;
 } decl_enum_member_t;
@@ -441,7 +496,7 @@ typedef struct decl_type_array_t
 
     decl_type_t* ElementType;
 
-    metac_expression_t* Dim;
+    metac_expression_ptr_t Dim;
 } decl_type_array_t;
 
 

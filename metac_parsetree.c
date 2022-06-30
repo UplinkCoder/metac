@@ -112,7 +112,8 @@ int MetaCDeclaration_TreeWalk_Real(metac_declaration_t* decl, walker_function_t 
             result = MetaCDeclaration_TreeWalk_Real(type_array->ElementType, walker_fn, ctx);
             if (result)
                 return result;
-            result = walker_fn(type_array->Dim, ctx);
+            metac_expression_t* dimP = ToExpressionPtr(type_array->Dim);
+            result = walker_fn(dimP, ctx);
             if (result)
                 return result;
         } break;
