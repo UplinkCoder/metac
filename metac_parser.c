@@ -2280,12 +2280,20 @@ metac_declaration_t* MetaCParser_ParseDeclaration(metac_parser_t* self, metac_de
 
                 while (MetaCParser_PeekMatch(self, tok_lBracket, true))
                 {
-                    varDecl->VarType = (decl_type_t*)ParseArraySuffix(self, varDecl->VarType);
+                    varDecl->VarType = (decl_type_t*)
+                        ParseArraySuffix(self, varDecl->VarType);
+                }
+                while (MetaCParser_PeekMatch(self, tok_full_slice, true))
+                {
+                    MetaCParser_Match(self, tok_full_slice);
+                    printf("saw a [] ...  we should do something about that\n");
+                    //varDecl->VarType = (decl_type_t*)ParseArraySuffix(self, varDecl->VarType);
                 }
 
                 // check for bitfield decl
                 if (MetaCParser_PeekMatch(self, tok_colon, true))
                 {
+                    //TODO make sure this is only done for structs 
                     MetaCParser_Match(self, tok_colon);
                     metac_token_t* bitSz = MetaCParser_Match(self, tok_uint);
                     printf("ignoring bitfield spec : %d\n", bitSz->ValueI64);
