@@ -87,7 +87,8 @@ int MetaCDeclaration_TreeWalk_Real(metac_declaration_t* decl, walker_function_t 
         case decl_type_struct:
         {
             decl_type_struct_t* type_struct = (decl_type_struct_t*) decl;
-            result = MetaCDeclaration_TreeWalk_Real(type_struct->Fields, walker_fn, ctx);
+            if (type_struct->Fields && type_struct->Fields != emptyNode)
+                result = MetaCDeclaration_TreeWalk_Real(type_struct->Fields, walker_fn, ctx);
             if (result)
                 return result;
         } break;
@@ -148,7 +149,8 @@ int MetaCDeclaration_TreeWalk_Real(metac_declaration_t* decl, walker_function_t 
             result = MetaCDeclaration_TreeWalk_Real(function_->Parameters, walker_fn, ctx);
             if (result)
                 return result;
-            result = walker_fn(function_->FunctionBody, ctx);
+            if (function_->FunctionBody != emptyNode)
+                result = walker_fn(function_->FunctionBody, ctx);
             if (result)
                 return result;
         } break;
