@@ -238,7 +238,7 @@ void Presemantic_(repl_state_t* self)
             i < decls.Length;
             i++)
         {
-            MetaCDeclaration_Walk(decls.Ptr[i], Presemantic, &presemanticContext);
+            MetaCNode_TreeWalk_Real(decls.Ptr[i], Presemantic, &presemanticContext);
         }
 
         for(int i = 0;
