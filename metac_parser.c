@@ -2697,23 +2697,13 @@ static inline void MetaCParser_PushBlockStatement(metac_parser_t* self,
 static inline void MetaCParser_PopBlockStatement(metac_parser_t* self,
                                                  stmt_block_t* stmt)
 {
-    //assert(stmt == self->CurrentBlockStatement);
-    //DEBUG CODE
-    if (stmt != self->CurrentBlockStatement)
+    assert(stmt == self->CurrentBlockStatement);
+
+    if (--self->BlockStatementStackSize > 0)
     {
-        const char *stmt_ = MetaCPrinter_PrintStatement(&self->DebugPrinter, cast(metac_statement_t*)stmt);
-        MetaCPrinter_Reset(&self->DebugPrinter);
-        const char *current_ = MetaCPrinter_PrintStatement(&self->DebugPrinter, cast(metac_statement_t*)self->CurrentBlockStatement);
-
-        printf("Should be popping block statement: [%u] %s\n\n"
-                "But the current statement is  [%u] %s\n\n\n",
-                    stmt->Serial, stmt_,
-                    self->CurrentBlockStatement->Serial, current_);
-    }
-
-    if (self->BlockStatementStackSize-- > 1)
         self->CurrentBlockStatement =
-            self->BlockStatementStack[self->BlockStatementStackSize];
+            self->BlockStatementStack[self->BlockStatementStackSize - 1];
+    }
     else
         self->CurrentBlockStatement = 0;
 }
@@ -2722,13 +2712,15 @@ static stmt_block_t* MetaCParser_ParseBlockStatement(metac_parser_t* self,
                                                      metac_statement_t* parent,
                                                      metac_statement_t* prev)
 {
-    MetaCParser_Match(self, tok_lBrace);
+    metac_token_t* lBrace = MetaCParser_Match(self, tok_lBrace);
+    metac_location_t loc = LocationFromToken(self, lBrace);
 
     metac_statement_t* firstStatement = 0;
     metac_statement_t* nextStatement = 0;
     stmt_block_t* result;
     AllocNewStatement(stmt_block, &result);
     result->Hash = ~0;
+    uint32_t hash = ~0;
 
     MetaCParser_PushBlockStatement(self, result);
 
@@ -2753,7 +2745,7 @@ static stmt_block_t* MetaCParser_ParseBlockStatement(metac_parser_t* self,
             if (nextStatement)
             {
                 assert(nextStatement->Hash);
-                result->Hash = CRC32C_VALUE(result->Hash, nextStatement->Hash);
+                hash = CRC32C_VALUE(hash, nextStatement->Hash);
             }
             else
             {
@@ -2762,7 +2754,6 @@ static stmt_block_t* MetaCParser_ParseBlockStatement(metac_parser_t* self,
         }
         else
         {
-
             MetaCParser_ParseStatement(self, (metac_statement_t*)result, nextStatement);
             result->Hash = CRC32C_VALUE(result->Hash, nextStatement->Hash);
             if (nextStatement->Next && nextStatement->Next != emptyPointer)
@@ -2773,8 +2764,12 @@ static stmt_block_t* MetaCParser_ParseBlockStatement(metac_parser_t* self,
     }
 
     result->Body = firstStatement;
+    result->Hash = hash;
 
-    MetaCParser_Match(self, tok_rBrace);
+    metac_token_t* rBrace = MetaCParser_Match(self, tok_rBrace);
+    MetaCLocation_Expand(&loc, LocationFromToken(self, rBrace));
+    result->LocationIdx = MetaCLocationStorage_Store(
+        &self->LocationStorage, loc);
 
     MetaCParser_PopBlockStatement(self, result);
 
