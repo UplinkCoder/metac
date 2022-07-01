@@ -77,7 +77,7 @@ noinline void _newMemRealloc(void** memP, uint32_t* capacityP, const uint32_t el
     uint32_t capacity;
     if (!*memP)
     {
-        capacity = cast(int)(1024 / 1.6f);
+        capacity = cast(int)(8192 / 1.6f);
     }
     else
     {
