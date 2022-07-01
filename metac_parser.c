@@ -2673,7 +2673,7 @@ static metac_statement_t* MetaCParser_ParseStatement(metac_parser_t* self,
 LdoneWithStatement:
     if (prev)
         prev->Next = result;
-    printf("ParsedStatement:[%u] %s\n", result->Serial, MetaCPrinter_PrintStatement(&self->DebugPrinter, result));
+    // printf("ParsedStatement:[%u] %s\n", result->Serial, MetaCPrinter_PrintStatement(&self->DebugPrinter, result));
     MetaCPrinter_Reset(&self->DebugPrinter);
 
     if(tokenType != tok_lBrace && MetaCParser_PeekMatch(self, tok_semicolon, true))
