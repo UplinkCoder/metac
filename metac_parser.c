@@ -52,8 +52,8 @@ static inline void InitSpecialIdentifier(metac_parser_t* self)
 void MetaCParser_Init(metac_parser_t* self)
 {
     self->CurrentTokenIndex = 0;
-    IdentifierTableInit(&self->IdentifierTable, IDENTIFIER_LENGTH_SHIFT);
-    IdentifierTableInit(&self->StringTable, STRING_LENGTH_SHIFT);
+    IdentifierTableInit(&self->IdentifierTable, IDENTIFIER_LENGTH_SHIFT, 13);
+    IdentifierTableInit(&self->StringTable, STRING_LENGTH_SHIFT, 13);
 
     self->PackStackCapacity = 8;
     self->PackStack = (uint16_t*)
@@ -675,10 +675,8 @@ static inline bool IsTypeToken(metac_token_enum_t tokenType)
     return result;
 }
 
-static inline bool IsDeclarationFirstToken(metac_token_enum_t tokenType)
+static inline bool IsDeclarationToken(metac_token_enum_t tokenType)
 {
-    if (tokenType == tok_star)
-        return false;
 
    bool result = (   tokenType == tok_kw_static
                   || tokenType == tok_kw_inline
@@ -686,8 +684,14 @@ static inline bool IsDeclarationFirstToken(metac_token_enum_t tokenType)
                   || tokenType == tok_comment_multi
                   || tokenType == tok_comment_single
                   || IsTypeToken(tokenType)  );
+}
 
-    return result;
+static inline bool IsDeclarationFirstToken(metac_token_enum_t tokenType)
+{
+    if (tokenType == tok_star)
+        return false;
+
+    return IsDeclarationToken(tokenType);
 }
 
 
@@ -803,6 +807,7 @@ static inline bool CouldBeType(metac_parser_t* self, metac_token_enum_t tok)
     {
         U32(flags) |= TypeScan_FirstWasIdentifier;
     }
+
     if (tok == tok_star)
     {
         result = false;
@@ -853,6 +858,7 @@ metac_expression_t* MetaCParser_ParsePrimaryExpression(metac_parser_t* self)
     metac_location_t loc = (currentToken ?
         LocationFromToken(self, currentToken) :
         invalidLocation);
+
 #ifdef TYPE_EXP
     if (CouldBeType(self, tokenType))
     {
@@ -2293,7 +2299,7 @@ metac_declaration_t* MetaCParser_ParseDeclaration(metac_parser_t* self, metac_de
                 // check for bitfield decl
                 if (MetaCParser_PeekMatch(self, tok_colon, true))
                 {
-                    //TODO make sure this is only done for structs 
+                    //TODO make sure this is only done for structs
                     MetaCParser_Match(self, tok_colon);
                     metac_token_t* bitSz = MetaCParser_Match(self, tok_uint);
                     printf("ignoring bitfield spec : %d\n", bitSz->ValueI64);
@@ -2629,7 +2635,7 @@ static metac_statement_t* MetaCParser_ParseStatement(metac_parser_t* self,
     {
         metac_token_t* peek2 = MetaCParser_PeekToken(self, 2);
         metac_token_t* peek3 = MetaCParser_PeekToken(self, 3);
-        if (peek2 && IsDeclarationFirstToken(peek2->TokenType)
+        if (peek2 && IsDeclarationToken(peek2->TokenType)
             /*&& peek3 && peek3->TokenType != tok_assign*/)
         {
             metac_declaration_t* decl = MetaCParser_ParseDeclaration(self, 0);
@@ -2778,13 +2784,13 @@ void LineLexerInit(void)
     g_lineLexer.TokenSize = 0;
     g_lineLexer.LocationStorage.LocationSize = 0;
 
-    ACCEL_INIT(g_lineLexer, Identifier, IDENTIFIER_LENGTH_SHIFT);
-    ACCEL_INIT(g_lineLexer, String, STRING_LENGTH_SHIFT);
+    ACCEL_INIT(g_lineLexer, Identifier, IDENTIFIER_LENGTH_SHIFT, 9);
+    ACCEL_INIT(g_lineLexer, String, STRING_LENGTH_SHIFT, 9);
 
     if (g_lineParser.SpecialNamePtr_Compiler.v == 0)
     {
-        ACCEL_INIT(g_lineParser, Identifier, IDENTIFIER_LENGTH_SHIFT);
-        ACCEL_INIT(g_lineParser, String, STRING_LENGTH_SHIFT);
+        ACCEL_INIT(g_lineParser, Identifier, IDENTIFIER_LENGTH_SHIFT, 9);
+        ACCEL_INIT(g_lineParser, String, STRING_LENGTH_SHIFT, 9);
         InitSpecialIdentifier(&g_lineParser);
     }
 

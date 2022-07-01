@@ -8,7 +8,7 @@
 #define MEMBER_INFIX(P, S) P ## Table # S
 #define ACCELERATOR "Table"
 #define ACCEL_SUFFIX Table
-#define ACCEL_INIT(A, B, C) IdentifierTableInit(&((A).B ## Table), C)
+#define ACCEL_INIT(A, B, C, D) IdentifierTableInit(&((A).B ## Table), C, D)
 
 //#  define MEMBER_INIT(X) IdentifierTreeInit(## X ## ->IdentifierTree)
 

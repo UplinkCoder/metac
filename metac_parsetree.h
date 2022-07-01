@@ -22,12 +22,16 @@ typedef struct metac_expression_header_t
 
 typedef struct exp_argument_t
 {
+    EXPRESSION_HEADER
+
     struct metac_expression_t* Expression;
     struct exp_argument_t* Next;
 } exp_argument_t;
 
 typedef struct exp_tuple_t
 {
+    EXPRESSION_HEADER
+
     struct metac_expression_t* Expression;
     struct exp_tuple_t* Next;
 } exp_tuple_t;

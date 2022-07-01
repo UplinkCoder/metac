@@ -446,8 +446,8 @@ void MetaCLexer_Init(metac_lexer_t* self)
     self->LocationStorage.LocationSize = 0;
     self->LocationStorage.Locations = self->inlineLocations;
 
-    ACCEL_INIT(*self, Identifier, IDENTIFIER_LENGTH_SHIFT);
-    ACCEL_INIT(*self, String, STRING_LENGTH_SHIFT);
+    ACCEL_INIT(*self, Identifier, IDENTIFIER_LENGTH_SHIFT, 13);
+    ACCEL_INIT(*self, String, STRING_LENGTH_SHIFT, 13);
 }
 
 void MetaCLexer_Free(metac_lexer_t* self)
