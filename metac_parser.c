@@ -931,6 +931,7 @@ metac_expression_t* MetaCParser_ParsePrimaryExpression(metac_parser_t* self)
         (*(uint64_t*)result->Chars) =
             (*(uint64_t*) chars);
         result->CharKey = CHAR_KEY(hash, length);
+        result->Hash = result->CharKey;
     }
     else if (tokenType == tok_identifier)
     {
@@ -964,6 +965,7 @@ metac_expression_t* MetaCParser_ParsePrimaryExpression(metac_parser_t* self)
         // self->OpenBraces++;
         MetaCParser_Match(self, tok_lBrace);
         exp_tuple_t* tupleList = (exp_tuple_t*)emptyPointer;
+        uint32_t hash = ~0;
 
         exp_tuple_t** nextElement = &tupleList;
         uint32_t nElements = 0;
@@ -973,7 +975,9 @@ metac_expression_t* MetaCParser_ParsePrimaryExpression(metac_parser_t* self)
             assert((*nextElement) == _emptyPointer);
 
             (*nextElement) = (exp_tuple_t*)AllocNewExpression(exp_tuple);
-            ((*nextElement)->Expression) = MetaCParser_ParseExpression(self, expr_flags_call, 0);
+            metac_expression_t* exp = MetaCParser_ParseExpression(self, expr_flags_call, 0);
+            hash = CRC32C_VALUE(hash, exp->Hash);
+            ((*nextElement)->Expression) = exp;
             nextElement = &((*nextElement)->Next);
             (*nextElement) = (exp_tuple_t*) _emptyPointer;
 
@@ -987,6 +991,7 @@ metac_expression_t* MetaCParser_ParsePrimaryExpression(metac_parser_t* self)
         MetaCLocation_Expand(&loc, LocationFromToken(self, endBrace));
 
         result = AllocNewExpression(exp_tuple);
+        result->Hash = hash;
         result->TupleExpressionList = tupleList;
         result->TupleExpressionCount = nElements;
 
@@ -2696,7 +2701,7 @@ static inline void MetaCParser_PopBlockStatement(metac_parser_t* self,
     //DEBUG CODE
     if (stmt != self->CurrentBlockStatement)
     {
-                const char *stmt_ = MetaCPrinter_PrintStatement(&self->DebugPrinter, cast(metac_statement_t*)stmt);
+        const char *stmt_ = MetaCPrinter_PrintStatement(&self->DebugPrinter, cast(metac_statement_t*)stmt);
         MetaCPrinter_Reset(&self->DebugPrinter);
         const char *current_ = MetaCPrinter_PrintStatement(&self->DebugPrinter, cast(metac_statement_t*)self->CurrentBlockStatement);
 

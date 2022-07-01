@@ -2,195 +2,178 @@
 #include "crc32c.h"
 
 #include "metac_node.c"
-int MetaCDeclaration_Walk_Debug(metac_declaration_t* decl, const char* fn_name, walker_function_t walker_fn, void* ctx)
+int MetaCTree_Walk_Debug(metac_node_t decl, const char* fn_name, walker_function_t walker_fn, void* ctx)
 {
     // make sure the context confusion cookie is set
     assert((*(uint32_t*) ctx) == crc32c_nozero(~0, fn_name, strlen(fn_name)));
 
-    return MetaCDeclaration_TreeWalk_Real(decl, walker_fn, ctx);
+    return MetaCNode_TreeWalk_Real(decl, walker_fn, ctx);
 }
-
-int MetaCDeclaration_TreeWalk_Real(metac_declaration_t* decl, walker_function_t walker_fn, void* ctx)
-{
-#define walker_fn(DECL, CTX) \
-    walker_fn((metac_node_t) DECL, CTX)
-
-#define MetaCDeclaration_TreeWalk_Real(DECL, FN, CTX) \
-    MetaCDeclaration_TreeWalk_Real((metac_declaration_t*) DECL, FN, CTX)
 
 #define emptyNode \
     ((metac_node_t) 0x1)
 
-    if(((metac_node_t)decl) == emptyNode)
-        return -1;
+int MetaCNode_TreeWalk_Real(metac_node_t node, walker_function_t walker_fn, void* ctx)
+{
+    int result;
 
-    int result = walker_fn(decl, ctx);
-
-    if (result)
-        return result;
-
-    switch(decl->DeclKind)
+    if (node == emptyNode)
     {
+        return -1;
+    }
+
+    if (result = walker_fn(node, ctx))
+    {
+        return result;
+    }
+
+    switch(node->Kind)
+    {
+        default: assert(0);
+
         //default 0:
-        case decl_type_tuple:
+        case node_decl_type_tuple:
         // decl_type_tuple doesn't really exist
-        case decl_min:
-        case decl_max:
             assert(0);
 
-        case decl_variable:
+        case node_decl_variable:
         {
-            decl_variable_t* variable = (decl_variable_t*) decl;
-            result = MetaCDeclaration_TreeWalk_Real(variable->VarType, walker_fn, ctx);
-            if (result)
-                return result;
+            decl_variable_t* decl_variable = cast(decl_variable_t*) node;
+            if (decl_variable->VarType != emptyNode)
+                result = walker_fn(decl_variable->VarType, ctx);
+            if(result)
+                 return result;
+            if (decl_variable->VarInitExpression != emptyNode)
+                result = walker_fn(decl_variable->VarInitExpression, ctx);
+            if(result)
+                 return result;
         } break;
-        case decl_field:
+
+        case node_decl_field:
         {
-            decl_field_t* field = (decl_field_t*) decl;
+            decl_field_t* field = (decl_field_t*) node;
             while(((metac_node_t)field) != emptyNode)
             {
-                result = MetaCDeclaration_TreeWalk_Real(field->Field, walker_fn, ctx);
+                result = MetaCNode_TreeWalk_Real(field->Field, walker_fn, ctx);
                 if (result)
                     return result;
                 field = field->Next;
             }
         } break;
-        case decl_parameter:
+
+        case node_decl_parameter:
         {
-            decl_parameter_t* parameter = (decl_parameter_t*) decl;
-            while(((metac_node_t)parameter) != emptyNode)
+            decl_parameter_t* parameter = (decl_parameter_t*) node;
+            result = MetaCNode_TreeWalk_Real(parameter->Parameter, walker_fn, ctx);
+            if (result)
+                return result;
+
+            while(((metac_node_t)parameter->Next) != emptyNode)
             {
-                result = MetaCDeclaration_TreeWalk_Real(parameter->Parameter, walker_fn, ctx);
+                result = MetaCNode_TreeWalk_Real(parameter->Next->Parameter, walker_fn, ctx);
                 if (result)
                     return result;
                 parameter = parameter->Next;
             }
         } break;
-        case decl_enum_member:
+
+        case node_decl_enum_member:
         {
-            decl_enum_member_t* enum_member = (decl_enum_member_t*) decl;
-            while(((metac_node_t)enum_member) != emptyNode)
+            decl_enum_member_t* enum_member = (decl_enum_member_t*) node;
+            while((metac_node_t)(enum_member->Next) != emptyNode)
             {
-                result = walker_fn(enum_member, ctx);
+                result = walker_fn(enum_member->Next, ctx);
                 if (result)
                     return result;
                 enum_member = enum_member->Next;
             }
         } break;
-        case decl_type:
+        case node_decl_type:
         {
-            decl_type_t* type = (decl_type_t*) decl;
+            decl_type_t* type = (decl_type_t*) node;
             if (result)
                 return result;
         } break;
-        case decl_type_struct:
+        case node_decl_type_struct:
         {
-            decl_type_struct_t* type_struct = (decl_type_struct_t*) decl;
+            decl_type_struct_t* type_struct = (decl_type_struct_t*) node;
             if (type_struct->Fields && type_struct->Fields != emptyNode)
-                result = MetaCDeclaration_TreeWalk_Real(type_struct->Fields, walker_fn, ctx);
+                result = MetaCNode_TreeWalk_Real(type_struct->Fields, walker_fn, ctx);
             if (result)
                 return result;
         } break;
-        case decl_type_union:
+        case node_decl_type_union:
         {
-            decl_type_union_t* type_union = (decl_type_union_t*) decl;
-            result = MetaCDeclaration_TreeWalk_Real(type_union->Fields, walker_fn, ctx);
+            decl_type_union_t* type_union = (decl_type_union_t*) node;
+            result = MetaCNode_TreeWalk_Real(type_union->Fields, walker_fn, ctx);
             if (result)
                 return result;
         } break;
-        case decl_type_enum:
+        case node_decl_type_enum:
         {
-            decl_type_enum_t* type_enum = (decl_type_enum_t*) decl;
-            result = MetaCDeclaration_TreeWalk_Real(type_enum->Members, walker_fn, ctx);
+            decl_type_enum_t* type_enum = (decl_type_enum_t*) node;
+            result = MetaCNode_TreeWalk_Real(type_enum->Members, walker_fn, ctx);
             if (result)
                 return result;
         } break;
-        case decl_type_array:
+        case node_decl_type_array:
         {
-            decl_type_array_t* type_array = (decl_type_array_t*) decl;
-            result = MetaCDeclaration_TreeWalk_Real(type_array->ElementType, walker_fn, ctx);
+            decl_type_array_t* type_array = (decl_type_array_t*) node;
+            result = MetaCNode_TreeWalk_Real(type_array->ElementType, walker_fn, ctx);
             if (result)
                 return result;
             result = walker_fn(type_array->Dim, ctx);
             if (result)
                 return result;
         } break;
-        case decl_type_ptr:
+        case node_decl_type_ptr:
         {
-            decl_type_ptr_t* type_ptr = (decl_type_ptr_t*) decl;
-            result = MetaCDeclaration_TreeWalk_Real(type_ptr->ElementType, walker_fn, ctx);
+            decl_type_ptr_t* type_ptr = (decl_type_ptr_t*) node;
+            result = MetaCNode_TreeWalk_Real(type_ptr->ElementType, walker_fn, ctx);
             if (result)
                 return result;
         } break;
-        case decl_type_functiontype:
+        case node_decl_type_functiontype:
         {
-            decl_type_functiontype_t* type_functiontype = (decl_type_functiontype_t*) decl;
-            result = MetaCDeclaration_TreeWalk_Real(type_functiontype->ReturnType, walker_fn, ctx);
+            decl_type_functiontype_t* type_functiontype = (decl_type_functiontype_t*) node;
+            result = MetaCNode_TreeWalk_Real(type_functiontype->ReturnType, walker_fn, ctx);
             if (result)
                 return result;
-            result = MetaCDeclaration_TreeWalk_Real(type_functiontype->Parameters, walker_fn, ctx);
+            result = MetaCNode_TreeWalk_Real(type_functiontype->Parameters, walker_fn, ctx);
             if (result)
                 return result;
         } break;
-        case decl_type_typedef:
+        case node_decl_type_typedef:
         {
-            decl_type_typedef_t* typedef_ = (decl_type_typedef_t*) decl;
-            result = MetaCDeclaration_TreeWalk_Real(typedef_->Type, walker_fn, ctx);
+            decl_type_typedef_t* typedef_ = (decl_type_typedef_t*) node;
+            result = MetaCNode_TreeWalk_Real(typedef_->Type, walker_fn, ctx);
             if (result)
                 return result;
         } break;
-        case decl_function:
+        case node_decl_function:
         {
-            decl_function_t* function_ = (decl_function_t*) decl;
-            result = MetaCDeclaration_TreeWalk_Real(function_->ReturnType, walker_fn, ctx);
-            if (result)
-                return result;
-            result = MetaCDeclaration_TreeWalk_Real(function_->Parameters, walker_fn, ctx);
-            if (result)
-                return result;
-            if (function_->FunctionBody != emptyNode)
-                result = walker_fn(function_->FunctionBody, ctx);
-            if (result)
-                return result;
+            decl_function_t* decl_function = cast(decl_function_t*) node;
+            if (decl_function->ReturnType != emptyNode)
+                result = walker_fn(decl_function->ReturnType, ctx);
+            if(result)
+                 return result;
+            if (decl_function->Parameters != emptyNode)
+                result = walker_fn(decl_function->Parameters, ctx);
+            if(result)
+                 return result;
+            if (decl_function->FunctionBody != emptyNode)
+                result = walker_fn(decl_function->FunctionBody, ctx);
+            if(result)
+                 return result;
         } break;
 
-        case decl_label:
+        case node_decl_label:
+        case node_decl_comment:
+            break; // no children to visit
+
+        case node_stmt_block:
         {
-            assert(0);
-            // not implemented at the moment
-        } break;
-        case decl_comment: {} break; // no children to visit
-    }
-
-    return 0;
-}
-/*
- * stmt_block_t* stmt_block = cast(stmt_block_t*) stmt;
- */
-
-int MetaCStatement_TreeWalk_Real(metac_statement_t* stmt, walker_function_t walker_fn, void* ctx)
-{
-#define MetaCStatement_TreeWalk_Real(STMT, FN, CTX) \
-    MetaCStatement_TreeWalk_Real(((metac_statement_t*) STMT), FN, CTX)
-
-    int result;
-
-    if (stmt == (metac_statement_t*) emptyNode)
-    {
-        return -1;
-    }
-
-    if (result = walker_fn(stmt, ctx))
-    {
-        return result;
-    }
-
-    switch(stmt->StmtKind)
-    {
-        case stmt_block:
-        {
-            stmt_block_t* stmt_block = cast(stmt_block_t*) stmt;
+            stmt_block_t* stmt_block = cast(stmt_block_t*) node;
             const uint32_t statementCount = stmt_block->StatementCount;
             metac_statement_t* firstStatement = stmt_block->Body;
             for(uint32_t i = 0; i < statementCount; i++)
@@ -204,194 +187,129 @@ int MetaCStatement_TreeWalk_Real(metac_statement_t* stmt, walker_function_t walk
                 return result;
         }
         break;
-/*
-        case stmt_if:
+
+        case node_stmt_break:
+        case node_stmt_continue:
+                break;
+
+        case node_stmt_yield:
         {
-            stmt_if_t* stmt_if = cast(stmt_if_t*) stmt;
-            result = MetaCExpression_Walk_Real(stmt_if->IfCond, walker_fn, ctx);
-            if (result)
-                return result;
-            result = MetaCS
-            if (result)
-                return result;
-        }
-        break;
+            stmt_yield_t* stmt_yield = cast(stmt_yield_t*) node;
+            if (stmt_yield->YieldExp != emptyNode)
+                result = walker_fn(stmt_yield->YieldExp, ctx);
+            if(result)
+                 return result;
+        } break;
 
-        case stmt_switch:
+        case node_stmt_scope:
+            assert(0); // Not implemented currently.
+
+        case node_stmt_for:
         {
-            stmt_switch_t* stmt_switch = cast(stmt_switch_t*) stmt;
-            result = MetaCStatement_Walk_Real(stmt_switch->field, walker_fn, ctx);
-
+            stmt_for_t* stmt_for = cast(stmt_for_t*) node;
+            if (stmt_for->ForInit != emptyNode)
+                result = walker_fn(stmt_for->ForInit, ctx);
             if (result)
                 return result;
-        }
-        break;
 
-        case stmt_while:
+            if (stmt_for->ForCond != emptyNode)
+                result = walker_fn(stmt_for->ForCond, ctx);
+            if(result)
+                 return result;
+
+            if (stmt_for->ForPostLoop != emptyNode)
+                result = walker_fn(stmt_for->ForPostLoop, ctx);
+            if(result)
+                 return result;
+        } break;
+
+        case node_stmt_while:
         {
-            stmt_while_t* stmt_while = cast(stmt_while_t*) stmt;
-            result = MetaCStatement_Walk_Real(stmt_while->field, walker_fn, ctx);
+            stmt_while_t* stmt_while = cast(stmt_while_t*) node;
+            if (stmt_while->WhileExp != emptyNode)
+                result = walker_fn(stmt_while->WhileExp, ctx);
+            if(result)
+                 return result;
 
+            if (stmt_while->WhileBody != emptyNode)
+                result = MetaCNode_TreeWalk_Real(stmt_while->WhileBody, walker_fn, ctx);
             if (result)
                 return result;
-        }
-        break;
+        } break;
 
-        case stmt_for:
+        case node_stmt_case:
         {
-            stmt_for_t* stmt_for = cast(stmt_for_t*) stmt;
-            result = MetaCStatement_Walk_Real(stmt_for->field, walker_fn, ctx);
-
+            stmt_case_t* stmt_case = cast(stmt_case_t*) node;
+            if (stmt_case->CaseExp != emptyNode)
+                result = walker_fn(stmt_case->CaseExp, ctx);
+            if(result)
+                 return result;
+            if (stmt_case->CaseBody != emptyNode)
+                result = MetaCNode_TreeWalk_Real(stmt_case->CaseBody, walker_fn, ctx);
             if (result)
                 return result;
-        }
-        break;
+        } break;
 
-        case stmt_do_while:
+        case node_stmt_goto:
+            break;
+
+        case node_stmt_exp:
         {
-            stmt_do_while_t* stmt_do_while = cast(stmt_do_while_t*) stmt;
-            result = MetaCStatement_Walk_Real(stmt_do_while->field, walker_fn, ctx);
+            stmt_exp_t* stmt_exp = cast(stmt_exp_t*) node;
+            if (stmt_exp->Expression != emptyNode)
+                result = walker_fn(stmt_exp->Expression, ctx);
+            if(result)
+                 return result;
+        } break;
 
-            if (result)
-                return result;
-        }
-        break;
-
-        case stmt_label:
+        case node_stmt_decl:
         {
-            stmt_label_t* stmt_label = cast(stmt_label_t*) stmt;
-            result = MetaCStatement_Walk_Real(stmt_label->field, walker_fn, ctx);
+            stmt_decl_t* stmt_decl = cast(stmt_decl_t*) node;
+        } break;
 
-            if (result)
-                return result;
-        }
-        break;
-
-        case stmt_case:
+        case node_stmt_if:
         {
-            stmt_case_t* stmt_case = cast(stmt_case_t*) stmt;
-            result = MetaCStatement_Walk_Real(stmt_case->field, walker_fn, ctx);
+            stmt_if_t* stmt_if = cast(stmt_if_t*) node;
+        } break;
 
-            if (result)
-                return result;
-        }
-        break;
+        case node_stmt_label:
+            break;
 
-        case stmt_break:
+        case node_stmt_return:
         {
-            stmt_break_t* stmt_break = cast(stmt_break_t*) stmt;
-            result = MetaCStatement_Walk_Real(stmt_break->field, walker_fn, ctx);
+            stmt_return_t* stmt_return = cast(stmt_return_t*) node;
+            if (stmt_return->ReturnExp != emptyNode)
+                result = walker_fn(stmt_return->ReturnExp, ctx);
+            if(result)
+                 return result;
+        } break;
 
-            if (result)
-                return result;
-        }
-        break;
-
-        case stmt_yield:
+        case node_stmt_switch:
         {
-            stmt_yield_t* stmt_yield = cast(stmt_yield_t*) stmt;
-            result = MetaCStatement_Walk_Real(stmt_yield->field, walker_fn, ctx);
-
+            stmt_switch_t* stmt_switch = cast(stmt_switch_t*) node;
+            if (stmt_switch->SwitchExp != emptyNode)
+                result = walker_fn(stmt_switch->SwitchExp, ctx);
+            if(result)
+                 return result;
+            if (stmt_switch->SwitchBody != emptyNode)
+                result = MetaCNode_TreeWalk_Real(stmt_switch->SwitchBody, walker_fn, ctx);
             if (result)
                 return result;
-        }
-        break;
+        } break;
 
-        case stmt_scope:
+        case node_stmt_do_while:
         {
-            stmt_scope_t* stmt_scope = cast(stmt_scope_t*) stmt;
-            result = MetaCStatement_Walk_Real(stmt_scope->field, walker_fn, ctx);
+            stmt_do_while_t* stmt_do_while = cast(stmt_do_while_t*) node;
+            if (stmt_do_while->DoWhileExp != emptyNode)
+                result = walker_fn(stmt_do_while->DoWhileExp, ctx);
+            if(result)
+                 return result;
+        } break;
 
-            if (result)
-                return result;
-        }
-        break;
-
-        case stmt_continue:
-        {
-            stmt_continue_t* stmt_continue = cast(stmt_continue_t*) stmt;
-            result = MetaCStatement_Walk_Real(stmt_continue->field, walker_fn, ctx);
-
-            if (result)
-                return result;
-        }
-        break;
-
-        case stmt_goto:
-        {
-            stmt_goto_t* stmt_goto = cast(stmt_goto_t*) stmt;
-            result = MetaCStatement_Walk_Real(stmt_goto->field, walker_fn, ctx);
-
-            if (result)
-                return result;
-        }
-        break;
-
-        case stmt_return:
-        {
-            stmt_return_t* stmt_return = cast(stmt_return_t*) stmt;
-            result = MetaCStatement_Walk_Real(stmt_return->field, walker_fn, ctx);
-
-            if (result)
-                return result;
-        }
-        break;
-
-        case stmt_exp:
-        {
-            stmt_exp_t* stmt_exp = cast(stmt_exp_t*) stmt;
-            result = MetaCStatement_Walk_Real(stmt_exp->field, walker_fn, ctx);
-
-            if (result)
-                return result;
-        }
-        break;
-
-        case stmt_decl:
-        {
-            stmt_decl_t* stmt_decl = cast(stmt_decl_t*) stmt;
-            result = MetaCStatement_Walk_Real(stmt_decl->field, walker_fn, ctx);
-
-            if (result)
-                return result;
-        }
-        break;
-
-        case stmt_comment:
-        {
-            stmt_comment_t* stmt_comment = cast(stmt_comment_t*) stmt;
-            result = MetaCStatement_Walk_Real(stmt_comment->field, walker_fn, ctx);
-
-            if (result)
-                return result;
-        }
-        break;
-*/
+        case node_stmt_comment:
+            break;
     }
 }
-
-int MetaCNode_TreeWalk_Real(metac_node_t root, walker_function_t walker_fn, void* ctx)
-{
-    if (MetaCNode_IsExpression(root))
-    {
-        MetaCDeclaration_TreeWalk_Real((metac_expression_t*)root, walker_fn, ctx);
-    }
-    else if (MetaCNode_IsStatement(root))
-    {
-        MetaCStatement_TreeWalk_Real((metac_statement_t*)root, walker_fn, ctx);
-    }
-    else if (MetaCNode_IsDeclaration(root))
-    {
-        MetaCDeclaration_TreeWalk_Real((metac_declaration_t*)root, walker_fn, ctx);
-    }
-    else
-    {
-        printf("Node type %s is not classified???\n"
-               "- It should be classfied as either statement declaration or expression\n"
-            , MetaCNodeKind_toChars(root->Kind));
-        assert(0);
-    }
-}
-#undef MetaCDeclaration_TreeWalk_Real
+#undef MetaCNode_TreeWalk_Real
 #undef walker_fn
 #undef emptyNode
