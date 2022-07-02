@@ -1258,6 +1258,7 @@ void test_lexer()
         "continue",
         "until",
         "yield",
+        "__attribute__",
 
         "__LINE__",
         "__FUNCTION__",

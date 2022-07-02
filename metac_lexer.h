@@ -42,7 +42,7 @@ typedef struct metac_lexer_state_t
     M(tok_kw_struct)
 
 #define LAST_KEYWORD_TOKEN(M) \
-    M(tok_kw_yield)
+    M(tok_kw___attribute__)
 
 #define FIRST_BINARY_TOKEN(M) \
     M(tok_comma)
@@ -140,6 +140,8 @@ typedef struct metac_lexer_state_t
     M(tok_kw_break) \
     M(tok_kw_continue) \
     M(tok_kw_until) \
+    \
+    M(tok_kw_yield) \
     \
     LAST_KEYWORD_TOKEN(M)
 
@@ -366,8 +368,6 @@ typedef struct metac_lexer_t {
     metac_identifier_table_t StringTable;
 } metac_lexer_t;
 
-
-#include <stdio.h>
 
 const char* MetaCTokenEnum_toChars(metac_token_enum_t tok);
 

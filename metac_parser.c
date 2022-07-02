@@ -1714,8 +1714,11 @@ LnextToken:
                     MetaCParser_Match(self, tok_kw_double);
                     type->TypeKind = type_long_double;
                 }
-
-                // eat the int behind long int and long long int
+            }
+            // eat the optional int behind short,long and long long int
+            if (tokenType == tok_kw_short
+             || tokenType == tok_kw_long)
+            {
                 if (MetaCParser_PeekMatch(self, tok_kw_int, 1))
                 {
                     MetaCParser_Match(self, tok_kw_int);
