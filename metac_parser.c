@@ -1353,6 +1353,9 @@ metac_expression_t* MetaCParser_ParseUnaryExpression(metac_parser_t* self)
 
 exp_argument_t* MetaCParser_ParseArgumentList(metac_parser_t* self)
 {
+    metac_location_t loc =
+        LocationFromToken(self, MetaCParser_PeekToken(self, 0));
+   
     metac_token_t* peekToken = MetaCParser_PeekToken(self, 1);
     exp_argument_t* arguments = (exp_argument_t*) _emptyPointer;
     exp_argument_t** nextArgument = &arguments;
@@ -1376,8 +1379,16 @@ exp_argument_t* MetaCParser_ParseArgumentList(metac_parser_t* self)
             MetaCParser_Match(self, tok_comma);
         }
     }
+   
     if (arguments != emptyPointer)
+    {
         arguments->Hash = hash;
+        metac_token_t* rParen = MetaCParser_PeekToken(self, 1);
+        MetaCLocation_Expand(&loc, LocationFromToken(self, rParen));
+        arguments->LocationIdx =
+            MetaCLocationStorage_Store(&self->LocationStorage, loc);
+    }
+   
     return arguments;
 }
 metac_expression_t* MetaCParser_ParseBinaryExpression(metac_parser_t* self,
