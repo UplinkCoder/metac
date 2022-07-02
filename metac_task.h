@@ -6,6 +6,7 @@
 #include "3rd_party/tinycthread/tinycthread.h"
 #include "metac_coro.h"
 #include "3rd_party/rwlock.h"
+#include "metac_file.h"
 
 #define FIBERS_PER_WORKER 32
 #define TASK_PAGE_SIZE 4096
@@ -173,9 +174,13 @@ typedef struct worker_context_t
     volatile uint32_t Flags;
 
     thrd_t Thread;
+    metac_file_storage_t* FileStorage;
     aco_t* WorkerMain;
     fiber_pool_t* FiberPool;
 } worker_context_t;
+
+
+metac_file_storage_t* Worker_GetFileStorage(worker_context_t* worker);
 
 typedef struct tasksystem_t
 {

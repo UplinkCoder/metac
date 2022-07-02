@@ -170,9 +170,17 @@ void AddDefine(metac_parser_t* self, metac_token_t* token, uint32_t nParameters)
 
 metac_token_t* MetaCParser_NextToken(metac_parser_t* self)
 {
-#define define_key 0x6a491b
+#define error_key 0x5a01b4
+#define warning_key 0x72b1fc
+#define undef_key 0x5cabf4
+#define elif_key 0x4f8f4e
 #define ifdef_key 0x581ce0
+#define ifndef_key 0x634e0c
 #define endif_key 0x506843
+#define line_key 0x4c4ac5
+#define pargma_key 0x6a6e5b
+#define include_key 0x7e87f0
+#define define_key 0x6a491b
 
 #define NextToken() \
     ((self->CurrentTokenIndex < self->Lexer->TokenSize) ? \

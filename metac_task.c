@@ -42,6 +42,12 @@ worker_context_t* CurrentWorker()
     return threadContext;
 }
 
+metac_file_storage_t* Worker_GetFileStorage(worker_context_t* worker)
+{
+    return worker->FileStorage;
+}
+
+
 void Taskqueue_Init(taskqueue_t* queue)
 {
     queue->QueueMemory = cast(task_t (*)[1024])

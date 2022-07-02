@@ -400,6 +400,7 @@ void MetaCRepl_ExprSemantic_Task(task_t* task)
 /// returns false if the repl is done running
 bool Repl_Loop(repl_state_t* repl)
 {
+    worker_context_t* worker = CurrentWorker();
 LswitchMode:
     Repl_SwtichMode(repl);
 
@@ -420,6 +421,15 @@ LswitchMode:
                 linenoiseHistorySave(".repl_history");
                 linenoiseFree((void*)repl->line);
                 return false;
+            case 'f' :
+            {
+                repl->parseMode = parse_mode_file;
+                const char* filename = repl->line + 3;
+                printf("querying fileStorage");
+                metac_file_storage_t* fs = Worker_GetFileStorage(worker);
+                metac_file_ptr_t f = MetaCFileStorage_LoadFile(fs, filename);
+            } break;
+            
             case 'l' :
             {
                 repl->parseMode = parse_mode_file;
