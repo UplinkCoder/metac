@@ -453,9 +453,9 @@ static inline void PrintStatement(metac_printer_t* self, metac_statement_t* stmt
             stmt_for_t* stmt_for = cast(stmt_for_t*) stmt;
             PrintKeyword(self, tok_kw_for);
             PrintChar(self, '(');
-            if (stmt_for->ForInit != cast(metac_declaration_t*) emptyPointer)
+            if (stmt_for->ForInit != cast(metac_node_t) emptyPointer)
             {
-                PrintDeclaration(self, stmt_for->ForInit, 0);
+                MetaCPrinter_PrintNode(self, stmt_for->ForInit, 0);
             }
             else
             {
@@ -1472,7 +1472,7 @@ const char* MetaCPrinter_PrintStatement(metac_printer_t* self, metac_statement_t
     return result;
 }
 
-const char* MetaCPrinter_PrintNode(metac_printer_t* self, metac_node_t node)
+const char* MetaCPrinter_PrintNode(metac_printer_t* self, metac_node_t node, uint32_t level)
 {
     const char* result = self->StringMemory + self->StringMemorySize;
     uint32_t posBegin = self->StringMemorySize;
@@ -1487,7 +1487,7 @@ const char* MetaCPrinter_PrintNode(metac_printer_t* self, metac_node_t node)
     }
     else if (node->Kind > decl_min && node->Kind < decl_max)
     {
-        PrintDeclaration(self, (metac_declaration_t*) node, 0);
+        PrintDeclaration(self, (metac_declaration_t*) node, level);
     }
     else
         assert(0);

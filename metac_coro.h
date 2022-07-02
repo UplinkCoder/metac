@@ -1,4 +1,6 @@
-#include "3rd_party/libaco/aco.h"
+#ifndef NO_FIBERS
+#  include "3rd_party/libaco/aco.h"
+#endif
 
 #define START(CO) do { \
 /*    printf("Starting %x from {%s:%d}\n", CO, __FILE__, __LINE__);*/ \

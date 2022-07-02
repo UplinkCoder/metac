@@ -1058,7 +1058,7 @@ sema_decl_function_t* MetaCSemantic_doFunctionSemantic(metac_semantic_state_t* s
     f->Scope = MetaCSemantic_PushNewScope(self, scope_parent_function, (metac_node_t)f);
     // now we compute the position on the stack and Register them in the scope.
 
-    uint32_t frameOffset = ((f->ParentFunc != (decl_function_t*)emptyNode)
+	uint32_t frameOffset = ((f->ParentFunc != (sema_decl_function_t*)emptyNode)
                            ? f->ParentFunc->FrameOffset : 0);
 
     for(uint32_t i = 0;

@@ -40,7 +40,7 @@ void MetaCPrinter_InitSz(metac_printer_t* self,
 const char* MetaCPrinter_PrintExpression(metac_printer_t* self, metac_expression_t* exp);
 const char* MetaCPrinter_PrintDeclaration(metac_printer_t* self, metac_declaration_t* decl);
 const char* MetaCPrinter_PrintStatement(metac_printer_t* self, metac_statement_t* stmt);
-const char* MetaCPrinter_PrintNode(metac_printer_t* self, metac_node_t node);
+const char* MetaCPrinter_PrintNode(metac_printer_t* self, metac_node_t node, uint32_t level);
 
 const char* StatementKind_toChars(metac_statement_kind_t kind);
 

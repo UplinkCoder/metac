@@ -2,20 +2,18 @@
 #include "crc32c.h"
 
 #include "metac_node.c"
-int MetaCTree_Walk_Debug(metac_node_t decl, const char* fn_name, walker_function_t walker_fn, void* ctx)
-{
-    // make sure the context confusion cookie is set
-    assert((*(uint32_t*) ctx) == crc32c_nozero(~0, fn_name, strlen(fn_name)));
-
-    return MetaCNode_TreeWalk_Real(decl, walker_fn, ctx);
-}
 
 #define emptyNode \
     ((metac_node_t) 0x1)
 
+
 int MetaCNode_TreeWalk_Real(metac_node_t node, walker_function_t walker_fn, void* ctx)
 {
     int result;
+#define walker_fn(NODE, CTX) \
+	walker_fn((metac_node_t)NODE, CTX)
+#define MetaCNode_TreeWalk_Real(NODE, FN, CTX) \
+	MetaCNode_TreeWalk_Real((metac_node_t)NODE, FN, CTX)
 
     if (node == emptyNode)
     {
@@ -39,11 +37,11 @@ int MetaCNode_TreeWalk_Real(metac_node_t node, walker_function_t walker_fn, void
         case node_decl_variable:
         {
             decl_variable_t* decl_variable = cast(decl_variable_t*) node;
-            if (decl_variable->VarType != emptyNode)
+            if ((metac_node_t)decl_variable->VarType != emptyNode)
                 result = walker_fn(decl_variable->VarType, ctx);
             if(result)
                  return result;
-            if (decl_variable->VarInitExpression != emptyNode)
+            if ((metac_node_t)decl_variable->VarInitExpression != emptyNode)
                 result = walker_fn(decl_variable->VarInitExpression, ctx);
             if(result)
                  return result;
@@ -97,7 +95,7 @@ int MetaCNode_TreeWalk_Real(metac_node_t node, walker_function_t walker_fn, void
         case node_decl_type_struct:
         {
             decl_type_struct_t* type_struct = (decl_type_struct_t*) node;
-            if (type_struct->Fields && type_struct->Fields != emptyNode)
+            if (type_struct->Fields && (metac_node_t)type_struct->Fields != emptyNode)
                 result = MetaCNode_TreeWalk_Real(type_struct->Fields, walker_fn, ctx);
             if (result)
                 return result;
@@ -153,15 +151,15 @@ int MetaCNode_TreeWalk_Real(metac_node_t node, walker_function_t walker_fn, void
         case node_decl_function:
         {
             decl_function_t* decl_function = cast(decl_function_t*) node;
-            if (decl_function->ReturnType != emptyNode)
+            if ((metac_node_t)decl_function->ReturnType != emptyNode)
                 result = walker_fn(decl_function->ReturnType, ctx);
             if(result)
                  return result;
-            if (decl_function->Parameters != emptyNode)
+            if ((metac_node_t)decl_function->Parameters != emptyNode)
                 result = walker_fn(decl_function->Parameters, ctx);
             if(result)
                  return result;
-            if (decl_function->FunctionBody != emptyNode)
+            if ((metac_node_t)decl_function->FunctionBody != emptyNode)
                 result = walker_fn(decl_function->FunctionBody, ctx);
             if(result)
                  return result;
@@ -195,7 +193,7 @@ int MetaCNode_TreeWalk_Real(metac_node_t node, walker_function_t walker_fn, void
         case node_stmt_yield:
         {
             stmt_yield_t* stmt_yield = cast(stmt_yield_t*) node;
-            if (stmt_yield->YieldExp != emptyNode)
+            if ((metac_node_t)stmt_yield->YieldExp != emptyNode)
                 result = walker_fn(stmt_yield->YieldExp, ctx);
             if(result)
                  return result;
@@ -212,12 +210,12 @@ int MetaCNode_TreeWalk_Real(metac_node_t node, walker_function_t walker_fn, void
             if (result)
                 return result;
 
-            if (stmt_for->ForCond != emptyNode)
+            if ((metac_node_t)stmt_for->ForCond != emptyNode)
                 result = walker_fn(stmt_for->ForCond, ctx);
             if(result)
                  return result;
 
-            if (stmt_for->ForPostLoop != emptyNode)
+            if ((metac_node_t)stmt_for->ForPostLoop != emptyNode)
                 result = walker_fn(stmt_for->ForPostLoop, ctx);
             if(result)
                  return result;
@@ -226,12 +224,12 @@ int MetaCNode_TreeWalk_Real(metac_node_t node, walker_function_t walker_fn, void
         case node_stmt_while:
         {
             stmt_while_t* stmt_while = cast(stmt_while_t*) node;
-            if (stmt_while->WhileExp != emptyNode)
+            if ((metac_node_t)stmt_while->WhileExp != emptyNode)
                 result = walker_fn(stmt_while->WhileExp, ctx);
             if(result)
                  return result;
 
-            if (stmt_while->WhileBody != emptyNode)
+            if ((metac_node_t)stmt_while->WhileBody != emptyNode)
                 result = MetaCNode_TreeWalk_Real(stmt_while->WhileBody, walker_fn, ctx);
             if (result)
                 return result;
@@ -240,11 +238,11 @@ int MetaCNode_TreeWalk_Real(metac_node_t node, walker_function_t walker_fn, void
         case node_stmt_case:
         {
             stmt_case_t* stmt_case = cast(stmt_case_t*) node;
-            if (stmt_case->CaseExp != emptyNode)
+            if ((metac_node_t)stmt_case->CaseExp != emptyNode)
                 result = walker_fn(stmt_case->CaseExp, ctx);
             if(result)
                  return result;
-            if (stmt_case->CaseBody != emptyNode)
+            if ((metac_node_t)stmt_case->CaseBody != emptyNode)
                 result = MetaCNode_TreeWalk_Real(stmt_case->CaseBody, walker_fn, ctx);
             if (result)
                 return result;
@@ -256,7 +254,7 @@ int MetaCNode_TreeWalk_Real(metac_node_t node, walker_function_t walker_fn, void
         case node_stmt_exp:
         {
             stmt_exp_t* stmt_exp = cast(stmt_exp_t*) node;
-            if (stmt_exp->Expression != emptyNode)
+            if ((metac_node_t)stmt_exp->Expression != emptyNode)
                 result = walker_fn(stmt_exp->Expression, ctx);
             if(result)
                  return result;
@@ -278,7 +276,7 @@ int MetaCNode_TreeWalk_Real(metac_node_t node, walker_function_t walker_fn, void
         case node_stmt_return:
         {
             stmt_return_t* stmt_return = cast(stmt_return_t*) node;
-            if (stmt_return->ReturnExp != emptyNode)
+            if ((metac_node_t)stmt_return->ReturnExp != emptyNode)
                 result = walker_fn(stmt_return->ReturnExp, ctx);
             if(result)
                  return result;
@@ -287,11 +285,11 @@ int MetaCNode_TreeWalk_Real(metac_node_t node, walker_function_t walker_fn, void
         case node_stmt_switch:
         {
             stmt_switch_t* stmt_switch = cast(stmt_switch_t*) node;
-            if (stmt_switch->SwitchExp != emptyNode)
+            if ((metac_node_t)stmt_switch->SwitchExp != emptyNode)
                 result = walker_fn(stmt_switch->SwitchExp, ctx);
             if(result)
                  return result;
-            if (stmt_switch->SwitchBody != emptyNode)
+            if ((metac_node_t)stmt_switch->SwitchBody != emptyNode)
                 result = MetaCNode_TreeWalk_Real(stmt_switch->SwitchBody, walker_fn, ctx);
             if (result)
                 return result;
@@ -300,7 +298,7 @@ int MetaCNode_TreeWalk_Real(metac_node_t node, walker_function_t walker_fn, void
         case node_stmt_do_while:
         {
             stmt_do_while_t* stmt_do_while = cast(stmt_do_while_t*) node;
-            if (stmt_do_while->DoWhileExp != emptyNode)
+            if ((metac_node_t)stmt_do_while->DoWhileExp != emptyNode)
                 result = walker_fn(stmt_do_while->DoWhileExp, ctx);
             if(result)
                  return result;
@@ -313,3 +311,11 @@ int MetaCNode_TreeWalk_Real(metac_node_t node, walker_function_t walker_fn, void
 #undef MetaCNode_TreeWalk_Real
 #undef walker_fn
 #undef emptyNode
+
+int MetaCTree_Walk_Debug(metac_node_t node, const char* fn_name, walker_function_t walker_fn, void* ctx)
+{
+    // make sure the context confusion cookie is set
+    assert((*(uint32_t*) ctx) == crc32c_nozero(~0, fn_name, strlen(fn_name)));
+
+    return MetaCNode_TreeWalk_Real(node, walker_fn, ctx);
+}
