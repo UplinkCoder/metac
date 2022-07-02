@@ -84,7 +84,7 @@ void ParseFile(metac_parser_t* parser,
     );
 #endif
     uint32_t declarationSize = 0;
-    uint32_t declarationCapacity = 256;
+    uint32_t declarationCapacity = 1024;
 
     metac_declaration_t** declarations =
         (metac_declaration_t**)

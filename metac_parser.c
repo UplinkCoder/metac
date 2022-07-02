@@ -1010,6 +1010,7 @@ metac_expression_t* MetaCParser_ParsePrimaryExpression(metac_parser_t* self)
             GetOrAddIdentifier(&self->StringTable, stringKey, chars);
         result->StringKey = stringKey;
         result->StringPtr = stringPtr;
+        result->Hash = stringKey;
     }
     else
     {
@@ -1354,6 +1355,7 @@ exp_argument_t* MetaCParser_ParseArgumentList(metac_parser_t* self)
     exp_argument_t** nextArgument = &arguments;
     uint32_t nArguments = 0;
     uint32_t hash = ~0;
+
     while (!MetaCParser_PeekMatch(self, tok_rParen, true))
     {
         nArguments++;
@@ -1362,6 +1364,7 @@ exp_argument_t* MetaCParser_ParseArgumentList(metac_parser_t* self)
         (*nextArgument) = (exp_argument_t*)AllocNewExpression(exp_argument);
         metac_expression_t* exp = MetaCParser_ParseExpression(self, expr_flags_call, 0);
         ((*nextArgument)->Expression) = exp;
+        assert(exp->Hash);
         hash = CRC32C_VALUE(hash, exp->Hash);
         nextArgument = &((*nextArgument)->Next);
         (*nextArgument) = (exp_argument_t*) _emptyPointer;
@@ -1370,7 +1373,8 @@ exp_argument_t* MetaCParser_ParseArgumentList(metac_parser_t* self)
             MetaCParser_Match(self, tok_comma);
         }
     }
-    arguments->Hash = hash;
+    if (arguments != emptyPointer)
+        arguments->Hash = hash;
     return arguments;
 }
 metac_expression_t* MetaCParser_ParseBinaryExpression(metac_parser_t* self,
@@ -1495,13 +1499,18 @@ metac_expression_t* MetaCParser_ParseBinaryExpression(metac_parser_t* self,
             result = AllocNewExpression(exp_right);
             result->E1 = left;
             result->E2 = rhs;
-            assert(result->E1->Hash && result->E2->Hash);
-            result->Hash = CRC32C_VALUE(left->Hash, rhs->Hash);
-            if (!rhsIsArgs && rhs->LocationIdx)
+            if (rhs != emptyPointer)
             {
+                result->Hash = CRC32C_VALUE(left->Hash, rhs->Hash);
                 MetaCLocation_Expand(&rhsLoc,
                     self->LocationStorage.Locations[rhs->LocationIdx - 4]);
             }
+            else
+            {
+                uint32_t emptyHash = ~0;
+                result->Hash = CRC32C_VALUE(left->Hash, emptyHash);
+            }
+
             MetaCLocation_Expand(&loc, rhsLoc);
             result->LocationIdx =
                 MetaCLocationStorage_Store(&self->LocationStorage, loc);
@@ -1973,6 +1982,15 @@ decl_parameter_list_t ParseParameterList(metac_parser_t* self,
         {
             param->Parameter = (decl_variable_t*)
                 paramDecl;
+        }
+        else if (IsTypeDecl(paramDecl->DeclKind))
+        {
+            // now we synthezie a variable without name
+            decl_variable_t* var;
+            AllocNewDeclaration(decl_variable, &var);
+            var->VarType = (decl_type_t*)paramDecl;
+            var->VarIdentifier = empty_identifier;
+            var->VarInitExpression = (metac_expression_t*) emptyPointer;
         }
         else
         {
