@@ -27,7 +27,11 @@
 #  define _InterlockedExchangeAdd(PTR, VAL) \
     (__sync_fetch_and_add((PTR), VAL))
 #else
-#  error "atomics not suppored on this platform"
+# if defined(ATOMIC)
+#  error "No atomics for this platfrom"
+# else
+#  define NO_ATOMICS
+# endif
 #endif
 
 #if !defined(ATOMIC)

@@ -154,7 +154,7 @@ static inline uint32_t intrinsic_crc32c(uint32_t crc, const void* s, uint32_t le
 
     if (len > 3)
     {
-        switch(((size_t)p) & 3)
+        switch(((uintptr_t)p) & 3)
         {
           case 4 - 3:
             crc = __crc32cb(crc, *p++);
@@ -168,7 +168,7 @@ static inline uint32_t intrinsic_crc32c(uint32_t crc, const void* s, uint32_t le
           default : break;
         }
 
-        assert(((size_t)p) % 4 == 0);
+        assert(((uintptr_t)p) % 4 == 0);
 
         while(len >= 4)
         {

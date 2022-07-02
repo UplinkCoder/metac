@@ -1,7 +1,7 @@
 #ifndef _METAC_SIMD_H_
 #define _METAC_SIMD_H_
 
-#if __aarch64__
+#if defined(__aarch64__) && !defined(__TINYC__)
 #  define NEON
 #endif
 
