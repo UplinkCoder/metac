@@ -31,6 +31,8 @@ if [ -d $DST ]; then
        metac_target_info.c metac_target_info.h \
        metac_default_target_info.h \
        metac_driver.c metac_driver.h \
+       metac_file.c metac_file.h \
+       metac_preproc.c metac_preproc.h \
        metac_compiler_interface.h \
        metac.fpg TODO \
        $DST

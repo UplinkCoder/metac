@@ -13,10 +13,6 @@
 #include "../metac_type_table.h"
 #include "../metac_task.h"
 
-#ifdef __linux__
-    const char* get_current_dir_name(void);
-#endif
-
 extern bool g_exernalIdentifierTable;
 extern metac_lexer_t g_lineLexer;
 extern void LineLexerInit();
@@ -55,7 +51,8 @@ typedef enum parse_mode_t
 
 void PrintHelp(void)
 {
-    printf("Type :e for expression mode\n"
+    printf(
+       "Type  :e for expression mode\n"
        "      :ee for evaluation mode\n"
        "      :es for expression semantic mode\n"
        "      :d for declaration mode\n"
@@ -429,7 +426,6 @@ LswitchMode:
                 metac_file_storage_t* fs = Worker_GetFileStorage(worker);
                 metac_file_ptr_t f = MetaCFileStorage_LoadFile(fs, filename);
             } break;
-            
             case 'l' :
             {
                 repl->parseMode = parse_mode_file;

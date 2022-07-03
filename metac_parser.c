@@ -14,6 +14,7 @@
 
 #include "3rd_party/tracy/TracyC.h"
 
+struct metac_declaration_t;
 const void* _emptyPointer = (const void*)0x1;
 
 #ifndef emptyPointer

@@ -44,7 +44,7 @@ worker_context_t* CurrentWorker()
 
 metac_file_storage_t* Worker_GetFileStorage(worker_context_t* worker)
 {
-    return worker->FileStorage;
+    return &worker->FileStorage;
 }
 
 
@@ -206,7 +206,8 @@ void RunWorkerThread(worker_context_t* worker, void (*specialFunc)(),  void* spe
     worker->WorkerMain = threadFiber;
 
     Taskqueue_Init(&worker->Queue);
-
+    FileStorage_Init(&worker->FileStorage);
+    
     aco_t* specialFiber = 0;
     if (specialFunc)
     {
@@ -226,6 +227,9 @@ void RunWorkerThread(worker_context_t* worker, void (*specialFunc)(),  void* spe
 
     taskqueue_t *q = &worker->Queue;
     uint32_t* FreeBitfield = &fiberPool.FreeBitfield;
+
+    task_t (*fileTasks)[4] = {0};
+    
 
     for(;;)
     {
@@ -362,7 +366,10 @@ void RunWorkerThread(worker_context_t* worker, void (*specialFunc)(),  void* spe
 
             assert(tryMask0 == tryMask1);
         }
-
+        // Now it's time to scan for outstanding tasks I/O
+        {
+            
+        }
         // if we couldn't finish all the tasks it's likely
         // that we need to spawn new tasks in order to succseed
 LrunSpeicalFiberOrTerminate:

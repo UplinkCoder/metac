@@ -174,7 +174,7 @@ typedef struct worker_context_t
     volatile uint32_t Flags;
 
     thrd_t Thread;
-    metac_file_storage_t* FileStorage;
+    metac_file_storage_t FileStorage;
     aco_t* WorkerMain;
     fiber_pool_t* FiberPool;
 } worker_context_t;

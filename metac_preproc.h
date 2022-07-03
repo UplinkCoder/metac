@@ -19,11 +19,11 @@
 
 typedef struct metac_preprocessor_t
 {
-    /// the file we are running the preprocessor on 
+    /// the file we are running the preprocessor on
     metac_file_ptr_t File;
     struct metac_preprocessor_t* Parent;
-    
-    
+
+
 } metac_preprocessor_t;
 
 #endif
