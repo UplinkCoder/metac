@@ -1,6 +1,6 @@
-#include "metac_task.c"
-#include "metac_coro.c"
-#include "metac_coro.h"
+#include "../metac_task.c"
+#include "../metac_coro.c"
+#include "../metac_coro.h"
 
 void Do_PrintTask(task_t* task)
 {

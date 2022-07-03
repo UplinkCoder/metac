@@ -11,7 +11,7 @@ void FileStorage_Init(metac_file_storage_t* self)
     IdentifierTableInit(&self->Paths, IDENTIFIER_LENGTH_SHIFT, 9);
 }
 
-metac_buffer_t MetaCFileStorage_GetBuffer(metac_file_storage_t* self, metac_file_ptr_t file)
+metac_buffer_t MetaCFileStorage_GetEntireFileBuffer(metac_file_storage_t* self, metac_file_ptr_t file)
 {
     metac_buffer_t result = {0};
 

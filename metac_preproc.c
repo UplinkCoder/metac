@@ -13,6 +13,6 @@ void MetaCPreProcessor_FastIncludeScan(metac_preprocessor_t* self)
     }
 
     metac_buffer_t fileBuffer
-        = MetaCFileStorage_GetBuffer(fileStorage, self->File);
+        = MetaCFileStorage_GetEntireFileBuffer(fileStorage, self->File);
 
 }
