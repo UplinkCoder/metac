@@ -1191,12 +1191,12 @@ BCValue BCGen_interpret(BCGen* self, uint32_t fnIdx, BCValue* args, uint32_t n_a
             break;
         case LongInst_ImmEq:
             {
-                cond == ((*opRef) == imm32c);
+                cond = ((*opRef) == imm32c);
             }
             break;
         case LongInst_ImmNeq:
             {
-                cond == ((*opRef) != imm32c);
+                cond = ((*opRef) != imm32c);
             }
             break;
 

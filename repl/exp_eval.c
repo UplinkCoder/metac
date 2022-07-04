@@ -178,7 +178,7 @@ static inline void WalkTree(void* c, BCValue* result,
 
         case exp_signed_integer:
         {
-            BCValue imm = imm32((uint32_t)e->ValueU64);
+            BCValue imm = imm32((int32_t)e->ValueU64);
             BCGen_interface.Set(c, result, &imm);
         } break;
 
@@ -257,7 +257,7 @@ static inline void WalkTree(void* c, BCValue* result,
         {
             WalkTree(c, lhs, e->E1, vstore);
             BCValue zero = imm32(0);
-            BCGen_interface.Neq3(c, result, lhs, &zero);
+            BCGen_interface.Eq3(c, result, lhs, &zero);
         } break;
         case exp_umin:
         {

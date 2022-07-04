@@ -1,5 +1,8 @@
+#ifndef _BACKEND_INTERFACE_FUNCS_H_
+#define _BACKEND_INTERFACE_FUNCS_H_
+
 #include <stdarg.h>
-#include <stdint.h>
+#include "../compat.h"
 #include "bc_common.h"
 
 typedef void (*Initialize_t) (void* ctx, uint32_t n_args, ...);
@@ -185,3 +188,5 @@ typedef struct BackendInterface
 
     void (*const ReadI32) (void* ctx, const BCValue* val, const ReadI32_cb_t readCb, void* userCtx);
 } BackendInterface;
+
+#endif
