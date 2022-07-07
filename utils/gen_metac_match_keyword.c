@@ -2,6 +2,7 @@
 #include "../crc32c.c"
 #include "../metac_lexer.h"
 #include "../metac_identifier_table.h"
+#include <stdio.h>
 #define USE_NO_ALIGN_MACROS
 
 #include "kw_macros.h"
@@ -122,8 +123,6 @@ void WriteMatchFunction(void)
     printf("    break;\n");
 
     FOREACH_KEYWORD_TOKEN(KW_WRITE_CASE)
-
-    FOREACH_PREPROCESSOR_TOKEN(KW_WRITE_CASE)
 
 #undef KW_WRITE_CASE
     printf("    }\n");

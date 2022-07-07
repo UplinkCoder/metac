@@ -207,6 +207,8 @@ metac_identifier_ptr_t IsIdentifierInTable(metac_identifier_table_t* table,
 
     const uint32_t slotIndexMask = ((1 << table->SlotCount_Log2) - 1);
     const uint32_t initialSlotIndex = (key & slotIndexMask);
+    assert(slotIndexMask);
+    // if slotIndexMask is 0 most likely the table has not been initialized
     // TracyCPlot("TargetIndex", initialSlotIndex);
     for(
         uint32_t slotIndex = initialSlotIndex;

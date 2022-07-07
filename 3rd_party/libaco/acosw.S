@@ -1,3 +1,49 @@
+#if defined(__TINYC__) && defined(__aarch64__)
+acosw:
+
+.long 0xaa1e03e2  //    mov x2, x30
+.long 0xa9004410  //    stp x16, x17, [x0]
+.long 0xa9015013  //    stp x19, x20, [x0, #16]
+.long 0xa9025815  //    stp x21, x22, [x0, #32]
+.long 0xa9036017 //     stp x23, x24, [x0, #48]);
+.long 0xa9046819 //     x25, x26, [x0, #64]
+.long 0xa905701b //     stp x27, x28, [x0, #80]
+.long 0xa906781d //     stp x29, x30, [x0, #96]
+.long 0x910003e5 //     mov x5, sp
+.long 0xf9003805 //     str x5, [x0, #112]
+.long 0xd53b4405 //     mrs x5, fpcr
+.long 0xf9003c25 //     str x5, [x1, #120]
+.long 0xa9404430 //     ldp x16, x17, [x1]
+.long 0xa9415033 //     ldp x19, x20, [x1, #16]
+.long 0xa9425835 //     ldp x21, x22, [x1, #32]
+.long 0xa9436037 //     ldp x23, x24, [x1, #48]
+.long 0xa9446839//  ldp x25, x26, [x1, #64]
+.long 0xa945703b //     ldp x27, x28, [x1, #80]
+.long 0xa946783d//  ldp x29, x30, [x1, #96]
+.long 0xf9403823 //     ldr x3, [x1, #112]
+.long 0x9100007f //     mov sp, x3
+.long 0xf9403c23 //     ldr x3, [x1, #120]
+.long 0xd51b4403 //     msr fpcr, x3
+.long 0xd61f03c0 //     br  x30
+
+// ------------------------------------------------------------------------------
+aco_save_fpucw_mxcsr:
+
+.long 0xd53b4401 //  mrs x1, fpcr
+.long 0xf9000001 //  str x1, [x0]
+.long 0xd65f03c0 //  ret
+
+// --------------------------------------------------------------------------------
+aco_funcp_protector_asm:
+
+.long 0x910003e9 //  mov x9, sp
+.long 0x927ced29 //  and x9, x9, #0xfffffffffffffff0
+.long 0x9100013f //  mov sp, x9
+.long 0x94000000 //  bl  0 <aco_funcp_protector>
+.long 0x94000000 //  bl  0 <abort>
+.long 0xd65f03c0 //  ret
+
+#else
 #ifndef NO_FIBERS
 .text
 .globl acosw
@@ -16,7 +62,7 @@ acosw:
         void*  reg[X];
         // ...
     }
-     
+
     reference:
         https://github.com/hjl-tools/x86-psABI/wiki/X86-psABI
 
@@ -32,7 +78,7 @@ acosw:
         > how to do this and when it might be useful.
         > ...
 
-        This is a BUG example: 
+        This is a BUG example:
             https://github.com/Tencent/libco/blob/v1.0/coctx_swap.S#L27
 
     proof of correctness:
@@ -42,7 +88,7 @@ acosw:
         fnstcw * m2byte
             Store FPU control word to m2byte without checking for 
             pending unmasked floating-point exceptions.
-        
+
         fldcw m2byte
             Load FPU control word from m2byte.
 
@@ -246,3 +292,4 @@ aco_funcp_protector_asm:
 #    error "platform not support"
 #endif
 #endif // NO_FIBERS
+#endif

@@ -8,6 +8,7 @@
 #include "compat.h"
 #include "metac_lexer.h"
 #include "metac_parsetree.h"
+#include "metac_preproc.h"
 
 #include "metac_identifier_table.h"
 
@@ -24,6 +25,7 @@ typedef enum parse_expression_flags_t
     expr_flags_type = (1 << 3),
     expr_flags_addr = (1 << 4),
     expr_flags_sizeof = (1 << 5),
+    expr_flags_pp     = (1 << 6),
 } parse_expression_flags_t;
 
 
@@ -48,6 +50,9 @@ typedef struct metac_parser_t
     metac_identifier_table_t IdentifierTable;
     metac_identifier_table_t StringTable;
 
+    metac_preprocessor_t* Preprocessor;
+
+    metac_location_t LastLocation;
     metac_define_t* Defines;
     uint32_t DefineCount;
     uint32_t DefineCapacity;
@@ -95,6 +100,15 @@ uint32_t MetaCParser_HowMuchLookahead(metac_parser_t* self);
 metac_expression_t* MetaCParser_ParseExpression(metac_parser_t* self, parse_expression_flags_t flags, metac_expression_t* prev);
 metac_expression_t* MetaCParser_ParseExpressionFromString(const char* exp);
 metac_declaration_t* MetaCParser_ParseDeclaration(metac_parser_t* self, metac_declaration_t* parent);
+metac_preprocessor_directive_t MetaCParser_ParsePreproc(metac_parser_t* self,
+                                                        metac_preprocessor_t* preproc,
+                                                        metac_token_buffer_t* buffer);
+
+#define MetaCParser_Match(SELF, TYPE) \
+    (MetaCParser_Match_((SELF), (TYPE), __FILE__, __LINE__))
+
+metac_token_t* MetaCParser_Match_(metac_parser_t* self, metac_token_enum_t type,
+                                 const char* filename, uint32_t lineNumber);
 
 const char* MetaCNodeKind_toChars(metac_node_kind_t type);
 #endif

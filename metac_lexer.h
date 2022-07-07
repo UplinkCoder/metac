@@ -151,17 +151,6 @@ typedef struct metac_lexer_state_t
 #define LAST_STATIC_TOKEN(M) \
     M(tok_eof)
 
-#define FIRST_PREPROCESSOR_TOKEN(M) \
-    M(tok_pp___LINE__)
-
-#define LAST_PREPROCESSOR_TOKEN(M) \
-    M(tok_pp___METAC__)
-
-#define FOREACH_PREPROCESSOR_TOKEN(M) \
-    FIRST_PREPROCESSOR_TOKEN(M) \
-    M(tok_pp___FUNCTION__) \
-    LAST_PREPROCESSOR_TOKEN(M)
-
 #define FOREACH_STATIC_TOKEN(M) \
     FIRST_STATIC_TOKEN(M) \
     \
@@ -187,8 +176,6 @@ typedef struct metac_lexer_state_t
     M(tok_dotdotdot) \
     \
     FOREACH_KEYWORD_TOKEN(M) \
-    \
-    FOREACH_PREPROCESSOR_TOKEN(M) \
     \
     M(tok_comment_begin_multi) \
     M(tok_comment_end_multi) \
@@ -221,8 +208,6 @@ typedef struct metac_lexer_state_t
     FOREACH_STATIC_TOKEN(M) \
     \
     LAST_TOKEN(M) \
-    \
-    M(pp_pragma)
 
 
 #define WITH_COMMA(TOK) \
@@ -277,6 +262,12 @@ typedef struct metac_token_t {
     };
 } metac_token_t;
 
+typedef struct metac_token_buffer_t
+{
+    metac_token_t* Ptr;
+    uint32_t Length;
+    uint32_t Capacity;
+} metac_token_buffer_t;
 
 uint32_t MetaCTokenLength(metac_token_t token);
 

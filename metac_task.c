@@ -206,8 +206,8 @@ void RunWorkerThread(worker_context_t* worker, void (*specialFunc)(),  void* spe
     worker->WorkerMain = threadFiber;
 
     Taskqueue_Init(&worker->Queue);
-    FileStorage_Init(&worker->FileStorage);
-    
+    FileStorage_Init(&worker->FileStorage, 0);
+
     aco_t* specialFiber = 0;
     if (specialFunc)
     {

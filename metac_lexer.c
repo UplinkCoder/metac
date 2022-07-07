@@ -346,10 +346,6 @@ static uint32_t MetaCStaticTokenLength(metac_token_enum_t t)
         case tok_kw_goto     : return 4;
 
         case tok_kw_yield    : return 5;
-
-        case tok_pp___LINE__     : return 8;
-        case tok_pp___FUNCTION__ : return 12;
-        case tok_pp___METAC__    : return 9;
     }
 }
 
@@ -785,7 +781,7 @@ LcontinueLexnig:
         MetaCLocationStorage_StartLoc(&self->LocationStorage, state->Line, state->Column);
     metac_location_t loc = self->LocationStorage.Locations[token.LocationId - 4];
 
-    if ((token.TokenType = MetaCLexFixedLengthToken(text)) == tok_invalid)
+    if (c && (token.TokenType = MetaCLexFixedLengthToken(text)) == tok_invalid)
     {
         // const char* begin = text;
         if (c)
@@ -1078,7 +1074,7 @@ LcontinueLexnig:
         //printf("Comment ends at line: %u:%u\n", state->Line, state->Column);
         //printf("Comment was: \"%.*s\"\n", eatenChars - 4,  text + 2);
     }
-#if 1 // this is only active for as long as the parser can't do deal
+#if 0 // this is only active for as long as the parser can't do deal
       // with preprocessor stuff
     else if (token.TokenType == tok_hash)
     {
@@ -1108,7 +1104,15 @@ LcontinueLexnig:
         state->Column = 1;
         text += offset;
         state->Position += offset;
-        c = *text++;
+        if (state->Size > state->Position)
+        {
+            c = *text++;
+        }
+        else
+        {
+            c = '\0';
+            token.TokenType = tok_eof;
+        }
         goto LcontinueLexnig;
     }
 #endif
@@ -1260,9 +1264,6 @@ void test_lexer()
         "yield",
         "__attribute__",
 
-        "__LINE__",
-        "__FUNCTION__",
-        "__METAC__",
 
          "/*",
         "*/",

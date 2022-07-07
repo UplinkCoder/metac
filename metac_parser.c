@@ -171,17 +171,6 @@ void AddDefine(metac_parser_t* self, metac_token_t* token, uint32_t nParameters)
 
 metac_token_t* MetaCParser_NextToken(metac_parser_t* self)
 {
-#define error_key 0x5a01b4
-#define warning_key 0x72b1fc
-#define undef_key 0x5cabf4
-#define elif_key 0x4f8f4e
-#define ifdef_key 0x581ce0
-#define ifndef_key 0x634e0c
-#define endif_key 0x506843
-#define line_key 0x4c4ac5
-#define pargma_key 0x6a6e5b
-#define include_key 0x7e87f0
-#define define_key 0x6a491b
 
 #define NextToken() \
     ((self->CurrentTokenIndex < self->Lexer->TokenSize) ? \
@@ -235,10 +224,12 @@ metac_token_t* MetaCParser_NextToken(metac_parser_t* self)
                 printf("Define %s matched we should do something\n", defineName);
             }
         }
+/*
         if (IsMacro(self, result))
         {
             HandleMacro(self, result);
         }
+
         else if(result && result->TokenType == tok_hash)
         {
             result = NextToken();
@@ -302,13 +293,16 @@ LexpectedIdent:
                         IDENTIFIER_PTR(MEMBER_SUFFIX(&self->Identifier), *result));
                 }
             }
-        }
+        }*/
     }
     else
     {
         // TODO Error
     }
-
+    if (result)
+    {
+        self->LastLocation = self->Lexer->LocationStorage.Locations[result->LocationId - 4];
+    }
     return result;
 }
 
@@ -326,6 +320,8 @@ metac_token_t* MetaCParser_PeekToken(metac_parser_t* self, int32_t p)
     if (cast(uint32_t)(self->CurrentTokenIndex + (p - 1)) < self->Lexer->TokenSize)
     {
         result = self->Lexer->Tokens + self->CurrentTokenIndex + (p - 1);
+        self->LastLocation = self->Lexer->LocationStorage.Locations[result->LocationId - 4];
+/*
         if (IsMacro(self, result))
         {
             HandleMacro(self, result);
@@ -343,6 +339,7 @@ metac_token_t* MetaCParser_PeekToken(metac_parser_t* self, int32_t p)
             }
             HandlePreprocessor(self);
         }
+*/
     }
     else
     {
@@ -351,9 +348,6 @@ metac_token_t* MetaCParser_PeekToken(metac_parser_t* self, int32_t p)
 
     return result;
 }
-
-#define MetaCParser_Match(SELF, TYPE) \
-    (MetaCParser_Match_((SELF), (TYPE), __FILE__, __LINE__))
 
 metac_token_t* MetaCParser_Match_(metac_parser_t* self, metac_token_enum_t type,
                                  const char* filename, uint32_t lineNumber)
@@ -517,6 +511,12 @@ static inline void LexString(metac_lexer_t* lexer, const char* line)
 
         metac_token_t token =
             *MetaCLexerLexNextToken(lexer, &lexer_state, line, line_length);
+        if (token.TokenType == tok_eof)
+        {
+            line += line_length;
+            line_length = 0;
+            break;
+        }
 
         uint32_t eaten_chars = lexer_state.Position - initialPosition;
         line += eaten_chars;
@@ -717,8 +717,6 @@ static inline bool IsPrimaryExpressionToken(metac_token_enum_t tokenType)
     {
     case tok_lParen:
     case tok_uint:
-    case tok_pp___FUNCTION__:
-    case tok_pp___LINE__:
     case tok_string:
     case tok_char:
     case tok_identifier:
@@ -1009,6 +1007,7 @@ metac_expression_t* MetaCParser_ParsePrimaryExpression(metac_parser_t* self)
 
         //PopOperator(exp_call);
     }
+/*    
     else if (tokenType == tok_pp___FUNCTION__)
     {
         MetaCParser_Match(self, tok_pp___FUNCTION__);
@@ -1023,7 +1022,7 @@ metac_expression_t* MetaCParser_ParsePrimaryExpression(metac_parser_t* self)
         result->StringKey = stringKey;
         result->StringPtr = stringPtr;
         result->Hash = stringKey;
-    }
+    }*/
     else
     {
         assert(0); // Not a primary Expression;
@@ -1308,7 +1307,7 @@ metac_expression_t* MetaCParser_ParseUnaryExpression(metac_parser_t* self)
     {
         MetaCParser_Match(self, tok_bang);
         result = AllocNewExpression(exp_not);
-        result->E1 = MetaCParser_ParseExpression(self, expr_flags_unary, 0);
+        result->E1 = MetaCParser_ParseExpression(self, expr_flags_none, 0);
         result->Hash = CRC32C_VALUE(CRC32C_BANG, result->E1->Hash);
     }
     else if (tokenType == tok_cat)
@@ -1364,7 +1363,7 @@ exp_argument_t* MetaCParser_ParseArgumentList(metac_parser_t* self)
 {
     metac_location_t loc =
         LocationFromToken(self, MetaCParser_PeekToken(self, 0));
-   
+
     metac_token_t* peekToken = MetaCParser_PeekToken(self, 1);
     exp_argument_t* arguments = (exp_argument_t*) _emptyPointer;
     exp_argument_t** nextArgument = &arguments;
@@ -1388,7 +1387,7 @@ exp_argument_t* MetaCParser_ParseArgumentList(metac_parser_t* self)
             MetaCParser_Match(self, tok_comma);
         }
     }
-   
+
     if (arguments != emptyPointer)
     {
         arguments->Hash = hash;
@@ -1397,7 +1396,7 @@ exp_argument_t* MetaCParser_ParseArgumentList(metac_parser_t* self)
         arguments->LocationIdx =
             MetaCLocationStorage_Store(&self->LocationStorage, loc);
     }
-   
+
     return arguments;
 }
 metac_expression_t* MetaCParser_ParseBinaryExpression(metac_parser_t* self,
@@ -1570,7 +1569,77 @@ bool IsBinaryAssignExp(metac_expression_kind_t kind)
 {
    return (kind >= exp_add_ass && kind <= exp_rsh_ass);
 }
+/// returns the directive and places the tokens which follow it into
+/// the token buffer,
+metac_preprocessor_directive_t MetaCParser_ParsePreproc(metac_parser_t* self,
+                                                        metac_preprocessor_t* preproc,
+                                                        metac_token_buffer_t* buffer)
+{
+    metac_token_t* result= buffer->Ptr;
 
+    MetaCParser_Match(self, tok_hash);
+    metac_token_t* peek = MetaCParser_PeekToken(self, 1);
+    metac_token_enum_t tokenType = (peek ? peek->TokenType : tok_eof);
+    metac_preprocessor_directive_t directive = pp_invalid;
+
+    switch (tokenType)
+    {
+        case tok_kw_if:
+        {
+            directive = pp_if;
+        } break;
+        case tok_kw_else:
+        {
+            directive = pp_else;
+        } break;
+        case tok_identifier: {
+            switch(peek->IdentifierKey)
+            {
+                case eval_key:
+                {
+                    directive = pp_eval;
+                } goto Lmatch;
+
+                case ifdef_key:
+                {
+                    directive = pp_ifdef;
+                } goto Lmatch;
+
+                case elif_key:
+                {
+                    directive = pp_elif;
+                } goto Lmatch;
+
+                case include_key:
+                {
+                    directive = pp_include;
+                } goto Lmatch;
+
+                case define_key:
+                {
+                    directive = pp_define;
+                } goto Lmatch;
+
+                case endif_key:
+                {
+                    directive = pp_endif;
+                } goto Lmatch;
+
+                default:
+                    printf("couldn't match directive\n");
+                break;
+
+                Lmatch:
+                {
+                    MetaCParser_Match(self, tok_identifier);
+                    printf("Matching preproc directive\n");
+                }
+            }
+        }
+    }
+
+    return directive;
+}
 
 metac_expression_t* MetaCParser_ParseExpression(metac_parser_t* self,
                                                 parse_expression_flags_t eflags,
@@ -2899,6 +2968,18 @@ metac_declaration_t* MetaCParser_ParseDeclarationFromString(const char* decl)
     return result;
 }
 
+metac_preprocessor_directive_t MetaCParser_ParsePreprocFromString(const char* line,
+                                                                  metac_token_buffer_t* tokenBuffer)
+{
+    LineLexerInit();
+    LexString(&g_lineLexer, line);
+
+    metac_preprocessor_t preproc = {0};
+
+    metac_preprocessor_directive_t dirc = MetaCParser_ParsePreproc(&g_lineParser, &preproc, tokenBuffer);
+
+    return dirc;
+}
 
 #include <stdio.h>
 

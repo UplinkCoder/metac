@@ -48,6 +48,11 @@ if [ -d $DST ]; then
        3rd_party/tinycthread/tinycthread.h \
        $DST/3rd_party/tinycthread
 
+    mkdir -p $DST/3rd_party/libaco
+    cp 3rd_party/libaco/acosw.S \
+       3rd_party/libaco/aco.h \
+       $DST/3rd_party/libaco
+
     mkdir -p $DST/$TRACY_DIR
     cp $TRACY_DIR/TracyC.h \
        $DST/$TRACY_DIR

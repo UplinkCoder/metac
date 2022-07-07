@@ -3,6 +3,7 @@
 #include "../metac_lexer.h"
 #include "../metac_identifier_table.h"
 
+#include <stdio.h>
 #include "kw_macros.h"
 
 void main(int argc, const char* argv[])
@@ -12,8 +13,4 @@ void main(int argc, const char* argv[])
         KW_STR(KW), KW_KEY(KW));
 
     FOREACH_KEYWORD_TOKEN(KW_WRITE_DEFINE)
-
-    FOREACH_PREPROCESSOR_TOKEN(KW_WRITE_DEFINE)
-
-    KW_WRITE_DEFINE(tok_pp_pragma)
 }

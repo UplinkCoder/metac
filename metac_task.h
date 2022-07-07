@@ -147,7 +147,6 @@ typedef struct fiber_pool_t
 {
     uint32_t FreeBitfield;
 
-
     aco_t MainCos[sizeof(uint32_t) * 8];
     aco_share_stack_t ShareStacks[sizeof(uint32_t) * 8];
     task_t Tasks[sizeof(uint32_t) * 8];

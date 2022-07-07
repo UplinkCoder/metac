@@ -38,6 +38,7 @@ typedef enum parse_mode_t
     parse_mode_stmt,
     parse_mode_expr,
     parse_mode_file,
+    parse_mode_preproc,
 
     parse_mode_ds,
     parse_mode_ss,
@@ -176,6 +177,7 @@ typedef struct repl_state_t
     parse_mode_t parseMode;
     metac_lexer_state_t repl_state;
     metac_lexer_t lexer;
+    metac_preprocessor_t preProcessor;
     metac_type_aggregate_t* compilerStruct;
     metac_semantic_state_t sema;
 
@@ -302,6 +304,9 @@ void Repl_SwtichMode(repl_state_t* self)
         break;
     case parse_mode_stmt:
         self->promt = "Stmt>";
+        break;
+    case parse_mode_preproc:
+        self->promt = "Preproc>";
         break;
     case parse_mode_ee:
         self->promt = "EE>";
@@ -516,6 +521,11 @@ LswitchMode:
                     goto LswitchMode;
                 }
                 break;
+            case 'p' :
+            {
+                repl->parseMode = parse_mode_preproc;
+                goto LswitchMode;
+            } break;
             default :
                 printf("Command :%c unknown type :h for help\n", *(repl->line + 1));
                 break;
@@ -575,6 +585,24 @@ LswitchMode:
                 MetaCPrinter_Reset(&repl->printer);
                 goto LnextLine;
             }
+
+            case parse_mode_preproc:
+            {
+                metac_token_t _inlineTokens[32];
+
+                metac_token_buffer_t buffer = {
+                    _inlineTokens, 0, ARRAY_SIZE(_inlineTokens)
+                };
+                metac_preprocessor_directive_t directive =
+                    MetaCParser_ParsePreprocFromString(repl->line, &repl->preProcessor);
+
+                if (directive == pp_eval)
+                {
+                    MetaCPreProcessor_Eval(&repl->preProcessor, &g_lineParser);
+                }
+                goto LnextLine;
+            }
+
             case parse_mode_ee:
             {
                 exp =

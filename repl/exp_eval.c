@@ -85,10 +85,10 @@ void ReadI32_cb (uint32_t value, void* userCtx)
 ReadI32_Ctx* _ReadContexts;
 uint32_t _ReadContextSize;
 uint32_t _ReadContextCapacity;
-
 static inline void WalkTree(void* c, BCValue* result,
                             metac_sema_expression_t* e,
                             variable_store_t* vstore);
+
 
 //FIXME we never hit this ... why?
 // maybe an issue with the declaration store or maybe with
