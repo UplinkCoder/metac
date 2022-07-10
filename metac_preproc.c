@@ -5,7 +5,7 @@
 #include "libinterpret/bc_common.h"
 #include "libinterpret/backend_interface_funcs.h"
 
-static inline int32_t MetaCPreProcessor_EvalExp(metac_preprocessor_t self,
+static inline int32_t MetaCPreProcessor_EvalExp(metac_preprocessor_t* self,
                                                 metac_expression_t* e)
 {
 
@@ -20,7 +20,6 @@ static inline int32_t MetaCPreProcessor_EvalExp(metac_preprocessor_t self,
         e1 = MetaCPreProcessor_EvalExp(self, e->E1);
         e2 = MetaCPreProcessor_EvalExp(self, e->E2);
     }
-
 
     switch(op)
     {
@@ -99,7 +98,7 @@ static inline int32_t MetaCPreProcessor_EvalExp(metac_preprocessor_t self,
         {
             // this should not happen
             assert(0);
-        }
+        } break;
 
         case exp_paren:
         {
@@ -124,8 +123,12 @@ static inline int32_t MetaCPreProcessor_EvalExp(metac_preprocessor_t self,
 
         case exp_call:
         {
-            if (e->E1->Kind != exp_identifier ||
-                e->E1->IdentifierKey != defined_key)
+            if (e->E1->Kind == exp_identifier ||
+                e->E1->IdentifierKey == defined_key)
+            {
+
+            }
+            else
             {
                 printf("function call in preprocessor directive\n");
             }
@@ -140,6 +143,14 @@ void MetaCPreProcessor_Init(metac_preprocessor_t *self, metac_lexer_t* lexer,
     self->FileStorage = fs;
     self->File = MetaCFileStorage_LoadFile(fs, filepath);
 }
+
+void MetaCPreProcessor_Define(metac_preprocessor_t *self, metac_parser_t* parser)
+{
+    metac_token_t* defineName = MetaCParser_PeekToken(parser, 1);
+    //defineName.IdentifierKey
+    //GetOrAddIdentifier(&self->DefineTable, )
+}
+
 
 bool MetaCPreProcessor_IsDefine(metac_preprocessor_t* self,
                                 uint32_t identifierKey, const char* identifier)
@@ -172,26 +183,29 @@ void MetaCPreProcessor_FastIncludeScan(metac_preprocessor_t* self)
     uint32_t HashOffsetsCapacity = ARRAY_SIZE(HashOffsets);
 
     {
-    uint32_t scanPos = 0;
-    uint32_t scanLeft = fileBuffer.Length;
-    for(;;) {
-        const char* result =
-            cast(const char*) memchr(fileBuffer.Data + scanPos, '#', scanLeft);
-        if (result != 0)
-        {
-            uint32_t hashOffset = cast(uint32_t)(result - fileBuffer.Data);
-            HashOffsets[HashOffsetsCount++] = hashOffset;
-            uint32_t advance = (hashOffset - scanPos) + 1;
-            scanPos += advance;
-            scanLeft -= advance;
-            printf("HashOffset: %u\n", hashOffset);
+        uint32_t scanPos = 0;
+        uint32_t scanLeft = fileBuffer.Length;
+
+        for(;;) {
+            const char* result =
+                cast(const char*) memchr(fileBuffer.Data + scanPos, '#', scanLeft);
+            if (result != 0)
+            {
+                uint32_t hashOffset = cast(uint32_t)(result - fileBuffer.Data);
+                HashOffsets[HashOffsetsCount++] = hashOffset;
+                uint32_t advance = (hashOffset - scanPos) + 1;
+                scanPos += advance;
+                scanLeft -= advance;
+                printf("HashOffset: %u\n", hashOffset);
+            }
+            else
+            {
+                break;
+            }
         }
-        else
-        {
-            break;
-        }
-    }}
+    }
 }
+
 #if 0
 BCValue MetaCPreProcessor_Defined(void* ctx, uint32_t nVals, BCValue* vals)
 {
@@ -216,6 +230,7 @@ uint32_t MetaCPreProcessor_Eval(metac_preprocessor_t* self, struct metac_parser_
         printf("#eval %s\n", exp_string);
         MetaCPrinter_Reset(&parser->DebugPrinter);
 
+        return MetaCPreProcessor_EvalExp(self, exp);
 /*
         switch (tok->TokenType)
         {

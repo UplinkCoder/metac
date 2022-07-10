@@ -26,15 +26,17 @@ metac_filehandle_t MetaCNative_Open(void* dummy, const char* path, const char* f
     }
     else
     {
-        pathBufferP = file;
+        pathBufferP = cast(char*) file;
     }
 #if __linux__
     const char* absPath = realpath(pathBufferP, 0);
+#elif _WIN32
+    const char* absPath = cast(const char*)_fullpath(NULL, pathBufferP, _MAX_PATH);
+#endif
     if (!absPath)
     {
-        perror("absPath");
+        perror("Path Invalid");
     }
-#endif
     printf("Opening: %s -- %s\n", absPath, pathBufferP);
     result.p = (void*)fopen(absPath, "rb");
 
@@ -104,7 +106,7 @@ void FileStorage_Init(metac_file_storage_t* self, metac_filesystem_t* fs)
 
     if (!fs)
     {
-        self->FS = &NativeFileSystem;
+        self->FS = cast(metac_filesystem_t*)&NativeFileSystem;
     }
 }
 

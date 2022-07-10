@@ -598,7 +598,12 @@ LswitchMode:
 
                 if (directive == pp_eval)
                 {
-                    MetaCPreProcessor_Eval(&repl->preProcessor, &g_lineParser);
+                    int res = MetaCPreProcessor_Eval(&repl->preProcessor, &g_lineParser);
+                    printf("result:%u\n", res);
+                }
+                else if (directive == pp_define)
+                {
+                    MetaCPreProcessor_Define(&repl->preProcessor, &g_lineParser);
                 }
                 goto LnextLine;
             }
