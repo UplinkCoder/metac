@@ -1,3 +1,5 @@
+#if !defined(NO_FILE)
+
 #include "compat.h"
 #include "metac_file.h"
 #include "metac_task.h"
@@ -236,3 +238,4 @@ metac_file_ptr_t MetaCFileStorage_LoadFile(metac_file_storage_t* self, const cha
     return result;
 }
 
+#endif // NO_FILE

@@ -1,4 +1,4 @@
-#ifndef _METAC_FILE_H_
+#if !defined(_METAC_FILE_H_) && !defined(NO_FILE)
 #define _METAC_FILE_H_
 #include "compat.h"
 

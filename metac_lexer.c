@@ -346,6 +346,7 @@ static uint32_t MetaCStaticTokenLength(metac_token_enum_t t)
         case tok_kw_goto     : return 4;
 
         case tok_kw_yield    : return 5;
+        case tok_kw___attribute__ : return 13;
     }
 }
 
@@ -1296,8 +1297,7 @@ void test_lexer()
             continue;
         }
         metac_token_enum_t lexed;
-        if ( ((tok >= FIRST_KEYWORD_TOKEN(TOK_SELF)) & (tok <= LAST_KEYWORD_TOKEN(TOK_SELF)))
-          || ((tok >= FIRST_PREPROCESSOR_TOKEN(TOK_SELF)) & (tok <= LAST_PREPROCESSOR_TOKEN(TOK_SELF))) )
+        if ( ((tok >= FIRST_KEYWORD_TOKEN(TOK_SELF)) & (tok <= LAST_KEYWORD_TOKEN(TOK_SELF))) )
         {
             metac_lexer_state_t state = {0};
             metac_token_t t1 = {tok_invalid};

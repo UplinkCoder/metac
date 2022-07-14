@@ -1,3 +1,5 @@
+#if !defined(NO_PREPROC)
+
 #include "metac_preproc.h"
 #include "metac_task.h"
 #include "metac_parser.h"
@@ -18,9 +20,20 @@ static inline int32_t MetaCPreProcessor_EvalExp(metac_preprocessor_t* self,
     if (IsBinaryExp(op))
     {
         e1 = MetaCPreProcessor_EvalExp(self, e->E1);
+        if (op == exp_oror)
+        {
+            if (e1)
+                return true;
+        } else if (op == exp_andand)
+        {
+            if (!e1)
+                return false;
+        }
         e2 = MetaCPreProcessor_EvalExp(self, e->E2);
     }
 
+
+    printf("op: %s\n", MetaCExpressionKind_toChars(op));
     switch(op)
     {
         default : {
@@ -74,10 +87,12 @@ static inline int32_t MetaCPreProcessor_EvalExp(metac_preprocessor_t* self,
             result = (e1 % e2);
         } break;
         case exp_and:
+        case exp_andand:
         {
             result = (e1 & e2);
         } break;
         case exp_or:
+        case exp_oror:
         {
             result = (e1 | e2);
         } break;
@@ -126,13 +141,17 @@ static inline int32_t MetaCPreProcessor_EvalExp(metac_preprocessor_t* self,
             if (e->E1->Kind == exp_identifier ||
                 e->E1->IdentifierKey == defined_key)
             {
-
+                printf("found defined: %x\n", e->E1->IdentifierKey);
+                exp_argument_t* args = e->E2->ArgumentList;
+                metac_expression_t* e2 = args->Expression;
+                //printf("args.expression: %s\n",
+                //    MetaCPrinter_PrintExpression(parser->DebugPrinter,
+                //                                 args->Expression));
             }
             else
             {
                 printf("function call in preprocessor directive\n");
             }
-
         } break;
     }
 }
@@ -224,7 +243,6 @@ uint32_t MetaCPreProcessor_Eval(metac_preprocessor_t* self, struct metac_parser_
         if (!tok || tok->TokenType == tok_eof)
             return result;
 
-        printf("eval sees: %s\n", MetaCTokenEnum_toChars(tok->TokenType));
         metac_expression_t* exp = MetaCParser_ParseExpression(parser, expr_flags_pp, 0);
         const char* exp_string = MetaCPrinter_PrintExpression(&parser->DebugPrinter, exp);
         printf("#eval %s\n", exp_string);
@@ -271,3 +289,4 @@ uint32_t MetaCPreProcessor_Eval(metac_preprocessor_t* self, struct metac_parser_
      }
 
 }
+#endif // !defined(NO_PREPROC)

@@ -8,7 +8,10 @@
 #include "compat.h"
 #include "metac_lexer.h"
 #include "metac_parsetree.h"
-#include "metac_preproc.h"
+
+#ifndef NO_PREPROC
+#  include "metac_preproc.h"
+#endif
 
 #include "metac_identifier_table.h"
 
@@ -49,9 +52,9 @@ typedef struct metac_parser_t
     uint32_t CurrentTokenIndex;
     metac_identifier_table_t IdentifierTable;
     metac_identifier_table_t StringTable;
-
+#ifndef NO_PREPROC
     metac_preprocessor_t* Preprocessor;
-
+#endif
     metac_location_t LastLocation;
     metac_define_t* Defines;
     uint32_t DefineCount;
@@ -85,6 +88,7 @@ typedef struct metac_parser_t
     metac_identifier_ptr_t SpecialNamePtr_Context;
     metac_identifier_ptr_t SpecialNamePtr_Target;
     metac_identifier_ptr_t SpecialNamePtr_Type;
+    metac_identifier_ptr_t SpecialNamePtr_Defined;
 } metac_parser_t;
 
 extern metac_parser_t g_lineParser;
@@ -100,9 +104,12 @@ uint32_t MetaCParser_HowMuchLookahead(metac_parser_t* self);
 metac_expression_t* MetaCParser_ParseExpression(metac_parser_t* self, parse_expression_flags_t flags, metac_expression_t* prev);
 metac_expression_t* MetaCParser_ParseExpressionFromString(const char* exp);
 metac_declaration_t* MetaCParser_ParseDeclaration(metac_parser_t* self, metac_declaration_t* parent);
+
+#ifndef NO_PREPROC
 metac_preprocessor_directive_t MetaCParser_ParsePreproc(metac_parser_t* self,
                                                         metac_preprocessor_t* preproc,
                                                         metac_token_buffer_t* buffer);
+#endif
 
 #define MetaCParser_Match(SELF, TYPE) \
     (MetaCParser_Match_((SELF), (TYPE), __FILE__, __LINE__))

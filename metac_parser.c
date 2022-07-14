@@ -47,6 +47,9 @@ static inline void InitSpecialIdentifier(metac_parser_t* self)
 
     self->SpecialNamePtr_Type =
         GetOrAddIdentifier(&self->IdentifierTable, type_key, "type");
+
+    self->SpecialNamePtr_Defined =
+        GetOrAddIdentifier(&self->IdentifierTable, type_key, "defined");
 }
 
 
@@ -1569,6 +1572,7 @@ bool IsBinaryAssignExp(metac_expression_kind_t kind)
 {
    return (kind >= exp_add_ass && kind <= exp_rsh_ass);
 }
+#ifndef NO_PREPROC
 /// returns the directive and places the tokens which follow it into
 /// the token buffer,
 metac_preprocessor_directive_t MetaCParser_ParsePreproc(metac_parser_t* self,
@@ -1640,6 +1644,7 @@ metac_preprocessor_directive_t MetaCParser_ParsePreproc(metac_parser_t* self,
 
     return directive;
 }
+#endif
 
 metac_expression_t* MetaCParser_ParseExpression(metac_parser_t* self,
                                                 parse_expression_flags_t eflags,
@@ -2967,7 +2972,7 @@ metac_declaration_t* MetaCParser_ParseDeclarationFromString(const char* decl)
 
     return result;
 }
-
+#ifndef NO_PREPROC
 metac_preprocessor_directive_t MetaCParser_ParsePreprocFromString(const char* line,
                                                                   metac_token_buffer_t* tokenBuffer)
 {
@@ -2980,6 +2985,7 @@ metac_preprocessor_directive_t MetaCParser_ParsePreprocFromString(const char* li
 
     return dirc;
 }
+#endif
 
 #include <stdio.h>
 
