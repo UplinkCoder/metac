@@ -354,6 +354,8 @@ void Repl_Init(repl_state_t* self)
 
     MetaCLexer_Init(&self->lexer);
 
+    MetaCPreProcessor_Init(&self->preProcessor, &g_lineLexer, 0, 0);
+
     MetaCSemantic_Init(&self->sema, &g_lineParser, 0);
     MetaCSemantic_PushNewScope(&self->sema, scope_parent_module, 1);
 

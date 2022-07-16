@@ -2164,6 +2164,28 @@ decl_parameter_list_t ParseParameterList(metac_parser_t* self,
 static stmt_block_t* MetaCParser_ParseBlockStatement(metac_parser_t* self,
                                                      metac_statement_t* parent,
                                                      metac_statement_t* prev);
+void EatAttributes(metac_parser_t* self)
+{
+    while(MetaCParser_PeekMatch(self, tok_kw___attribute__, 1))
+    {
+        MetaCParser_Match(self, tok_kw___attribute__);
+        MetaCParser_Match(self, tok_lParen);
+        MetaCParser_Match(self, tok_lParen);
+        metac_token_t *currentToken =
+            MetaCParser_PeekToken(self, 1);
+
+        while(currentToken && currentToken->TokenType != tok_rParen)
+        {
+            MetaCParser_Match(self, currentToken->TokenType);
+        }
+
+        if (currentToken)
+        {
+            MetaCParser_Match(self, tok_rParen);
+            MetaCParser_Match(self, tok_rParen);
+        }
+    }
+}
 
 decl_function_t* ParseFunctionDeclaration(metac_parser_t* self, decl_type_t* type)
 {
@@ -2182,6 +2204,9 @@ decl_function_t* ParseFunctionDeclaration(metac_parser_t* self, decl_type_t* typ
     decl_parameter_list_t parameterList = ParseParameterList(self, funcDecl);
     funcDecl->Parameters = parameterList.List;
     funcDecl->ParameterCount = parameterList.ParameterCount;
+
+    // eat attributes here
+    EatAttributes(self);
 
     if (MetaCParser_PeekMatch(self, tok_lBrace, true))
     {

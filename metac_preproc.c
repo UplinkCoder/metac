@@ -88,13 +88,19 @@ static inline int32_t MetaCPreProcessor_EvalExp(metac_preprocessor_t* self,
         {
             result = (e1 % e2);
         } break;
-        case exp_and:
         case exp_andand:
+        {
+            result = (e1 && e2);
+        } break;
+        case exp_and:
         {
             result = (e1 & e2);
         } break;
-        case exp_or:
         case exp_oror:
+        {
+            result = (e1 || e2);
+        } break;
+        case exp_or:
         {
             result = (e1 | e2);
         } break;
@@ -163,7 +169,7 @@ static inline int32_t MetaCPreProcessor_EvalExp(metac_preprocessor_t* self,
                 definedIdPtr = e2->IdentifierPtr;
                 LhandleDefined:
                 {
-
+                    printf("defined(%s)\n", IdentifierPtrToCharPtr(&self->Lexer->IdentifierTable, definedIdPtr));
                 }
             }
             else
@@ -179,7 +185,11 @@ void MetaCPreProcessor_Init(metac_preprocessor_t *self, metac_lexer_t* lexer,
                             metac_file_storage_t* fs, const char* filepath)
 {
     self->FileStorage = fs;
-    self->File = MetaCFileStorage_LoadFile(fs, filepath);
+    if (filepath)
+        self->File = MetaCFileStorage_LoadFile(fs, filepath);
+    IdentifierTableInit(&self->DefineTable, IDENTIFIER_LENGTH_SHIFT, 7);
+    self->Lexer = lexer;
+    printf("Initialized preproc\n");
 }
 #include "metac_array.h"
 
