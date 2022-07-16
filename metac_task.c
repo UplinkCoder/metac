@@ -11,7 +11,7 @@
 #if defined(_MSC_VER) || defined(__STDC_NO_THREADS__)
 #  include "3rd_party/tinycthread/tinycthread.c"
 #else
-# include <threads.h>
+#  include <threads.h>
 #endif
 
 #ifndef KILOBYTE

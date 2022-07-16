@@ -860,7 +860,12 @@ static inline void PrintExpression(metac_printer_t* self, metac_expression_t* ex
         PrintExpression(self, exp->E1);
         PrintChar(self, '(');
 
-        for(exp_argument_t* arg = (exp_argument_t*)exp->E2;
+        PrintExpression(self, exp->E2);
+        PrintChar(self, ')');
+    }
+    else if (exp->Kind == exp_argument)
+    {
+        for(exp_argument_t* arg = (exp_argument_t*)exp;
             arg != emptyPointer;
             arg = arg->Next)
         {
@@ -868,7 +873,6 @@ static inline void PrintExpression(metac_printer_t* self, metac_expression_t* ex
             if (arg->Next != emptyPointer)
                 PrintString(self, ", ", 2);
         }
-        PrintChar(self, ')');
     }
     else if (exp->Kind == exp_index)
     {

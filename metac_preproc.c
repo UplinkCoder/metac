@@ -8,7 +8,8 @@
 #include "libinterpret/backend_interface_funcs.h"
 
 static inline int32_t MetaCPreProcessor_EvalExp(metac_preprocessor_t* self,
-                                                metac_expression_t* e)
+                                                metac_expression_t* e,
+                                                metac_parser_t* parser)
 {
 
     int32_t result;
@@ -19,7 +20,7 @@ static inline int32_t MetaCPreProcessor_EvalExp(metac_preprocessor_t* self,
 
     if (IsBinaryExp(op))
     {
-        e1 = MetaCPreProcessor_EvalExp(self, e->E1);
+        e1 = MetaCPreProcessor_EvalExp(self, e->E1, parser);
         if (op == exp_oror)
         {
             if (e1)
@@ -29,11 +30,12 @@ static inline int32_t MetaCPreProcessor_EvalExp(metac_preprocessor_t* self,
             if (!e1)
                 return false;
         }
-        e2 = MetaCPreProcessor_EvalExp(self, e->E2);
+        e2 = MetaCPreProcessor_EvalExp(self, e->E2, parser);
     }
 
 
     printf("op: %s\n", MetaCExpressionKind_toChars(op));
+    metac_identifier_ptr_t definedIdPtr;
     switch(op)
     {
         default : {
@@ -108,8 +110,17 @@ static inline int32_t MetaCPreProcessor_EvalExp(metac_preprocessor_t* self,
         {
             result = (e1 >> e2);
         } break;
-        case exp_variable:
         case exp_identifier:
+            if (e->IdentifierKey == defined_key)
+            {
+
+                break;
+            }
+            else
+            {
+                printf("e->IdentifierKey %x\n", e->IdentifierKey);
+            }
+        case exp_variable:
         {
             // this should not happen
             assert(0);
@@ -117,19 +128,19 @@ static inline int32_t MetaCPreProcessor_EvalExp(metac_preprocessor_t* self,
 
         case exp_paren:
         {
-            result = MetaCPreProcessor_EvalExp(self, e->E1);
+            result = MetaCPreProcessor_EvalExp(self, e->E1, parser);
         } break;
         case exp_compl:
         {
-            result = ~MetaCPreProcessor_EvalExp(self, e->E1);
+            result = ~MetaCPreProcessor_EvalExp(self, e->E1, parser);
         } break;
         case exp_not:
         {
-            result = !MetaCPreProcessor_EvalExp(self, e->E1);
+            result = !MetaCPreProcessor_EvalExp(self, e->E1, parser);
         } break;
         case exp_umin:
         {
-            result = -MetaCPreProcessor_EvalExp(self, e->E1);
+            result = -MetaCPreProcessor_EvalExp(self, e->E1, parser);
         } break;
         case exp_post_increment:
         {
@@ -141,16 +152,24 @@ static inline int32_t MetaCPreProcessor_EvalExp(metac_preprocessor_t* self,
             if (e->E1->Kind == exp_identifier ||
                 e->E1->IdentifierKey == defined_key)
             {
-                printf("found defined: %x\n", e->E1->IdentifierKey);
-                exp_argument_t* args = e->E2->ArgumentList;
+                exp_argument_t* args = (exp_argument_t*)e->E2;
                 metac_expression_t* e2 = args->Expression;
-                //printf("args.expression: %s\n",
-                //    MetaCPrinter_PrintExpression(parser->DebugPrinter,
-                //                                 args->Expression));
+                // this if makes sure there is only one "argument" to defiend()
+                if (args->Next != emptyPointer)
+                    goto LcallInEval;
+                if (e2->Kind != exp_identifier)
+                    goto LcallInEval;
+
+                definedIdPtr = e2->IdentifierPtr;
+                LhandleDefined:
+                {
+
+                }
             }
             else
             {
-                printf("function call in preprocessor directive\n");
+            LcallInEval:
+                  printf("single Identifier expected after defined(\n");
             }
         } break;
     }
@@ -162,12 +181,86 @@ void MetaCPreProcessor_Init(metac_preprocessor_t *self, metac_lexer_t* lexer,
     self->FileStorage = fs;
     self->File = MetaCFileStorage_LoadFile(fs, filepath);
 }
+#include "metac_array.h"
+
+#define PARAM_MASK(COUNT) (COUNT & ((1 << 31) - 1))
 
 void MetaCPreProcessor_Define(metac_preprocessor_t *self, metac_parser_t* parser)
 {
-    metac_token_t* defineName = MetaCParser_PeekToken(parser, 1);
-    //defineName.IdentifierKey
-    //GetOrAddIdentifier(&self->DefineTable, )
+    metac_token_t* defineName = MetaCParser_Match(parser, tok_identifier);
+    bool isMacro = MetaCParser_PeekMatch(parser, tok_lParen, 1);
+
+    DEF_STACK_ARRAY(metac_identifier_ptr_t, macroParameter, 16);
+
+    DEF_STACK_ARRAY(metac_token_t, defineBodyToken, 64);
+
+    if (isMacro)
+    {
+        MetaCParser_Match(parser, tok_lParen);
+        while(MetaCParser_PeekMatch(parser, tok_identifier, 1))
+        {
+
+            ADD_STACK_ARRAY(macroParameter,
+                MetaCParser_Match(parser, tok_identifier)->IdentifierPtr);
+
+            if (MetaCParser_PeekMatch(parser, tok_comma, 1))
+            {
+                MetaCParser_Match(parser, tok_comma);
+            }
+        }
+        if (MetaCParser_PeekMatch(parser, tok_dotdotdot, 1))
+        {
+            macroParameterCount |= (1 << 31);
+            MetaCParser_Match(parser, tok_dotdotdot);
+        }
+        MetaCParser_Match(parser, tok_rParen);
+
+    }
+
+    uint32_t definedNameLength = defineName->IdentifierKey >> IDENTIFIER_LENGTH_SHIFT;
+    printf("length: %u\n", definedNameLength);
+    const char* defineNameChars =
+        IdentifierPtrToCharPtr(&parser->Lexer->IdentifierTable,
+                               defineName->IdentifierPtr);
+
+    printf("define %s with %u parameters\n", defineNameChars,
+                                             PARAM_MASK(macroParameterCount));
+    MetaCPrinter_Reset(&parser->DebugPrinter);
+/*
+    if (macroParameterCount)
+    {
+        printf("(");
+        for(uint32_t p = 0; p < PARAM_MASK(macroParameterCount) - 1; p++)
+        {
+            metac_identifier_ptr_t paramId = macroParameter[p];
+            const char* pStr =
+                IdentifierPtrToCharPtr(&parser->Lexer->IdentifierTable, paramId);
+            printf("%s, ", pStr);
+        }
+        const char* pStr =
+            IdentifierPtrToCharPtr(&parser->Lexer->IdentifierTable, macroParameter[PARAM_MASK(macroParameterCount) - 1]);
+        printf("%s)\n", pStr);
+    }
+*/
+    uint32_t hash = crc32c(~0, defineNameChars, definedNameLength);
+    uint32_t defineKey = IDENTIFIER_KEY(hash, definedNameLength);
+
+    metac_identifier_ptr_t defineIdPtr =
+        GetOrAddIdentifier(&self->DefineTable, defineKey, defineNameChars);
+
+    metac_token_t* currentToken;
+    uint32_t peek1 = 1;
+    for(;;)
+    {
+        const char* s = 0;
+
+        currentToken = MetaCParser_PeekToken(parser, peek1++);
+        if (!currentToken) break;
+        MetaCPrinter_Reset(&parser->DebugPrinter);
+
+        printf("%s\n" , MetaCTokenEnum_toChars(currentToken->TokenType));
+    }
+    //COPY_STACK_ARRAY()
 }
 
 
@@ -248,7 +341,7 @@ uint32_t MetaCPreProcessor_Eval(metac_preprocessor_t* self, struct metac_parser_
         printf("#eval %s\n", exp_string);
         MetaCPrinter_Reset(&parser->DebugPrinter);
 
-        return MetaCPreProcessor_EvalExp(self, exp);
+        return MetaCPreProcessor_EvalExp(self, exp, parser);
 /*
         switch (tok->TokenType)
         {
