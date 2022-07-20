@@ -42,12 +42,6 @@ worker_context_t* CurrentWorker()
     return threadContext;
 }
 
-metac_file_storage_t* Worker_GetFileStorage(worker_context_t* worker)
-{
-    return &worker->FileStorage;
-}
-
-
 void Taskqueue_Init(taskqueue_t* queue)
 {
     queue->QueueMemory = cast(task_t (*)[1024])
@@ -206,7 +200,7 @@ void RunWorkerThread(worker_context_t* worker, void (*specialFunc)(),  void* spe
     worker->WorkerMain = threadFiber;
 
     Taskqueue_Init(&worker->Queue);
-    FileStorage_Init(&worker->FileStorage, 0);
+    //FileStorage_Init(&worker->FileStorage, 0);
 
     aco_t* specialFiber = 0;
     if (specialFunc)

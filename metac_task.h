@@ -1,12 +1,14 @@
 #ifndef _METAC_TASK_H_
 #define _METAC_TASK_H_
-#ifndef NO_FIBERS
+
+#ifdef NO_FIBERS
+#  error "Tasks don't wotk without fibers at the moment"
+#endif
 
 #include "compat.h"
 #include "3rd_party/tinycthread/tinycthread.h"
 #include "metac_coro.h"
 #include "3rd_party/rwlock.h"
-#include "metac_file.h"
 
 #define FIBERS_PER_WORKER 32
 #define TASK_PAGE_SIZE 4096
@@ -173,13 +175,12 @@ typedef struct worker_context_t
     volatile uint32_t Flags;
 
     thrd_t Thread;
-    metac_file_storage_t FileStorage;
     aco_t* WorkerMain;
     fiber_pool_t* FiberPool;
 } worker_context_t;
 
 
-metac_file_storage_t* Worker_GetFileStorage(worker_context_t* worker);
+// metac_file_storage_t* Worker_GetFileStorage(worker_context_t* worker);
 
 typedef struct tasksystem_t
 {
@@ -199,8 +200,6 @@ bool TaskQueue_Push(taskqueue_t* self, task_t* taskP);
 /// writes a task into the memory taskP points to
 /// the queue slot is considered empty after this
 bool TaskQueue_Pull(taskqueue_t* self, task_t* taskP);
-
-#endif // NO FIBERS
 #endif
 
 #define CAT2(A, B) \

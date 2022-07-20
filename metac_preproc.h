@@ -62,7 +62,7 @@ typedef struct metac_preprocessor_t
 void MetaCPreProcessor_Init(metac_preprocessor_t *self, metac_lexer_t* lexer,
                             metac_file_storage_t* fs, const char* filepath);
 
-bool MetaCPreProcessor_IsDefine(metac_preprocessor_t* self,
-                                uint32_t identifierKey, const char* identifier);
+metac_identifier_ptr_t MetaCPreProcessor_GetDefineIdPtr(metac_preprocessor_t* self,
+                                                        uint32_t identifierKey, const char* identifier);
 
 #endif

@@ -430,8 +430,8 @@ LswitchMode:
                 repl->parseMode = parse_mode_file;
                 const char* filename = repl->line + 3;
                 printf("querying fileStorage");
-                metac_file_storage_t* fs = Worker_GetFileStorage(worker);
-                metac_file_ptr_t f = MetaCFileStorage_LoadFile(fs, filename);
+                // metac_file_storage_t* fs = Global_GetFileStorage(worker);
+                // metac_file_ptr_t f = MetaCFileStorage_LoadFile(fs, filename);
             } break;
             case 'l' :
             {

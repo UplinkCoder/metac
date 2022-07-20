@@ -7,6 +7,18 @@
 #include "libinterpret/bc_common.h"
 #include "libinterpret/backend_interface_funcs.h"
 
+metac_expression_t* MetaCPreProcessor_ResolveDefineToExp(metac_preprocessor_t* self,
+                                                         metac_identifier_ptr_t definedIdPtr)
+{
+    assert(definedIdPtr.v);
+    metac_expression_t* result = 0;
+
+    metac_parser_t defineParser;
+    MetaCParser_Init(&defineParser);
+    defineParser.Preprocessor = self;
+
+}
+
 static inline int32_t MetaCPreProcessor_EvalExp(metac_preprocessor_t* self,
                                                 metac_expression_t* e,
                                                 metac_parser_t* parser)
@@ -117,15 +129,24 @@ static inline int32_t MetaCPreProcessor_EvalExp(metac_preprocessor_t* self,
             result = (e1 >> e2);
         } break;
         case exp_identifier:
-            if (e->IdentifierKey == defined_key)
+        {
+            char* identifierChars =
+                IdentifierPtrToCharPtr(&parser->IdentifierTable, e->IdentifierPtr);
+            metac_identifier_ptr_t defineIdPtr;
+            definedIdPtr =
+                MetaCPreProcessor_GetDefineIdPtr(self, e->IdentifierKey, identifierChars);
+            metac_expression_t* resolved = 0;
+            if (defineIdPtr.v)
             {
-
-                break;
+                resolved = MetaCPreProcessor_ResolveDefineToExp(self, definedIdPtr);
+                result = resolved ? MetaCPreProcessor_EvalExp(self, resolved, parser) : 0;
             }
             else
             {
-                printf("e->IdentifierKey %x\n", e->IdentifierKey);
+                result = 0;
             }
+        }
+        break;
         case exp_variable:
         {
             // this should not happen
@@ -274,19 +295,19 @@ void MetaCPreProcessor_Define(metac_preprocessor_t *self, metac_parser_t* parser
 }
 
 
-bool MetaCPreProcessor_IsDefine(metac_preprocessor_t* self,
-                                uint32_t identifierKey, const char* identifier)
+metac_identifier_ptr_t MetaCPreProcessor_GetDefineIdPtr(metac_preprocessor_t* self,
+                                                        uint32_t identifierKey, const char* identifier)
 {
-    bool result = false;
+    metac_identifier_ptr_t result = {0};
 
     if (self->Parent)
     {
-         result = MetaCPreProcessor_IsDefine(&self->Parent->DefineTable, identifierKey, identifier);
+         result = MetaCPreProcessor_GetDefineIdPtr(self->Parent, identifierKey, identifier);
     }
 
-    if(!result)
+    if(!result.v)
     {
-        result = IsIdentifierInTable(&self->DefineTable, identifierKey, identifier).v != 0;
+        result = IsIdentifierInTable(&self->DefineTable, identifierKey, identifier);
     }
 
     return result;
@@ -305,17 +326,22 @@ void MetaCPreProcessor_FastIncludeScan(metac_preprocessor_t* self)
     uint32_t HashOffsetsCapacity = ARRAY_SIZE(HashOffsets);
 
     {
+        uint32_t lastNewlinePos = 0;
         uint32_t scanPos = 0;
         uint32_t scanLeft = fileBuffer.Length;
 
         for(;;) {
             const char* result =
-                cast(const char*) memchr(fileBuffer.Data + scanPos, '#', scanLeft);
+                cast(const char*) memchr(fileBuffer.Data + lastNewlinePos, '#', scanLeft);
             if (result != 0)
             {
+/*
+                const char* nextNewline =
+                   cast(const char*) (fileBuffer.Data + lastNewlinePos, '#', scanLeft);
+*/
                 uint32_t hashOffset = cast(uint32_t)(result - fileBuffer.Data);
                 HashOffsets[HashOffsetsCount++] = hashOffset;
-                uint32_t advance = (hashOffset - scanPos) + 1;
+                uint32_t advance = (hashOffset - lastNewlinePos) + 1;
                 scanPos += advance;
                 scanLeft -= advance;
                 printf("HashOffset: %u\n", hashOffset);
