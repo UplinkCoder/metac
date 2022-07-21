@@ -356,7 +356,7 @@ void VariableStore_Init(variable_store_t* self)
     self->Variables = (variable_t*)
         malloc(sizeof(variable_t) * self->VariableCapacity);
 
-    IdentifierTableInit(&self->Table, IDENTIFIER_LENGTH_SHIFT, 9);
+    IdentifierTable_Init(&self->Table, IDENTIFIER_LENGTH_SHIFT, 9);
 }
 
 metac_identifier_ptr_t IdentifierPtrFromDecl(metac_declaration_t* decl)

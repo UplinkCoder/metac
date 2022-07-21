@@ -208,18 +208,21 @@ void MetaCPreProcessor_Init(metac_preprocessor_t *self, metac_lexer_t* lexer,
     self->FileStorage = fs;
     if (filepath)
         self->File = MetaCFileStorage_LoadFile(fs, filepath);
-    IdentifierTableInit(&self->DefineTable, IDENTIFIER_LENGTH_SHIFT, 7);
+    IdentifierTable_Init(&self->DefineTable, IDENTIFIER_LENGTH_SHIFT, 7);
     self->Lexer = lexer;
     printf("Initialized preproc\n");
 }
 #include "metac_array.h"
 
-#define PARAM_MASK(COUNT) (COUNT & ((1 << 31) - 1))
-
-void MetaCPreProcessor_Define(metac_preprocessor_t *self, metac_parser_t* parser)
+metac_preprocessor_define_t
+MetaCPreProcessor_ParseDefine(metac_preprocessor_t *self, metac_parser_t* parser)
 {
     metac_token_t* defineName = MetaCParser_Match(parser, tok_identifier);
     bool isMacro = MetaCParser_PeekMatch(parser, tok_lParen, 1);
+
+    bool isVariadic = false;
+    /// macro contains ##
+    bool hasPaste = false;
 
     DEF_STACK_ARRAY(metac_identifier_ptr_t, macroParameter, 16);
 
@@ -241,7 +244,7 @@ void MetaCPreProcessor_Define(metac_preprocessor_t *self, metac_parser_t* parser
         }
         if (MetaCParser_PeekMatch(parser, tok_dotdotdot, 1))
         {
-            macroParameterCount |= (1 << 31);
+            isVariadic |= true;
             MetaCParser_Match(parser, tok_dotdotdot);
         }
         MetaCParser_Match(parser, tok_rParen);
@@ -249,13 +252,13 @@ void MetaCPreProcessor_Define(metac_preprocessor_t *self, metac_parser_t* parser
     }
 
     uint32_t definedNameLength = defineName->IdentifierKey >> IDENTIFIER_LENGTH_SHIFT;
-    printf("length: %u\n", definedNameLength);
+
     const char* defineNameChars =
         IdentifierPtrToCharPtr(&parser->Lexer->IdentifierTable,
                                defineName->IdentifierPtr);
 
     printf("define %s with %u parameters\n", defineNameChars,
-                                             PARAM_MASK(macroParameterCount));
+                                             macroParameter.Count);
     MetaCPrinter_Reset(&parser->DebugPrinter);
 /*
     if (macroParameterCount)
@@ -281,17 +284,49 @@ void MetaCPreProcessor_Define(metac_preprocessor_t *self, metac_parser_t* parser
 
     metac_token_t* currentToken;
     uint32_t peek1 = 1;
+
     for(;;)
     {
         const char* s = 0;
 
         currentToken = MetaCParser_PeekToken(parser, peek1++);
         if (!currentToken) break;
-        MetaCPrinter_Reset(&parser->DebugPrinter);
 
-        printf("%s\n" , MetaCTokenEnum_toChars(currentToken->TokenType));
+        if (currentToken->TokenType == tok_identifier)
+        {
+            for(uint32_t i = 0; i < macroParameter.Count; i++)
+            {
+                if (currentToken->IdentifierPtr.v == macroParameter.Ptr[i].v)
+                {
+                    metac_token_t tok = *currentToken;
+                    tok.TokenType = tok_macro_parameter;
+                    tok.MacroParameterIndex = i;
+                    ADD_STACK_ARRAY(defineBodyToken, tok);
+                    goto Lbreak;
+                }
+            }
+            goto LaddToken;
+            Lbreak:{}
+        }
+        else
+        {
+            if (currentToken->TokenType == tok_hashhash)
+                hasPaste |= 1;
+        LaddToken:
+            ADD_STACK_ARRAY(defineBodyToken, *currentToken);
+        }
+        MetaCPrinter_Reset(&parser->DebugPrinter);
     }
-    //COPY_STACK_ARRAY()
+    PERSIST_STACK_ARRAY(defineBodyToken);
+
+    metac_preprocessor_define_t result;
+    result.loc = LocationFromToken(parser, defineName);
+    result.DefineName = defineIdPtr;
+    result.ParameterCount = macroParameter.Count;
+    result.IsVariadic = isVariadic;
+    result.HasPaste = hasPaste;
+
+    return result;
 }
 
 

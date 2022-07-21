@@ -39,7 +39,7 @@ const char* IdentifierPtrToCharPtr(const metac_identifier_table_t* table,
     return table->StringMemory + (ptr.v - 4);
 }
 
-void IdentifierTableInit(metac_identifier_table_t* table, uint32_t lengthShift, uint32_t slotCountLog2)
+void IdentifierTable_Init(metac_identifier_table_t* table, uint32_t lengthShift, uint32_t slotCountLog2)
 {
     table->SlotCount_Log2 = slotCountLog2;
     const uint32_t maxSlots = (1 << table->SlotCount_Log2);

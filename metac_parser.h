@@ -82,6 +82,9 @@ typedef struct metac_parser_t
 
     metac_location_storage_t LocationStorage;
 
+#ifdef METAC_REPL
+    task_t* ReplTask;
+#endif
     metac_printer_t DebugPrinter;
 
     metac_identifier_ptr_t SpecialNamePtr_Compiler;
@@ -115,7 +118,7 @@ metac_preprocessor_directive_t MetaCParser_ParsePreproc(metac_parser_t* self,
     (MetaCParser_Match_((SELF), (TYPE), __FILE__, __LINE__))
 
 metac_token_t* MetaCParser_Match_(metac_parser_t* self, metac_token_enum_t type,
-                                 const char* filename, uint32_t lineNumber);
+                                  const char* filename, uint32_t lineNumber);
 
 const char* MetaCNodeKind_toChars(metac_node_kind_t type);
 #endif

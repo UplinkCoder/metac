@@ -47,17 +47,62 @@ typedef enum metac_preprocessor_directive_t
     pp_eval
 } metac_preprocessor_directive_t;
 
+typedef struct metac_preprocessor_define_ptr_t
+{
+    uint32_t v;
+} metac_preprocessor_define_ptr_t;
+
+typedef struct metac_define_table_slot_t
+{
+    uint32_t HashKey;
+    metac_preprocessor_define_ptr_t DefinePtr;
+
+#ifdef REFCOUNT
+    uint32_t RefCount;
+    uint32_t Displacement;
+#endif
+} metac_define_table_slot_t;
+
+
+typedef struct metac_preprocessor_define_t
+{
+    metac_location_t loc;
+
+    metac_identifier_ptr_t DefineName;
+    uint32_t ParameterCount : 30;
+    bool IsVariadic : 1;
+    bool HasPaste : 1;
+} metac_preprocessor_define_t;
+
+typedef struct metac_define_table_t
+{
+    metac_define_table_slot_t* Slots;
+
+    char* StringMemory;
+    uint32_t StringMemorySize;
+    uint32_t StringMemoryCapacity;
+
+    uint32_t SlotCount_Log2;
+    uint32_t SlotsUsed;
+
+    uint32_t LengthShift;
+    uint32_t MaxDisplacement;
+
+    metac_preprocessor_define_t* defineMemory;
+    uint32_t DefineMemorySize;
+    uint32_t DefineMemoryCapacity;
+} metac_define_table_t;
+
 typedef struct metac_preprocessor_t
 {
     metac_file_storage_t* FileStorage;
     metac_lexer_t* Lexer;
-    metac_identifier_table_t DefineTable;
+    metac_define_table_t DefineTable;
     struct metac_preprocessor_t* Parent;
 
     /// the file we are running the preprocessor on
     metac_file_ptr_t File;
 } metac_preprocessor_t;
-
 
 void MetaCPreProcessor_Init(metac_preprocessor_t *self, metac_lexer_t* lexer,
                             metac_file_storage_t* fs, const char* filepath);

@@ -56,8 +56,8 @@ static inline void InitSpecialIdentifier(metac_parser_t* self)
 void MetaCParser_Init(metac_parser_t* self)
 {
     self->CurrentTokenIndex = 0;
-    IdentifierTableInit(&self->IdentifierTable, IDENTIFIER_LENGTH_SHIFT, 13);
-    IdentifierTableInit(&self->StringTable, STRING_LENGTH_SHIFT, 13);
+    IdentifierTable_Init(&self->IdentifierTable, IDENTIFIER_LENGTH_SHIFT, 13);
+    IdentifierTable_Init(&self->StringTable, STRING_LENGTH_SHIFT, 13);
 
     self->PackStackCapacity = 8;
     self->PackStack = (uint16_t*)

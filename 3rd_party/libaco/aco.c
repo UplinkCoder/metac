@@ -193,6 +193,14 @@ static aco_cofuncp_t aco_gtls_last_word_fp = aco_default_protector_last_word;
     #error "platform no support yet"
 #endif
 #endif
+
+void aco_global_init(void)
+{
+#ifndef HAS_TLS
+    tss_create(&aco_tss_key_co, NULL);
+#endif
+}
+
 void aco_thread_init(aco_cofuncp_t last_word_co_fp){
     aco_save_fpucw_mxcsr(aco_gtls_fpucw_mxcsr);
 

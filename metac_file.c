@@ -103,8 +103,8 @@ void FileStorage_Init(metac_file_storage_t* self, metac_filesystem_t* fs)
 {
 //    printf("Initializng file storage for worker.Storage: %p\n",
 //        cast(void*)CurrentWorker()->FileStorage);
-    IdentifierTableInit(&self->Filenames, IDENTIFIER_LENGTH_SHIFT, 9);
-    IdentifierTableInit(&self->Paths, IDENTIFIER_LENGTH_SHIFT, 9);
+    IdentifierTable_Init(&self->Filenames, IDENTIFIER_LENGTH_SHIFT, 9);
+    IdentifierTable_Init(&self->Paths, IDENTIFIER_LENGTH_SHIFT, 9);
 
     if (!fs)
     {

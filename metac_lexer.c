@@ -22,7 +22,13 @@ static inline metac_token_enum_t MetaCLexFixedLengthToken(const char _chrs[3])
         return tok_question;
 
     case '#':
-        return tok_hash;
+        switch(_chrs[1])
+        {
+        default:
+            return tok_hash;
+        case '#':
+            return tok_hashhash;
+        }
 
     case '@':
         return tok_at;
@@ -242,7 +248,6 @@ static inline metac_token_enum_t MetaCLexFixedLengthToken(const char _chrs[3])
         return tok_newline;
 
     }
-
 
     return tok_invalid;
 }

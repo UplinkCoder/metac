@@ -8,7 +8,7 @@
 #define MEMBER_INFIX(P, S) P ## Table # S
 #define ACCELERATOR "Table"
 #define ACCEL_SUFFIX Table
-#define ACCEL_INIT(A, B, C, D) IdentifierTableInit(&((A).B ## Table), C, D)
+#define ACCEL_INIT(A, B, C, D) IdentifierTable_Init(&((A).B ## Table), C, D)
 
 //#  define MEMBER_INIT(X) IdentifierTreeInit(## X ## ->IdentifierTree)
 
@@ -157,6 +157,7 @@ typedef struct metac_lexer_state_t
     M(tok_question) \
     \
     M(tok_hash) \
+    M(tok_hashhash) \
     M(tok_at) \
     \
     M(tok_lParen) \
@@ -204,6 +205,8 @@ typedef struct metac_lexer_state_t
     M(tok_char_uni) \
     M(tok_comment_single) \
     M(tok_comment_multi) \
+    \
+    M(tok_macro_parameter) \
     \
     FOREACH_STATIC_TOKEN(M) \
     \
@@ -260,6 +263,8 @@ typedef struct metac_token_t {
             uint32_t ValueLength;
         };
     };
+    // case tok_macro_parameter:
+    uint32_t MacroParameterIndex;
 } metac_token_t;
 
 typedef struct metac_token_buffer_t

@@ -2,9 +2,10 @@
 #include <stdlib.h>
 
 #define DEF_STACK_ARRAY(TYPE, NAME, STACK_DIM) \
-    TYPE NAME[STACK_DIM]; \
-    uint32_t NAME ## Count = 0; \
-    uint32_t NAME ## Capacity = ARRAY_SIZE(NAME);
+    TYPE _##NAME[STACK_DIM]; \
+    TYPE ## _array NAME = { _##NAME, 0, STACK_DIM };
+
+
 /*
 noinline void _newMemRealloc(void** memP, uint32_t* capacityP, const uint32_t elementSize)
 {
@@ -32,11 +33,38 @@ void _StackArrayRealloc(void** arrayPtr, uint32_t* arrayCapacityPtr,
 
 
 #define ADD_STACK_ARRAY(NAME, VALUE) \
-if (NAME ## Count >= NAME ## Capacity) \
+if (NAME.Count >= NAME.Capacity) \
 { \
-    if (ARRAY_SIZE(NAME) == NAME ## Capacity) \
-        _StackArrayRealloc((cast(void**)&NAME), &NAME ## Capacity, sizeof(NAME[0])); \
+    if (ARRAY_SIZE(_##NAME) == NAME.Capacity) \
+        _StackArrayRealloc((cast(void**)&NAME.Ptr), &NAME.Capacity, sizeof(_##NAME[0])); \
     else \
-        _newMemRealloc((cast(void**)&NAME), &NAME ## Capacity, sizeof(NAME[0])); \
+        _newMemRealloc((cast(void**)&NAME.Ptr), &NAME.Capacity, sizeof(_##NAME[0])); \
 } \
-NAME[NAME ## Count++] = VALUE;
+NAME.Ptr[NAME.Count++] = VALUE;
+
+#define PERSIST_STACK_ARRAY(NAME) \
+    if (NAME.Count < ARRAY_SIZE(_##NAME)) \
+    { \
+        void* ptr = malloc(sizeof(_##NAME[0]) * NAME.Count); \
+        memcpy(ptr, NAME.Ptr, sizeof(_##NAME[0]) * NAME.Count); \
+        NAME.Ptr = ptr; \
+        NAME.Capacity = NAME.Count; \
+    }
+
+#ifndef _METAC_ARRAY_H_
+#define _METAC_ARRAY_H_
+typedef struct metac_identifier_ptr_t_array
+{
+    metac_identifier_ptr_t* Ptr;
+    uint32_t Count;
+    uint32_t Capacity;
+} metac_identifier_ptr_t_array;
+
+typedef struct metac_token_t_array
+{
+    metac_token_t* Ptr;
+    uint32_t Count;
+    uint32_t Capacity;
+} metac_token_t_array;
+
+#endif

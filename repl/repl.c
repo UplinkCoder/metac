@@ -18,11 +18,11 @@ extern metac_lexer_t g_lineLexer;
 extern void LineLexerInit();
 
 #ifndef NO_FIBERS
-#ifdef HAS_TLS
-extern __thread worker_context_t *threadContext;
-#else
-extern worker_context_t *threadContext;
-#endif
+#  ifdef HAS_TLS
+    extern __thread worker_context_t *threadContext;
+#  else
+    extern worker_context_t *threadContext;
+#  endif
 #endif
 
 metac_statement_t* MetaCParser_ParseStatementFromString(const char* str);
@@ -605,7 +605,7 @@ LswitchMode:
                 }
                 else if (directive == pp_define)
                 {
-                    MetaCPreProcessor_Define(&repl->preProcessor, &g_lineParser);
+                    MetaCPreProcessor_ParseDefine(&repl->preProcessor, &g_lineParser);
                 }
                 goto LnextLine;
             }
@@ -923,7 +923,7 @@ void ReplMainFiber(void)
 
 int main(int argc, const char* argv[])
 {
-
+    aco_global_init();
 
 /*
     printf("Transfered decl: %s\n",
