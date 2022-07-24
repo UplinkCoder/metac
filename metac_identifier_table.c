@@ -20,11 +20,6 @@
 #  define TRACY_COUNTER(COUNTER)
 #endif
 
-#if defined(_MSC_VER) || defined (__TINYC__)
-#else
-#  define memcpy __builtin_memcpy
-#  define memcmp __builtin_memcmp
-#endif
 const metac_identifier_ptr_t empty_identifier = {~0u};
 
 static inline bool IsFilled(metac_identifier_table_slot_t slot)
@@ -198,7 +193,38 @@ void InsertSlot(slot_t* slots, slot_t slot, const uint32_t slotIndexMask)
         }
     }
 }
+/// returns slotIndex if key was found and -1 if it's not found
+int32_t MetaCIdentifierTable_HasKey(metac_identifier_table_t* table,
+                                    uint32_t key)
+{
+    int32_t result = -1;
 
+    const uint32_t slotIndexMask = ((1 << table->SlotCount_Log2) - 1);
+    const uint32_t initialSlotIndex = (key & slotIndexMask);
+    assert(slotIndexMask);
+    // if slotIndexMask is 0 most likely the table has not been initialized
+    // TracyCPlot("TargetIndex", initialSlotIndex);
+
+    for(
+        uint32_t slotIndex = initialSlotIndex;
+        (++slotIndex & slotIndexMask) != initialSlotIndex;
+    )
+    {
+        int32_t idx = cast(int32_t)((slotIndex - 1) & slotIndexMask);
+        metac_identifier_table_slot_t slot =
+            table->Slots[idx];
+
+        if (slot.HashKey == 0)
+            break;
+        else if (slot.HashKey == key)
+        {
+            result = idx;
+            break;
+        }
+    }
+
+    return result;
+}
 metac_identifier_ptr_t IsIdentifierInTable(metac_identifier_table_t* table,
                                            uint32_t key,
                                            const char* idChars)

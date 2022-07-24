@@ -128,14 +128,26 @@ static inline int TranslateIdentifiers(metac_node_t node, void* ctx)
     return 0;
 }
 
+typedef struct find_statement_context_t
+{
+    metac_printer_t* Printer;
+    metac_statement_kind_t Kind;
+} find_statement_context_t;
+
 static inline int FindStatementCb(metac_node_t node, void* ctx)
 {
+    find_statement_context_t* context =
+        (find_statement_context_t*) ctx;
     switch(cast(metac_statement_kind_t)node->Kind)
     {
         case stmt_if:
         {
             stmt_if_t* stmt_if = cast(stmt_if_t*) node;
-            printf("Found if statement: if (%s)", stmt_if->IfCond);
+            MetaCPrinter_Reset(context->Printer);
+            MetaCPrinter_PrintStatement(context->Printer, node);
+            const char* stmt_str =
+                context->Printer->StringMemory;
+            printf("Found if statement: if (%s)\n", stmt_str);
         } break;
     }
     return 0;
@@ -188,8 +200,8 @@ typedef struct repl_state_t
     char* srcBuffer;
     void* freePtr;
 
-    uint32_t lineSz;
-    uint32_t srcBufferLength;
+    int32_t lineSz;
+    int32_t srcBufferLength;
 
     metac_printer_t printer;
     variable_store_t vstore;
@@ -349,6 +361,7 @@ void Repl_Init(repl_state_t* self)
     g_lineLexer.LocationStorage.Locations =
         (metac_location_t*)malloc(128 * sizeof(metac_location_t));
     g_lineLexer.LocationStorage.LocationCapacity = 128;
+
     // make sure we know our special identifiers
     LineLexerInit();
 
@@ -384,7 +397,7 @@ void MetaCRepl_ExprSemantic_Task(task_t* task)
         (MetaCRepl_ExprSemantic_context_t*)
             task->Context;
 
-    metac_sema_expression_t* result;
+    metac_sema_expression_t* result = 0;
 
     ENQUEUE_TASK(result, MetaCSemantic_doExprSemantic_,
                  (&ctx->Repl->sema), ctx->Exp, 0);
@@ -410,7 +423,7 @@ LswitchMode:
 
     {
         repl->line = linenoise(repl->promt);
-        repl->lineSz = strlen(repl->line);
+        repl->lineSz = cast(int32_t) strlen(repl->line);
         linenoiseHistoryAdd(repl->line);
         TracyCMessage(repl->line, repl->lineSz)
     }
@@ -451,7 +464,7 @@ LswitchMode:
                 else
                 {
                     fseek(fd, 0, SEEK_END);
-                    uint32_t sz = ftell(fd);
+                    int32_t sz = cast(int32_t) ftell(fd);
                     fseek(fd, 0, SEEK_SET);
 
                     uint32_t estimatedTokenCount = (((sz / 5) + 128) & ~127);
@@ -596,7 +609,9 @@ LswitchMode:
                     _inlineTokens, 0, ARRAY_SIZE(_inlineTokens)
                 };
                 metac_preprocessor_directive_t directive =
-                    MetaCParser_ParsePreprocFromString(repl->line, &repl->preProcessor);
+                    MetaCParser_ParsePreprocFromString(repl->line, &repl->preProcessor, &buffer);
+
+                g_lineParser.Preprocessor = &repl->preProcessor;
 
                 if (directive == pp_eval)
                 {
@@ -605,8 +620,12 @@ LswitchMode:
                 }
                 else if (directive == pp_define)
                 {
-                    MetaCPreProcessor_ParseDefine(&repl->preProcessor, &g_lineParser);
+
+                    metac_preprocessor_define_ptr_t define =
+                        MetaCPreProcessor_ParseDefine(&repl->preProcessor, &g_lineParser);
                 }
+
+                g_lineParser.Preprocessor = 0;
                 goto LnextLine;
             }
 
@@ -833,7 +852,7 @@ LlexSrcBuffer: {}
                 const uint32_t token_length = MetaCTokenLength(token);
 #if 1
                 const uint32_t locPtr = token.LocationId;
-                const metac_location_t loc = repl->lexer.LocationStorage.Locations[locPtr - 4];
+                const metac_location_t loc = locPtr ? repl->lexer.LocationStorage.Locations[locPtr - 4] : (metac_location_t){0};
 
                 printf("read tokenType: %s {length: %d}\n Location: {Line: %d, Col: %d}",
                         MetaCTokenEnum_toChars(token.TokenType), token_length,

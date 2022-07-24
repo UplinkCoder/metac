@@ -2,7 +2,7 @@
 #include <stdlib.h>
 
 #define DEF_STACK_ARRAY(TYPE, NAME, STACK_DIM) \
-    TYPE _##NAME[STACK_DIM]; \
+    TYPE _##NAME[STACK_DIM] = {0}; \
     TYPE ## _array NAME = { _##NAME, 0, STACK_DIM };
 
 
@@ -66,5 +66,13 @@ typedef struct metac_token_t_array
     uint32_t Count;
     uint32_t Capacity;
 } metac_token_t_array;
+
+typedef struct metac_token_t_array_array
+{
+    metac_token_t_array* Ptr;
+    uint32_t Count;
+    uint32_t Capacity;
+} metac_token_t_array_array;
+
 
 #endif

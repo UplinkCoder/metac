@@ -63,14 +63,15 @@ void MetaCParser_Init(metac_parser_t* self)
     self->PackStack = (uint16_t*)
         calloc(sizeof(*self->PackStack), self->PackStackCapacity);
     self->PackStackTop = -1;
-
+/*
     self->Defines = self->inlineDefines;
     self->DefineCount = 0;
     self->DefineCapacity = ARRAY_SIZE(self->inlineDefines);
+*/
     self->LexerState = 0;
 
     self->BlockStatementStackCapacity = 16;
-    self->BlockStatementStackSize = 0;
+    self->BlockStatementStackCount = 0;
     self->BlockStatementStack = (stmt_block_t**)
         malloc(sizeof(stmt_block_t*) * self->BlockStatementStackCapacity);
 
@@ -140,7 +141,7 @@ metac_identifier_ptr_t RegisterString(metac_parser_t* self,
         return GetOrAddIdentifier(MEMBER_SUFFIX(&self->String),
                                   stringKey, string);
 }
-
+/*
 void AddDefine(metac_parser_t* self, metac_token_t* token, uint32_t nParameters)
 {
     metac_define_t define;
@@ -171,22 +172,93 @@ void AddDefine(metac_parser_t* self, metac_token_t* token, uint32_t nParameters)
 
     }
 }
+*/
+static inline bool MetaCParser_PeekMatch(metac_parser_t* self, metac_token_enum_t expectedType, bool optional)
+{
+    metac_token_t* peekToken =
+        MetaCParser_PeekToken(self, 1);
+    bool result = true;
+
+    metac_location_t loc = {0};
+    if (self->LexerState)
+    {
+        loc.StartLine = self->LexerState->Line;
+        loc.StartColumn = self->LexerState->Column;
+    }
+
+    if (!peekToken || peekToken->TokenType != expectedType)
+    {
+        result = false;
+        if (!optional)
+        {
+            ParseErrorF(loc, "expected %s but got %s",
+                MetaCTokenEnum_toChars(expectedType),
+                MetaCTokenEnum_toChars(peekToken ? peekToken->TokenType : tok_eof)
+            );
+        }
+    }
+
+    return result;
+}
+
+metac_token_t* MetaCPreProcessor_NextDefineToken(metac_preprocessor_t* self)
+{
+    assert(self->DefineTokenStackCount);
+
+    metac_token_t* result = 0;
+    metac_token_t_array tokens;
+Lbegin:
+     tokens =
+        self->DefineTokenStack[self->DefineTokenStackCount - 1];
+
+    uint32_t defineTokenIndex =
+        self->DefineTokenIndexStack[self->DefineTokenStackCount - 1]++;
+
+    printf("Do whatever we do in defines\n");
+
+    if (defineTokenIndex < tokens.Count)
+    {
+        result = &tokens.Ptr[defineTokenIndex];
+    }
+    else
+    {
+        if (--self->DefineTokenStackCount != 0)
+        {
+            goto Lbegin;
+        }
+    }
+
+    return result;
+}
 
 metac_token_t* MetaCParser_NextToken(metac_parser_t* self)
 {
-
 #define NextToken() \
     ((self->CurrentTokenIndex < self->Lexer->TokenSize) ? \
     self->Lexer->Tokens + self->CurrentTokenIndex++ : 0)
 
-#define PeekMatch(TOKEN_TYPE) \
-    ( ((result = NextToken()), (result && result->TokenType == TOKEN_TYPE)) ? \
-    ( result ) : ( self->CurrentTokenIndex--, (metac_token_t*)0) )
+#define PeekMatch(RESULT, TOKEN_TYPE) \
+    ( ((RESULT = NextToken()), (RESULT && RESULT->TokenType == TOKEN_TYPE)) ? \
+    ( RESULT = NextToken() ) : ( (RESULT = self->Lexer->Tokens + --self->CurrentTokenIndex - 1), (metac_token_t*)0) )
 
     metac_token_t* result = 0;
-    assert(self->Lexer->TokenSize);
-
+#ifdef NO_PREPROCESSOR
     result = NextToken();
+#else
+    metac_preprocessor_t* preProc = self->Preprocessor;
+
+    if (preProc && preProc->DefineTokenStackCount)
+    {
+        result = MetaCPreProcessor_NextDefineToken(preProc);
+        if (!result)
+            goto LnextToken;
+    }
+    else
+    {
+        assert(self->Lexer->TokenSize);
+    LnextToken:
+        result = NextToken();
+    }
 
     if(result)
     {
@@ -194,114 +266,107 @@ metac_token_t* MetaCParser_NextToken(metac_parser_t* self)
 
         if (result->TokenType == tok_identifier)
         {
-            metac_define_t* matchingDefine = 0;
-
             const uint32_t idKey = result->IdentifierKey;
-            for(uint32_t defineIdx = 0;
-                defineIdx < self->DefineCount;
-                defineIdx++)
-            {
-                metac_define_t* define = self->Defines + defineIdx;
+            metac_preprocessor_t* preProc = self->Preprocessor;
 
-                if (define->IdentifierKey == idKey)
-                {
-                    const char* defineString =
-                        IDENTIFIER_PTR(MEMBER_SUFFIX(&self->Identifier), *define);
-                    const char* IdString =
-                        IDENTIFIER_PTR(MEMBER_SUFFIX(&self->Lexer->Identifier), *result);
+            int32_t defineSlotIdx;
 
-                    if (!memcmp(IdString, defineString,
-                        LENGTH_FROM_IDENTIFIER_KEY(idKey)))
-                    {
-                        matchingDefine = define;
-                        break;
-                    }
-                }
-            }
-
-            if (matchingDefine)
-            {
-                const char* defineName =
-                        IDENTIFIER_PTR(MEMBER_SUFFIX(&self->Identifier), *matchingDefine);
-                // result = tok_plus;
-                printf("Define %s matched we should do something\n", defineName);
-            }
-        }
-/*
-        if (IsMacro(self, result))
-        {
-            HandleMacro(self, result);
-        }
-
-        else if(result && result->TokenType == tok_hash)
-        {
-            result = NextToken();
-            if (!result || result->TokenType != tok_identifier)
-            {
-LexpectedIdent:
-                ParseError(loc, "Expected Identifier after #");
-                return result;
-            }
-            if (result->TokenType == tok_identifier)
-            {
-                switch(result->IdentifierKey)
-                {
-                case define_key :
-                    result = NextToken();
-
-                    if(result->TokenType == tok_identifier)
-                    {
-                        metac_token_t* define_name = result;
-                        uint32_t define_idx = self->CurrentTokenIndex;
-                        result = NextToken();
-                        int nParameters = 0;
-                        const bool isMacro = (result->TokenType == tok_lParen);
-                        if (isMacro)
-                        {
-                            PeekMatch(tok_lParen);
-                            for (;;)
-                            {
-                                if (PeekMatch(tok_dotdotdot))
-                                {
-                                    nParameters |= (1 << 31);
-                                    if (!PeekMatch(tok_rParen))
-                                    {
-                                        ParseError(loc, "')' expected after ...");
-                                        return result;
-                                    }
-                                    break;
-                                }
-                                if (PeekMatch(tok_rParen))
-                                    break;
-
-                                if (!PeekMatch(tok_identifier))
-                                    goto LexpectedIdent;
-                                if (!PeekMatch(tok_comma))
-                                {
-                                    ParseErrorF(loc,
-                                        "Expected ',' after define parameter %s",
-                                        IDENTIFIER_PTR(MEMBER_SUFFIX(&self->Identifier),
-                                                       *result));
-                                    return result;
-                                }
-                                nParameters++;
-                            }
-                        }
-                        AddDefine(self, define_name, nParameters);
-                        result = NextToken();
-                    }
+            LcontinuePreprocSearch:
+            do {
+                defineSlotIdx = (
+                    preProc ?
+                    MetaCIdentifierTable_HasKey(&preProc->DefineIdentifierTable, idKey) :
+                    -1
+                );
+                if (defineSlotIdx != -1)
                     break;
-                default:
-                    ParseErrorF(loc, "Expected define ifdef endif or got: %s",
-                        IDENTIFIER_PTR(MEMBER_SUFFIX(&self->Identifier), *result));
+                preProc = preProc ? preProc->Parent : 0;
+            } while(preProc);
+
+            if (defineSlotIdx != -1)
+            {
+                const char* idChars = IdentifierPtrToCharPtr(&self->Lexer->IdentifierTable,
+                                                             result->IdentifierPtr);
+                metac_preprocessor_define_ptr_t matchingDefine = {0};
+
+                printf("Potential define Identifier: {'%s', 0x%x}\n",  idChars, idKey);
+
+                matchingDefine = MetaCPreProcessor_GetDefine(preProc, idKey, idChars);
+
+                if (!matchingDefine.v)
+                {
+                    preProc = preProc->Parent;
+                    goto LcontinuePreprocSearch;
                 }
+                metac_preprocessor_define_t define =
+                    self->Preprocessor->DefineTable.DefineMemory[matchingDefine.v - 4];
+                if ((define.ParameterCount > 0 || define.IsVariadic)
+                     && PeekMatch(result, tok_lParen)
+                )
+                {
+                    metac_token_t paramTokens[32];
+                    uint32_t paramTokenIndex = 0;
+                    uint32_t paramTokenCount = 0;
+                    uint32_t paramTokenCapacity = ARRAY_SIZE(paramTokens);
+
+                    DEF_STACK_ARRAY(metac_token_t_array, paramArrays, 32);
+
+                    uint32_t ParenDepth = 1;
+
+                    for(;;)
+                    {
+                        if (result->TokenType == tok_lParen)
+                            ParenDepth += 1;
+                        if (result->TokenType == tok_rParen)
+                            ParenDepth -= 1;
+
+                        if (ParenDepth == 0)
+                            break;
+
+                        printf("token := %s\n", MetaCTokenEnum_toChars(result->TokenType));
+                        if (ParenDepth == 1 && result->TokenType == tok_comma)
+                        {
+                            metac_token_t_array param = {
+                                paramTokens + paramTokenIndex,
+                                paramTokenCount - paramTokenIndex,
+                                paramTokenCount - paramTokenIndex
+                            };
+
+                            ADD_STACK_ARRAY(paramArrays, param);
+                            printf("Added paramTuple of %u tokens\n", paramTokenCount - paramTokenIndex);
+                            paramTokenIndex = paramTokenCount + 1;
+                            result = NextToken();
+                            continue;
+                        }
+
+                        if (paramTokenCount < paramTokenCapacity)
+                        {
+                            printf("[%u] Adding another token\n", paramTokenCount);
+                            paramTokens[paramTokenCount++] = *result;
+                            result = NextToken();
+                        }
+                        else
+                        {
+                            // TODO Realloc
+                            assert(0);
+                        }
+                    }
+
+                    assert(result->TokenType == tok_rParen);
+                }
+                // result = tok_plus;
+                printf("Define %s matched we should do something\n", IdentifierPtrToCharPtr(&self->Preprocessor->DefineIdentifierTable,
+                                                                                                define.DefineName));
+
             }
-        }*/
+        }
     }
     else
     {
         // TODO Error
     }
+
+#endif //NO_PREPROCESSOR
     if (result)
     {
         self->LastLocation = self->Lexer->LocationStorage.Locations[result->LocationId - 4];
@@ -319,7 +384,13 @@ metac_token_t* MetaCParser_PeekToken(metac_parser_t* self, int32_t p)
 {
     metac_token_t* result = 0;
     assert(self->Lexer->TokenSize);
-
+#ifndef NO_PREPROCESSOR
+    metac_preprocessor_t* preProc = self->Preprocessor;
+    if (preProc && preProc->DefineTokenStackCount)
+    {
+        printf("We should pull another token from the currentMacro\n");
+    }
+#endif
     if (cast(uint32_t)(self->CurrentTokenIndex + (p - 1)) < self->Lexer->TokenSize)
     {
         result = self->Lexer->Tokens + self->CurrentTokenIndex + (p - 1);
@@ -527,33 +598,6 @@ static inline void LexString(metac_lexer_t* lexer, const char* line)
     }
 }
 
-bool MetaCParser_PeekMatch(metac_parser_t* self, metac_token_enum_t expectedType, bool optional)
-{
-    metac_token_t* peekToken =
-        MetaCParser_PeekToken(self, 1);
-    bool result = true;
-
-    metac_location_t loc = {0};
-    if (self->LexerState)
-    {
-        loc.StartLine = self->LexerState->Line;
-        loc.StartColumn = self->LexerState->Column;
-    }
-
-    if (!peekToken || peekToken->TokenType != expectedType)
-    {
-        result = false;
-        if (!optional)
-        {
-            ParseErrorF(loc, "expected %s but got %s",
-                MetaCTokenEnum_toChars(expectedType),
-                MetaCTokenEnum_toChars(peekToken ? peekToken->TokenType : tok_eof)
-            );
-        }
-    }
-
-    return result;
-}
 
 static inline bool IsPostfixOperator(metac_token_enum_t t)
 {
@@ -1243,7 +1287,7 @@ metac_expression_t* MetaCParser_ParseUnaryExpression(metac_parser_t* self, parse
             wasParen = true;
             MetaCParser_Match(self, tok_lParen);
         }
-        result->E1 = MetaCParser_ParseExpression(self, (eflags & expr_flags_pp), 0);
+        result->E1 = MetaCParser_ParseExpression(self, cast(parse_expression_flags_t)(eflags & expr_flags_pp), 0);
         if (wasParen)
         {
             MetaCParser_Match(self, tok_rParen);
@@ -1271,7 +1315,8 @@ metac_expression_t* MetaCParser_ParseUnaryExpression(metac_parser_t* self, parse
         MetaCParser_Match(self, tok_minus);
         result = AllocNewExpression(exp_umin);
         //PushOperator(exp_addr);
-        result->E1 = MetaCParser_ParseExpression(self, expr_flags_unary | (eflags & expr_flags_pp), result);
+        result->E1 = MetaCParser_ParseExpression(self,
+			cast(parse_expression_flags_t)(expr_flags_unary | (eflags & expr_flags_pp)), result);
         result->Hash = CRC32C_VALUE(CRC32C_MINUS, result->E1->Hash);
     }
     else if (tokenType == tok_minusminus)
@@ -1279,7 +1324,8 @@ metac_expression_t* MetaCParser_ParseUnaryExpression(metac_parser_t* self, parse
         MetaCParser_Match(self, tok_minusminus);
         result = AllocNewExpression(exp_decrement);
         //PushOperator(exp_addr);
-        result->E1 = MetaCParser_ParseExpression(self, expr_flags_unary | (eflags & expr_flags_pp), result);
+        result->E1 = MetaCParser_ParseExpression(self,
+			cast(parse_expression_flags_t)(expr_flags_unary | (eflags & expr_flags_pp)), result);
         result->Hash = CRC32C_VALUE(CRC32C_MINUSMINUS, result->E1->Hash);
     }
     else if (tokenType == tok_plusplus)
@@ -1287,7 +1333,8 @@ metac_expression_t* MetaCParser_ParseUnaryExpression(metac_parser_t* self, parse
         MetaCParser_Match(self, tok_plusplus);
         result = AllocNewExpression(exp_increment);
         //PushOperator(exp_addr);
-        result->E1 = MetaCParser_ParseExpression(self, expr_flags_unary | (eflags & expr_flags_pp), result);
+        result->E1 = MetaCParser_ParseExpression(self,
+			cast(parse_expression_flags_t)(expr_flags_unary | (eflags & expr_flags_pp)), result);
         result->Hash = CRC32C_VALUE(CRC32C_PLUSPLUS, result->E1->Hash);
     }
     else if (tokenType == tok_and)
@@ -1313,14 +1360,16 @@ metac_expression_t* MetaCParser_ParseUnaryExpression(metac_parser_t* self, parse
     {
         MetaCParser_Match(self, tok_bang);
         result = AllocNewExpression(exp_not);
-        result->E1 = MetaCParser_ParseExpression(self, expr_flags_unary | eflags & expr_flags_pp, 0);
+        result->E1 = MetaCParser_ParseExpression(self,
+			cast(parse_expression_flags_t)(expr_flags_unary | (eflags & expr_flags_pp)), 0);
         result->Hash = CRC32C_VALUE(CRC32C_BANG, result->E1->Hash);
     }
     else if (tokenType == tok_cat)
     {
         MetaCParser_Match(self, tok_cat);
         result = AllocNewExpression(exp_compl);
-        result->E1 = MetaCParser_ParseExpression(self, expr_flags_unary | eflags & expr_flags_pp, 0);
+        result->E1 = MetaCParser_ParseExpression(self,
+			cast(parse_expression_flags_t)(expr_flags_unary | (eflags & expr_flags_pp)), 0);
         result->Hash = CRC32C_VALUE(
             crc32c_nozero(~0, "~", 1),
             result->E1->Hash
@@ -1575,7 +1624,7 @@ bool IsBinaryAssignExp(metac_expression_kind_t kind)
 {
    return (kind >= exp_add_ass && kind <= exp_rsh_ass);
 }
-#ifndef NO_PREPROC
+#ifndef NO_PREPROCESSOR
 /// returns the directive and places the tokens which follow it into
 /// the token buffer,
 metac_preprocessor_directive_t MetaCParser_ParsePreproc(metac_parser_t* self,
@@ -2882,7 +2931,7 @@ static inline void MetaCParser_PushBlockStatement(metac_parser_t* self,
                                                   stmt_block_t* stmt)
 {
     self->CurrentBlockStatement =
-        self->BlockStatementStack[self->BlockStatementStackSize++] = stmt;
+        self->BlockStatementStack[self->BlockStatementStackCount++] = stmt;
 }
 
 static inline void MetaCParser_PopBlockStatement(metac_parser_t* self,
@@ -2890,10 +2939,10 @@ static inline void MetaCParser_PopBlockStatement(metac_parser_t* self,
 {
     assert(stmt == self->CurrentBlockStatement);
 
-    if (--self->BlockStatementStackSize > 0)
+    if (--self->BlockStatementStackCount > 0)
     {
         self->CurrentBlockStatement =
-            self->BlockStatementStack[self->BlockStatementStackSize - 1];
+            self->BlockStatementStack[self->BlockStatementStackCount - 1];
     }
     else
         self->CurrentBlockStatement = 0;
@@ -2994,15 +3043,9 @@ void LineLexerInit(void)
     if (!g_lineParser.BlockStatementStack)
     {
         g_lineParser.BlockStatementStackCapacity = 8;
-        g_lineParser.BlockStatementStackSize = 0;
+        g_lineParser.BlockStatementStackCount = 0;
         g_lineParser.BlockStatementStack = (stmt_block_t**)
             malloc(sizeof(stmt_block_t*) * g_lineParser.BlockStatementStackCapacity);
-    }
-
-    if (!g_lineParser.Defines)
-    {
-        g_lineParser.Defines = g_lineParser.inlineDefines;
-        g_lineParser.DefineCapacity = ARRAY_SIZE(g_lineParser.inlineDefines);
     }
 
     if (!g_lineParser.DebugPrinter.StringMemory)
@@ -3011,6 +3054,8 @@ void LineLexerInit(void)
                           &g_lineParser.IdentifierTable,
                           &g_lineParser.StringTable);
     }
+
+    g_lineParser.Preprocessor = 0;
 }
 
 metac_expression_t* MetaCParser_ParseExpressionFromString(const char* exp)
@@ -3046,16 +3091,15 @@ metac_declaration_t* MetaCParser_ParseDeclarationFromString(const char* decl)
     return result;
 }
 #ifndef NO_PREPROC
-metac_preprocessor_directive_t MetaCParser_ParsePreprocFromString(const char* line,
+metac_preprocessor_directive_t MetaCParser_ParsePreprocFromString(const char* line, metac_preprocessor_t* preProc,
                                                                   metac_token_buffer_t* tokenBuffer)
 {
     LineLexerInit();
     LexString(&g_lineLexer, line);
 
-    metac_preprocessor_t preproc = {0};
-
-    metac_preprocessor_directive_t dirc = MetaCParser_ParsePreproc(&g_lineParser, &preproc, tokenBuffer);
-
+    g_lineParser.Preprocessor = preProc;
+    metac_preprocessor_directive_t dirc = MetaCParser_ParsePreproc(&g_lineParser, preProc, tokenBuffer);
+    g_lineParser.Preprocessor = 0;
     return dirc;
 }
 #endif

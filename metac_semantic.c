@@ -3,6 +3,7 @@
 #include "metac_alloc_node.h"
 #include "metac_target_info.h"
 #include "metac_default_target_info.h"
+#include "metac_atomic.h"
 #include "bsf.h"
 #include <stdlib.h>
 #include "crc32c.h"
@@ -103,14 +104,6 @@ typedef struct handoff_walker_context_t
 #define CRC32C_VALUE(HASH, VAL) \
     (crc32c_nozero(HASH, &(VAL), sizeof(VAL)))
 
-
-#ifndef ATOMIC
-#define POST_ADD(v, b) \
-    (v += b, v - b)
-#else
-#define POST_ADD(v, b)
-    (__sync_fetch_and_add(&v, b))
-#endif
 
 metac_sema_expression_t* AllocNewSemaExpression(metac_semantic_state_t* self, metac_expression_t* expr)
 {

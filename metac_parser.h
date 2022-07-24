@@ -22,11 +22,11 @@
 typedef enum parse_expression_flags_t
 {
     expr_flags_none,
-    expr_flags_call = (1 << 0),
-    expr_flags_unary = (1 << 1),
-    expr_flags_enum = (1 << 2),
-    expr_flags_type = (1 << 3),
-    expr_flags_addr = (1 << 4),
+    expr_flags_call   = (1 << 0),
+    expr_flags_unary  = (1 << 1),
+    expr_flags_enum   = (1 << 2),
+    expr_flags_type   = (1 << 3),
+    expr_flags_addr   = (1 << 4),
     expr_flags_sizeof = (1 << 5),
     expr_flags_pp     = (1 << 6),
 } parse_expression_flags_t;
@@ -52,13 +52,11 @@ typedef struct metac_parser_t
     uint32_t CurrentTokenIndex;
     metac_identifier_table_t IdentifierTable;
     metac_identifier_table_t StringTable;
-#ifndef NO_PREPROC
+
+#ifndef NO_PREPROCESSOR
     metac_preprocessor_t* Preprocessor;
 #endif
     metac_location_t LastLocation;
-    metac_define_t* Defines;
-    uint32_t DefineCount;
-    uint32_t DefineCapacity;
 
     stmt_block_t* CurrentBlockStatement;
 
@@ -68,10 +66,8 @@ typedef struct metac_parser_t
 
     metac_dot_printer_t* DotPrinter;
 
-    metac_define_t inlineDefines[8];
-
     stmt_block_t** BlockStatementStack;
-    uint32_t BlockStatementStackSize;
+    uint32_t BlockStatementStackCount;
     uint32_t BlockStatementStackCapacity;
 
     uint32_t OpenParens;
