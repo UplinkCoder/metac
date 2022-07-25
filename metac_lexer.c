@@ -1,5 +1,4 @@
 #include "metac_identifier_table.c"
-
 #include "metac_lexer.h"
 #include "compat.h"
 #include <assert.h>
@@ -1278,6 +1277,7 @@ void test_lexer()
         "++",
         "--",
         "[]",
+        "##",
         "\n",
 
         "\0",

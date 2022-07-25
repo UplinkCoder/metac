@@ -126,4 +126,7 @@ metac_preprocessor_define_ptr_t MetaCPreProcessor_GetDefine(metac_preprocessor_t
                                                             uint32_t identifierKey,
                                                             const char* identifier);
 
+uint32_t MetaCPreProcessor_PushDefine(metac_preprocessor_t* self,
+                                      metac_preprocessor_define_t* define,
+                                      metac_token_t_array_array parameters);
 #endif

@@ -157,7 +157,6 @@ typedef struct metac_lexer_state_t
     M(tok_question) \
     \
     M(tok_hash) \
-    M(tok_hashhash) \
     M(tok_at) \
     \
     M(tok_lParen) \
@@ -185,6 +184,8 @@ typedef struct metac_lexer_state_t
     M(tok_plusplus) \
     M(tok_minusminus) \
     M(tok_full_slice) \
+    M(tok_hashhash) \
+    \
     M(tok_newline) \
     \
     LAST_STATIC_TOKEN(M)
@@ -210,7 +211,7 @@ typedef struct metac_lexer_state_t
     \
     FOREACH_STATIC_TOKEN(M) \
     \
-    LAST_TOKEN(M) \
+    LAST_TOKEN(M)
 
 
 #define WITH_COMMA(TOK) \

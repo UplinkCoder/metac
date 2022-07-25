@@ -1,4 +1,4 @@
-#if !defined(NO_PREPROC)
+#if !defined(NO_PREPROCESSOR)
 
 #include "metac_preproc.h"
 #include "metac_task.h"
@@ -10,38 +10,95 @@
 #include "metac_atomic.h"
 #include <assert.h>
 
+uint32_t MetaCPreProcessor_PushDefine(metac_preprocessor_t* self,
+                                      metac_preprocessor_define_t* define,
+                                      metac_token_t_array_array parameters)
+{
+    uint32_t result = 0;
+    DEF_STACK_ARRAY(metac_token_t, tokens, 64);
+#define va_args_key 0xbc18fc
+    if (parameters.Count != define->ParameterCount ||
+        ((define->ParameterCount >= parameters.Count) && !define->IsVariadic))
+    {
+        printf("Macro takes %u arguments but %u are given\n",
+              define->ParameterCount, parameters.Count);
+        goto Lret;
+    }
+
+    assert(parameters.Count == define->ParameterCount
+        || (define->IsVariadic && define->ParameterCount >= parameters.Count));
+
+    for(uint32_t tokIdx = 0;
+        tokIdx < define->TokenCount;
+        tokIdx++)
+    {
+        metac_token_t tok =
+            self->DefineTable.TokenMemory[define->TokensOffset + tokIdx];
+        if (tok.TokenType == tok_macro_parameter)
+        {
+            metac_token_t_array parameter =
+                parameters.Ptr[tok.MacroParameterIndex];
+            for(uint32_t paramTokIdx = 0;
+                paramTokIdx < parameter.Count;
+                paramTokIdx++)
+            {
+
+            }
+        }
+        else if (tok.TokenType == tok_identifier
+              && tok.IdentifierKey == va_args_key)
+        {
+            metac_token_t_array va_args = (*(parameters.Ptr + parameters.Count - 1));
+            printf("saw __VA_ARGS__\n");
+            for(uint32_t va_args_idx = 0;
+                va_args_idx < va_args.Count;
+                va_args_idx)
+            {
+                ADD_STACK_ARRAY(tokens, (*(va_args.Ptr + va_args_idx)));
+            }
+            continue;
+        }
+        else
+            ADD_STACK_ARRAY(tokens, tok);
+    }
+    printf("expanded to %u tokens\n", tokens.Count);
+Lret:
+    return result;
+}
+
 metac_expression_t* MetaCPreProcessor_ResolveDefineToExp(metac_preprocessor_t* self,
                                                          metac_preprocessor_define_ptr_t definePtr,
                                                          metac_token_t_array_array parameters)
 {
     assert(definePtr.v >= 4);
     metac_expression_t* result = 0;
-
+/*
     metac_parser_t defineParser;
     MetaCParser_Init(&defineParser);
     defineParser.Preprocessor = self;
     metac_preprocessor_define_t def = self->DefineTable.DefineMemory[definePtr.v - 4];
     DEF_STACK_ARRAY(metac_token_t, tokens, 32);
 #define va_args_key 0xbc18fc
-    if (parameters.Count != def.ParameterCount ||
-        ((def.ParameterCount >= parameters.Count) && !def.IsVariadic))
+
+    if (parameters.Count != define->ParameterCount ||
+        ((define->ParameterCount >= parameters.Count) && !define->IsVariadic))
     {
         printf("Macro takes %u arguments but %u are given\n",
-              def.ParameterCount, parameters.Count);
+              define->ParameterCount, parameters.Count);
         result = AllocNewExpression(exp_signed_integer);
         result->ValueU64 = 0;
         goto Lret;
     }
 
-    assert(parameters.Count == def.ParameterCount
-        || (def.IsVariadic && def.ParameterCount >= parameters.Count));
+    assert(parameters.Count == define->ParameterCount
+        || (define->IsVariadic && define->ParameterCount >= parameters.Count));
 
     for(uint32_t tokIdx = 0;
-        tokIdx < def.TokenCount;
+        tokIdx < define->TokenCount;
         tokIdx++)
     {
         metac_token_t tok =
-            self->DefineTable.TokenMemory[def.TokensOffset + tokIdx];
+            self->DefineTable.TokenMemory[define->TokensOffset + tokIdx];
         if (tok.TokenType == tok_macro_parameter)
         {
             metac_token_t_array parameter =
@@ -72,6 +129,7 @@ metac_expression_t* MetaCPreProcessor_ResolveDefineToExp(metac_preprocessor_t* s
     printf("expanded to %u tokens\n", tokens.Count);
 //    self->Lexer->IdentifierTable = self->IdentifierTable;
 Lret:
+*/
     return result;
 }
 

@@ -9,7 +9,7 @@
 #include "metac_lexer.h"
 #include "metac_parsetree.h"
 
-#ifndef NO_PREPROC
+#if !defined(NO_PREPROCESSOR)
 #  include "metac_preproc.h"
 #endif
 
@@ -104,7 +104,7 @@ metac_expression_t* MetaCParser_ParseExpression(metac_parser_t* self, parse_expr
 metac_expression_t* MetaCParser_ParseExpressionFromString(const char* exp);
 metac_declaration_t* MetaCParser_ParseDeclaration(metac_parser_t* self, metac_declaration_t* parent);
 
-#ifndef NO_PREPROC
+#if !defined(NO_PREPROCESSOR)
 metac_preprocessor_directive_t MetaCParser_ParsePreproc(metac_parser_t* self,
                                                         metac_preprocessor_t* preproc,
                                                         metac_token_buffer_t* buffer);

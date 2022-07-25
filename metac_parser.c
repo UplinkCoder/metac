@@ -200,7 +200,7 @@ static inline bool MetaCParser_PeekMatch(metac_parser_t* self, metac_token_enum_
 
     return result;
 }
-
+#if !defined(NO_PREPROCESSOR)
 metac_token_t* MetaCPreProcessor_NextDefineToken(metac_preprocessor_t* self)
 {
     assert(self->DefineTokenStackCount);
@@ -230,7 +230,7 @@ Lbegin:
 
     return result;
 }
-
+#endif //NO_PREPROCESSOR
 metac_token_t* MetaCParser_NextToken(metac_parser_t* self)
 {
 #define NextToken() \
@@ -242,13 +242,14 @@ metac_token_t* MetaCParser_NextToken(metac_parser_t* self)
     ( RESULT = NextToken() ) : ( (RESULT = self->Lexer->Tokens + --self->CurrentTokenIndex - 1), (metac_token_t*)0) )
 
     metac_token_t* result = 0;
-#ifdef NO_PREPROCESSOR
+#if defined(NO_PREPROCESSOR)
     result = NextToken();
 #else
     metac_preprocessor_t* preProc = self->Preprocessor;
 
     if (preProc && preProc->DefineTokenStackCount)
     {
+    LnextDefineToken:
         result = MetaCPreProcessor_NextDefineToken(preProc);
         if (!result)
             goto LnextToken;
@@ -298,13 +299,15 @@ metac_token_t* MetaCParser_NextToken(metac_parser_t* self)
                     preProc = preProc->Parent;
                     goto LcontinuePreprocSearch;
                 }
+
                 metac_preprocessor_define_t define =
                     self->Preprocessor->DefineTable.DefineMemory[matchingDefine.v - 4];
+
                 if ((define.ParameterCount > 0 || define.IsVariadic)
-                     && PeekMatch(result, tok_lParen)
+                    && PeekMatch(result, tok_lParen)
                 )
                 {
-                    metac_token_t paramTokens[32];
+                    metac_token_t paramTokens[64];
                     uint32_t paramTokenIndex = 0;
                     uint32_t paramTokenCount = 0;
                     uint32_t paramTokenCapacity = ARRAY_SIZE(paramTokens);
@@ -320,11 +323,10 @@ metac_token_t* MetaCParser_NextToken(metac_parser_t* self)
                         if (result->TokenType == tok_rParen)
                             ParenDepth -= 1;
 
-                        if (ParenDepth == 0)
-                            break;
 
                         printf("token := %s\n", MetaCTokenEnum_toChars(result->TokenType));
-                        if (ParenDepth == 1 && result->TokenType == tok_comma)
+                        if (ParenDepth == 0 ||
+                            (ParenDepth == 1 && result->TokenType == tok_comma))
                         {
                             metac_token_t_array param = {
                                 paramTokens + paramTokenIndex,
@@ -334,9 +336,16 @@ metac_token_t* MetaCParser_NextToken(metac_parser_t* self)
 
                             ADD_STACK_ARRAY(paramArrays, param);
                             printf("Added paramTuple of %u tokens\n", paramTokenCount - paramTokenIndex);
-                            paramTokenIndex = paramTokenCount + 1;
-                            result = NextToken();
-                            continue;
+                            paramTokenIndex = paramTokenCount;
+                            if (ParenDepth == 0)
+                            {
+                                break;
+                            }
+                            else
+                            {
+                                result = NextToken();
+                                continue;
+                            }
                         }
 
                         if (paramTokenCount < paramTokenCapacity)
@@ -353,11 +362,13 @@ metac_token_t* MetaCParser_NextToken(metac_parser_t* self)
                     }
 
                     assert(result->TokenType == tok_rParen);
+                    result = NextToken();
+                    MetaCPreProcessor_PushDefine(preProc, &define, paramArrays);
                 }
                 // result = tok_plus;
                 printf("Define %s matched we should do something\n", IdentifierPtrToCharPtr(&self->Preprocessor->DefineIdentifierTable,
                                                                                                 define.DefineName));
-
+                goto LnextDefineToken;
             }
         }
     }
@@ -1711,6 +1722,7 @@ metac_expression_t* MetaCParser_ParseExpression(metac_parser_t* self,
         loc = LocationFromToken(self, currentToken);
 
     bool isDefined = false;
+#if !defined(NO_PREPROCESSOR)
     if (eflags & expr_flags_pp)
     {
         if (tokenType == tok_identifier &&
@@ -1723,6 +1735,7 @@ metac_expression_t* MetaCParser_ParseExpression(metac_parser_t* self,
                 (currentToken ? currentToken->TokenType : tok_invalid);
         }
     }
+#endif
 
     if (IsPrimaryExpressionToken(tokenType))
     {
@@ -1737,7 +1750,7 @@ metac_expression_t* MetaCParser_ParseExpression(metac_parser_t* self,
         result = MetaCParser_ParseBinaryExpression(self, eflags, prev, 0);
     }
 
-
+#if !defined(NO_PREPROCESSOR)
     if (isDefined)
     {
         if (result->Kind == exp_paren)
@@ -1765,6 +1778,7 @@ metac_expression_t* MetaCParser_ParseExpression(metac_parser_t* self,
 
         result = call;
     }
+#endif
 //    printf("TokenType: %s\n", MetaCTokenEnum_toChars(tokenType));
 
     metac_token_t* peekNext = MetaCParser_PeekToken(self, 1);
@@ -3055,7 +3069,9 @@ void LineLexerInit(void)
                           &g_lineParser.StringTable);
     }
 
+#if !defined(NO_PREPROCESSOR)
     g_lineParser.Preprocessor = 0;
+#endif
 }
 
 metac_expression_t* MetaCParser_ParseExpressionFromString(const char* exp)
@@ -3090,7 +3106,7 @@ metac_declaration_t* MetaCParser_ParseDeclarationFromString(const char* decl)
 
     return result;
 }
-#ifndef NO_PREPROC
+#if !defined(NO_PREPROCESSOR)
 metac_preprocessor_directive_t MetaCParser_ParsePreprocFromString(const char* line, metac_preprocessor_t* preProc,
                                                                   metac_token_buffer_t* tokenBuffer)
 {
