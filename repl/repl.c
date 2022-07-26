@@ -1,3 +1,5 @@
+#define ACCEL ACCEL_TABLE
+
 #include "../compat.h"
 #include "../metac_parser_obj.c"
 #include "../metac_semantic_obj.c"
@@ -472,7 +474,7 @@ LswitchMode:
                     {
                         repl->lexer.Tokens = (metac_token_t*)
                             malloc(sizeof(metac_token_t) * estimatedTokenCount);
-                        repl->lexer.TokenSize = 0;
+                        repl->lexer.TokenCount = 0;
                         repl->lexer.TokenCapacity = estimatedTokenCount;
                         repl->lexer.Tokens = (metac_token_t*)
                             malloc(sizeof(metac_token_t) * estimatedTokenCount);
@@ -893,7 +895,7 @@ LlexSrcBuffer: {}
         {
             repl->repl_state.Line++;
             repl->repl_state.Column = 1;
-            repl->lexer.TokenSize = 0;
+            repl->lexer.TokenCount = 0;
             repl->lexer.LocationStorage.LocationSize = 0;
         }
 

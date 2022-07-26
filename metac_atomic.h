@@ -40,13 +40,14 @@
 #  define DEC(v) \
     (v--)
 #  define POST_ADD(v, b) \
-    _InterlockedExchangeAdd(cast(long volatile*)(&(v)), b)
+    (v += b, v - b)
 #else
 #  define INC(v) \
   _InterlockedIncrement(&v);
 #  define DEC(v) \
   _InterlockedDecrement(&v);
+#  define POST_ADD(v, b) \
+    _InterlockedExchangeAdd(cast(long volatile*)(&(v)), b)
+
 #endif
-
-
 #endif

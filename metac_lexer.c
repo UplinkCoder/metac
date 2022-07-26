@@ -438,7 +438,7 @@ uint32_t MetaCTokenLength(metac_token_t token)
 
 void MetaCLexer_Init(metac_lexer_t* self)
 {
-    self->TokenSize = 0;
+    self->TokenCount = 0;
     self->TokenCapacity =
         (sizeof(self->inlineTokens) / sizeof(self->inlineTokens[0]));
     self->Tokens = self->inlineTokens;
@@ -749,7 +749,7 @@ metac_token_t* MetaCLexerLexNextToken(metac_lexer_t* self,
     metac_token_t* result = 0;
 
 
-    assert(self->TokenCapacity > self->TokenSize);
+    assert(self->TokenCapacity > self->TokenCount);
     uint32_t eatenChars = 0;
     char c = *text++;
 LcontinueLexnig:
@@ -1133,7 +1133,7 @@ LcontinueLexnig:
 Lreturn:
     if (token.TokenType)
     {
-        result = self->Tokens + self->TokenSize++;
+        result = self->Tokens + self->TokenCount++;
         *result = token;
     }
     else
@@ -1310,7 +1310,7 @@ void test_lexer()
 
             lexer.Tokens = &t1;
             lexer.TokenCapacity = 1;
-            lexer.TokenSize = 0;
+            lexer.TokenCount = 0;
 
             metac_location_t l1;
             lexer.LocationStorage.Locations = &l1;

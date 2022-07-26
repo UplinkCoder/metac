@@ -96,9 +96,13 @@ bool IsBinaryExp(metac_expression_kind_t exp_kind);
 
 void MetaCParser_Init(metac_parser_t* self);
 void MetaCParser_InitFromLexer(metac_parser_t* self, metac_lexer_t* lexer);
+
+#define MetaCParser_PeekToken(SELF, P) \
+    (MetaCParser_PeekToken_(SELF, P, __LINE__))
+
 /// p is the offset from the current position, 0 reads the current token
 /// negative offsets allow you to look back
-metac_token_t* MetaCParser_PeekToken(metac_parser_t* self, int32_t p);
+metac_token_t* MetaCParser_PeekToken_(metac_parser_t* self, int32_t p, uint32_t line);
 uint32_t MetaCParser_HowMuchLookahead(metac_parser_t* self);
 metac_expression_t* MetaCParser_ParseExpression(metac_parser_t* self, parse_expression_flags_t flags, metac_expression_t* prev);
 metac_expression_t* MetaCParser_ParseExpressionFromString(const char* exp);

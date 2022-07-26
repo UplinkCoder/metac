@@ -23,30 +23,37 @@
 #include "metac_parser.h"
 #include "metac_array.h"
 
+#define FOREACH_PREPROC_DIRECTIVE(M) \
+    M(pp_invalid) \
+    \
+    M(pp_error) \
+    M(pp_warning) \
+    \
+    M(pp_undef) \
+    M(pp_if) \
+    M(pp_elif) \
+    M(pp_else) \
+    M(pp_endif) \
+    M(pp_ifdef) \
+    M(pp_ifndef) \
+    \
+    M(pp_line) \
+    M(pp_pragma) \
+    M(pp_inline) \
+    M(pp_define) \
+    M(pp_include) \
+    \
+    M(pp_eval)
+
+#define WITH_COMMA(TOK) \
+    TOK,
+
 typedef enum metac_preprocessor_directive_t
 {
-    pp_invalid,
-
-    pp_error,
-    pp_warning,
-
-    pp_undef,
-    pp_if,
-    pp_elif,
-    pp_else,
-    pp_endif,
-    pp_ifdef,
-    pp_ifndef,
-
-    pp_line,
-    pp_pragma,
-    pp_inline,
-    pp_define,
-    pp_include,
-
-    // not a standart directive
-    pp_eval
+    FOREACH_PREPROC_DIRECTIVE(WITH_COMMA)
 } metac_preprocessor_directive_t;
+
+#undef WITH_COMMA
 
 typedef struct metac_preprocessor_define_ptr_t
 {

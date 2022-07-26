@@ -91,7 +91,7 @@ void ParseFile(metac_parser_t* parser,
             calloc(sizeof(metac_declaration_t*),
             declarationCapacity);
 
-    while(parser->CurrentTokenIndex < parser->Lexer->TokenSize)
+    while(parser->CurrentTokenIndex < parser->Lexer->TokenCount)
     {
         declarations[declarationSize++] = MetaCParser_ParseDeclaration(parser, 0);
         // printf("Parsed %u tokens\n", parser->CurrentTokenIndex);

@@ -263,9 +263,9 @@ typedef struct metac_token_t {
             };
             uint32_t ValueLength;
         };
+        // case tok_macro_parameter:
+        uint32_t MacroParameterIndex;
     };
-    // case tok_macro_parameter:
-    uint32_t MacroParameterIndex;
 } metac_token_t;
 
 typedef struct metac_token_buffer_t
@@ -353,7 +353,7 @@ typedef struct metac_lexer_t {
     // inject array_methods(tokens, token_size, token_capacity);
 
     metac_token_t* Tokens;
-    uint32_t TokenSize;
+    uint32_t TokenCount;
     uint32_t TokenCapacity;
 
     metac_location_storage_t LocationStorage;

@@ -200,9 +200,57 @@ static inline bool MetaCParser_PeekMatch(metac_parser_t* self, metac_token_enum_
 
     return result;
 }
+
+void MetaCParser_Advance(metac_parser_t* self)
+{
+#if !defined(NO_PREPROCESSOR)
+    metac_preprocessor_t* preProc = self->Preprocessor;
+    if (preProc && preProc->DefineTokenStackCount)
+        preProc->DefineTokenIndexStack[preProc->DefineTokenStackCount - 1]++;
+    else
+#endif
+    self->CurrentTokenIndex++;
+}
+
+static inline void LoadTokens(metac_parser_t* self,
+                              uint32_t* tokenCount,
+                              metac_token_t** tokens,
+                              uint32_t** tokenOffset)
+{
+#if defined(NO_PREPROCESSOR)
+    (*tokens) = self->Lexer->Tokens;
+    (*tokenCount) = self->Lexer->TokenCount;
+    (*tokenOffset) = &self->CurrentTokenIndex;
+#else
+    metac_preprocessor_t* preProc = self->Preprocessor;
+    (*tokenCount) = ((preProc && preProc->DefineTokenStackCount > 0) ?
+        preProc->DefineTokenStack[preProc->DefineTokenStackCount - 1].Count :
+        self->Lexer->TokenCount);
+
+    (*tokens) = ((preProc ? preProc->DefineTokenStackCount > 0 : 0) ?
+        preProc->DefineTokenStack[preProc->DefineTokenStackCount - 1].Ptr :
+        self->Lexer->Tokens);
+
+    (*tokenOffset) = ((preProc ? preProc->DefineTokenStackCount > 0 : 0) ?
+        &preProc->DefineTokenIndexStack[preProc->DefineTokenStackCount - 1] :
+        &self->CurrentTokenIndex);
+#endif // !NO_PREPROCESSOR
+}
+
+
+#define NextToken() \
+    (((*tokenOffset) < tokenCount) ? \
+    (tokens + ((*tokenOffset)++)) : 0)
+
+#define PeekMatch(RESULT, TOKEN_TYPE) \
+    ( ((RESULT = NextToken()), (RESULT && RESULT->TokenType == TOKEN_TYPE)) ? \
+    ( RESULT = NextToken() ) : ( (RESULT = tokens + (--(*tokenOffset)) - 1), (metac_token_t*)0) )
+
+
 #if !defined(NO_PREPROCESSOR)
 metac_token_t* MetaCPreProcessor_NextDefineToken(metac_preprocessor_t* self)
 {
+    printf("F: %s\n", __FUNCTION__);
     assert(self->DefineTokenStackCount);
 
     metac_token_t* result = 0;
@@ -213,9 +261,7 @@ Lbegin:
 
     uint32_t defineTokenIndex =
         self->DefineTokenIndexStack[self->DefineTokenStackCount - 1]++;
-
-    printf("Do whatever we do in defines\n");
-
+    printf("defineTokenIndex: %u\n", defineTokenIndex);
     if (defineTokenIndex < tokens.Count)
     {
         result = &tokens.Ptr[defineTokenIndex];
@@ -224,29 +270,195 @@ Lbegin:
     {
         if (--self->DefineTokenStackCount != 0)
         {
+            self->DefineTokenIndexStack[self->DefineTokenStackCount] = 0;
             goto Lbegin;
         }
     }
 
     return result;
 }
-#endif //NO_PREPROCESSOR
-metac_token_t* MetaCParser_NextToken(metac_parser_t* self)
-{
-#define NextToken() \
-    ((self->CurrentTokenIndex < self->Lexer->TokenSize) ? \
-    self->Lexer->Tokens + self->CurrentTokenIndex++ : 0)
 
-#define PeekMatch(RESULT, TOKEN_TYPE) \
-    ( ((RESULT = NextToken()), (RESULT && RESULT->TokenType == TOKEN_TYPE)) ? \
-    ( RESULT = NextToken() ) : ( (RESULT = self->Lexer->Tokens + --self->CurrentTokenIndex - 1), (metac_token_t*)0) )
+metac_token_t* MetaCPreProcessor_PeekDefineToken(metac_preprocessor_t* self,
+                                                 uint32_t offset)
+{
+    assert(self->DefineTokenStackCount);
 
     metac_token_t* result = 0;
+    metac_token_t_array tokens;
+Lbegin:
+    tokens =
+        self->DefineTokenStack[self->DefineTokenStackCount - 1];
+
+    uint32_t defineTokenIndex =
+        self->DefineTokenIndexStack[self->DefineTokenStackCount - 1];
+/*
+    printf("defineTokenIndex + offset < tokens.Count -- %u < %u\n",
+            defineTokenIndex + offset, tokens.Count);
+*/
+    if (defineTokenIndex + offset < tokens.Count)
+    {
+        result = &tokens.Ptr[defineTokenIndex + offset];
+        //printf("Got %s from define\n", MetaCTokenEnum_toChars(result->TokenType);
+    }
+    else
+    {
+        if (--self->DefineTokenStackCount != 0)
+        {
+            self->DefineTokenIndexStack[self->DefineTokenStackCount] = 0;
+            goto Lbegin;
+        }
+    }
+
+    return result;
+}
+
+metac_token_t* MetaCParser_HandleIdentifier(metac_parser_t* self,
+                                            metac_token_t* tok,
+                                            metac_preprocessor_t* preProc)
+{
+    uint32_t tokenCount;
+    metac_token_t* tokens;
+    uint32_t* tokenOffset;
+
+    LoadTokens(self, &tokenCount, &tokens, &tokenOffset);
+
+    metac_token_t* result = tok;
+
+    const uint32_t idKey = result->IdentifierKey;
+
+    int32_t defineSlotIdx;
+
+    LcontinuePreprocSearch:
+    do {
+        defineSlotIdx = (
+            preProc ?
+            MetaCIdentifierTable_HasKey(&preProc->DefineIdentifierTable, idKey) :
+            -1
+        );
+        if (defineSlotIdx != -1)
+            break;
+        preProc = preProc ? preProc->Parent : 0;
+    } while(preProc);
+
+    if (defineSlotIdx != -1)
+    {
+        const char* idChars = IdentifierPtrToCharPtr(&self->Lexer->IdentifierTable,
+                                                     result->IdentifierPtr);
+        metac_preprocessor_define_ptr_t matchingDefine = {0};
+
+        matchingDefine = MetaCPreProcessor_GetDefine(preProc, idKey, idChars);
+
+        if (!matchingDefine.v)
+        {
+            preProc = preProc->Parent;
+            goto LcontinuePreprocSearch;
+        }
+
+        metac_preprocessor_define_t define =
+            self->Preprocessor->DefineTable.DefineMemory[matchingDefine.v - 4];
+        NextToken();
+
+        if (define.ParameterCount > 0 || define.IsVariadic)
+        {
+            metac_token_t* tok = NextToken();
+            result = NextToken();
+            if (tok->TokenType != tok_lParen)
+            {
+                printf("Expected '(' but got %s\n", MetaCTokenEnum_toChars(tok->TokenType));
+            }
+
+            metac_token_t paramTokens[64];
+            uint32_t paramTokenIndex = 0;
+            uint32_t paramTokenCount = 0;
+            uint32_t paramTokenCapacity = ARRAY_SIZE(paramTokens);
+
+            DEF_STACK_ARRAY(metac_token_t_array, paramArrays, 32);
+
+            uint32_t ParenDepth = 1;
+
+            for(;;)
+            {
+                if (result->TokenType == tok_lParen)
+                    ParenDepth += 1;
+                if (result->TokenType == tok_rParen)
+                    ParenDepth -= 1;
+
+                if (ParenDepth == 0 ||
+                    (ParenDepth == 1 && result->TokenType == tok_comma))
+                {
+                    metac_token_t_array param = {
+                        paramTokens + paramTokenIndex,
+                        paramTokenCount - paramTokenIndex,
+                        paramTokenCount - paramTokenIndex
+                    };
+
+                    ADD_STACK_ARRAY(paramArrays, param);
+                    printf("Added paramTuple of %u tokens\n", paramTokenCount - paramTokenIndex);
+                    paramTokenIndex = paramTokenCount;
+                    if (ParenDepth == 0)
+                    {
+                        break;
+                    }
+                    else
+                    {
+                        result = NextToken();
+                        continue;
+                    }
+                }
+
+                if (paramTokenCount < paramTokenCapacity)
+                {
+                    printf("[%u] Adding another token\n", paramTokenCount);
+                    paramTokens[paramTokenCount++] = *result;
+                    result = NextToken();
+                }
+                else
+                {
+                    // TODO Realloc
+                    assert(0);
+                }
+            }
+
+            assert(result->TokenType == tok_rParen);
+            // the fllowing NextToken skips over the rParen
+            NextToken();
+
+            printf("define.TokenCount: %u\n", define.TokenCount);
+            MetaCPreProcessor_PushDefine(preProc, &define, paramArrays);
+            result =
+                &preProc->DefineTokenStack[preProc->DefineTokenStackCount - 1].Ptr[
+                    preProc->DefineTokenIndexStack[preProc->DefineTokenStackCount - 1]];
+        }
+        else
+        {
+			metac_token_t_array_array emptyParams = {0};
+			MetaCPreProcessor_PushDefine(preProc, &define,  emptyParams);
+            assert(preProc->DefineTokenStackCount);
+            uint32_t stackIdx = preProc->DefineTokenStackCount - 1;
+            result = &preProc->DefineTokenStack[stackIdx].Ptr[
+                preProc->DefineTokenIndexStack[stackIdx - 1]];
+            printf("result: %s\n", MetaCTokenEnum_toChars(result->TokenType));
+        }
+    }
+
+    return result;
+
+}
+#endif //NO_PREPROCESSOR
+
+metac_token_t* MetaCParser_NextToken(metac_parser_t* self)
+{
+    uint32_t tokenCount;
+    metac_token_t* tokens;
+    uint32_t* tokenOffset;
+
+    metac_token_t* result;
+
+    LoadTokens(self, &tokenCount, &tokens, &tokenOffset);
 #if defined(NO_PREPROCESSOR)
     result = NextToken();
 #else
     metac_preprocessor_t* preProc = self->Preprocessor;
-
     if (preProc && preProc->DefineTokenStackCount)
     {
     LnextDefineToken:
@@ -256,119 +468,26 @@ metac_token_t* MetaCParser_NextToken(metac_parser_t* self)
     }
     else
     {
-        assert(self->Lexer->TokenSize);
+        assert(self->Lexer->TokenCount);
     LnextToken:
         result = NextToken();
     }
 
     if(result)
     {
-        metac_location_t loc = LocationFromToken(self, result);
-
         if (result->TokenType == tok_identifier)
         {
-            const uint32_t idKey = result->IdentifierKey;
-            metac_preprocessor_t* preProc = self->Preprocessor;
-
-            int32_t defineSlotIdx;
-
-            LcontinuePreprocSearch:
-            do {
-                defineSlotIdx = (
-                    preProc ?
-                    MetaCIdentifierTable_HasKey(&preProc->DefineIdentifierTable, idKey) :
-                    -1
-                );
-                if (defineSlotIdx != -1)
-                    break;
-                preProc = preProc ? preProc->Parent : 0;
-            } while(preProc);
-
-            if (defineSlotIdx != -1)
+            printf(IdentifierPtrToCharPtr(&self->Lexer->IdentifierTable, result->IdentifierPtr));
+            uint32_t oldDefineStackTop = preProc->DefineTokenStackCount;
+            result = MetaCParser_HandleIdentifier(self, result, preProc);
+            bool wasDefine =
+                (oldDefineStackTop < preProc->DefineTokenStackCount);
+            if (wasDefine)
             {
-                const char* idChars = IdentifierPtrToCharPtr(&self->Lexer->IdentifierTable,
-                                                             result->IdentifierPtr);
-                metac_preprocessor_define_ptr_t matchingDefine = {0};
-
-                printf("Potential define Identifier: {'%s', 0x%x}\n",  idChars, idKey);
-
-                matchingDefine = MetaCPreProcessor_GetDefine(preProc, idKey, idChars);
-
-                if (!matchingDefine.v)
-                {
-                    preProc = preProc->Parent;
-                    goto LcontinuePreprocSearch;
-                }
-
-                metac_preprocessor_define_t define =
-                    self->Preprocessor->DefineTable.DefineMemory[matchingDefine.v - 4];
-
-                if ((define.ParameterCount > 0 || define.IsVariadic)
-                    && PeekMatch(result, tok_lParen)
-                )
-                {
-                    metac_token_t paramTokens[64];
-                    uint32_t paramTokenIndex = 0;
-                    uint32_t paramTokenCount = 0;
-                    uint32_t paramTokenCapacity = ARRAY_SIZE(paramTokens);
-
-                    DEF_STACK_ARRAY(metac_token_t_array, paramArrays, 32);
-
-                    uint32_t ParenDepth = 1;
-
-                    for(;;)
-                    {
-                        if (result->TokenType == tok_lParen)
-                            ParenDepth += 1;
-                        if (result->TokenType == tok_rParen)
-                            ParenDepth -= 1;
-
-
-                        printf("token := %s\n", MetaCTokenEnum_toChars(result->TokenType));
-                        if (ParenDepth == 0 ||
-                            (ParenDepth == 1 && result->TokenType == tok_comma))
-                        {
-                            metac_token_t_array param = {
-                                paramTokens + paramTokenIndex,
-                                paramTokenCount - paramTokenIndex,
-                                paramTokenCount - paramTokenIndex
-                            };
-
-                            ADD_STACK_ARRAY(paramArrays, param);
-                            printf("Added paramTuple of %u tokens\n", paramTokenCount - paramTokenIndex);
-                            paramTokenIndex = paramTokenCount;
-                            if (ParenDepth == 0)
-                            {
-                                break;
-                            }
-                            else
-                            {
-                                result = NextToken();
-                                continue;
-                            }
-                        }
-
-                        if (paramTokenCount < paramTokenCapacity)
-                        {
-                            printf("[%u] Adding another token\n", paramTokenCount);
-                            paramTokens[paramTokenCount++] = *result;
-                            result = NextToken();
-                        }
-                        else
-                        {
-                            // TODO Realloc
-                            assert(0);
-                        }
-                    }
-
-                    assert(result->TokenType == tok_rParen);
-                    result = NextToken();
-                    MetaCPreProcessor_PushDefine(preProc, &define, paramArrays);
-                }
-                // result = tok_plus;
-                printf("Define %s matched we should do something\n", IdentifierPtrToCharPtr(&self->Preprocessor->DefineIdentifierTable,
-                                                                                                define.DefineName));
-                goto LnextDefineToken;
+                printf("Exchanged identifier for: %s\n", MetaCTokenEnum_toChars(result->TokenType));
+                if (result->TokenType == tok_identifier)
+                printf("    id: %s\n", IdentifierPtrToCharPtr(&self->Lexer->IdentifierTable, result->IdentifierPtr));
+                MetaCParser_Advance(self);
             }
         }
     }
@@ -385,46 +504,61 @@ metac_token_t* MetaCParser_NextToken(metac_parser_t* self)
     return result;
 }
 
+#undef PeekMatch
+#undef NextToken
+
 uint32_t MetaCParser_HowMuchLookahead(metac_parser_t* self)
 {
-    return (self->Lexer->TokenSize - self->CurrentTokenIndex);
+    return (self->Lexer->TokenCount - self->CurrentTokenIndex);
 }
 
-
-metac_token_t* MetaCParser_PeekToken(metac_parser_t* self, int32_t p)
+metac_token_t* MetaCParser_PeekToken_(metac_parser_t* self, int32_t p, uint32_t line)
 {
     metac_token_t* result = 0;
-    assert(self->Lexer->TokenSize);
-#ifndef NO_PREPROCESSOR
+    assert(self->Lexer->TokenCount);
+#if !defined(NO_PREPROCESSOR)
+
     metac_preprocessor_t* preProc = self->Preprocessor;
+
+    uint32_t CurrentTokenIndex =
+        (preProc && preProc->DefineTokenStackCount)
+            ? preProc->DefineTokenIndexStack[preProc->DefineTokenStackCount - 1]:
+            self->CurrentTokenIndex;
+/*
+    printf("PeekToken(%u) from %u -- CurrentTokenIndex %u -- DefineStackCount %d\n",
+                       p, line, CurrentTokenIndex, preProc ? preProc->DefineTokenStackCount : -1);
+    if (line == 675 && self->CurrentTokenIndex == 2)
+    {
+        // asm ("int $3;");
+    }
+*/
+LpeekDefine:
     if (preProc && preProc->DefineTokenStackCount)
     {
-        printf("We should pull another token from the currentMacro\n");
+        result = MetaCPreProcessor_PeekDefineToken(preProc, p - 1);
+        if (!result)
+            goto Lpeek;
     }
 #endif
-    if (cast(uint32_t)(self->CurrentTokenIndex + (p - 1)) < self->Lexer->TokenSize)
+    if (cast(uint32_t)(self->CurrentTokenIndex + (p - 1)) < self->Lexer->TokenCount)
     {
+Lpeek:
         result = self->Lexer->Tokens + self->CurrentTokenIndex + (p - 1);
-        self->LastLocation = self->Lexer->LocationStorage.Locations[result->LocationId - 4];
-/*
-        if (IsMacro(self, result))
-        {
-            HandleMacro(self, result);
-        }
-        else if(result && result->TokenType == tok_hash)
-        {
-            int lookahead = MetaCParser_HowMuchLookahead(self);
-            while (p < lookahead)
-            {
-                result = self->Lexer->Tokens + self->CurrentTokenIndex + (p++);
-                if (result->TokenType == tok_newline)
-                {
+        self->LastLocation =
+            self->Lexer->LocationStorage.Locations[result->LocationId - 4];
 
-                }
+#if !defined(NO_PREPROCESSOR)
+        if(result)
+        {
+            if (result->TokenType == tok_identifier)
+            {
+//                uint32_t oldDefineStackTop = preProc->DefineTokenStackCount;
+                result = MetaCParser_HandleIdentifier(self, result, preProc);
+//                bool wasDefine =
+//                    (oldDefineStackTop < preProc->DefineTokenStackCount);
             }
-            HandlePreprocessor(self);
         }
-*/
+#endif
     }
     else
     {
@@ -437,7 +571,7 @@ metac_token_t* MetaCParser_PeekToken(metac_parser_t* self, int32_t p)
 metac_token_t* MetaCParser_Match_(metac_parser_t* self, metac_token_enum_t type,
                                  const char* filename, uint32_t lineNumber)
 {
-    metac_token_t* token = MetaCParser_NextToken(self);
+    metac_token_t* token = MetaCParser_PeekToken(self, 1);
     metac_token_enum_t got = (token ? token->TokenType : tok_eof);
     if (got != type)
     {
@@ -456,6 +590,11 @@ metac_token_t* MetaCParser_Match_(metac_parser_t* self, metac_token_enum_t type,
                 filename, lineNumber,
                 MetaCTokenEnum_toChars(type));
         }
+    }
+    else
+    {
+        MetaCParser_Advance(self);
+
     }
     return token;
 }
@@ -927,6 +1066,19 @@ metac_expression_t* MetaCParser_ParsePrimaryExpression(metac_parser_t* self, par
     metac_expression_t* result = 0;
 
     metac_token_t* currentToken = MetaCParser_PeekToken(self, 1);
+    if (currentToken)
+    {
+        printf("ParsePrimaryExpression-currentToken: %s\n", MetaCTokenEnum_toChars(currentToken->TokenType));
+        if (currentToken->TokenType == tok_identifier)
+            printf("    id: %s\n", IdentifierPtrToCharPtr(&self->Lexer->IdentifierTable, currentToken->IdentifierPtr));
+    }
+#if !defined(NO_PREPROCESSOR)
+    if (self->Preprocessor)
+    {
+        printf("Preproc is there -- InDefine: %u\n",
+               self->Preprocessor->DefineTokenStackCount > 0);
+    }
+#endif
     metac_token_enum_t tokenType =
         (currentToken ? currentToken->TokenType : tok_eof);
 
@@ -948,6 +1100,7 @@ metac_expression_t* MetaCParser_ParsePrimaryExpression(metac_parser_t* self, par
     }
     else
 #endif
+
     if (tokenType == tok_lParen && CouldBeCast(self, tokenType))
     {
         // Not implemented right now
@@ -1698,8 +1851,11 @@ metac_preprocessor_directive_t MetaCParser_ParsePreproc(metac_parser_t* self,
 
                 Lmatch:
                 {
+                    printf("CurrentTokenIndex before match: %u\n", self->CurrentTokenIndex);
                     MetaCParser_Match(self, tok_identifier);
-                    printf("Matching preproc directive\n");
+                    //if (directive == pp_eval)
+                    //    asm ("int $3;");
+                    printf("CurrentTokenIndex after match: %u\n", self->CurrentTokenIndex);
                 }
             }
         }
@@ -1790,15 +1946,6 @@ metac_expression_t* MetaCParser_ParseExpression(metac_parser_t* self,
         //within a call we must not treat a comma as a binary expression
         if (((eflags & (expr_flags_call | expr_flags_enum)) != 0) && tokenType == tok_comma)
             goto LreturnExp;
-
-        if (tokenType == tok_star)
-        {
-            metac_token_t* peek2 = MetaCParser_PeekToken(self, 2);
-            if (peek2->TokenType == tok_rParen)
-            {
-                assert(0);
-            }
-        }
 
         if ((eflags & expr_flags_unary))
             goto LreturnExp;
@@ -3041,7 +3188,7 @@ metac_parser_t g_lineParser = { &g_lineLexer };
 void LineLexerInit(void)
 {
     g_lineParser.CurrentTokenIndex = 0;
-    g_lineLexer.TokenSize = 0;
+    g_lineLexer.TokenCount = 0;
     g_lineLexer.LocationStorage.LocationSize = 0;
 
     ACCEL_INIT(g_lineLexer, Identifier, IDENTIFIER_LENGTH_SHIFT, 9);

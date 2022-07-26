@@ -173,26 +173,6 @@ metac_identifier_ptr_t GetOrAddIdentifier(metac_identifier_table_t* table,
     return result;
 }
 
-#include "bsr.h"
-#define slot_t metac_identifier_table_slot_t
-
-void InsertSlot(slot_t* slots, slot_t slot, const uint32_t slotIndexMask)
-{
-    const uint32_t initialSlotIndex = (slot.HashKey & slotIndexMask);
-    // TracyCPlot("TargetIndex", initialSlotIndex);
-    for(
-        uint32_t slotIndex = initialSlotIndex;
-        (++slotIndex & slotIndexMask) != initialSlotIndex;
-    )
-    {
-        slot_t* dstSlot = slots + ((slotIndex - 1) & slotIndexMask);
-        if (dstSlot->HashKey == 0)
-        {
-            *dstSlot = slot;
-            break;
-        }
-    }
-}
 /// returns slotIndex if key was found and -1 if it's not found
 int32_t MetaCIdentifierTable_HasKey(metac_identifier_table_t* table,
                                     uint32_t key)
@@ -225,6 +205,28 @@ int32_t MetaCIdentifierTable_HasKey(metac_identifier_table_t* table,
 
     return result;
 }
+
+#include "bsr.h"
+#define slot_t metac_identifier_table_slot_t
+
+void InsertSlot(slot_t* slots, slot_t slot, const uint32_t slotIndexMask)
+{
+    const uint32_t initialSlotIndex = (slot.HashKey & slotIndexMask);
+    // TracyCPlot("TargetIndex", initialSlotIndex);
+    for(
+        uint32_t slotIndex = initialSlotIndex;
+        (++slotIndex & slotIndexMask) != initialSlotIndex;
+    )
+    {
+        slot_t* dstSlot = slots + ((slotIndex - 1) & slotIndexMask);
+        if (dstSlot->HashKey == 0)
+        {
+            *dstSlot = slot;
+            break;
+        }
+    }
+}
+
 metac_identifier_ptr_t IsIdentifierInTable(metac_identifier_table_t* table,
                                            uint32_t key,
                                            const char* idChars)

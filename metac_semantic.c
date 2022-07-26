@@ -3,7 +3,6 @@
 #include "metac_alloc_node.h"
 #include "metac_target_info.h"
 #include "metac_default_target_info.h"
-#include "metac_atomic.h"
 #include "bsf.h"
 #include <stdlib.h>
 #include "crc32c.h"
@@ -104,6 +103,14 @@ typedef struct handoff_walker_context_t
 #define CRC32C_VALUE(HASH, VAL) \
     (crc32c_nozero(HASH, &(VAL), sizeof(VAL)))
 
+
+#ifndef ATOMIC
+#define POST_ADD(v, b) \
+    (v += b, v - b)
+#else
+#define POST_ADD(v, b)
+    (__sync_fetch_and_add(&v, b))
+#endif
 
 metac_sema_expression_t* AllocNewSemaExpression(metac_semantic_state_t* self, metac_expression_t* expr)
 {
@@ -1251,8 +1258,8 @@ metac_sema_declaration_t* MetaCSemantic_doDeclSemantic_(metac_semantic_state_t* 
 
 /// retruns an emptyNode in case it couldn't be found in the cache
 metac_node_t MetaCSemantic_LRU_LookupIdentifier(metac_semantic_state_t* self,
-                                                uint32_t idPtrHash,
-                                                metac_identifier_ptr_t idPtr)
+                                                 uint32_t idPtrHash,
+                                                 metac_identifier_ptr_t idPtr)
 {
     uint32_t mask = 0;
     int16x8_t hashes = Load16(&self->LRU.LRUContentHashes);

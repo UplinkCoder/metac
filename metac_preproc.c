@@ -8,16 +8,19 @@
 #include "libinterpret/bc_common.h"
 #include "libinterpret/backend_interface_funcs.h"
 #include "metac_atomic.h"
-#include <assert.h>
 
+#include <assert.h>
+/// Pushes the tokens to write instead of the macro on the alternative
+/// token source stack
 uint32_t MetaCPreProcessor_PushDefine(metac_preprocessor_t* self,
                                       metac_preprocessor_define_t* define,
                                       metac_token_t_array_array parameters)
 {
     uint32_t result = 0;
+
     DEF_STACK_ARRAY(metac_token_t, tokens, 64);
 #define va_args_key 0xbc18fc
-    if (parameters.Count != define->ParameterCount ||
+    if (parameters.Count != define->ParameterCount &&
         ((define->ParameterCount >= parameters.Count) && !define->IsVariadic))
     {
         printf("Macro takes %u arguments but %u are given\n",
@@ -34,15 +37,21 @@ uint32_t MetaCPreProcessor_PushDefine(metac_preprocessor_t* self,
     {
         metac_token_t tok =
             self->DefineTable.TokenMemory[define->TokensOffset + tokIdx];
+
+        printf("Seeing tok: %s\n", MetaCTokenEnum_toChars(tok.TokenType));
+
         if (tok.TokenType == tok_macro_parameter)
         {
             metac_token_t_array parameter =
                 parameters.Ptr[tok.MacroParameterIndex];
+
             for(uint32_t paramTokIdx = 0;
                 paramTokIdx < parameter.Count;
                 paramTokIdx++)
             {
-
+                tok = parameter.Ptr[paramTokIdx];
+                //printf("Adding tok: %s\n", MetaCTokenEnum_toChars(tok.TokenType));
+                ADD_STACK_ARRAY(tokens, tok);
             }
         }
         else if (tok.TokenType == tok_identifier
@@ -54,15 +63,23 @@ uint32_t MetaCPreProcessor_PushDefine(metac_preprocessor_t* self,
                 va_args_idx < va_args.Count;
                 va_args_idx)
             {
-                ADD_STACK_ARRAY(tokens, (*(va_args.Ptr + va_args_idx)));
+                // printf("Adding tok: %s\n", MetaCTokenEnum_toChars(tok.TokenType));
+                ADD_STACK_ARRAY(tokens, va_args.Ptr[va_args_idx]);
             }
             continue;
         }
         else
+        {
+            // printf("Adding tok: %s\n", MetaCTokenEnum_toChars(tok.TokenType));
             ADD_STACK_ARRAY(tokens, tok);
+        }
     }
-    printf("expanded to %u tokens\n", tokens.Count);
+    // printf("expanded to %u tokens\n", tokens.Count);
+    PERSIST_STACK_ARRAY(tokens);
+
 Lret:
+    self->DefineTokenStack[self->DefineTokenStackCount++] = tokens;
+    printf("PushedDefine: [%u]\n", self->DefineTokenStackCount);
     return result;
 }
 
@@ -577,7 +594,7 @@ MetaCPreProcessor_ParseDefine(metac_preprocessor_t *self, metac_parser_t* parser
     define.ParameterCount = macroParameter.Count;
     define.IsVariadic = isVariadic;
     define.HasPaste = hasPaste;
-
+    define.TokenCount = defineBodyTokens.Count;
     metac_preprocessor_define_ptr_t result =
         MetaCPreprocessor_RegisterDefine(self, defineKey, define, defineBodyTokens);
 

@@ -213,7 +213,7 @@ metac_type_index_t MetaCSemantic_CommonSubtype(metac_semantic_state_t* self,
 uint32_t FieldHash(metac_type_aggregate_field_t* field)
 {
 #if NDEBUG
-    if (field->Hash)
+    if (field->Header.Hash)
         return field->Header.Hash;
 #endif
     uint32_t hash = ~0;

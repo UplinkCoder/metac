@@ -2,7 +2,7 @@
 #define _METAC_TASK_H_
 
 #ifdef NO_FIBERS
-#  error "Tasks don't wotk without fibers at the moment"
+#  error "Tasks don't work without fibers at the moment"
 #endif
 
 #include "compat.h"
