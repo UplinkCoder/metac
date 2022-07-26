@@ -25,6 +25,7 @@ if [ -d $DST ]; then
        metac_type_semantic.c metac_type_semantic.h \
        metac_semantic_lru.h \
        metac_type_table.c metac_type_table.h \
+       metac_coro.c metac_coro.h \
        metac_task.c metac_task.h \
        test_task_queue.c \
        metac_parser_obj.c metac_semantic_obj.c \
@@ -41,7 +42,7 @@ if [ -d $DST ]; then
     chmod +x $DST/gen_code.sh $DST/sync_from.sh $DST/sync.sh $DST/run_tests.sh
 
     mkdir -p $DST/3rd_party
-    cp 3rd_party/bsr.c 3rd_party/bsf.c \
+    cp 3rd_party/bsr.c 3rd_party/bsf.c 3rd_party/rwlock.h \
        $DST/3rd_party
 
     mkdir -p $DST/3rd_party/tinycthread
@@ -52,6 +53,8 @@ if [ -d $DST ]; then
     mkdir -p $DST/3rd_party/libaco
     cp 3rd_party/libaco/acosw.S \
        3rd_party/libaco/aco.h \
+       3rd_party/libaco/aco_assert_override.h \
+       3rd_party/libaco/aco.c \
        $DST/3rd_party/libaco
 
     mkdir -p $DST/$TRACY_DIR
