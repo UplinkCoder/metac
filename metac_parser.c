@@ -69,7 +69,7 @@ void MetaCParser_Init(metac_parser_t* self)
     self->DefineCapacity = ARRAY_SIZE(self->inlineDefines);
 */
     self->LexerState = 0;
-
+    self->Preprocessor = 0;
     self->BlockStatementStackCapacity = 16;
     self->BlockStatementStackCount = 0;
     self->BlockStatementStack = (stmt_block_t**)

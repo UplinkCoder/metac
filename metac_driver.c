@@ -20,7 +20,7 @@ static inline uint32_t EstimateNumberOfTokens(uint32_t length)
 /// Note text is expected to end with a '\0' character
 void LexFile(metac_lexer_t* lexer,
              const char* path,
-             const char* text, uint32_t length)
+             const char* text, int32_t length)
 {
     if (length)
     {

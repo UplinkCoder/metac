@@ -14,7 +14,7 @@ typedef struct DeclarationArray
 
 void LexFile(metac_lexer_t* lexer,
              const char* path,
-             const char* text, uint32_t length);
+             const char* text, int32_t length);
 
 void ParseFile(metac_parser_t* parser,
                const char* path,
