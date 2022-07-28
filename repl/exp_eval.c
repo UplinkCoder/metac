@@ -37,8 +37,8 @@ static inline metac_identifier_ptr_t GetVStoreID(variable_store_t* vstore,
 
     metac_identifier_ptr_t vstoreId =
         FindMatchingIdentifier(&vstore->Table,
-                           &g_lineParser.IdentifierTable,
-                           var->VarIdentifier);
+                               vstore->ExternalTable,
+                               var->VarIdentifier);
     return vstoreId;
 }
 
@@ -349,12 +349,13 @@ metac_sema_expression_t evalWithVariables(metac_sema_expression_t* e,
     return result;
 }
 
-void VariableStore_Init(variable_store_t* self)
+void VariableStore_Init(variable_store_t* self, metac_identifier_table_t* externalTable)
 {
     self->VariableCapacity = 32;
     self->VariableSize = 0;
     self->Variables = (variable_t*)
         malloc(sizeof(variable_t) * self->VariableCapacity);
+    self->ExternalTable = externalTable;
 
     IdentifierTable_Init(&self->Table, IDENTIFIER_LENGTH_SHIFT, 9);
 }

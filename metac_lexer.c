@@ -439,11 +439,10 @@ uint32_t MetaCTokenLength(metac_token_t token)
 void MetaCLexer_Init(metac_lexer_t* self)
 {
     self->TokenCount = 0;
-    self->TokenCapacity =
-        (sizeof(self->inlineTokens) / sizeof(self->inlineTokens[0]));
+    self->TokenCapacity = ARRAY_SIZE(self->inlineTokens);
     self->Tokens = self->inlineTokens;
 
-    self->LocationStorage.LocationCapacity = self->TokenCapacity;
+    self->LocationStorage.LocationCapacity = ARRAY_SIZE(self->inlineLocations);
     self->LocationStorage.LocationSize = 0;
     self->LocationStorage.Locations = self->inlineLocations;
 
@@ -642,7 +641,7 @@ bool IsValidEscapeChar(char c)
 
 typedef uint32_t metac_location_ptr;
 
-void MetaCLocationStorage_Init(metac_location_storage_t* self)
+void MetaCLocationStorage_Init(metac_location_t_array* self)
 {
     self->LocationCapacity = 128;
     self->LocationSize = 0;
@@ -650,7 +649,7 @@ void MetaCLocationStorage_Init(metac_location_storage_t* self)
         calloc(sizeof(metac_location_t), self->LocationCapacity);
 }
 
-metac_location_ptr MetaCLocationStorage_Store(metac_location_storage_t* self,
+metac_location_ptr MetaCLocationStorage_Store(metac_location_t_array* self,
                                               metac_location_t loc)
 {
 #ifndef TEST_LEXER
@@ -669,7 +668,7 @@ metac_location_ptr MetaCLocationStorage_Store(metac_location_storage_t* self,
 }
 
 void MetaCLocationStorage_EndLoc(
-        metac_location_storage_t* self,
+        metac_location_t_array* self,
         metac_location_ptr locationId,
         uint32_t line, uint16_t column)
 {
@@ -696,7 +695,7 @@ void MetaCLocation_Expand(metac_location_t* self, metac_location_t endLoc)
 }
 
 metac_location_ptr MetaCLocationStorage_StartLoc(
-        metac_location_storage_t* self,
+        metac_location_t_array* self,
         uint32_t line, uint16_t column)
 {
 #ifndef NO_LOCATION_TRACKING
@@ -719,7 +718,7 @@ metac_location_ptr MetaCLocationStorage_StartLoc(
 #endif
 }
 
-metac_location_t MetaCLocationStorage_FromPair(metac_location_storage_t *srcStorage,
+metac_location_t MetaCLocationStorage_FromPair(metac_location_t_array *srcStorage,
                                                metac_location_ptr startLocIdx,
                                                metac_location_ptr endLocIdx)
 {
@@ -748,8 +747,40 @@ metac_token_t* MetaCLexerLexNextToken(metac_lexer_t* self,
     }
     metac_token_t* result = 0;
 
+    if (self->TokenCount >= self->TokenCapacity)
+    {
+        uint32_t newCapa = 32;
 
-    assert(self->TokenCapacity > self->TokenCount);
+        if (self->TokenCapacity == ARRAY_SIZE(self->inlineTokens))
+        {
+            metac_token_t* newTokens = cast(metac_token_t*)
+                malloc(sizeof(metac_token_t*) * newCapa);
+            metac_token_t* newLocations = cast(metac_location_t*)
+                malloc(sizeof(metac_location_t*) * newCapa);
+
+            memcpy(newTokens, self->Tokens, sizeof(metac_token_t) * ARRAY_SIZE(self->inlineTokens));
+            memcpy(newLocations, self->LocationStorage.Locations,
+                sizeof(metac_location_t) * ARRAY_SIZE(self->inlineLocations));
+            self->Tokens = newTokens;
+            self->LocationStorage.Locations = newLocations;
+
+            self->TokenCapacity = newCapa;
+            self->LocationStorage.LocationCapacity = newCapa;
+
+        }
+        else
+        {
+            newCapa = ALIGN4(cast(uint32_t)(self->TokenCapacity * 1.3f));
+            self->Tokens = cast(metac_token_t*)
+                realloc(self->Tokens, sizeof(metac_token_t) * newCapa);
+            self->TokenCapacity = newCapa;
+            self->LocationStorage.Locations = cast(metac_location_t*)
+                realloc(self->LocationStorage.Locations,
+                        sizeof(metac_location_t) * newCapa);
+            self->LocationStorage.LocationCapacity = newCapa;
+        }
+        // printf("Not enough token storage\n");
+    }
     uint32_t eatenChars = 0;
     char c = *text++;
 LcontinueLexnig:

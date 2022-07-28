@@ -15,10 +15,11 @@ typedef struct variable_store_t
     uint32_t  VariableSize;
     uint32_t VariableCapacity;
 
+    metac_identifier_table_t* ExternalTable;
     metac_identifier_table_t Table;
 } variable_store_t;
 
-void VariableStore_Init(variable_store_t* self);
+void VariableStore_Init(variable_store_t* self, metac_identifier_table_t* externalTable);
 
 metac_sema_expression_t evalWithVariables(metac_sema_expression_t* e,
                                           variable_store_t* vars);

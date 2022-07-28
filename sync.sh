@@ -35,6 +35,7 @@ if [ -d $DST ]; then
        metac_file.c metac_file.h \
        metac_array.c metac_array.h \
        metac_preproc.c metac_preproc.h \
+       metac_lpp.c metac_lpp.h \
        metac_compiler_interface.h \
        metac.fpg TODO \
        $DST
@@ -81,7 +82,7 @@ if [ -d $DST ]; then
        $DST/utils
 
     mkdir -p $DST/repl
-    cp repl/repl.c repl/build.sh repl/exp_eval.c repl/exp_eval.h \
+    cp repl/repl.c repl/repl.h repl/build.sh repl/exp_eval.c repl/exp_eval.h \
        $DST/repl
 
     mkdir -p $DST/libinterpret

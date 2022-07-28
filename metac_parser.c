@@ -6,6 +6,7 @@
 
 #include "metac_lexer.c"
 #include "metac_parser.h"
+#include "metac_lpp.h"
 #include "metac_alloc_node.h"
 
 #include <string.h>
@@ -206,7 +207,16 @@ void MetaCParser_Advance(metac_parser_t* self)
 #if !defined(NO_PREPROCESSOR)
     metac_preprocessor_t* preProc = self->Preprocessor;
     if (preProc && preProc->DefineTokenStackCount)
-        preProc->DefineTokenIndexStack[preProc->DefineTokenStackCount - 1]++;
+    {
+        metac_token_t_array* tokens = &preProc->DefineTokenStack[preProc->DefineTokenStackCount - 1];
+        uint32_t* idx = &preProc->DefineTokenIndexStack[preProc->DefineTokenStackCount - 1];
+        (*idx)++;
+
+        if (tokens->Count <= (*idx))
+        {
+            preProc->DefineTokenStackCount--;
+        }
+    }
     else
 #endif
     self->CurrentTokenIndex++;
@@ -540,7 +550,7 @@ LpeekDefine:
             goto Lpeek;
     }
 #endif
-    if (cast(uint32_t)(self->CurrentTokenIndex + (p - 1)) < self->Lexer->TokenCount)
+    else if (cast(uint32_t)(self->CurrentTokenIndex + (p - 1)) < self->Lexer->TokenCount)
     {
 Lpeek:
         result = self->Lexer->Tokens + self->CurrentTokenIndex + (p - 1);
@@ -559,10 +569,6 @@ Lpeek:
             }
         }
 #endif
-    }
-    else
-    {
-        // TODO Error
     }
 
     return result;
@@ -721,31 +727,6 @@ metac_expression_kind_t ExpTypeFromTokenType(metac_token_enum_t tokenType)
         return exp_invalid;
     }
 
-}
-
-static inline void LexString(metac_lexer_t* lexer, const char* line)
-{
-    uint32_t line_length = strlen(line);
-    metac_lexer_state_t lexer_state =
-        MetaCLexerStateFromString(0, line);
-
-    while(line_length > 0)
-    {
-        uint32_t initialPosition = lexer_state.Position;
-
-        metac_token_t token =
-            *MetaCLexerLexNextToken(lexer, &lexer_state, line, line_length);
-        if (token.TokenType == tok_eof)
-        {
-            line += line_length;
-            line_length = 0;
-            break;
-        }
-
-        uint32_t eaten_chars = lexer_state.Position - initialPosition;
-        line += eaten_chars;
-        line_length -= eaten_chars;
-    }
 }
 
 
@@ -3183,8 +3164,8 @@ metac_lexer_t g_lineLexer = {
     {g_lineLexer.inlineLocations, 0, ARRAY_SIZE(g_lineLexer.inlineLocations)}
 };
 /// There can only be one LineParser as it uses static storage
-metac_parser_t g_lineParser = { &g_lineLexer };
 
+/*
 void LineLexerInit(void)
 {
     g_lineParser.CurrentTokenIndex = 0;
@@ -3220,53 +3201,7 @@ void LineLexerInit(void)
     g_lineParser.Preprocessor = 0;
 #endif
 }
-
-metac_expression_t* MetaCParser_ParseExpressionFromString(const char* exp)
-{
-    // assert(g_lineLexer.TokenCapacity == ARRAY_SIZE(g_lineLexer.inlineTokens));
-    LineLexerInit();
-    LexString(&g_lineLexer, exp);
-
-    metac_expression_t* result = MetaCParser_ParseExpression(&g_lineParser, expr_flags_none, 0);
-
-    return result;
-}
-
-metac_statement_t* MetaCParser_ParseStatementFromString(const char* stmt)
-{
-    // assert(g_lineLexer.TokenCapacity == ARRAY_SIZE(g_lineLexer.inlineTokens));
-    LineLexerInit();
-    LexString(&g_lineLexer, stmt);
-
-    metac_statement_t* result = MetaCParser_ParseStatement(&g_lineParser, 0, 0);
-
-    return result;
-}
-
-metac_declaration_t* MetaCParser_ParseDeclarationFromString(const char* decl)
-{
-    // assert(g_lineLexer.TokenCapacity == ARRAY_SIZE(g_lineLexer.inlineTokens));
-    LineLexerInit();
-    LexString(&g_lineLexer, decl);
-
-    metac_declaration_t* result = MetaCParser_ParseDeclaration(&g_lineParser, 0);
-
-    return result;
-}
-#if !defined(NO_PREPROCESSOR)
-metac_preprocessor_directive_t MetaCParser_ParsePreprocFromString(const char* line, metac_preprocessor_t* preProc,
-                                                                  metac_token_buffer_t* tokenBuffer)
-{
-    LineLexerInit();
-    LexString(&g_lineLexer, line);
-
-    g_lineParser.Preprocessor = preProc;
-    metac_preprocessor_directive_t dirc = MetaCParser_ParsePreproc(&g_lineParser, preProc, tokenBuffer);
-    g_lineParser.Preprocessor = 0;
-    return dirc;
-}
-#endif
-
+*/
 #include <stdio.h>
 
 

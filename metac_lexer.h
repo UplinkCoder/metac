@@ -339,13 +339,13 @@ typedef struct metac_location_t
 } metac_location_t;
 
 
-typedef struct metac_location_storage_t
+typedef struct metac_location_t_array
 {
     metac_location_t* Locations;
 
     uint32_t LocationSize;
     uint32_t LocationCapacity;
-} metac_location_storage_t;
+} metac_location_t_array;
 
 typedef uint32_t metac_location_ptr;
 
@@ -356,10 +356,10 @@ typedef struct metac_lexer_t {
     uint32_t TokenCount;
     uint32_t TokenCapacity;
 
-    metac_location_storage_t LocationStorage;
+    metac_location_t_array LocationStorage;
 
-    metac_token_t       inlineTokens[32];
-    metac_location_t inlineLocations[32];
+    metac_token_t       inlineTokens[16];
+    metac_location_t inlineLocations[16];
 
     metac_identifier_table_t IdentifierTable;
     metac_identifier_table_t StringTable;
@@ -378,22 +378,22 @@ const char* MetaCTokenEnum_toChars(metac_token_enum_t tok);
 void MetaCLexer_Init(metac_lexer_t* self);
 
 void MetaCLocation_Expand(metac_location_t* self, metac_location_t endLoc);
-void MetaCLocationStorage_Init(metac_location_storage_t* self);
+void MetaCLocationStorage_Init(metac_location_t_array* self);
 
 metac_location_ptr MetaCLocationStorage_StartLoc(
-        metac_location_storage_t* self,
+        metac_location_t_array* self,
         uint32_t line, uint16_t column);
 
 void MetaCLocationStorage_EndLoc(
-        metac_location_storage_t* self,
+        metac_location_t_array* self,
         metac_location_ptr locationId,
         uint32_t line, uint16_t column);
 
-metac_location_t MetaCLocationStorage_FromPair(metac_location_storage_t *srcStorage,
+metac_location_t MetaCLocationStorage_FromPair(metac_location_t_array *srcStorage,
                                                metac_location_ptr startLocIdx,
                                                metac_location_ptr endLocIdx);
 
-metac_location_ptr MetaCLocationStorage_Store(metac_location_storage_t* self,
+metac_location_ptr MetaCLocationStorage_Store(metac_location_t_array* self,
                                               metac_location_t loc);
 
 metac_lexer_state_t MetaCLexerStateFromString(uint32_t sourceId, const char* str);

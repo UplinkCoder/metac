@@ -10,5 +10,4 @@ typedef struct metac_codegen_function_t
 {
     decl_function_t* decl_func;
     uint32_t functionIndex;
-
 } metac_codegen_function_t;

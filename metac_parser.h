@@ -76,7 +76,7 @@ typedef struct metac_parser_t
     metac_token_t CurrentComment;
     decl_label_t* CurrentLabel;
 
-    metac_location_storage_t LocationStorage;
+    metac_location_t_array LocationStorage;
 
 #ifdef METAC_REPL
     task_t* ReplTask;

@@ -9,11 +9,11 @@ if [ -z $ACCEL ]; then
     ACCEL=ACCEL_TABLE
 fi
 
-echo $CC package_serializer.c -DACCEL=$ACCEL -DWRITE_TABLE \
+echo $CC package_serializer.c -DACCEL=$ACCEL -DWRITE_TABLE ../metac_task.c \
     -g2 -O0 -march=native -mtune=native -o package_serializer $@
 
 $CC package_serializer.c \
-    -DACCEL=$ACCEL -DWRITE_TABLE -DNO_FIBERS \
+    -DACCEL=$ACCEL -DWRITE_TABLE ../metac_task.c \
     -g2 -O0 -march=native -mtune=native -o package_serializer -lpthread $@
 
 #    ../3rd_party/deboost.context/fcontext_aarch64.o \

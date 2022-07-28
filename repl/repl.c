@@ -4,10 +4,11 @@
 #include "../metac_parser_obj.c"
 #include "../metac_semantic_obj.c"
 #include "../metac_driver.c"
+#include "../metac_lpp.c"
 #include "../metac_compiler_interface.h"
 #include "../bsr.h"
 #include "../crc32c.h"
-//#include "../metac_eeP.c"
+
 #include "../3rd_party/linenoise/linenoise.c"
 #include "../int_to_str.c"
 #include <stdio.h>
@@ -15,9 +16,7 @@
 #include "../metac_type_table.h"
 #include "../metac_task.h"
 
-extern bool g_exernalIdentifierTable;
-extern metac_lexer_t g_lineLexer;
-extern void LineLexerInit();
+#include "repl.h"
 
 #ifndef NO_FIBERS
 #  ifdef HAS_TLS
@@ -27,30 +26,7 @@ extern void LineLexerInit();
 #  endif
 #endif
 
-metac_statement_t* MetaCParser_ParseStatementFromString(const char* str);
-metac_declaration_t* MetaCParser_ParseDeclarationFromString(const char* str);
-
 const char* MetaCTokenEnum_toChars(metac_token_enum_t tok);
-
-typedef enum parse_mode_t
-{
-    parse_mode_token = 0,
-
-    parse_mode_decl,
-    parse_mode_stmt,
-    parse_mode_expr,
-    parse_mode_file,
-    parse_mode_preproc,
-
-    parse_mode_ds,
-    parse_mode_ss,
-
-    parse_mode_ee,
-    parse_mode_es,
-    parse_mode_setvars,
-
-    parse_mode_max
-} parse_mode_t;
 
 void PrintHelp(void)
 {
@@ -123,7 +99,8 @@ static inline int TranslateIdentifiers(metac_node_t node, void* ctx)
                 TranslateIdentifier(DstTable, SrcTable, &struct_->BaseIdentifier);
             if (struct_->Identifier.v != empty_identifier.v)
                 TranslateIdentifier(DstTable, SrcTable, &struct_->Identifier);
-        }
+        } break;
+
         default : break;
     }
 
@@ -186,28 +163,6 @@ static inline int Presemantic(metac_node_t node, void* ctx)
     return 0;
 }
 
-typedef struct repl_state_t
-{
-    parse_mode_t parseMode;
-    metac_lexer_state_t repl_state;
-    metac_lexer_t lexer;
-    metac_preprocessor_t preProcessor;
-    metac_type_aggregate_t* compilerStruct;
-    metac_semantic_state_t sema;
-
-    const char* line;
-
-    const char* promt;
-
-    char* srcBuffer;
-    void* freePtr;
-
-    int32_t lineSz;
-    int32_t srcBufferLength;
-
-    metac_printer_t printer;
-    variable_store_t vstore;
-} repl_state_t;
 
 void Presemantic_(repl_state_t* self)
 {
@@ -291,8 +246,8 @@ void Presemantic_(repl_state_t* self)
         }
 
         MetaCSemantic_Handoff(&tmpSema,
-                              (metac_sema_declaration_t**)&self->sema.CompilerInterface,
-                              &self->sema);
+                              (metac_sema_declaration_t**)&self->SemanticState.CompilerInterface,
+                              &self->SemanticState);
         // FreeSema
         MetaCParser_Free(&tmpParser);
     }
@@ -300,85 +255,85 @@ void Presemantic_(repl_state_t* self)
 
 void Repl_SwtichMode(repl_state_t* self)
 {
-    switch (self->parseMode)
+    switch (self->ParseMode)
     {
     case parse_mode_max: assert(0);
     case parse_mode_file:
-        self->promt = ">File<";
+        self->Promt = ">File<";
         break;
     case parse_mode_token:
-        self->promt = "Token>";
+        self->Promt = "Token>";
         break;
     case parse_mode_decl:
-        self->promt = "Decl>";
+        self->Promt = "Decl>";
         linenoiseSetMultiLine(1);
         break;
     case parse_mode_expr:
-        self->promt = "Exp>";
+        self->Promt = "Exp>";
         break;
     case parse_mode_stmt:
-        self->promt = "Stmt>";
+        self->Promt = "Stmt>";
         break;
     case parse_mode_preproc:
-        self->promt = "Preproc>";
+        self->Promt = "Preproc>";
         break;
     case parse_mode_ee:
-        self->promt = "EE>";
+        self->Promt = "EE>";
         break;
     case parse_mode_es:
-        self->promt = "ES>";
+        self->Promt = "ES>";
         break;
     case parse_mode_ss:
-        self->promt = "SS>";
+        self->Promt = "SS>";
         break;
     case parse_mode_ds:
-        self->promt = "DS>";
+        self->Promt = "DS>";
         break;
     case parse_mode_setvars:
-        self->promt = "SetVars>";
+        self->Promt = "SetVars>";
         break;
     }
 }
 
 void Repl_Init(repl_state_t* self)
 {
-    self->repl_state.Position = 0;
-    self->repl_state.Line = 1;
-    self->repl_state.Column = 1;
-    self->parseMode = parse_mode_ee;
+    self->LPP.LexerState.Position = 0;
+    self->LPP.LexerState.Line = 1;
+    self->LPP.LexerState.Column = 1;
+    self->ParseMode = parse_mode_ee;
 
-    self->compilerStruct = 0;
+    self->CompilerInterface = 0;
 
-    self->srcBuffer = 0;
-    self->freePtr = 0;
-    self->srcBufferLength = 0;
+    self->SrcBuffer = 0;
+    self->FreePtr = 0;
+    self->SrcBufferLength = 0;
 
-    self->promt = ">";
+    self->Promt = ">";
 
     // init line lexer with more than the default
     // tokens
-    g_lineLexer.Tokens =
-        (metac_token_t*)malloc(128 * sizeof(metac_token_t));
-    g_lineLexer.TokenCapacity = 128;
-    g_lineLexer.LocationStorage.Locations =
-        (metac_location_t*)malloc(128 * sizeof(metac_location_t));
-    g_lineLexer.LocationStorage.LocationCapacity = 128;
+    metac_lpp_t* LPP = &self->LPP;
 
     // make sure we know our special identifiers
-    LineLexerInit();
 
-    MetaCLexer_Init(&self->lexer);
 
-    MetaCPreProcessor_Init(&self->preProcessor, &g_lineLexer, 0, 0);
+    MetaCLPP_Init(&self->LPP);
+    MetaCSemantic_Init(&self->SemanticState, &LPP->Parser, 0);
+    MetaCSemantic_PushNewScope(&self->SemanticState, scope_parent_module, 1);
 
-    MetaCSemantic_Init(&self->sema, &g_lineParser, 0);
-    MetaCSemantic_PushNewScope(&self->sema, scope_parent_module, 1);
+    LPP->Lexer.Tokens =
+        (metac_token_t*)malloc(128 * sizeof(metac_token_t));
+    LPP->Lexer.TokenCapacity = 128;
+    LPP->Lexer.LocationStorage.Locations =
+        (metac_location_t*)malloc(128 * sizeof(metac_location_t));
+    LPP->Lexer.LocationStorage.LocationCapacity = 128;
+
 
     MetaCPrinter_Init(&self->printer,
-        &g_lineParser.IdentifierTable,
-        &g_lineParser.StringTable);
+        &LPP->Parser.IdentifierTable,
+        &LPP->Parser.StringTable);
 
-    VariableStore_Init(&self->vstore);
+    VariableStore_Init(&self->vstore, &LPP->Parser.IdentifierTable);
 
     _ReadContextCapacity = 32;
     _ReadContexts = (ReadI32_Ctx*)
@@ -402,14 +357,14 @@ void MetaCRepl_ExprSemantic_Task(task_t* task)
     metac_sema_expression_t* result = 0;
 
     ENQUEUE_TASK(result, MetaCSemantic_doExprSemantic_,
-                 (&ctx->Repl->sema), ctx->Exp, 0);
+                 (&ctx->Repl->SemanticState), ctx->Exp, 0);
 
     task->TaskFlags |= Task_Waiting;
     printf("Just before yield\n");
     YIELD(WaitForExprSemantic);
 
     printf("typeIndex.v: %x\n", result->TypeIndex.v);
-    const char* type_str = TypeToChars(&ctx->Repl->sema, result->TypeIndex);
+    const char* type_str = TypeToChars(&ctx->Repl->SemanticState, result->TypeIndex);
 
     printf("typeof(%s) = %s\n",
            MetaCPrinter_PrintExpression(&ctx->Repl->printer, ctx->Exp));
@@ -424,34 +379,36 @@ LswitchMode:
     Repl_SwtichMode(repl);
 
     {
-        repl->line = linenoise(repl->promt);
-        repl->lineSz = cast(int32_t) strlen(repl->line);
-        linenoiseHistoryAdd(repl->line);
-        TracyCMessage(repl->line, repl->lineSz)
+        repl->Line = linenoise(repl->Promt);
+        repl->LineSz = cast(int32_t) strlen(repl->Line);
+        linenoiseHistoryAdd(repl->Line);
+        TracyCMessage(repl->Line, repl->LineSz)
     }
 
     {
-        uint32_t line_length = strlen(repl->line);
-        if (*repl->line == ':')
+        uint32_t line_length = strlen(repl->Line);
+        if (*repl->Line == ':')
         {
-            switch(repl->line[1])
+            switch(repl->Line[1])
             {
             case 'q':
                 linenoiseHistorySave(".repl_history");
-                linenoiseFree((void*)repl->line);
+                linenoiseFree((void*)repl->Line);
                 return false;
             case 'f' :
             {
-                repl->parseMode = parse_mode_file;
-                const char* filename = repl->line + 3;
+                repl->ParseMode = parse_mode_file;
+                const char* filename = repl->Line + 3;
                 printf("querying fileStorage");
                 // metac_file_storage_t* fs = Global_GetFileStorage(worker);
                 // metac_file_ptr_t f = MetaCFileStorage_LoadFile(fs, filename);
             } break;
             case 'l' :
             {
-                repl->parseMode = parse_mode_file;
-                const char* filename = repl->line + 3;
+                metac_lexer_t* fileLexer = &repl->FileLexer;
+                metac_lexer_state_t* fileLexerState;
+                repl->ParseMode = parse_mode_file;
+                const char* filename = repl->Line + 3;
                 printf("loading and lexing: '%s'\n", filename);
                 FILE* fd = fopen(filename, "rb");
                 if (!fd)
@@ -470,95 +427,96 @@ LswitchMode:
                     fseek(fd, 0, SEEK_SET);
 
                     uint32_t estimatedTokenCount = (((sz / 5) + 128) & ~127);
-                    if (repl->lexer.TokenCapacity < estimatedTokenCount)
+                    if (fileLexer->TokenCapacity < estimatedTokenCount)
                     {
-                        repl->lexer.Tokens = (metac_token_t*)
+                        fileLexer->Tokens = (metac_token_t*)
                             malloc(sizeof(metac_token_t) * estimatedTokenCount);
-                        repl->lexer.TokenCount = 0;
-                        repl->lexer.TokenCapacity = estimatedTokenCount;
-                        repl->lexer.Tokens = (metac_token_t*)
+                        fileLexer->TokenCount = 0;
+                        fileLexer->TokenCapacity = estimatedTokenCount;
+                        fileLexer->Tokens = (metac_token_t*)
                             malloc(sizeof(metac_token_t) * estimatedTokenCount);
 
-                        repl->lexer.LocationStorage.Locations = (metac_location_t*)
+                        fileLexer->LocationStorage.Locations = (metac_location_t*)
                             malloc(sizeof(metac_location_t) * estimatedTokenCount);
-                        repl->lexer.LocationStorage.LocationSize = 0;
-                        repl->lexer.LocationStorage.LocationCapacity = estimatedTokenCount;
+                        fileLexer->LocationStorage.LocationSize = 0;
+                        fileLexer->LocationStorage.LocationCapacity = estimatedTokenCount;
                     }
 
-                    repl->freePtr = repl->srcBuffer = calloc(1, sz + 4);
-                    repl->srcBufferLength = sz;
-                    fread((void*)repl->srcBuffer, 1, sz, fd);
-                    repl->parseMode = parse_mode_file;
-                    repl->repl_state.Position = 0;
-                    repl->repl_state.Line = 1;
-                    repl->repl_state.Column = 1;
-                    repl->repl_state.Size = sz;
+                    repl->FreePtr = repl->SrcBuffer = calloc(1, sz + 4);
+                    repl->SrcBufferLength = sz;
+                    fread((void*)repl->SrcBuffer, 1, sz, fd);
+                    repl->ParseMode = parse_mode_file;
+
+                    fileLexerState->Position = 0;
+                    fileLexerState->Line = 1;
+                    fileLexerState->Column = 1;
+                    fileLexerState->Size = sz;
                 }
                 break;
             }
             case 't' :
-                repl->parseMode = parse_mode_token;
+                repl->ParseMode = parse_mode_token;
                 goto LswitchMode;
             case 'd' :
-                switch (repl->line[2])
+                switch (repl->Line[2])
                 {
                 default:
-                    repl->parseMode = parse_mode_decl;
+                    repl->ParseMode = parse_mode_decl;
                     goto LswitchMode;
 
                  case 's':
-                    repl->parseMode = parse_mode_ds;
+                    repl->ParseMode = parse_mode_ds;
                     goto LswitchMode;
                 }
 
             case 'v' :
-                repl->parseMode = parse_mode_setvars;
+                repl->ParseMode = parse_mode_setvars;
                 goto LswitchMode;
             case 'e' :
-                switch(repl->line[2])
+                switch(repl->Line[2])
                 {
                 default:
-                    repl->parseMode = parse_mode_expr;
+                    repl->ParseMode = parse_mode_expr;
                     goto LswitchMode;
                 case 'e':
-                    repl->parseMode = parse_mode_ee;
+                    repl->ParseMode = parse_mode_ee;
                     goto LswitchMode;
                 case 's':
-                    repl->parseMode = parse_mode_es;
+                    repl->ParseMode = parse_mode_es;
                     goto LswitchMode;
                 }
             case 's' :
-                switch (repl->line[2])
+                switch (repl->Line[2])
                 {
                 default:
-                    repl->parseMode = parse_mode_stmt;
+                    repl->ParseMode = parse_mode_stmt;
                     goto LswitchMode;
                 case 's':
-                    repl->parseMode = parse_mode_ss;
+                    repl->ParseMode = parse_mode_ss;
                     goto LswitchMode;
                 }
                 break;
             case 'p' :
             {
-                repl->parseMode = parse_mode_preproc;
+                repl->ParseMode = parse_mode_preproc;
                 goto LswitchMode;
             } break;
             default :
-                printf("Command :%c unknown type :h for help\n", *(repl->line + 1));
+                printf("Command :%c unknown type :h for help\n", *(repl->Line + 1));
                 break;
             case 'h' :
                 PrintHelp();
                 break;
             }
         }
-        else if (repl->line[0] == '.')
+        else if (repl->Line[0] == '.')
         {
             if (line_length == sizeof("scope")
-             && 0 == memcmp(repl->line + 1, "scope", strlen("scope")))
+             && 0 == memcmp(repl->Line + 1, "scope", strlen("scope")))
             {
-                if (repl->sema.CurrentScope)
+                if (repl->SemanticState.CurrentScope)
                 {
-                    metac_scope_table_t* table = &repl->sema.CurrentScope->ScopeTable;
+                    metac_scope_table_t* table = &repl->SemanticState.CurrentScope->ScopeTable;
                     uint32_t nMembers = table->SlotsUsed;
 
                     for(uint32_t slotIdx = 0, memberIdx = 0; memberIdx < nMembers; slotIdx++)
@@ -566,7 +524,7 @@ LswitchMode:
                         metac_scope_table_slot_t slot = table->Slots[slotIdx];
                         if (slot.Hash)
                         {
-                            printf("Member [%u] : %s\n", memberIdx++, MetaCPrinter_PrintSemaNode(&repl->printer, &repl->sema, slot.Node));
+                            printf("Member [%u] : %s\n", memberIdx++, MetaCPrinter_PrintSemaNode(&repl->printer, &repl->SemanticState, slot.Node));
                         }
                     }
                 }
@@ -574,13 +532,13 @@ LswitchMode:
             }
         }
 
-        if (repl->parseMode != parse_mode_file)
+        if (repl->ParseMode != parse_mode_file)
         {
-            repl->srcBuffer = (char*)repl->line;
-            repl->srcBufferLength = line_length;
+            repl->SrcBuffer = (char*)repl->Line;
+            repl->SrcBufferLength = line_length;
         }
 
-        while (repl->srcBufferLength > 0)
+        while (repl->SrcBufferLength > 0)
         {
             metac_token_t token;
 
@@ -588,14 +546,14 @@ LswitchMode:
             metac_statement_t* stmt;
             metac_declaration_t* decl;
 
-            uint32_t initalPosition = repl->repl_state.Position;
-            switch(repl->parseMode)
+            uint32_t initalPosition = repl->LPP.LexerState.Position;
+            switch(repl->ParseMode)
             {
             case parse_mode_max: break;
             case parse_mode_expr:
             {
                  exp =
-                    MetaCParser_ParseExpressionFromString(repl->line);
+                    MetaCLPP_ParseExpressionFromString(&repl->LPP, repl->Line);
 
                 const char* str = MetaCPrinter_PrintExpression(&repl->printer, exp);
                 printf("expr = %s\n", str);
@@ -611,34 +569,32 @@ LswitchMode:
                     _inlineTokens, 0, ARRAY_SIZE(_inlineTokens)
                 };
                 metac_preprocessor_directive_t directive =
-                    MetaCParser_ParsePreprocFromString(repl->line, &repl->preProcessor, &buffer);
-
-                g_lineParser.Preprocessor = &repl->preProcessor;
+                    MetaCLPP_ParsePreprocFromString(&repl->LPP, repl->Line, &buffer);
 
                 if (directive == pp_eval)
                 {
-                    int res = MetaCPreProcessor_Eval(&repl->preProcessor, &g_lineParser);
+                    int res = MetaCPreProcessor_Eval(&repl->LPP.Preprocessor, &repl->LPP.Parser);
                     printf("result:%u\n", res);
                 }
                 else if (directive == pp_define)
                 {
 
                     metac_preprocessor_define_ptr_t define =
-                        MetaCPreProcessor_ParseDefine(&repl->preProcessor, &g_lineParser);
+                        MetaCPreProcessor_ParseDefine(&repl->LPP.Preprocessor, &repl->LPP.Parser);
                 }
 
-                g_lineParser.Preprocessor = 0;
                 goto LnextLine;
             }
 
             case parse_mode_ee:
             {
                 exp =
-                    MetaCParser_ParseExpressionFromString(repl->line);
+                    MetaCLPP_ParseExpressionFromString(&repl->LPP, repl->Line);
+
                 const char* str = MetaCPrinter_PrintExpression(&repl->printer, exp);
 
                 metac_sema_expression_t* result =
-                    MetaCSemantic_doExprSemantic(&repl->sema, exp, 0);
+                    MetaCSemantic_doExprSemantic(&repl->SemanticState, exp, 0);
 
                 metac_expression_t printExpStorage;
 
@@ -648,11 +604,11 @@ LswitchMode:
                 const char* result_str;
                 if (eval_exp.Kind == exp_type)
                 {
-                    result_str = MetaCPrinter_PrintSemaNode(&repl->printer, &repl->sema, &eval_exp);
+                    result_str = MetaCPrinter_PrintSemaNode(&repl->printer, &repl->SemanticState, &eval_exp);
                 }
                 else
                 {
-                    result_str = MetaCPrinter_PrintSemaNode(&repl->printer, &repl->sema, &eval_exp);
+                    result_str = MetaCPrinter_PrintSemaNode(&repl->printer, &repl->SemanticState, &eval_exp);
                 }
                 printf("%s = %s\n", str, result_str);
                 MetaCPrinter_Reset(&repl->printer);
@@ -664,22 +620,22 @@ LswitchMode:
             case parse_mode_es:
             {
                 exp =
-                    MetaCParser_ParseExpressionFromString(repl->line);
+                    MetaCLPP_ParseExpressionFromString(&repl->LPP, repl->Line);
 
                 const char* str = MetaCPrinter_PrintExpression(&repl->printer, exp);
 
                 metac_sema_expression_t* result =
-                    MetaCSemantic_doExprSemantic(&repl->sema, exp, 0);
+                    MetaCSemantic_doExprSemantic(&repl->SemanticState, exp, 0);
 
             Lcontinuation:
                 {
                     printf("typeIndex.v: %x\n", result->TypeIndex.v);
-                    const char* type_str = TypeToChars(&repl->sema, result->TypeIndex);
+                    const char* type_str = TypeToChars(&repl->SemanticState, result->TypeIndex);
 
                     metac_printer_t printer;
                     MetaCPrinter_InitSz(&printer,
-                                        &repl->lexer.IdentifierTable,
-                                        &repl->lexer.StringTable, 512);
+                                        &repl->LPP.Lexer.IdentifierTable,
+                                        &repl->LPP.Lexer.StringTable, 512);
 
                     printf("typeof(%s) = %s\n",
                            MetaCPrinter_PrintExpression(&repl->printer, exp), type_str);
@@ -691,7 +647,7 @@ LswitchMode:
                 do {
                     taskqueue_t* q = &CurrentWorker()->Queue;
                     task_t task = {0};
-                    MetaCSemantic_doExprSemantic_task_context_t ctx = {&repl->sema, exp};
+                    MetaCSemantic_doExprSemantic_task_context_t ctx = {&repl->SemanticState, exp};
                     MetaCSemantic_doExprSemantic_task_context_t* ctxPtr = &ctx;
                     _Static_assert(sizeof(task._inlineContext) >= sizeof(MetaCSemantic_doExprSemantic_task_context_t), "Context size");
                     task.Context = task._inlineContext;
@@ -709,7 +665,7 @@ LswitchMode:
 
             case parse_mode_setvars :
             {
-                metac_declaration_t* decl = MetaCParser_ParseDeclarationFromString(repl->line);
+                metac_declaration_t* decl = MetaCLPP_ParseDeclarationFromString(&repl->LPP, repl->Line);
                 if (decl)
                 {
                     metac_identifier_ptr_t idPtr = {0};
@@ -721,7 +677,7 @@ LswitchMode:
                         goto LnextLine;
                     }
 
-                    const char* idChars = IdentifierPtrToCharPtr(&g_lineParser.IdentifierTable, idPtr);
+                    const char* idChars = IdentifierPtrToCharPtr(&repl->LPP.Parser.IdentifierTable, idPtr);
                     const uint32_t length = strlen(idChars);
                     uint32_t idHash = crc32c_nozero(~0, idChars, length);
                     uint32_t idKey = IDENTIFIER_KEY(idHash, length);
@@ -744,12 +700,12 @@ LswitchMode:
                     DeclarationStore_SetDecl(&dstore, dstoreId, decl);
 */
                     printf("Registering %s [v=%u] in scope\n", idChars, idPtr.v);
-                    MetaCSemantic_RegisterInScope(&repl->sema, idPtr, decl);
+                    MetaCSemantic_RegisterInScope(&repl->SemanticState, idPtr, decl);
                     goto LnextLine;
                 }
                 else
                 {
-                    metac_expression_t* assignExp = MetaCParser_ParseExpressionFromString(repl->line);
+                    metac_expression_t* assignExp = MetaCLPP_ParseExpressionFromString(&repl->LPP, repl->Line);
                     if (assignExp)
                     {
                         if (assignExp->Kind != exp_assign)
@@ -759,7 +715,7 @@ LswitchMode:
                         }
 
                         metac_sema_expression_t* ae =
-                            MetaCSemantic_doExprSemantic(&repl->sema, assignExp, 0);
+                            MetaCSemantic_doExprSemantic(&repl->SemanticState, assignExp, 0);
                         if (ae)
                         {
                             if (ae->E1->Kind == exp_identifier)
@@ -786,7 +742,7 @@ LswitchMode:
 
             case parse_mode_stmt :
             {
-                stmt = MetaCParser_ParseStatementFromString(repl->line);
+                stmt = MetaCLPP_ParseStatementFromString(&repl->LPP, repl->Line);
                 if (stmt)
                     printf("stmt = %s\n", MetaCPrinter_PrintStatement(&repl->printer, stmt));
                 else
@@ -797,7 +753,7 @@ LswitchMode:
 
             case parse_mode_decl :
             {
-                decl = MetaCParser_ParseDeclarationFromString(repl->line);
+                decl = MetaCLPP_ParseDeclarationFromString(&repl->LPP, repl->Line);
                 if (decl)
                     printf("decl = %s\n", MetaCPrinter_PrintDeclaration(&repl->printer, decl));
                 else
@@ -809,7 +765,7 @@ LswitchMode:
 
             case parse_mode_ds :
             {
-                decl = MetaCParser_ParseDeclarationFromString(repl->line);
+                decl = MetaCLPP_ParseDeclarationFromString(&repl->LPP, repl->Line);
                 if (decl)
                     printf("decl = %s\n", MetaCPrinter_PrintDeclaration(&repl->printer, decl));
                 else
@@ -817,7 +773,7 @@ LswitchMode:
 #ifndef NO_FIBERS
                 MetaCSemantic_doDeclSemantic_task_context_t ctx =
                 {
-                    &repl->sema, decl, 0
+                    &repl->SemanticState, decl, 0
                 };
                 MetaCSemantic_doDeclSemantic_task_context_t* ctxPtr =
                     &ctx;
@@ -837,7 +793,7 @@ LswitchMode:
                 }
 #else
                 metac_sema_declaration_t* ds =
-                    MetaCSemantic_doDeclSemantic(&repl->sema, decl);
+                    MetaCSemantic_doDeclSemantic(&repl->SemanticState, decl);
 #endif
                 goto LnextLine;
             }
@@ -848,13 +804,13 @@ LswitchMode:
 
 LlexSrcBuffer: {}
 #if 1
-                token = *MetaCLexerLexNextToken(&repl->lexer, &repl->repl_state, repl->srcBuffer, repl->srcBufferLength);
+                token = *MetaCLexerLexNextToken(&repl->LPP.Lexer, &repl->LPP.LexerState, repl->SrcBuffer, repl->SrcBufferLength);
 
-                uint32_t eaten_chars = repl->repl_state.Position - initalPosition;
+                uint32_t eaten_chars = repl->LPP.LexerState.Position - initalPosition;
                 const uint32_t token_length = MetaCTokenLength(token);
 #if 1
                 const uint32_t locPtr = token.LocationId;
-                const metac_location_t loc = locPtr ? repl->lexer.LocationStorage.Locations[locPtr - 4] : (metac_location_t){0};
+                const metac_location_t loc = locPtr ? repl->LPP.Lexer.LocationStorage.Locations[locPtr - 4] : (metac_location_t){0};
 
                 printf("read tokenType: %s {length: %d}\n Location: {Line: %d, Col: %d}",
                         MetaCTokenEnum_toChars(token.TokenType), token_length,
@@ -863,7 +819,8 @@ LlexSrcBuffer: {}
 
                 if (token.TokenType == tok_identifier)
                 {
-                    printf("    %.*s\n", LENGTH_FROM_IDENTIFIER_KEY(token.Key), IDENTIFIER_PTR(&repl->lexer.MEMBER_SUFFIX(Identifier), token));
+                    printf("    %.*s\n", LENGTH_FROM_IDENTIFIER_KEY(token.Key),
+                                         IdentifierPtrToCharPtr(&repl->LPP.Lexer.IdentifierTable, token.IdentifierPtr));
                 }
                 else if (token.TokenType == tok_char)
                 {
@@ -880,36 +837,39 @@ LlexSrcBuffer: {}
                 }
                 else if (token.TokenType == tok_string)
                 {
-                    printf("    \"%.*s\"\n", LENGTH_FROM_STRING_KEY(token.Key), STRING_PTR(&repl->lexer.String, token.StringPtr));
+                    printf("    \"%.*s\"\n", LENGTH_FROM_STRING_KEY(token.Key),
+                                             IdentifierPtrToCharPtr(&repl->LPP.Lexer.StringTable, token.StringPtr));
                 }
 #endif
 
-                repl->srcBufferLength -= eaten_chars;
-                repl->srcBuffer += eaten_chars;
+                repl->SrcBufferLength -= eaten_chars;
+                repl->SrcBuffer += eaten_chars;
                 printf("eaten_chars: %d\n", eaten_chars);
                 if (!token_length)
                     break;
             }
         }
 
+        if (repl->FreePtr)
         {
-            repl->repl_state.Line++;
-            repl->repl_state.Column = 1;
-            repl->lexer.TokenCount = 0;
-            repl->lexer.LocationStorage.LocationSize = 0;
-        }
-
-        if (repl->freePtr)
-        {
-            free(repl->freePtr);
-            repl->freePtr = 0;
-            repl->parseMode = parse_mode_token;
+            free(repl->FreePtr);
+            repl->FreePtr = 0;
+            repl->ParseMode = parse_mode_token;
             goto LswitchMode;
         }
-        repl->srcBuffer = 0;
+        repl->SrcBuffer = 0;
 #endif
     }
+
 LnextLine:
+    {
+        repl->LPP.LexerState.Line++;
+        repl->LPP.LexerState.Column = 1;
+        repl->LPP.Lexer.TokenCount = 0;
+        repl->LPP.Lexer.LocationStorage.LocationSize = 0;
+        repl->LPP.Parser.CurrentTokenIndex = 0;
+    }
+
     return true;
 }
 
