@@ -23,9 +23,15 @@
 
 const char* MetaCTokenEnum_toChars(metac_token_enum_t tok);
 
-void PrintHelp(void)
+#define MSGF(FMT, ...) uiInterface.Message(uiState, FMT, __VA_ARGS__)
+#define MSG(STR) MSGF(STR, 0);
+
+#define ERRORF(FMT, ...) MSGF(FMT, __VA_ARGS__)
+#define ERROR(FMT) MSG(FMT)
+
+void HelpMessage(ui_interface_t uiInterface, uint32_t* uiState)
 {
-    printf(
+    MSG(
        "Type  :e for expression mode\n"
        "      :ee for evaluation mode\n"
        "      :es for expression semantic mode\n"
@@ -102,6 +108,7 @@ static inline int TranslateIdentifiers(metac_node_t node, void* ctx)
     return 0;
 }
 
+#if 0
 typedef struct find_statement_context_t
 {
     metac_printer_t* Printer;
@@ -121,11 +128,12 @@ static inline int FindStatementCb(metac_node_t node, void* ctx)
             MetaCPrinter_PrintStatement(context->Printer, node);
             const char* stmt_str =
                 context->Printer->StringMemory;
-            printf("Found if statement: if (%s)\n", stmt_str);
+            MSGF("Found if statement: if (%s)\n", stmt_str);
         } break;
     }
     return 0;
 }
+#endif
 
 typedef struct presemantic_context_t
 {
@@ -152,7 +160,7 @@ static inline int Presemantic(metac_node_t node, void* ctx)
     }
     else
     {
-        //printf("Not a typedef: %s\n", MetaCNodeKind_toChars(node->Kind));
+        //MSGF("Not a typedef: %s\n", MetaCNodeKind_toChars(node->Kind));
     }
 
     return 0;
@@ -233,7 +241,7 @@ void Presemantic_(repl_state_t* self)
                 {
                     printIdentifier = struct_->Identifier;
                 }
- //               printf("found struct : '%s'\n",
+ //               MSGF("found struct : '%s'\n",
  //                   IdentifierPtrToCharPtr(&tmpParser.IdentifierTable, printIdentifier));
 
                 compilerStruct = MetaCSemantic_doDeclSemantic(&tmpSema, struct_);
@@ -354,14 +362,14 @@ void MetaCRepl_ExprSemantic_Task(task_t* task)
                  (&ctx->Repl->SemanticState), ctx->Exp, 0);
 
     task->TaskFlags |= Task_Waiting;
-    printf("Just before yield\n");
+    // MSG("Just before yield\n");
     YIELD(WaitForExprSemantic);
 
-    printf("typeIndex.v: %x\n", result->TypeIndex.v);
+    // MSGF("typeIndex.v: %x\n", result->TypeIndex.v);
     const char* type_str = TypeToChars(&ctx->Repl->SemanticState, result->TypeIndex);
 
-    printf("typeof(%s) = %s\n",
-           MetaCPrinter_PrintExpression(&ctx->Repl->printer, ctx->Exp));
+    //MSGF("typeof(%s) = %s\n",
+    //       MetaCPrinter_PrintExpression(&ctx->Repl->printer, ctx->Exp));
 }
 #endif
 
@@ -371,13 +379,12 @@ bool Repl_Loop(repl_state_t* repl, repl_ui_context_t* context)
 #ifndef NO_FIBERS
     worker_context_t* worker = CurrentWorker();
 #endif
-LswitchMode:
-    Repl_SwtichMode(repl);
     const ui_interface_t uiInterface = context->UiInterface;
     struct ui_state_t* uiState = context->UiState;
 
-#define MSGF(FMT, ...) uiInterface.Message(uiState, FMT, __VA_ARGS__)
-#define MSG(STR) MSGF(STR, 0);
+LswitchMode:
+    Repl_SwtichMode(repl);
+
     {
         repl->Line = uiInterface.GetInputLine(repl, uiState, &repl->LineSz);
         if (repl->Line)
@@ -409,14 +416,14 @@ LswitchMode:
                 metac_lexer_state_t* fileLexerState;
                 repl->ParseMode = parse_mode_file;
                 const char* filename = repl->Line + 3;
-                printf("loading and lexing: '%s'\n", filename);
+                MSGF("loading and lexing: '%s'\n", filename);
                 FILE* fd = fopen(filename, "rb");
                 if (!fd)
                 {
                     perror(filename);
 #if defined(__linux__) && defined(TRACY_ENABLE)
                     char message[256];
-                    uint32_t sz = sprintf(message, "%s/%s", get_current_dir_name(), filename);
+                    uint32_t sz = sMSGF(message, "%s/%s", get_current_dir_name(), filename);
 #endif
                     TracyCMessage(message, sz);
                 }
@@ -501,11 +508,14 @@ LswitchMode:
                 repl->ParseMode = parse_mode_preproc;
                 goto LswitchMode;
             } break;
-            default :
-                printf("Command :%c unknown type :h for help\n", *(repl->Line + 1));
-                break;
+
             case 'h' :
-                PrintHelp();
+            {
+                HelpMessage(uiInterface, uiState);
+                goto LnextLine;
+            } break;
+            default :
+                MSGF("Command :%c unknown type :h for help\n", *(repl->Line + 1));
                 break;
             }
         }
@@ -524,7 +534,7 @@ LswitchMode:
                         metac_scope_table_slot_t slot = table->Slots[slotIdx];
                         if (slot.Hash)
                         {
-                            printf("Member [%u] : %s\n", memberIdx++, MetaCPrinter_PrintSemaNode(&repl->printer, &repl->SemanticState, slot.Node));
+                            MSGF("Member [%u] : %s\n", memberIdx++, MetaCPrinter_PrintSemaNode(&repl->printer, &repl->SemanticState, slot.Node));
                         }
                     }
                 }
@@ -556,7 +566,7 @@ LswitchMode:
                     MetaCLPP_ParseExpressionFromString(&repl->LPP, repl->Line);
 
                 const char* str = MetaCPrinter_PrintExpression(&repl->printer, exp);
-                printf("expr = %s\n", str);
+                MSGF("expr = %s\n", str);
                 MetaCPrinter_Reset(&repl->printer);
                 goto LnextLine;
             }
@@ -574,7 +584,7 @@ LswitchMode:
                 if (directive == pp_eval)
                 {
                     int res = MetaCPreProcessor_Eval(&repl->LPP.Preprocessor, &repl->LPP.Parser);
-                    printf("result:%u\n", res);
+                    MSGF("result:%u\n", res);
                 }
                 else if (directive == pp_define)
                 {
@@ -610,7 +620,7 @@ LswitchMode:
                 {
                     result_str = MetaCPrinter_PrintSemaNode(&repl->printer, &repl->SemanticState, &eval_exp);
                 }
-                printf("%s = %s\n", str, result_str);
+                MSGF("%s = %s\n", str, result_str);
                 MetaCPrinter_Reset(&repl->printer);
                 // XXX static and fixed size state like _ReadContext
                 // should go away soon.
@@ -629,7 +639,7 @@ LswitchMode:
 
             Lcontinuation:
                 {
-                    printf("typeIndex.v: %x\n", result->TypeIndex.v);
+                    MSGF("typeIndex.v: %x\n", result->TypeIndex.v);
                     const char* type_str = TypeToChars(&repl->SemanticState, result->TypeIndex);
 
                     metac_printer_t printer;
@@ -637,7 +647,7 @@ LswitchMode:
                                         &repl->LPP.Lexer.IdentifierTable,
                                         &repl->LPP.Lexer.StringTable, 512);
 
-                    printf("typeof(%s) = %s\n",
+                    MSGF("typeof(%s) = %s\n",
                            MetaCPrinter_PrintExpression(&repl->printer, exp), type_str);
                 }
 #if 0
@@ -673,7 +683,7 @@ LswitchMode:
 
                     if (idPtr.v == 0)
                     {
-                        fprintf(stderr, "declaration could not be handled only functions are supported for now\n");
+                        ERROR("declaration could not be handled only functions are supported for now\n");
                         goto LnextLine;
                     }
 
@@ -688,7 +698,7 @@ LswitchMode:
                     if (decl->DeclKind == decl_function)
                     {
                         decl->decl_function.Identifier = dstoreId;
-                        printf("Setting dStore ID: %u\n", dstoreId.v);
+                        MSGF("Setting dStore ID: %u\n", dstoreId.v);
                     }
                     else if (decl->DeclKind == decl_variable)
                     {
@@ -699,7 +709,7 @@ LswitchMode:
 
                     DeclarationStore_SetDecl(&dstore, dstoreId, decl);
 */
-                    printf("Registering %s [v=%u] in scope\n", idChars, idPtr.v);
+                    MSGF("Registering %s [v=%u] in scope\n", idChars, idPtr.v);
                     MetaCSemantic_RegisterInScope(&repl->SemanticState, idPtr, decl);
                     goto LnextLine;
                 }
@@ -710,7 +720,7 @@ LswitchMode:
                     {
                         if (assignExp->Kind != exp_assign)
                         {
-                            fprintf(stderr, "You must write an expression of the from identifier = value");
+                            ERROR("You must write an expression of the from identifier = value");
                             goto LnextLine;
                         }
 
@@ -728,14 +738,14 @@ LswitchMode:
                         }
                         else
                         {
-                            fprintf(stderr, "Semantic on assign exp failed\n");
+                            ERROR("Semantic on assign exp failed\n");
                         }
                         // MetaCSemantic_Free(&sema);
                         goto LnextLine;
                     }
                     else
                     {
-                        fprintf(stderr, "Input did not parse as either an assign-expression or declaration\n");
+                        ERROR("Input did not parse as either an assign-expression or declaration\n");
                     }
                 }
             } break;
@@ -744,9 +754,9 @@ LswitchMode:
             {
                 stmt = MetaCLPP_ParseStatementFromString(&repl->LPP, repl->Line);
                 if (stmt)
-                    printf("stmt = %s\n", MetaCPrinter_PrintStatement(&repl->printer, stmt));
+                    MSGF("stmt = %s\n", MetaCPrinter_PrintStatement(&repl->printer, stmt));
                 else
-                   fprintf(stderr, "couldn't parse statement\n");
+                   ERROR("couldn't parse statement\n");
                 MetaCPrinter_Reset(&repl->printer);
                 goto LnextLine;
             }
@@ -755,9 +765,9 @@ LswitchMode:
             {
                 decl = MetaCLPP_ParseDeclarationFromString(&repl->LPP, repl->Line);
                 if (decl)
-                    printf("decl = %s\n", MetaCPrinter_PrintDeclaration(&repl->printer, decl));
+                    MSGF("decl = %s\n", MetaCPrinter_PrintDeclaration(&repl->printer, decl));
                 else
-                    printf("Couldn't parse Declaration\n");
+                    MSG("Couldn't parse Declaration\n");
 
                 goto LnextLine;
             }
@@ -766,9 +776,9 @@ LswitchMode:
             {
                 decl = MetaCLPP_ParseDeclarationFromString(&repl->LPP, repl->Line);
                 if (decl)
-                    printf("decl = %s\n", MetaCPrinter_PrintDeclaration(&repl->printer, decl));
+                    MSGF("decl = %s\n", MetaCPrinter_PrintDeclaration(&repl->printer, decl));
                 else
-                    printf("Couldn't parse Declaration\n");
+                    MSG("Couldn't parse Declaration\n");
 #ifndef NO_FIBERS
                 MetaCSemantic_doDeclSemantic_task_context_t ctx =
                 {
@@ -788,7 +798,7 @@ LswitchMode:
 
                 if (taskId == 0)
                 {
-                    printf("Couldn't Push\n");
+                    ERROR("Couldn't Push\n");
                 }
 #else
                 metac_sema_declaration_t* ds =
@@ -811,39 +821,39 @@ LlexSrcBuffer: {}
                 const uint32_t locPtr = token.LocationId;
                 const metac_location_t loc = locPtr ? repl->LPP.Lexer.LocationStorage.Locations[locPtr - 4] : (metac_location_t){0};
 
-                printf("read tokenType: %s {length: %d}\n Location: {Line: %d, Col: %d}",
+                MSGF("read tokenType: %s {length: %d}\n Location: {Line: %d, Col: %d}",
                         MetaCTokenEnum_toChars(token.TokenType), token_length,
                         loc.StartLine, loc.StartColumn
                 );
 
                 if (token.TokenType == tok_identifier)
                 {
-                    printf("    %.*s\n", LENGTH_FROM_IDENTIFIER_KEY(token.Key),
+                    MSGF("    %.*s\n", LENGTH_FROM_IDENTIFIER_KEY(token.Key),
                                          IdentifierPtrToCharPtr(&repl->LPP.Lexer.IdentifierTable, token.IdentifierPtr));
                 }
                 else if (token.TokenType == tok_char)
                 {
-                    printf("    '%.*s'\n", token.charLength, token.chars);
+                    MSGF("    '%.*s'\n", token.charLength, token.chars);
                 }
                 else if (token.TokenType == tok_char_uni)
                 {
-                    printf("    '\\U%.*s'\n", token.charLength, token.chars);
+                    MSGF("    '\\U%.*s'\n", token.charLength, token.chars);
                 }
                 else if (token.TokenType == tok_uint)
                 {
                     char buffer[21];
-                    printf("    %s\n", u64tostr(token.ValueU64, buffer));
+                    MSGF("    %s\n", u64tostr(token.ValueU64, buffer));
                 }
                 else if (token.TokenType == tok_string)
                 {
-                    printf("    \"%.*s\"\n", LENGTH_FROM_STRING_KEY(token.Key),
+                    MSGF("    \"%.*s\"\n", LENGTH_FROM_STRING_KEY(token.Key),
                                              IdentifierPtrToCharPtr(&repl->LPP.Lexer.StringTable, token.StringPtr));
                 }
 #endif
 
                 repl->SrcBufferLength -= eaten_chars;
                 repl->SrcBuffer += eaten_chars;
-                printf("eaten_chars: %d\n", eaten_chars);
+                MSGF("eaten_chars: %d\n", eaten_chars);
                 if (!token_length)
                     break;
             }
@@ -873,11 +883,6 @@ LnextLine:
 }
 repl_ui_context_t* g_uiContext = 0;
 
-void ReplStart(repl_ui_context_t* uiContext)
-{
-    g_uiContext = uiContext;
-    Repl_Fiber();
-}
 
 void Repl_Fiber(void)
 {
@@ -887,8 +892,8 @@ void Repl_Fiber(void)
     repl_state_t* repl = &repl_;
     Repl_Init(repl);
 
-    PrintHelp();
     ui_interface_t uiInterface = uiContext->UiInterface;
+    struct ui_state_t* uiState = uiContext->UiState;
 
     // Presemantic_(repl);
 
@@ -899,9 +904,14 @@ void Repl_Fiber(void)
 #endif
     }
 
-    fprintf(stderr, "Repl_Loop exited this should only happen on quit\n");
+    ERROR("Repl_Loop exited this should only happen on quit\n");
 #ifndef NO_FIBERS
     aco_exit1(GET_CO());
 #endif
 }
 
+void ReplStart(repl_ui_context_t* uiContext)
+{
+    g_uiContext = uiContext;
+    Repl_Fiber();
+}

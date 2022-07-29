@@ -28,7 +28,9 @@ static inline void LexString(metac_lexer_t* lexer, const char* line)
 void MetaCLPP_Init(metac_lpp_t* lpp)
 {
     MetaCLexer_Init(&lpp->Lexer);
+#ifndef NO_PREPROCESSOR
     MetaCPreProcessor_Init(&lpp->Preprocessor, &lpp->Lexer, 0, 0);
+#endif
     MetaCParser_InitFromLexer(&lpp->Parser, &lpp->Lexer);
 }
 
@@ -61,6 +63,7 @@ metac_declaration_t* MetaCLPP_ParseDeclarationFromString(metac_lpp_t* lpp, const
     return result;
 }
 
+#ifndef NO_PREPROCESSOR
 metac_preprocessor_directive_t MetaCLPP_ParsePreprocFromString(metac_lpp_t* lpp, const char* line,
                                                                metac_token_buffer_t* tokenBuffer)
 {
@@ -69,3 +72,4 @@ metac_preprocessor_directive_t MetaCLPP_ParsePreprocFromString(metac_lpp_t* lpp,
     metac_preprocessor_directive_t dirc = MetaCParser_ParsePreproc(&lpp->Parser, &lpp->Preprocessor, tokenBuffer);
     return dirc;
 }
+#endif

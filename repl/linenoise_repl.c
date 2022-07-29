@@ -23,14 +23,18 @@ const char* Linenoise_GetInputLine(repl_state_t* repl, ui_state_t* state, uint32
     else
     {
         *length = 0;
+        printf("Got no line\n", line);
     }
 
     return line;
 }
-
+#include <stdarg.h>
 void Linenoise_Message(ui_state_t* state, const char* fmt, ...)
 {
-
+    va_list args;
+    va_start (args, fmt);
+    vprintf (fmt, args);
+    va_end (args);
 }
 
 parse_mode_t Linenoise_QueryMode(ui_state_t* uiState)
@@ -52,29 +56,12 @@ int main(int argc, const char* argv[])
 #endif
 
     repl_state_t repl;
-    Repl_Init(&repl);
-
     ui_state_t uiState = {0};
 
     repl_ui_context_t ctx = {
         LinenoiseUiInterface, cast(void*)&uiState
     };
-//    ui_state_t uiState;
-//    UiState_Init(&uiState);
-/*
-    printf("Transfered decl: %s\n",
-        MetaCPrinter_PrintDeclaration(&printer, compilerStruct));
-*/
 
-    // only here can we destroy tmpSema
-
-
-
-/*
-    metac_dot_printer_t dot_printer;
-    MetaCDotPrinter_Init(&dot_printer, &g_lineParser.IdentifierTable);
-    g_lineParser.DotPrinter = &dot_printer;
-*/
 #ifndef NO_FIBERS
     worker_context_t replWorkerContext = {0};
     threadContext = &replWorkerContext;

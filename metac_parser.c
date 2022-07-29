@@ -70,7 +70,9 @@ void MetaCParser_Init(metac_parser_t* self)
     self->DefineCapacity = ARRAY_SIZE(self->inlineDefines);
 */
     self->LexerState = 0;
+#ifndef NO_PREPROCESSOR
     self->Preprocessor = 0;
+#endif
     self->BlockStatementStackCapacity = 16;
     self->BlockStatementStackCount = 0;
     self->BlockStatementStack = (stmt_block_t**)
@@ -548,9 +550,9 @@ LpeekDefine:
         result = MetaCPreProcessor_PeekDefineToken(preProc, p - 1);
         if (!result)
             goto Lpeek;
-    }
+    } else
 #endif
-    else if (cast(uint32_t)(self->CurrentTokenIndex + (p - 1)) < self->Lexer->TokenCount)
+    if (cast(uint32_t)(self->CurrentTokenIndex + (p - 1)) < self->Lexer->TokenCount)
     {
 Lpeek:
         result = self->Lexer->Tokens + self->CurrentTokenIndex + (p - 1);
@@ -3241,35 +3243,49 @@ const char* MetaCNodeKind_toChars(metac_node_kind_t type)
 
 #include "metac_printer.h"
 
+#include "metac_lpp.h"
 #  ifdef TEST_PARSER
 void TestParseExprssion(void)
 {
     metac_printer_t printer;
+    metac_lpp_t LPP;
+    MetaCLPP_Init(&LPP);
+
     MetaCPrinter_Init(&printer,
-        &g_lineParser.IdentifierTable,
-        &g_lineParser.StringTable
+        &LPP.Parser.IdentifierTable,
+        &LPP.Parser.StringTable
     );
     metac_expression_t* expr;
 
-    expr = MetaCParser_ParseExpressionFromString("12 - 16 - 99");
+    expr = MetaCLPP_ParseExpressionFromString(&LPP, "12 - 16 - 99");
     assert(!strcmp(MetaCPrinter_PrintExpression(&printer, expr), "((12 - 16) - 99)"));
 
-    expr = MetaCParser_ParseExpressionFromString("2 * 12 + 10");
+    expr = MetaCLPP_ParseExpressionFromString(&LPP, "2 * 12 + 10");
     assert(!strcmp(MetaCPrinter_PrintExpression(&printer, expr), "((2 * 12) + 10)"));
 
-    expr = MetaCParser_ParseExpressionFromString("2 + 10 * 2");
+    expr = MetaCLPP_ParseExpressionFromString(&LPP, "2 + 10 * 2");
     assert(!strcmp(MetaCPrinter_PrintExpression(&printer, expr), "(2 + (10 * 2))"));
 
-    expr = MetaCParser_ParseExpressionFromString("a = b(c)");
+    expr = MetaCLPP_ParseExpressionFromString(&LPP, "a = b(c)");
     assert(!strcmp(MetaCPrinter_PrintExpression(&printer, expr), "(a = b(c))"));
 
-    expr = MetaCParser_ParseExpressionFromString("((x + ((((a + b))))) + d)");
+    expr = MetaCLPP_ParseExpressionFromString(&LPP, "((x + ((((a + b))))) + d)");
     assert(!strcmp(MetaCPrinter_PrintExpression(&printer, expr), "((x + ((((a + b))))) + d)"));
 }
 
 void TestParseDeclaration(void)
 {
-    metac_declaration_t* decl = MetaCParser_ParseDeclarationFromString("int f(double x);");
+    metac_printer_t printer;
+    metac_lpp_t LPP;
+    MetaCLPP_Init(&LPP);
+
+    MetaCPrinter_Init(&printer,
+        &LPP.Parser.IdentifierTable,
+        &LPP.Parser.StringTable
+    );
+    metac_expression_t* expr;
+
+    metac_declaration_t* decl = MetaCLPP_ParseDeclarationFromString(&LPP, "int f(double x);");
     // assert(!strcmp(PrintDeclaration(&g_lineParser, decl, 0, 0), "int f(double x);"));
 }
 
