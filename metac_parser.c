@@ -487,7 +487,7 @@ metac_token_t* MetaCParser_NextToken(metac_parser_t* self)
 
     if(result)
     {
-        if (result->TokenType == tok_identifier)
+        if (result->TokenType == tok_identifier && preProc)
         {
             printf(IdentifierPtrToCharPtr(&self->Lexer->IdentifierTable, result->IdentifierPtr));
             uint32_t oldDefineStackTop = preProc->DefineTokenStackCount;
@@ -1051,9 +1051,11 @@ metac_expression_t* MetaCParser_ParsePrimaryExpression(metac_parser_t* self, par
     metac_token_t* currentToken = MetaCParser_PeekToken(self, 1);
     if (currentToken)
     {
+/*
         printf("ParsePrimaryExpression-currentToken: %s\n", MetaCTokenEnum_toChars(currentToken->TokenType));
         if (currentToken->TokenType == tok_identifier)
             printf("    id: %s\n", IdentifierPtrToCharPtr(&self->Lexer->IdentifierTable, currentToken->IdentifierPtr));
+*/
     }
 #if !defined(NO_PREPROCESSOR)
     if (self->Preprocessor)

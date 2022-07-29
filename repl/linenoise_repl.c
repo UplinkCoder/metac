@@ -19,6 +19,7 @@ const char* Linenoise_GetInputLine(repl_state_t* repl, ui_state_t* state, uint32
     if (line)
     {
         *length = strlen(line);
+        linenoiseHistoryAdd(line);
     }
     else
     {
@@ -54,21 +55,22 @@ int main(int argc, const char* argv[])
 #ifndef NO_FIBERS
     aco_global_init();
 #endif
-
+    linenoiseHistoryLoad(".repl_history");
     repl_state_t repl;
     ui_state_t uiState = {0};
 
     repl_ui_context_t ctx = {
         LinenoiseUiInterface, cast(void*)&uiState
     };
-
+    g_uiContext = &ctx;
 #ifndef NO_FIBERS
     worker_context_t replWorkerContext = {0};
     threadContext = &replWorkerContext;
-    RunWorkerThread(&replWorkerContext, ReplStart, &ctx);
+    RunWorkerThread(&replWorkerContext, Repl_Fiber, 0);
 #else
     ReplStart(&ctx);
 #endif
+    linenoiseHistorySave(".repl_history");
     return 1;
 }
 
