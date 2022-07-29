@@ -83,6 +83,7 @@ if [ -d $DST ]; then
 
     mkdir -p $DST/repl
     cp repl/repl.c repl/repl.h repl/build.sh repl/exp_eval.c repl/exp_eval.h \
+       repl/linenoise_repl.c repl/curses.c \
        $DST/repl
 
     mkdir -p $DST/libinterpret

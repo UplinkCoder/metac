@@ -1,6 +1,6 @@
-#include "metac_task.h"
-
 #ifndef NO_FIBERS
+
+#include "metac_task.h"
 typedef struct MetaCSemantic_doExprSemantic_task_context_t
 {
     metac_semantic_state_t* Sema;

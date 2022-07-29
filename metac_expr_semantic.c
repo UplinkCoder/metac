@@ -1,6 +1,8 @@
 #include "metac_semantic.h"
-#include "metac_task.h"
 
+#ifndef NO_FIBERS
+#  include "metac_task.h"
+#endif
 
 #ifndef _emptyPointer
 #  define _emptyPointer (void*)0x1

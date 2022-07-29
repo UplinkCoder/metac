@@ -2,7 +2,7 @@
 #  include "3rd_party/libaco/aco.h"
 #endif
 
-#define START(CO) do { \
+#define START(CO, ARG) do { \
 /*    printf("Starting %x from {%s:%d}\n", CO, __FILE__, __LINE__);*/ \
     aco_resume(CO); \
 } while(0);

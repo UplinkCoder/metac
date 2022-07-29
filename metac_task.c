@@ -136,7 +136,7 @@ void ExecuteTask(worker_context_t* worker, task_t* task, aco_t* fiber)
     assert((fiberPool->FreeBitfield & (1 << fiberIdx)) == 0);
     if (task->TaskFlags == Task_Halted)
     {
-        START(task->Fiber);
+        START(task->Fiber, task);
     }
     else
     {
@@ -207,7 +207,7 @@ void RunWorkerThread(worker_context_t* worker, void (*specialFunc)(),  void* spe
     {
         specialFiber =
             aco_create(threadFiber, aco_share_stack_new(KILOBYTE(256)), 0, specialFunc, specialFuncCtx);
-        START(specialFiber);
+        START(specialFiber, specialFuncCtx);
     }
 
     fiber_pool_t fiberPool;

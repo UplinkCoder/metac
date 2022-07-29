@@ -12,9 +12,9 @@
 #  include "metac_simd.h"
 #endif
 
-#include "metac_task.h"
 
 #ifndef NO_FIBERS
+#  include "metac_task.h"
 #  include "metac_coro.c"
 #endif
 

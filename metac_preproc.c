@@ -1,7 +1,11 @@
 #if !defined(NO_PREPROCESSOR)
 
 #include "metac_preproc.h"
-#include "metac_task.h"
+
+#ifndef NO_FIBERS
+# include "metac_task.h"
+#endif
+
 #include "metac_parser.h"
 #include <string.h>
 #include <stdlib.h>

@@ -1,6 +1,9 @@
 #define ACCEL ACCEL_TABLE
 
 #include "../compat.h"
+#ifndef NO_FIBERS
+#  include "../metac_task.c"
+#endif
 #include "../metac_parser_obj.c"
 #include "../metac_semantic_obj.c"
 #include "../metac_driver.c"
@@ -9,22 +12,14 @@
 #include "../bsr.h"
 #include "../crc32c.h"
 
-#include "../3rd_party/linenoise/linenoise.c"
 #include "../int_to_str.c"
 #include <stdio.h>
 #include "exp_eval.c"
 #include "../metac_type_table.h"
-#include "../metac_task.h"
-
-#include "repl.h"
-
 #ifndef NO_FIBERS
-#  ifdef HAS_TLS
-    extern __thread worker_context_t *threadContext;
-#  else
-    extern worker_context_t *threadContext;
-#  endif
+#  include "../metac_task.h"
 #endif
+#include "repl.h"
 
 const char* MetaCTokenEnum_toChars(metac_token_enum_t tok);
 
@@ -266,7 +261,6 @@ void Repl_SwtichMode(repl_state_t* self)
         break;
     case parse_mode_decl:
         self->Promt = "Decl>";
-        linenoiseSetMultiLine(1);
         break;
     case parse_mode_expr:
         self->Promt = "Exp>";
@@ -372,19 +366,27 @@ void MetaCRepl_ExprSemantic_Task(task_t* task)
 #endif
 
 /// returns false if the repl is done running
-bool Repl_Loop(repl_state_t* repl)
+bool Repl_Loop(repl_state_t* repl, repl_ui_context_t* context)
 {
+#ifndef NO_FIBERS
     worker_context_t* worker = CurrentWorker();
+#endif
 LswitchMode:
     Repl_SwtichMode(repl);
+    const ui_interface_t uiInterface = context->UiInterface;
+    struct ui_state_t* uiState = context->UiState;
 
+#define MSGF(FMT, ...) uiInterface.Message(uiState, FMT, __VA_ARGS__)
+#define MSG(STR) MSGF(STR, 0);
     {
-        repl->Line = linenoise(repl->Promt);
-        repl->LineSz = cast(int32_t) strlen(repl->Line);
-        linenoiseHistoryAdd(repl->Line);
-        TracyCMessage(repl->Line, repl->LineSz)
+        repl->Line = uiInterface.GetInputLine(repl, uiState, &repl->LineSz);
+        if (repl->Line)
+        {
+            TracyCMessage(repl->Line, repl->LineSz);
+        }
     }
 
+    if (repl->Line)
     {
         uint32_t line_length = strlen(repl->Line);
         if (*repl->Line == ':')
@@ -399,7 +401,7 @@ LswitchMode:
             {
                 repl->ParseMode = parse_mode_file;
                 const char* filename = repl->Line + 3;
-                printf("querying fileStorage");
+                MSG("querying fileStorage");
                 // metac_file_storage_t* fs = Global_GetFileStorage(worker);
                 // metac_file_ptr_t f = MetaCFileStorage_LoadFile(fs, filename);
             } break;
@@ -872,19 +874,28 @@ LnextLine:
 
     return true;
 }
+repl_ui_context_t* g_uiContext = 0;
 
-void Repl_Fiber()
+void ReplStart(repl_ui_context_t* uiContext)
 {
+    g_uiContext = uiContext;
+    Repl_Fiber();
+}
+
+void Repl_Fiber(void)
+{
+    repl_ui_context_t* uiContext = g_uiContext;
+
     repl_state_t repl_;
     repl_state_t* repl = &repl_;
     Repl_Init(repl);
 
     PrintHelp();
-    linenoiseHistoryLoad(".repl_history");
+    ui_interface_t uiInterface = uiContext->UiInterface;
 
     // Presemantic_(repl);
 
-    while (Repl_Loop(repl) != false)
+    while (Repl_Loop(repl, uiContext) != false)
     {
 #ifndef NO_FIBERS
         YIELD(ReplYield);
@@ -897,35 +908,3 @@ void Repl_Fiber()
 #endif
 }
 
-void ReplMainFiber(void)
-{
-    printf("I am the repl main fiber\n");
-}
-
-int main(int argc, const char* argv[])
-{
-    aco_global_init();
-
-/*
-    printf("Transfered decl: %s\n",
-        MetaCPrinter_PrintDeclaration(&printer, compilerStruct));
-*/
-
-    // only here can we destroy tmpSema
-
-
-
-/*
-    metac_dot_printer_t dot_printer;
-    MetaCDotPrinter_Init(&dot_printer, &g_lineParser.IdentifierTable);
-    g_lineParser.DotPrinter = &dot_printer;
-*/
-#ifndef NO_FIBERS
-    worker_context_t replWorkerContext = {0};
-    threadContext = &replWorkerContext;
-    RunWorkerThread(&replWorkerContext, Repl_Fiber, 0);
-#else
-    Repl_Fiber();
-#endif
-    return 1;
-}

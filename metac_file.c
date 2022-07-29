@@ -2,7 +2,9 @@
 
 #include "compat.h"
 #include "metac_file.h"
-#include "metac_task.h"
+#ifndef NO_FIBERS
+#  include "metac_task.h"
+#endif
 #include <string.h>
 #include <assert.h>
 
@@ -149,6 +151,7 @@ typedef struct MetaCFileStorage_LoadTask_ctx_t
     metac_filehandle_t Result;
 } MetaCFileStorage_LoadTask_ctx_t;
 
+#ifndef NO_FIBERS
 void MetaCFileStorage_LoadTask(task_t* task)
 {
     MetaCFileStorage_LoadTask_ctx_t* ctxP =
@@ -172,7 +175,7 @@ void MetaCFileStorage_LoadTask(task_t* task)
 
     ctxP->Result = funcs->Open(fs.ctx, path, filename);
 }
-
+#endif
 metac_file_ptr_t MetaCFileStorage_LoadFile(metac_file_storage_t* self, const char* path)
 {
     // first seperate the path into filename and rest
@@ -218,12 +221,12 @@ metac_file_ptr_t MetaCFileStorage_LoadFile(metac_file_storage_t* self, const cha
     result.FilenameIdx = fileNamePtr.v;
     result.PathIdx = filePathPtr.v;
 
-
     MetaCFileStorage_LoadTask_ctx_t taskCtx = {
         self,
         result
     };
 
+#ifndef NO_FIBERS
     task_t loadTask = {0};
     loadTask.TaskFunction = MetaCFileStorage_LoadTask;
     loadTask.ContextSize = sizeof(taskCtx);
@@ -234,6 +237,9 @@ metac_file_ptr_t MetaCFileStorage_LoadFile(metac_file_storage_t* self, const cha
     ORIGIN(loadTask.Origin);
 
     AddTaskToQueue(&loadTask);
+#else
+    assert(!"Loading files is not supported without fibers at the moment");
+#endif
 
     return result;
 }

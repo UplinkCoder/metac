@@ -1,5 +1,8 @@
 #include "metac_type_semantic.h"
-#include "metac_task.h"
+
+#ifndef NO_FIBERS
+#  include "metac_task.h"
+#endif
 
 #ifndef INVALID_SIZE
 #  define INVALID_SIZE \
