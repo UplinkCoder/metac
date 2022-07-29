@@ -751,12 +751,12 @@ metac_token_t* MetaCLexerLexNextToken(metac_lexer_t* self,
     {
         uint32_t newCapa = 32;
 
-        if (self->TokenCapacity == ARRAY_SIZE(self->inlineTokens))
+        if (self->Tokens == self->inlineTokens)
         {
             metac_token_t* newTokens = cast(metac_token_t*)
-                malloc(sizeof(metac_token_t*) * newCapa);
+                malloc(sizeof(metac_token_t) * newCapa);
             metac_token_t* newLocations = cast(metac_location_t*)
-                malloc(sizeof(metac_location_t*) * newCapa);
+                malloc(sizeof(metac_location_t) * newCapa);
 
             memcpy(newTokens, self->Tokens, sizeof(metac_token_t) * ARRAY_SIZE(self->inlineTokens));
             memcpy(newLocations, self->LocationStorage.Locations,
@@ -766,7 +766,6 @@ metac_token_t* MetaCLexerLexNextToken(metac_lexer_t* self,
 
             self->TokenCapacity = newCapa;
             self->LocationStorage.LocationCapacity = newCapa;
-
         }
         else
         {

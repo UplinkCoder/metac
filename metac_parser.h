@@ -107,6 +107,7 @@ uint32_t MetaCParser_HowMuchLookahead(metac_parser_t* self);
 metac_expression_t* MetaCParser_ParseExpression(metac_parser_t* self, parse_expression_flags_t flags, metac_expression_t* prev);
 metac_expression_t* MetaCParser_ParseExpressionFromString(const char* exp);
 metac_declaration_t* MetaCParser_ParseDeclaration(metac_parser_t* self, metac_declaration_t* parent);
+metac_statement_t* MetaCParser_ParseStatement(metac_parser_t* self, metac_statement_t* parent, metac_statement_t* prev);
 
 #if !defined(NO_PREPROCESSOR)
 metac_preprocessor_directive_t MetaCParser_ParsePreproc(metac_parser_t* self,

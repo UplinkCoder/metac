@@ -2757,9 +2757,9 @@ static decl_type_array_t* ParseArraySuffix(metac_parser_t* self, decl_type_t* ty
     (metac_statement_t*)0
 static inline void PrintStatement(metac_printer_t* self, metac_statement_t* stmt);
 
-static metac_statement_t* MetaCParser_ParseStatement(metac_parser_t* self,
-                                                     metac_statement_t* parent,
-                                                     metac_statement_t* prev)
+metac_statement_t* MetaCParser_ParseStatement(metac_parser_t* self,
+                                              metac_statement_t* parent,
+                                              metac_statement_t* prev)
 {
     metac_statement_t* result = 0;
 
