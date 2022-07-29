@@ -394,8 +394,6 @@ LswitchMode:
             switch(repl->Line[1])
             {
             case 'q':
-                linenoiseHistorySave(".repl_history");
-                linenoiseFree((void*)repl->Line);
                 return false;
             case 'f' :
             {
@@ -760,7 +758,6 @@ LswitchMode:
                     printf("decl = %s\n", MetaCPrinter_PrintDeclaration(&repl->printer, decl));
                 else
                     printf("Couldn't parse Declaration\n");
-                linenoiseSetMultiLine(false);
 
                 goto LnextLine;
             }
