@@ -2399,6 +2399,7 @@ void EatAttributes(metac_parser_t* self)
         while(currentToken && currentToken->TokenType != tok_rParen)
         {
             MetaCParser_Match(self, currentToken->TokenType);
+            currentToken = MetaCParser_PeekToken(self, 1);
         }
 
         if (currentToken)
@@ -2540,12 +2541,17 @@ uint32_t HashDecl(metac_declaration_t* decl)
 
 metac_declaration_t* MetaCParser_ParseDeclaration(metac_parser_t* self, metac_declaration_t* parent)
 {
+    // get rid of attribs before declarations
+    //TODO acutally keep track of them
+    EatAttributes(self);
+
     metac_token_t* currentToken = MetaCParser_PeekToken(self, 1);
     metac_token_enum_t tokenType =
         (currentToken ? currentToken->TokenType : tok_invalid);
     metac_location_t loc =
         currentToken ? LocationFromToken(self, currentToken) : invalidLocation;
     metac_declaration_t* result = 0;
+
     bool isStatic = false;
     bool isInline = false;
     bool isExtern = false;
