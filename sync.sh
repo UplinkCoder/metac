@@ -13,6 +13,7 @@ if [ -d $DST ]; then
        metac_node.h metac_node.c \
        metac_simd.h metac_atomic.h \
        metac_lexer.c metac_lexer.h metac_parser.c metac_parser.h \
+       metac_alloc.c metac_alloc.h \
        metac_alloc_node.c metac_alloc_node.h \
        metac_parsetree.c metac_parsetree.h \
        metac_printer.c metac_printer.h metac_cgen.c metac_cgen.h \
@@ -93,7 +94,6 @@ if [ -d $DST ]; then
        libinterpret/bc_interpreter_backend.h \
        libinterpret/bc_interpreter_backend.c \
        $DST/libinterpret
-
 
     mkdir -p $DST/package_serializer
     cp package_serializer/build.sh package_serializer/build.bat \
