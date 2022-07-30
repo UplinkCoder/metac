@@ -755,7 +755,7 @@ metac_token_t* MetaCLexerLexNextToken(metac_lexer_t* self,
         {
             metac_token_t* newTokens = cast(metac_token_t*)
                 malloc(sizeof(metac_token_t) * newCapa);
-            metac_token_t* newLocations = cast(metac_location_t*)
+            metac_location_t* newLocations = cast(metac_location_t*)
                 malloc(sizeof(metac_location_t) * newCapa);
 
             memcpy(newTokens, self->Tokens, sizeof(metac_token_t) * ARRAY_SIZE(self->inlineTokens));

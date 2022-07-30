@@ -2,7 +2,7 @@
 #include <stdlib.h>
 
 #define DEF_STACK_ARRAY(TYPE, NAME, STACK_DIM) \
-    TYPE _##NAME[STACK_DIM] = {0}; \
+    TYPE _##NAME[STACK_DIM] = {}; \
     TYPE ## _array NAME = { _##NAME, 0, STACK_DIM };
 
 
@@ -47,7 +47,7 @@ NAME.Ptr[NAME.Count++] = VALUE;
     { \
         void* ptr = malloc(sizeof(_##NAME[0]) * NAME.Count); \
         memcpy(ptr, NAME.Ptr, sizeof(_##NAME[0]) * NAME.Count); \
-        NAME.Ptr = ptr; \
+        (*cast(void**)&NAME.Ptr) = ptr; \
         NAME.Capacity = NAME.Count; \
     }
 

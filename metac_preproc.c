@@ -335,7 +335,7 @@ static inline int32_t MetaCPreProcessor_EvalExp(metac_preprocessor_t* self,
         } break;
         case exp_identifier:
         {
-            char* identifierChars =
+            const char* identifierChars =
                 IdentifierPtrToCharPtr(&parser->IdentifierTable, e->IdentifierPtr);
             metac_preprocessor_define_ptr_t definePtr;
             definePtr =
@@ -343,7 +343,8 @@ static inline int32_t MetaCPreProcessor_EvalExp(metac_preprocessor_t* self,
             metac_expression_t* resolved = 0;
             if (definePtr.v)
             {
-                resolved = MetaCPreProcessor_ResolveDefineToExp(self, definePtr, (metac_token_t_array_array){0});
+                metac_token_t_array_array emptyArray = {};
+                resolved = MetaCPreProcessor_ResolveDefineToExp(self, definePtr, emptyArray);
                 result = resolved ? MetaCPreProcessor_EvalExp(self, resolved, parser) : 0;
             }
             else
@@ -470,7 +471,7 @@ MetaCPreprocessor_RegisterDefine(metac_preprocessor_t* self,
             assert(table->TokenMemorySize + tokens.Count < table->TokenMemoryCapacity);
 
             uint32_t TokenArraryOffset = POST_ADD(table->TokenMemorySize, tokens.Count);
-            memcpy(cast(void*)table->TokenMemory + TokenArraryOffset,
+            memcpy(cast(uint8_t*)table->TokenMemory + TokenArraryOffset,
                    cast(void*)tokens.Ptr,
                    tokens.Count * sizeof(*tokens.Ptr));
             define.TokensOffset = TokenArraryOffset;

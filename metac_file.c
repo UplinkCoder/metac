@@ -64,9 +64,9 @@ metac_buffer_t MetaCNative_ReadEntireFileAndZeroTerminate(void* dummy, metac_fil
         size_t aligned_size =
             (((result.Length + 1) + 3) & ~3);
 
-        result.Data = (char*) malloc(aligned_size);
+        result.Data = cast(char*) malloc(aligned_size);
 
-        size_t read_size = fread(result.Data, 1, result.Length, fd);
+        size_t read_size = fread(cast(void*)result.Data, 1, result.Length, fd);
 
         for(size_t p = result.Length;
             p < aligned_size;

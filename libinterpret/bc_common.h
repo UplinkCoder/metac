@@ -1,8 +1,11 @@
 #ifndef _BC_COMMON_H_
 #define _BC_COMMON_H_ 1
-
-#include <stdint.h>
-#include <stdbool.h>
+#ifndef _MSC_VER
+#  include <stdint.h>
+#  include <stdbool.h>
+#else
+#  include "../compat.h"
+#endif
 #include <assert.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -17,6 +20,10 @@
 #undef  offsetof
 #define offsetof(st, m) \
     ((size_t)((char *)&((st *)0)->m - (char *)0))
+
+#if !defined(UINT32_MAX)
+#  define UINT32_MAX ((uint32_t)0xffffffff)
+#endif
 
 static const uint32_t skipFn = UINT32_MAX;
 static const uint32_t nodeFromName = UINT32_MAX - 1;

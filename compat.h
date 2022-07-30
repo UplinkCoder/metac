@@ -12,7 +12,13 @@
 #endif
 
 #if defined(_MSC_VER)
+#  define snprintf _snprintf
+#endif
+
+#if defined(_MSC_VER)
 #  include "stdint_msvc.h"
+#  define UINT32_MAX (cast(uint32_t)0xffffffff)
+#  define UINT16_MAX (cast(uint16_t)0xffff)
 #  ifndef __cplusplus
 #    error "win32 compile only works in c++ mode ... use /TP"
 #  endif
