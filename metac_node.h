@@ -135,6 +135,8 @@
     M(exp_argument) \
     M(exp_type) \
     \
+    M(exp_template_instance) \
+    \
     M(exp_variable) \
     \
     M(exp_addr_or_and) \

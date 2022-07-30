@@ -858,13 +858,18 @@ static inline void PrintExpression(metac_printer_t* self, metac_expression_t* ex
     else if (exp->Kind == exp_call)
     {
         PrintExpression(self, exp->E1);
-        PrintChar(self, '(');
 
         PrintExpression(self, exp->E2);
-        PrintChar(self, ')');
+    }
+    else if (exp->Kind == exp_template_instance)
+    {
+        PrintExpression(self, exp->E1);
+        PrintChar(self, '!');
+        PrintExpression(self, exp->E2);
     }
     else if (exp->Kind == exp_argument)
     {
+        PrintChar(self, '(');
         for(exp_argument_t* arg = (exp_argument_t*)exp;
             arg != emptyPointer;
             arg = arg->Next)
@@ -873,6 +878,7 @@ static inline void PrintExpression(metac_printer_t* self, metac_expression_t* ex
             if (arg->Next != emptyPointer)
                 PrintString(self, ", ", 2);
         }
+        PrintChar(self, ')');
     }
     else if (exp->Kind == exp_index)
     {

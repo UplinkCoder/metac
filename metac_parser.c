@@ -678,6 +678,9 @@ metac_expression_kind_t BinExpTypeFromTokenType(metac_token_enum_t tokenType)
     if (tokenType == tok_lBracket)
         result = exp_index;
 
+    if (tokenType == tok_bang)
+        result =  exp_template_instance;
+
     return result;
 }
 
@@ -744,7 +747,7 @@ static inline bool IsBinaryOperator(metac_token_enum_t t, parse_expression_flags
         return false;
 
     return ((t >= FIRST_BINARY_TOKEN(TOK_SELF) && t <= LAST_BINARY_TOKEN(TOK_SELF))
-            || t == tok_lParen || t == tok_lBracket);
+            || t == tok_lParen || t == tok_lBracket || t == tok_bang);
 }
 
 typedef enum precedence_level_t
@@ -826,7 +829,7 @@ static inline uint32_t OpToPrecedence(metac_expression_kind_t exp)
     }
     else if (exp == exp_call || exp == exp_index
           || exp == exp_compl || exp == exp_post_increment
-          || exp == exp_post_decrement)
+          || exp == exp_post_decrement || exp == exp_template_instance)
     {
         return 16;
     }
@@ -1695,8 +1698,15 @@ metac_expression_t* MetaCParser_ParseBinaryExpression(metac_parser_t* self,
                 MetaCLocation_Expand(&rhsLoc,
                     LocationFromToken(self, rBracket));
             }
+            else if (exp_right == exp_template_instance
+                && MetaCParser_PeekMatch(self, tok_lParen, 1))
+            {
+                MetaCParser_Match(self, tok_lParen);
+                goto LparseArgumentList;
+            }
             else if (exp_right == exp_call)
             {
+            LparseArgumentList:
                 rhs = (metac_expression_t*)MetaCParser_ParseArgumentList(self);
                 if ((metac_node_t)rhs != emptyPointer)
                     rhsIsArgs = true;
@@ -1952,6 +1962,10 @@ metac_expression_t* MetaCParser_ParseExpression(metac_parser_t* self,
         else if (peekNext->TokenType == tok_lParen)
         {
             result = MetaCParser_ParseBinaryExpression(self, eflags, result, OpToPrecedence(exp_call));
+        }
+        else if (peekNext->TokenType == tok_bang)
+        {
+            result = MetaCParser_ParseBinaryExpression(self, eflags, result, OpToPrecedence(exp_template_instance));
         }
         else if (tokenType == tok_lBracket)
         {
