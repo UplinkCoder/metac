@@ -38,10 +38,14 @@ static inline metac_identifier_ptr_t Add_Filename(const char* file)
 #endif
 
 
-void Allocator_Init_(metac_alloc_t* allocator, const char* file, uint32_t line)
+void Allocator_Init_(metac_alloc_t* allocator, metac_alloc_t* parent,
+                     const char* file, uint32_t line)
 {
+    allocator->FreelistCount = 0;
+    allocator->Parent = parent;
+
     allocator->ArenaCapacity = 64;
-    allocator->ArenaCount = 4;
+    allocator->ArenaCount = 16;
     allocator->Arenas = cast(tagged_arena_t*)
         calloc(sizeof(tagged_arena_t), allocator->ArenaCapacity);
 
@@ -69,12 +73,15 @@ void Allocator_Init_(metac_alloc_t* allocator, const char* file, uint32_t line)
     allocator->AllocatedBlocks = allocated / BLOCK_SIZE;
 }
 
-void Allocator_AddArena(metac_alloc_t* allocator, tagged_arena_t* arena)
+tagged_arena_t* Allocator_AddArena(metac_alloc_t* allocator, tagged_arena_t* arena)
 {
+    tagged_arena_t* result = 0;
+
     if (allocator->ArenaCount < allocator->ArenaCapacity)
     {
 LaddArena:
         allocator->Arenas[allocator->ArenaCount++] = *arena;
+        result = &allocator->Arenas[allocator->ArenaCount - 1];
     }
     else
     {
@@ -85,7 +92,7 @@ LaddArena:
         goto LaddArena;
     }
 
-    return;
+    return result;
 }
 #define ADD_PAGELIST(PAGE)
 tagged_arena_t nullArena = {0};
@@ -153,24 +160,22 @@ LsetResult:
         {
             arena = Allocate_(allocator->Parent, ALIGN_BLOCKSIZE(size),
                               file, line, true);
-
         }
         else // We don't have a parent :-( we need to ask the OS for a block
         {
             uint32_t allocatedSize;
 
             arena = cast(tagged_arena_t*) OS.PageAlloc(size, &allocatedSize);
-            ADD_PAGELIST(cast(void)arena);
+            ADD_PAGELIST(cast(void*)arena);
             arena->SizeLeft = allocatedSize;
-            arena->Offset = ALIGN16(sizeof(tagged_arena_t));
+            arena->Offset = 0;
+            arena->Memory = cast(void*) arena;
             arena->Alloc = allocator;
             arena->Line = line;
-            assert(arena);
         }
-        if (!forChild)
-            Allocator_AddArena(allocator, arena);
 
-        goto LsetResult;
+        if (!forChild)
+            result = Allocator_AddArena(allocator, arena);
     }
 
     return result;

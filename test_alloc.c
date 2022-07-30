@@ -7,7 +7,7 @@ int main(int argc, const char* argv[])
 {
     void* mem = 0;
     metac_alloc_t mainAlloc;
-    Allocator_Init(&mainAlloc);
+    Allocator_Init(&mainAlloc, 0);
     printf("Allocator_File: %s\n",
         IdentifierPtrToCharPtr(&g_filenames, mainAlloc.FileID));
     printf("Allocator.AllocatedBlocks: %u\n",
@@ -22,8 +22,9 @@ int main(int argc, const char* argv[])
 
     for(uint32_t i = 0; i < 5; i++)
     {
-        uint32_t allocSize = 13 * i;
+        uint32_t allocSize = 3000 * i;
         printf("Allocate(%u)\n", allocSize);
+
         tagged_arena_t* arena = Allocate(&mainAlloc, allocSize);
 
         printf("Allocation.Memory: %p\n", arena->Memory);

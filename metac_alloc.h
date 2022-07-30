@@ -48,9 +48,10 @@ typedef struct metac_tree16_t
 } meta_tree_t;
 
 
-#define Allocator_Init(ALLOC) \
-    Allocator_Init_((ALLOC), __FILE__, __LINE__)
-void Allocator_Init_(metac_alloc_t* allocator, const char* file, uint32_t line);
+#define Allocator_Init(ALLOC, PARENT) \
+    Allocator_Init_((ALLOC), (PARENT), __FILE__, __LINE__)
+void Allocator_Init_(metac_alloc_t* allocator, metac_alloc_t* parent,
+                     const char* file, uint32_t line);
 
 #define Allocate(ALLOC, SIZE) \
     Allocate_((ALLOC), (SIZE), __FILE__, __LINE__, false)
