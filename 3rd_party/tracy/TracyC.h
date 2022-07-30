@@ -7,7 +7,9 @@
 #  include <stdint.h>
 #endif
 
-#include <stddef.h>
+#ifndef __TINYC__
+#  include <stddef.h>
+#endif
 
 #include "client/TracyCallstack.h"
 #include "common/TracyApi.h"

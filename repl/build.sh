@@ -1,10 +1,14 @@
-#!/bin/bash
+#!/bin/sh
+DIR=`pwd`
+
 if [ -z $CC ]; then
     CC=cc
 fi
-pushd ..
+
+cd ..
 ./gen_code.sh
-popd
+cd $DIR
+
 if [ -z $ACCEL ]; then
     ACCEL=ACCEL_TABLE
 fi
