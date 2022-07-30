@@ -2317,13 +2317,26 @@ bool IsTypeDecl(metac_declaration_kind_t kind)
 decl_parameter_list_t ParseParameterList(metac_parser_t* self,
                                          decl_function_t* parent)
 {
-    decl_parameter_list_t result = {0, (decl_parameter_t*)emptyPointer};
+    decl_parameter_list_t result = {(decl_parameter_t*)emptyPointer};
     uint32_t parameterCount = 0;
     decl_parameter_t** nextParam = &result.List;
 
     while (!MetaCParser_PeekMatch(self, tok_rParen, true))
     {
         assert((*nextParam) == emptyPointer);
+
+        if (result.IsVariadic)
+        {
+            ParseError(self->LastLocation,
+                        "you cannot have ... at any position other than the end of the parameter list\n");
+        }
+
+        if (MetaCParser_PeekMatch(self, tok_dotdotdot, 1))
+        {
+            MetaCParser_Match(self, tok_dotdotdot);
+            result.IsVariadic = true;
+            continue;
+        }
 
         decl_parameter_t* param;
         AllocNewDeclaration(decl_parameter, &param);

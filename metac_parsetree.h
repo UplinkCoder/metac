@@ -365,8 +365,9 @@ typedef struct decl_parameter_t
 
 typedef struct decl_parameter_list_t
 {
-    uint32_t ParameterCount;
     decl_parameter_t* List;
+    uint32_t ParameterCount;
+    bool IsVariadic;
 } decl_parameter_list_t;
 
 typedef struct decl_function_t
