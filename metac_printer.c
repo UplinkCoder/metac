@@ -254,6 +254,10 @@ static inline void PrintType(metac_printer_t* self, decl_type_t* type)
                 {
                     PrintString(self, "unsigned ", sizeof("unsigned"));
                 }
+                if (modifiers & typemod_signed)
+                {
+                    PrintString(self, "signed ", sizeof("signed"));
+                }
             }
             if (type->TypeKind >= type_auto && type->TypeKind <= type_double)
             {
@@ -278,6 +282,10 @@ static inline void PrintType(metac_printer_t* self, decl_type_t* type)
                 PrintIdentifier(self, type->TypeIdentifier);
 
                 //printf("type_identifier: %d\n", type->Identifier.v);
+            }
+            else if (type->TypeKind == type_modifiers)
+            {
+                // we already printed the modifiers
             }
             else
                 assert(0);

@@ -254,6 +254,11 @@ typedef struct stmt_do_while_t
     struct metac_statement_t* DoWhileBody;
 } stmt_do_while_t;
 
+typedef struct stmt_empty_t
+{
+    STATEMENT_HEADER
+} stmt_empty_t;
+
 typedef struct stmt_comment_t
 {
     STATEMENT_HEADER
@@ -292,6 +297,7 @@ typedef enum metac_type_modifiers
 
     typemod_const = (1 << 0),
     typemod_unsigned = (1 << 1),
+    typemod_signed = (1 << 2),
 
 } metac_type_modifiers;
 
@@ -445,7 +451,6 @@ typedef struct decl_type_array_t
     metac_expression_t* Dim;
 } decl_type_array_t;
 
-
 typedef struct decl_type_struct_t
 {
     DECLARATION_HEADER
@@ -498,6 +503,13 @@ typedef struct decl_type_tuple_t
     decl_type_t** Types;
     uint32_t TypeCount;
 } decl_type_tuple_t;
+
+typedef struct decl_type_modifier_t
+{
+    DECLARATION_HEADER
+
+    TYPE_HEADER
+} decl_type_modifies_t;
 
 typedef struct metac_declaration_t
 {

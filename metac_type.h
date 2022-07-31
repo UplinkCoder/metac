@@ -213,6 +213,8 @@ typedef enum metac_type_kind_t
 
     type_tuple,
 
+    type_modifiers,
+
     type_max
 } metac_type_kind_t;
 #endif

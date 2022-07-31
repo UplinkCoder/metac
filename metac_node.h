@@ -172,6 +172,8 @@
     M(stmt_goto) \
     M(stmt_return) \
     \
+    M(stmt_empty) \
+    \
     M(stmt_exp) \
     M(stmt_decl) \
     M(stmt_comment)

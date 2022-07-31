@@ -31,6 +31,12 @@ typedef enum parse_expression_flags_t
     expr_flags_pp     = (1 << 6),
 } parse_expression_flags_t;
 
+typedef enum metac_storageclasses_t
+{
+    storageclass_static = (1 << 1),
+    storageclass_inline = (1 << 2),
+    storageclass_extern = (1 << 3),    
+} metac_storageclasses_t;
 
 typedef struct metac_define_t
 {
