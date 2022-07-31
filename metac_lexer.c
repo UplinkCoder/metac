@@ -882,12 +882,7 @@ LcontinueLexnig:
                         //printf("eaten_chars: %u -- C: %c\n", eatenChars, c);
                         goto LParseNumberDone;
                     }
-                    else if (!IsNumericChar(c))
-                    {
-                        value = 0;
-                        goto LParseNumberDone;
-                    }
-                    else
+                    else if (c >= '0' && c <= '7') // if an octal number follows
                     {
                         if (!ParseOctal(&text, &eatenChars, &value))
                         {
@@ -897,6 +892,10 @@ LcontinueLexnig:
                         }
                         c = *text++;
                         goto LParseNumberDone;
+                    }
+                    else // nither x nor octal number follows 0
+                    {
+                        // nothing to do here value was already intialized to 0
                     }
                 }
 
