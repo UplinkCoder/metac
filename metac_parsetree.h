@@ -373,6 +373,7 @@ typedef struct decl_parameter_list_t
 {
     decl_parameter_t* List;
     uint32_t ParameterCount;
+    uint32_t Hash;
     bool IsVariadic;
 } decl_parameter_list_t;
 
@@ -433,6 +434,8 @@ typedef struct decl_type_functiontype_t
     TYPE_HEADER
 
     decl_type_t* ReturnType;
+
+    //TODO maybe use decl_parameter_list_t here?
 
     /// this may or may not include identifiers
     decl_parameter_t* Parameters;
