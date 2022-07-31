@@ -916,7 +916,9 @@ static inline bool IsPunctuationToken(metac_token_enum_t tok)
         return false;
     else
     return (
-        (IsBinaryOperator(tok, expr_flags_none) && tok != tok_star)
+        (IsBinaryOperator(tok, expr_flags_none)
+            && tok != tok_star && tok != tok_lParen
+            && tok != tok_lBracket)
         ||  tok == tok_dotdot
         ||  tok == tok_comma
         ||  tok == tok_semicolon
@@ -1092,7 +1094,6 @@ metac_expression_t* MetaCParser_ParsePrimaryExpression(metac_parser_t* self, par
 
     if (tokenType == tok_lParen && CouldBeCast(self, tokenType))
     {
-        // Not implemented right now
         hash = cast_key;
         result = AllocNewExpression(exp_cast);
         //typedef unsigned int b;
