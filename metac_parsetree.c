@@ -312,6 +312,7 @@ int MetaCNode_TreeWalk_Real(metac_node_t node, walker_function_t walker_fn, void
         case node_stmt_comment:
             break;
     }
+    return 0;
 }
 #undef MetaCNode_TreeWalk_Real
 #undef walker_fn

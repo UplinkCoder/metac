@@ -1,6 +1,7 @@
 #ifndef _METAC_SEMANTIC_H_
 #define _METAC_SEMANTIC_H_
 
+#include "metac_alloc.h"
 #include "metac_semantic_lru.h"
 #include "metac_parsetree.h"
 #include "metac_parser.h"
@@ -110,6 +111,8 @@ typedef struct metac_sema_decl_state_t
 typedef struct metac_semantic_state_t
 {
     bool initialized;
+    metac_alloc_t Allocator;
+
     metac_identifier_table_t SemanticIdentifierTable;
     metac_identifier_table_t* ParserIdentifierTable;
     metac_identifier_table_t* ParserStringTable;
@@ -124,7 +127,7 @@ typedef struct metac_semantic_state_t
 
     AT(TaskLocal) AT(transient) metac_scope_t* CurrentScope;
 
-    AT(transient) metac_semantic_lru_t LRU;
+    AT(TaskLocal) AT(transient) metac_semantic_lru_t LRU;
 
     // metac_type_table_t* TypeTable;
     FOREACH_TYPE_TABLE(DECLARE_TYPE_TABLE)

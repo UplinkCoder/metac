@@ -18,7 +18,7 @@
 
 metac_identifier_table_t g_filenames = {0};
 
-static inline metac_identifier_ptr_t Add_Filename(const char* file)
+inline metac_identifier_ptr_t Add_Filename(const char* file)
 {
     if (g_filenames.Slots == 0)
         IdentifierTable_Init(&g_filenames, IDENTIFIER_LENGTH_SHIFT, 7);
@@ -29,14 +29,6 @@ static inline metac_identifier_ptr_t Add_Filename(const char* file)
 
     return GetOrAddIdentifier(&g_filenames, key, file);
 }
-
-#ifdef NDEBUG
-#  define ADD_FILENAME(FILE)
-#else
-#  define ADD_FILENAME(FILE) \
-    Add_Filename(FILE)
-#endif
-
 
 void Allocator_Init_(metac_alloc_t* allocator, metac_alloc_t* parent,
                      const char* file, uint32_t line)
@@ -181,6 +173,22 @@ LsetResult:
     return result;
 }
 
+void* ReallocArenaArray(tagged_arena_t* arena, metac_alloc_t* alloc, uint32_t elemSize,
+                        const char* file, uint32_t line)
+{
+    uint32_t newCapa = ALIGN16(cast(uint32_t)(arena->Offset * 1.3) + elemSize);
+    tagged_arena_t* newArena = Allocate_(alloc, newCapa, file, line, false);
+    memcpy(newArena->Memory, arena->Memory, arena->Offset);
+    if (arena->Alloc)
+    {
+        FreeArena(arena);
+    }
+    (*arena) = *newArena;
+    return newArena->Memory;
+}
+
+/// After free Arena has been called
+/// acessing the area pointer itself is invalid
 void FreeArena (tagged_arena_t* arena)
 {
     metac_alloc_t* alloc = arena->Alloc;

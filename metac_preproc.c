@@ -222,6 +222,7 @@ Lret:
 static inline metac_token_t_array ResolveDefine()
 {
     metac_token_t_array Result = {0};
+    return Result;
 }
 
 static inline int32_t MetaCPreProcessor_EvalExp(metac_preprocessor_t* self,
@@ -413,6 +414,8 @@ static inline int32_t MetaCPreProcessor_EvalExp(metac_preprocessor_t* self,
             }
         } break;
     }
+
+    return result;
 }
 
 void MetaCPreProcessor_Init(metac_preprocessor_t *self, metac_lexer_t* lexer,

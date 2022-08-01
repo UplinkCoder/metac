@@ -1,4 +1,5 @@
 #include "metac_type_semantic.h"
+#include "metac_alloc.h"
 
 #ifndef NO_FIBERS
 #  include "metac_task.h"
@@ -402,6 +403,7 @@ void MetaCSemantic_ComputeEnumValues(metac_semantic_state_t* self,
     int64_t nextValue = 0;
     const uint32_t memberCount = enum_->MemberCount;
     //SetInProgress(semaEnum, "Members");
+    assert(memberCount == semaEnum->MemberCount);
 
     for(uint32_t memberIdx = 0;
         memberIdx < memberCount;
@@ -488,7 +490,41 @@ metac_type_index_t MetaCSemantic_TypeSemantic(metac_semantic_state_t* self,
     }
     else if (type->DeclKind == decl_type_enum)
     {
-        decl_type_enum_t* enm =  cast(decl_type_enum_t*) type;
+        decl_type_enum_t* enm = cast(decl_type_enum_t*) type;
+        sema_decl_type_enum_t semaEnum;
+        semaEnum.MemberCount = enm->MemberCount;
+
+        STACK_ARENA_ARRAY(sema_decl_enum_member_t, semaMembers, 64, &self->Allocator);
+        STACK_ARENA_ARRAY(metac_enum_member_t, members, 64, &self->Allocator);
+
+        STACK_ARENA_ENSURE_SIZE(semaMembers, semaEnum.MemberCount);
+        STACK_ARENA_ENSURE_SIZE(members, semaEnum.MemberCount);
+
+        uint32_t hash ;
+        MetaCSemantic_ComputeEnumValues(self, enm, &semaEnum);
+
+        for(uint32_t memberIndex = 0;
+            memberIndex < semaEnum.MemberCount;
+            memberIndex++)
+        {
+            members[memberIndex].Value = semaEnum.Members[memberIndex].Value;
+        }
+
+        metac_type_enum_t key = {
+            {decl_type_enum, 0, hash},
+            enm->Identifier, members, enm->MemberCount
+        };
+        result = MetaCTypeTable_GetOrEmptyEnumType(&self->EnumTypeTable, &key);
+        if (result.v == 0)
+        {
+            STACK_ARENA_ARRAY_TO_HEAP(members);
+            key.Members = members;
+            result = MetaCTypeTable_AddEnumType(&self->EnumTypeTable, &key);
+
+        }
+
+        // STACK_ARENA_FREE(self->Allocator, members);
+        // STACK_ARENA_FREE(self->Allocator, semaMembers);
     }
     else if (IsAggregateTypeDecl(type->DeclKind))
     {
