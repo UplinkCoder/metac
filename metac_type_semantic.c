@@ -393,6 +393,45 @@ metac_type_aggregate_t* MetaCSemantic_PersistTemporaryAggregate(metac_semantic_s
     return semaAgg;
 }
 
+void MetaCSemantic_ComputeEnumValues(metac_semantic_state_t* self,
+                                     decl_type_enum_t* enum_,
+                                     sema_decl_type_enum_t* semaEnum)
+{
+    //TODO you want to make CurrentValue a metac_sema_expression_t
+    // such that you can interpret the increment operator
+    int64_t nextValue = 0;
+    const uint32_t memberCount = enum_->MemberCount;
+    //SetInProgress(semaEnum, "Members");
+
+    for(uint32_t memberIdx = 0;
+        memberIdx < memberCount;
+        memberIdx++)
+    {
+        decl_enum_member_t* member = enum_->Members;
+        if (member->Value != cast(metac_expression_t*)emptyPointer)
+        {
+            assert(member->Value);
+            metac_sema_expression_t* semaValue =
+                MetaCSemantic_doExprSemantic(self, member->Value, 0);
+            assert(semaValue->Kind == exp_signed_integer);
+            semaEnum->Members[memberIdx].Value = semaValue;
+            nextValue = semaValue->ValueI64 + 1;
+        }
+        else
+        {
+            // let's construct a metac_expression from currentValue
+            metac_expression_t Value = {exp_signed_integer, member->LocationIdx, 0, 0};
+            Value.ValueI64 = nextValue++;
+
+            semaEnum->Members[memberIdx].Value =
+                MetaCSemantic_doExprSemantic(self, &Value, 0);
+        }
+        member = member->Next;
+    }
+
+    return ;
+}
+
 metac_type_index_t MetaCSemantic_TypeSemantic(metac_semantic_state_t* self,
                                               decl_type_t* type)
 {
@@ -424,7 +463,7 @@ metac_type_index_t MetaCSemantic_TypeSemantic(metac_semantic_state_t* self,
     }
     else if (type->DeclKind == decl_type_typedef)
     {
-        decl_type_typedef_t* typedef_ = (decl_type_typedef_t*) type;
+        decl_type_typedef_t* typedef_ = cast(decl_type_typedef_t*) type;
         metac_type_index_t elementTypeIndex =
             MetaCSemantic_doTypeSemantic(self, typedef_->Type);
 
@@ -446,6 +485,10 @@ metac_type_index_t MetaCSemantic_TypeSemantic(metac_semantic_state_t* self,
 
         scope_insert_error_t scopeInsertError =
             MetaCSemantic_RegisterInScope(self, typedef_->Identifier, (metac_node_t)semaTypedef);
+    }
+    else if (type->DeclKind == decl_type_enum)
+    {
+        decl_type_enum_t* enm =  cast(decl_type_enum_t*) type;
     }
     else if (IsAggregateTypeDecl(type->DeclKind))
     {

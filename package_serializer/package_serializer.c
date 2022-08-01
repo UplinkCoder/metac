@@ -69,6 +69,7 @@ int main(int argc, const char* argv[])
 
         metac_identifier_table_slot_t firstEntry = {0};
 
+#if !defined(NO_DUMP) && defined(WRITE_TABLE)
         metac_identifier_table_slot_t* firstEntryP = findFirstEntry(&lexer.IdentifierTable);
         if (firstEntryP)
             firstEntry = *firstEntryP;
@@ -76,7 +77,6 @@ int main(int argc, const char* argv[])
         printf("First Entry = {Hash:%x Value:%u}\n", firstEntry.HashKey, firstEntry.Ptr.v);
 
 
-#ifndef NO_DUMP
         char formatBuffer[512];
         sprintf(formatBuffer, "%s.tokens", arg);
         FILE* tokens_fd = fopen(formatBuffer, "wb");

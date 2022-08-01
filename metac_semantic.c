@@ -999,7 +999,7 @@ scope_insert_error_t MetaCSemantic_RegisterInScope(metac_semantic_state_t* self,
         if (waiter->FuncHash == CRC32C_S("MetaCSemantic_LookupIdentifier")
          && waiter->NodeHash == CRC32C_VALUE(~0, idPtr))
         {
-            task_t* waitingTask = ((task_t*)waiter->Continuation->arg);
+            task_t* waitingTask = cast(task_t*)waiter->Continuation->arg;
             assert(waitingTask->TaskFlags == Task_Waiting);
             printf("Found matching waiter\n");
             waitingTask->TaskFlags &= (~Task_Waiting);
@@ -1058,14 +1058,14 @@ sema_decl_function_t* MetaCSemantic_doFunctionSemantic(metac_semantic_state_t* s
     f->Scope = MetaCSemantic_PushNewScope(self, scope_parent_function, (metac_node_t)f);
     // now we compute the position on the stack and Register them in the scope.
 
-	uint32_t frameOffset = ((f->ParentFunc != (sema_decl_function_t*)emptyNode)
+	uint32_t frameOffset = ((f->ParentFunc != cast(sema_decl_function_t*)emptyNode)
                            ? f->ParentFunc->FrameOffset : 0);
 
     for(uint32_t i = 0;
         i < func->ParameterCount;
         i++)
     {
-        metac_node_t ptr = (metac_node_t)(&f->Parameters[i]);
+        metac_node_t ptr = cast(metac_node_t)(&f->Parameters[i]);
         params[i].Storage.v = STORAGE_V(storage_stack, frameOffset);
         frameOffset += Align(MetaCSemantic_GetTypeSize(self, params[i].TypeIndex), 4);
 
@@ -1074,7 +1074,7 @@ sema_decl_function_t* MetaCSemantic_doFunctionSemantic(metac_semantic_state_t* s
                                           ptr);
     }
     f->FrameOffset = frameOffset;
-    f->FunctionBody = (sema_stmt_block_t*)
+    f->FunctionBody = cast(sema_stmt_block_t*)
         MetaCSemantic_doStatementSemantic(self, func->FunctionBody);
 
     MetaCSemantic_PopScope(self);

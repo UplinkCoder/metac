@@ -268,9 +268,17 @@ const char* MetaCTokenEnum_toChars(metac_token_enum_t type)
 #undef CASE_MACRO
 }
 
-static uint32_t MetaCStaticTokenLength(metac_token_enum_t t)
+static uint32_t MetaCStaticTokenLength(metac_token_enum_t token)
 {
-    switch (t) {
+    assert(token != tok_uint
+        && token != tok_identifier
+        && token != tok_string
+        && token != tok_comment_single
+        && token != tok_comment_multi
+        && token != tok_char
+        && token != tok_char_uni);
+
+    switch (token) {
         default              : return 2;
         case tok_eof         : return 0;
 

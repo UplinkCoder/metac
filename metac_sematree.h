@@ -367,7 +367,7 @@ typedef struct sema_decl_function_t
 
     /// non-null if this function is nested
     struct sema_decl_function_t* ParentFunc;
-    
+
     uint32_t FrameOffset;
 } sema_decl_function_t;
 

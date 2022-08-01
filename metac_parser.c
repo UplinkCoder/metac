@@ -84,10 +84,6 @@ void MetaCParser_Init(metac_parser_t* self)
     MetaCLocationStorage_Init(&self->LocationStorage);
 
     InitSpecialIdentifier(self);
-#ifndef NO_DOT_PRINTER
-    self->DotPrinter = (metac_dot_printer_t*)malloc(sizeof(metac_dot_printer_t));
-    MetaCDotPrinter_Init(self->DotPrinter, &self->IdentifierTable);
-#endif
     MetaCPrinter_Init(&self->DebugPrinter,
                       &self->IdentifierTable, &self->StringTable);
 }
@@ -1100,18 +1096,19 @@ metac_expression_t* MetaCParser_ParsePrimaryExpression(metac_parser_t* self, par
         result = AllocNewExpression(exp_cast);
         //typedef unsigned int b;
         metac_token_t* lParen = MetaCParser_Match(self, tok_lParen);
-        metac_type_modifiers typeModifies = ParseTypeModifiers(self);
+        metac_type_modifiers typeModifiers = ParseTypeModifiers(self);
 
         if (IsTypeToken(MetaCParser_PeekToken(self, 1)->TokenType))
         {
             result->CastType = MetaCParser_ParseTypeDeclaration(self, 0, 0);
-            result->CastType->TypeModifiers = typeModifies;
+            result->CastType->TypeModifiers =  typeModifiers;
         }
         else
         {
             AllocNewDeclaration(decl_type, &result->CastType);
-            result->CastType->TypeModifiers = typeModifies;
+            result->CastType->TypeModifiers =  typeModifiers;
             result->CastType->TypeKind = type_modifiers;
+            result->CastType->Hash = CRC32C_VALUE(~0, typeModifiers);
         }
         hash = CRC32C_VALUE(hash, result->CastType->Hash);
         // printf("Parsed CastType: '%s'\n", MetaCPrinter_PrintDeclaration(&self->DebugPrinter, result->CastType));
@@ -2401,6 +2398,7 @@ decl_parameter_list_t ParseParameterList(metac_parser_t* self,
             // now we synthezie a variable without name
             decl_variable_t* var;
             AllocNewDeclaration(decl_variable, &var);
+            var->Hash = 0;
             var->VarType = (decl_type_t*)paramDecl;
             var->VarIdentifier = empty_identifier;
             var->VarInitExpression = (metac_expression_t*) emptyPointer;

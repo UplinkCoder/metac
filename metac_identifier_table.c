@@ -227,6 +227,7 @@ void InsertSlot(slot_t* slots, slot_t slot, const uint32_t slotIndexMask)
     }
 }
 
+// TODO: Rename to GetIdentifer
 metac_identifier_ptr_t IsIdentifierInTable(metac_identifier_table_t* table,
                                            uint32_t key,
                                            const char* idChars)
