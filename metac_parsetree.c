@@ -221,7 +221,7 @@ int MetaCNode_TreeWalk_Real(metac_node_t node, walker_function_t walker_fn, void
             if(result)
                  return result;
 
-            if (stmt_for->ForBody != emptyNode)
+            if ((metac_node_t)stmt_for->ForBody != emptyNode)
                 result = walker_fn(stmt_for->ForBody, ctx);
             if(result)
                  return result;

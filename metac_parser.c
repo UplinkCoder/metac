@@ -1508,7 +1508,7 @@ metac_expression_t* MetaCParser_ParseUnaryExpression(metac_parser_t* self, parse
         MetaCParser_Match(self, tok_and);
         result = AllocNewExpression(exp_addr);
         //PushOperator(exp_addr);
-        result->E1 = MetaCParser_ParseExpression(self, expr_flags_addr | (eflags & expr_flags_pp), 0);
+        result->E1 = MetaCParser_ParseExpression(self, cast(parse_expression_flags_t)(expr_flags_addr | (eflags & expr_flags_pp)), 0);
         result->Hash = CRC32C_VALUE(CRC32C_AND, result->E1->Hash);
         //PushOperand(result);
         //PopOperator(exp_addr);
@@ -1518,7 +1518,7 @@ metac_expression_t* MetaCParser_ParseUnaryExpression(metac_parser_t* self, parse
         MetaCParser_Match(self, tok_star);
         result = AllocNewExpression(exp_ptr);
         //PushOperator(exp_ptr);
-        result->E1 = MetaCParser_ParseExpression(self, expr_flags_unary | (eflags & expr_flags_pp), 0);
+        result->E1 = MetaCParser_ParseExpression(self, cast(parse_expression_flags_t)(expr_flags_unary | (eflags & expr_flags_pp)), 0);
         result->Hash = CRC32C_VALUE(CRC32C_STAR, result->E1->Hash);
         //PushOperand(result);
     }
@@ -2402,7 +2402,7 @@ decl_parameter_list_t ParseParameterList(metac_parser_t* self,
             var->VarType = (decl_type_t*)paramDecl;
             var->VarIdentifier = empty_identifier;
             var->VarInitExpression = (metac_expression_t*) emptyPointer;
-            var->Hash = HashDecl(var);
+            var->Hash = HashDecl(cast(metac_declaration_t*)var);
             param->Parameter = var;
         }
         else
@@ -2579,7 +2579,7 @@ uint32_t HashDecl(metac_declaration_t* decl)
             decl_parameter_t* Param = type_functiontype->Parameters;
             for(uint32_t i = 0; i < nParams; i++)
             {
-                uint32_t paramHash = HashDecl(Param->Parameter);
+                uint32_t paramHash = HashDecl(cast(metac_declaration_t*)Param->Parameter);
                 hash = CRC32C_VALUE(hash, paramHash);
             }
             result = hash;
@@ -3192,12 +3192,12 @@ metac_statement_t* MetaCParser_ParseStatement(metac_parser_t* self,
         stmt_do_while_t* doWhile = AllocNewStatement(stmt_do_while, &result);
         MetaCParser_Match(self, tok_kw_do);
 
-        doWhile->DoWhileBody = MetaCParser_ParseStatement(self, doWhile, prev);
+        doWhile->DoWhileBody = MetaCParser_ParseStatement(self, cast(metac_statement_t*)doWhile, prev);
         hash = CRC32C_VALUE(hash, doWhile->DoWhileBody->Hash);
         MetaCParser_Match(self, tok_kw_while);
 
         MetaCParser_Match(self, tok_lParen);
-        doWhile->DoWhileExp = MetaCParser_ParseExpression(self, 0, prev);
+        doWhile->DoWhileExp = MetaCParser_ParseExpression(self, expr_flags_none, 0);
         hash = CRC32C_VALUE(hash, doWhile->DoWhileExp->Hash);
         MetaCParser_Match(self, tok_rParen);
 
