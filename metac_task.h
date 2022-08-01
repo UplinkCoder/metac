@@ -6,7 +6,13 @@
 #endif
 
 #include "compat.h"
-#include "3rd_party/tinycthread/tinycthread.h"
+
+#if defined(_MSC_VER) || defined(__STDC_NO_THREADS__)
+#  include "3rd_party/tinycthread/tinycthread.h"
+#else
+#  include "threads.h"
+#endif
+
 #include "metac_coro.h"
 #include "3rd_party/rwlock.h"
 
