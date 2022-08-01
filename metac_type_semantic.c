@@ -403,7 +403,8 @@ void MetaCSemantic_ComputeEnumValues(metac_semantic_state_t* self,
     int64_t nextValue = 0;
     const uint32_t memberCount = enum_->MemberCount;
     //SetInProgress(semaEnum, "Members");
-    assert(memberCount == semaEnum->MemberCount);
+    semaEnum->Name = enum_->Identifier;
+    semaEnum->DeclKind = decl_type_enum;
 
     for(uint32_t memberIdx = 0;
         memberIdx < memberCount;
@@ -430,7 +431,34 @@ void MetaCSemantic_ComputeEnumValues(metac_semantic_state_t* self,
         }
         member = member->Next;
     }
+    // Let's inject our values into the enclosing scope.
+    decl_enum_member_t* member = enum_->Members;
 
+    for(uint32_t i = 0;
+        i < semaEnum->MemberCount;
+        i++)
+    {
+
+        sema_decl_enum_member_t* semaMember =
+            semaEnum->Members + i;
+
+        scope_insert_error_t gotInserted =
+            MetaCSemantic_RegisterInScope(self, member->Name, semaMember->Value);
+        metac_node_t node =
+            MetaCSemantic_LookupIdentifier(self, member->Name);
+
+        if (gotInserted != success)
+        {
+            int k = 12;
+        }
+        assert(node == semaMember->Value);
+        member = member->Next;
+    }
+    const char* name =
+        IdentifierPtrToCharPtr(self->ParserIdentifierTable, semaEnum->Name);
+    scope_insert_error_t gotInserted =
+        MetaCSemantic_RegisterInScope(self, semaEnum->Name, semaEnum);
+    assert(gotInserted == success);
     return ;
 }
 
@@ -679,7 +707,10 @@ LtryAgian: {}
         metac_node_t node =
             MetaCSemantic_LookupIdentifier(self, type->TypeIdentifier);
         {
-            printf("Lookup: %s\n", ((node != emptyNode) ?
+            const char* idChars =
+                IdentifierPtrToCharPtr(self->ParserIdentifierTable, type->TypeIdentifier);
+
+            printf("Lookup: (%s) = %s\n", idChars, ((node != emptyNode) ?
                                        MetaCNodeKind_toChars(node->Kind) :
                                        "empty"));
             if (node == emptyNode)
@@ -687,7 +718,7 @@ LtryAgian: {}
 #ifndef NO_FIBERS
 #if 0
                 WaitForSignal(MetaCSemantic_RegisterInScope, type->TypeIdentifier);
-                CancelIf(self->CurrentScope->Closed);
+                CancelIf(&self->CurrentScope->Closed);
 #endif
                 aco_t* me = (aco_t*)CurrentFiber();
                 task_t* task = CurrentTask();
@@ -705,25 +736,33 @@ LtryAgian: {}
 #endif
             }
         }
-        if (node != emptyNode &&
-            node->Kind == node_decl_type_typedef)
+
+        if (node != emptyNode)
         {
-            metac_type_typedef_t* typedef_ = (metac_type_typedef_t*)node;
-            result = typedef_->Type;
+            switch(node->Kind)
+            {
+                case decl_type_typedef:
+                {
+                    metac_type_typedef_t* typedef_ = (metac_type_typedef_t*)node;
+                    result = typedef_->Type;
+                } break;
+                case decl_type_struct:
+                {
+                    metac_type_aggregate_t* struct_ = (metac_type_aggregate_t*)node;
+                    result.v = TYPE_INDEX_V(type_index_struct, StructIndex(self, (struct_)));
+                } break;
+                case decl_type_enum:
+                {
+                    metac_type_enum_t* enum_ = (metac_type_enum_t*)node;
+                    result.v = TYPE_INDEX_V(type_index_enum, EnumIndex(self, enum_));
+                } break;
+            }
         }
-        if (node != emptyNode &&
-            node->Kind == node_decl_type_struct)
+        else
         {
-            metac_type_aggregate_t* struct_ = (metac_type_aggregate_t*)node;
-            result.v = TYPE_INDEX_V(type_index_struct, StructIndex(self, (struct_)));
+            printf("Empty node during lookup\n");
+            assert(0);
         }
-/*
-        if (node == emptyNode)
-        {
-            node =
-                MetaCSemantic_Resolve(self, type);
-        }
-*/
     }
     else
     {

@@ -20,6 +20,9 @@
 #define TASK_PAGE_SIZE 4096
 #define TASK_QUEUE_SIZE 1024
 
+/// Cancel the task if the Value is true matches the expected
+void CancelIf(int32_t* Value, int32_t Expected);
+
 typedef struct ticket_t
 {
     uint32_t v;

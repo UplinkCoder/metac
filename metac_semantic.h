@@ -247,7 +247,7 @@ uint32_t UnionIndex(metac_semantic_state_t* self, metac_type_aggregate_t* union_
 uint32_t TypedefIndex(metac_semantic_state_t* self, metac_type_typedef_t* typedef_);
 uint32_t PtrTypeIndex(metac_semantic_state_t* self, metac_type_ptr_t* ptr);
 uint32_t ArrayTypeIndex(metac_semantic_state_t* self, metac_type_array_t* array);
-uint32_t EnumTypeIndex(metac_sema_decl_state_t* self, metac_type_enum_t* enum_);
+uint32_t EnumIndex(metac_semantic_state_t* self, metac_type_enum_t* enum_);
 uint32_t FunctiontypeIndex(metac_semantic_state_t* self, metac_type_functiontype_t* functiontype);
 uint32_t TupleTypeIndex(metac_semantic_state_t* self, metac_type_tuple_t* typeType);
 
