@@ -295,6 +295,12 @@ uint32_t MetaCSemantic_GetTypeAlignment(metac_semantic_state_t* self,
         metac_type_aggregate_t* struct_ = StructPtr(self, TYPE_INDEX_INDEX(typeIndex));
         result = struct_->Alignment;
     }
+    else if (TYPE_INDEX_KIND(typeIndex) == type_index_enum)
+    {
+        metac_type_enum_t* enum_ = EnumTypePtr(self, TYPE_INDEX_INDEX(typeIndex));
+        //TODO use an enum basetype
+        result = MetaCTargetInfo_GetBasicAlign(&default_target_info, basic_int);
+    }
     else if (TYPE_INDEX_KIND(typeIndex) == type_index_array)
     {
         uint32_t idx = TYPE_INDEX_INDEX(typeIndex);
@@ -352,6 +358,12 @@ uint32_t MetaCSemantic_GetTypeSize(metac_semantic_state_t* self,
         metac_type_aggregate_t* struct_ = StructPtr(self, TYPE_INDEX_INDEX(typeIndex));
         result = struct_->Size;
     }
+    else if (TYPE_INDEX_KIND(typeIndex) == type_index_enum)
+    {
+        metac_type_enum_t* enum_ = EnumTypePtr(self, TYPE_INDEX_INDEX(typeIndex));
+        //TODO use an enum basetype
+        result = MetaCTargetInfo_GetBasicSize(&default_target_info, basic_int);
+    }
     else if (TYPE_INDEX_KIND(typeIndex) == type_index_array)
     {
         uint32_t idx = TYPE_INDEX_INDEX(typeIndex);
@@ -396,7 +408,7 @@ metac_type_aggregate_t* MetaCSemantic_PersistTemporaryAggregate(metac_semantic_s
 
 void MetaCSemantic_ComputeEnumValues(metac_semantic_state_t* self,
                                      decl_type_enum_t* enum_,
-                                     sema_decl_type_enum_t* semaEnum)
+                                     metac_type_enum_t* semaEnum)
 {
     //TODO you want to make CurrentValue a metac_sema_expression_t
     // such that you can interpret the increment operator
@@ -404,8 +416,8 @@ void MetaCSemantic_ComputeEnumValues(metac_semantic_state_t* self,
     const uint32_t memberCount = enum_->MemberCount;
     //SetInProgress(semaEnum, "Members");
     semaEnum->Name = enum_->Identifier;
-    semaEnum->DeclKind = decl_type_enum;
-
+    semaEnum->Header.Kind = decl_type_enum;
+    printf("semaEnum->Members: %p\n", semaEnum->Members);
     for(uint32_t memberIdx = 0;
         memberIdx < memberCount;
         memberIdx++)
@@ -425,9 +437,11 @@ void MetaCSemantic_ComputeEnumValues(metac_semantic_state_t* self,
             // let's construct a metac_expression from currentValue
             metac_expression_t Value = {exp_signed_integer, member->LocationIdx, 0, 0};
             Value.ValueI64 = nextValue++;
-
+            printf("bp: %p - d %d\n", semaEnum->Members, memberIdx);
             semaEnum->Members[memberIdx].Value =
                 MetaCSemantic_doExprSemantic(self, &Value, 0);
+            //TODO fix up the type of the value to be the enum type
+//            semaEnum->Members[memberIdx].Value->TypeIndex =
         }
         member = member->Next;
     }
@@ -441,9 +455,9 @@ void MetaCSemantic_ComputeEnumValues(metac_semantic_state_t* self,
 
         sema_decl_enum_member_t* semaMember =
             semaEnum->Members + i;
-
+        semaMember->DeclKind = decl_enum_member;
         scope_insert_error_t gotInserted =
-            MetaCSemantic_RegisterInScope(self, member->Name, semaMember->Value);
+            MetaCSemantic_RegisterInScope(self, member->Name, semaMember);
         metac_node_t node =
             MetaCSemantic_LookupIdentifier(self, member->Name);
 
@@ -451,7 +465,8 @@ void MetaCSemantic_ComputeEnumValues(metac_semantic_state_t* self,
         {
             int k = 12;
         }
-        assert(node == semaMember->Value);
+        printf("gotInserted: %s\n", ScopeInsertError_toChars(gotInserted));
+        assert(node == semaMember);
         member = member->Next;
     }
     const char* name =
@@ -519,34 +534,35 @@ metac_type_index_t MetaCSemantic_TypeSemantic(metac_semantic_state_t* self,
     else if (type->DeclKind == decl_type_enum)
     {
         decl_type_enum_t* enm = cast(decl_type_enum_t*) type;
-        sema_decl_type_enum_t semaEnum;
-        semaEnum.MemberCount = enm->MemberCount;
+        metac_type_enum_t tmpSemaEnum;
+        tmpSemaEnum.MemberCount = enm->MemberCount;
+        tmpSemaEnum.Name = enm->Identifier;
 
-        STACK_ARENA_ARRAY(sema_decl_enum_member_t, semaMembers, 64, &self->Allocator);
-        STACK_ARENA_ARRAY(metac_enum_member_t, members, 64, &self->Allocator);
+        STACK_ARENA_ARRAY(metac_enum_member_t, semaMembers, 64, &self->Allocator);
 
-        STACK_ARENA_ENSURE_SIZE(semaMembers, semaEnum.MemberCount);
-        STACK_ARENA_ENSURE_SIZE(members, semaEnum.MemberCount);
+        STACK_ARENA_ENSURE_SIZE(semaMembers, tmpSemaEnum.MemberCount);
 
-        uint32_t hash ;
-        MetaCSemantic_ComputeEnumValues(self, enm, &semaEnum);
-
-        for(uint32_t memberIndex = 0;
-            memberIndex < semaEnum.MemberCount;
-            memberIndex++)
+        // let's just touch every member just to make sure we can
+        for(uint32_t i = 0; i < tmpSemaEnum.MemberCount; i++)
         {
-            members[memberIndex].Value = semaEnum.Members[memberIndex].Value;
+            semaMembers[i] = (metac_enum_member_t){};
         }
+
+        uint32_t hash = ~0;
+        tmpSemaEnum.Members = semaMembers;
+
+        MetaCSemantic_ComputeEnumValues(self, enm, &tmpSemaEnum);
 
         metac_type_enum_t key = {
             {decl_type_enum, 0, hash},
-            enm->Identifier, members, enm->MemberCount
+            enm->Identifier, semaMembers, enm->MemberCount
         };
+
         result = MetaCTypeTable_GetOrEmptyEnumType(&self->EnumTypeTable, &key);
         if (result.v == 0)
         {
-            STACK_ARENA_ARRAY_TO_HEAP(members);
-            key.Members = members;
+            STACK_ARENA_ARRAY_TO_HEAP(semaMembers);
+            key.Members = semaMembers;
             result = MetaCTypeTable_AddEnumType(&self->EnumTypeTable, &key);
 
         }
@@ -830,6 +846,7 @@ metac_type_index_t MetaCSemantic_doTypeSemantic_(metac_semantic_state_t* self,
 //        DO_TASK(MetaCSemantic_TypeSemantic, self, type);
 
     result = MetaCSemantic_TypeSemantic(self, type);
+
     if (!result.v)
     {
 #ifndef NO_FIBERS
@@ -872,6 +889,7 @@ metac_type_index_t MetaCSemantic_doTypeSemantic_(metac_semantic_state_t* self,
     printf("Without fiber no deferral\n");
 #endif
     }
+
     return result;
 }
 
