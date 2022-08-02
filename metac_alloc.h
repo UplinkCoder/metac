@@ -75,8 +75,9 @@ typedef struct metac_alloc_t
     uint32_t newCapa = (COUNT) * sizeof(*NAME); \
     if (_##NAME##Arena.SizeLeft < newCapa) \
     { \
-       (_##NAME##Arena) = \
+        (_##NAME##Arena) = \
             *Allocate_(_##NAME##Alloc, newCapa, __FILE__, __LINE__, false); \
+        NAME = _##NAME##Arena.Memory; \
     } \
 } while(0)
 
