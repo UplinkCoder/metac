@@ -118,6 +118,23 @@ scope_insert_error_t MetaCScope_RegisterIdentifier(metac_scope_t* self,
     }
 }
 
+#define CASE_(ERROR) \
+    case ERROR : result = #ERROR; break;
+
+const char* ScopeInsertError_toChars(scope_insert_error_t error)
+{
+    const char* result;
+
+    switch(error)
+    {
+        FOREACH_SCOPE_INSERT_ERROR(CASE_)
+    }
+
+    return result;
+}
+
+#undef CASE_
+
 #ifndef _emptyPointer
 #define _emptyPointer 0x1
 #define emptyNode (metac_node_header_t*) _emptyPointer
