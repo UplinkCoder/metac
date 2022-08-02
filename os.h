@@ -21,6 +21,10 @@ typedef enum file_mode_t
 
 typedef enum os_error_t
 {
+    Error_InvalidErrorCode,
+
+    Error_Success,
+
     Error_OutOfMemory,
 
     Error_FileDoesNotExist,
@@ -39,7 +43,7 @@ struct OS
     uint32_t PageSize;
 
     os_error_t (*PageAlloc)(uint32_t minSize, uint32_t* allocatedSize, void** outMemory);
-
+#if 0
     /// Opens a file
     os_error_t (*FileOpen)(const char* path, file_mode_t mode, fhandle* outFile);
 
@@ -67,6 +71,7 @@ struct OS
 
     // Closes the file and flushes any pending write/operations
     void (*FileClose)(fhandle handle);
+#endif
 };
 
 extern struct OS OS;

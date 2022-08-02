@@ -45,7 +45,8 @@ void Allocator_Init_(metac_alloc_t* allocator, metac_alloc_t* parent,
     allocator->Line = line;
 
     uint32_t allocated;
-    void* firstBlock = OS.PageAlloc(BLOCK_SIZE, &allocated);
+    void* firstBlock = 0;
+    OS.PageAlloc(BLOCK_SIZE, &allocated, &firstBlock);
     uint32_t memoryPerArena = allocated / allocator->ArenaCount;
 
     for(uint32_t arenaIdx = 0;
@@ -157,7 +158,7 @@ LsetResult:
         {
             uint32_t allocatedSize;
 
-            arena = cast(tagged_arena_t*) OS.PageAlloc(size, &allocatedSize);
+            OS.PageAlloc(size, &allocatedSize, cast(void**)&arena);
             ADD_PAGELIST(cast(void*)arena);
             arena->SizeLeft = allocatedSize;
             arena->Offset = 0;

@@ -10,6 +10,7 @@ if [ -d $DST ]; then
        gen_code.bat gen_code.sh run_tests.sh run_tests.bat \
        crc32c.c crc32c.h \
        bsr.h bsf.h \
+       os.h os.c \
        metac_node.h metac_node.c \
        metac_simd.h metac_atomic.h \
        metac_lexer.c metac_lexer.h metac_parser.c metac_parser.h \
