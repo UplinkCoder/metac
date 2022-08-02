@@ -60,45 +60,45 @@ typedef struct metac_alloc_t
 #endif
 
 #define STACK_ARENA_ARRAY(TYPE, NAME, DIM, ALLOC) \
-    TYPE _##NAME [DIM]; \
-    uint32_t _##NAME##Count = 0; \
-    metac_alloc_t* _##NAME##Alloc = (ALLOC); \
-    bool _##NAME##FreeMemory = true; \
-    tagged_arena_t _##NAME##Arena = { \
-        cast(void*) _##NAME, 0, sizeof(_##NAME), \
+    TYPE NAME##Stack [DIM]; \
+    uint32_t NAME##Count = 0; \
+    metac_alloc_t* NAME##Alloc = (ALLOC); \
+    bool NAME##FreeMemory = true; \
+    tagged_arena_t NAME##Arena = { \
+        cast(void*) NAME##Stack, 0, sizeof(NAME##Stack), \
         0, ADD_FILENAME(__FILE__), __LINE__ \
     }; \
-    TYPE* NAME = _##NAME;
+    TYPE* NAME = NAME##Stack;
 
 #define STACK_ARENA_ENSURE_SIZE(NAME, COUNT) do { \
-    assert(_##NAME##Arena.Offset == 0); \
+    assert((NAME##Arena).Offset == 0); \
     uint32_t newCapa = (COUNT) * sizeof(*NAME); \
-    if (_##NAME##Arena.SizeLeft < newCapa) \
+    if ((NAME##Arena).SizeLeft < newCapa) \
     { \
-        (_##NAME##Arena) = \
-            *Allocate_(_##NAME##Alloc, newCapa, __FILE__, __LINE__, false); \
-        NAME = _##NAME##Arena.Memory; \
+        (NAME##Arena) = \
+            *Allocate_((NAME##Alloc), newCapa, __FILE__, __LINE__, false); \
+        NAME = NAME##Arena.Memory; \
     } \
 } while(0)
 
 #define STACK_ARENA_ARRAY_ADD(NAME, VALUE) do { \
-    if (_##NAME##Arena.SizeLeft < sizeof(*NAME)) \
+    if (NAME##Arena.SizeLeft < sizeof(*NAME)) \
     { \
-        (*cast(void**)&NAME) = ReallocArenaArray( \
-            &_##NAME##Arena, _##NAME##Alloc, \
-            sizeof(*NAME)); \
+        (*cast(void**)&(NAME)) = ReallocArenaArray( \
+            &(NAME##Arena), (NAME##Alloc), \
+            sizeof(*(NAME)), __FILE__, __LINE__); \
     } \
-    NAME[_##NAME##Count++] = (VALUE); \
+    NAME[NAME##Count++] = (VALUE); \
 } while(0)
 
 #define STACK_ARENA_ARRAY_TO_HEAP(NAME) do { \
-    _##NAME##FreeMemory = false; \
-    if (_##NAME == NAME) { \
-        uint32_t size = _##NAME##Count * sizeof(*NAME); \
+    NAME##FreeMemory = false; \
+    if (NAME##Stack == (NAME)) { \
+        uint32_t size = (NAME##Count) * sizeof(*(NAME)); \
         tagged_arena_t* newArena = \
-            Allocate(_##NAME##Alloc, size); \
-        memcpy(newArena->Memory, NAME, size); \
-        (*cast(void**)&NAME) = newArena->Memory; \
+            Allocate(NAME##Alloc, size); \
+        memcpy(newArena->Memory, (NAME), size); \
+        (*cast(void**)&(NAME)) = newArena->Memory; \
     } \
 } while(0)
 
