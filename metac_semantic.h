@@ -38,13 +38,7 @@
 noinline void _newMemRealloc(void** memP, uint32_t* capacityP, const uint32_t elementSize);
 //static uint32_t _nodeCounter = 1;
 
-#ifndef ATOMIC
-#define INC(v) \
-    (v++)
-#else
-#define INC(v)
-    (__builtin_atomic_fetch_add(&v, __ATOMIC_RELEASE))
-#endif
+#include "metac_atomic.h"
 
 /// TODO: lock during realloc
 #define REALLOC_BOILERPLATE(VAR) \
@@ -137,6 +131,10 @@ typedef struct metac_semantic_state_t
     AT(transient) metac_sema_expression_t* ExpressionStack;
     AT(transient) uint32_t ExpressionStackSize;
     AT(transient) uint32_t ExpressionStackCapacity;
+
+    AT(transient) sema_stmt_switch_t** SwitchStack;
+    AT(transient) uint32_t SwitchStackSize;
+    AT(transient) uint32_t SwitchStackCapacity;
 
     metac_type_aggregate_t* CompilerInterface;
 } metac_semantic_state_t;

@@ -243,7 +243,7 @@ typedef struct stmt_switch_t
     STATEMENT_HEADER
 
     metac_expression_t* SwitchExp;
-    struct metac_statement_t* SwitchBody;
+    struct stmt_block_t* SwitchBody;
 } stmt_switch_t;
 
 typedef struct stmt_do_while_t

@@ -304,6 +304,8 @@ metac_sema_expression_t* MetaCSemantic_doExprSemantic_(metac_semantic_state_t* s
             metac_node_t node =
                 MetaCSemantic_LookupIdentifier(self,
                                                result->IdentifierPtr);
+            //printf("Looking up: %s\n",
+            //    IdentifierPtrToCharPtr(self->ParserIdentifierTable, result->IdentifierPtr));
             if (node == emptyPointer)
             {
                 fprintf(stderr, "Identifier lookup failed\n");
@@ -314,12 +316,27 @@ metac_sema_expression_t* MetaCSemantic_doExprSemantic_(metac_semantic_state_t* s
                 {
                     fprintf(stderr, "we should not be retured an identifier\n");
                 }
-                if (node->Kind == node_decl_variable)
+                else if (node->Kind == node_decl_parameter)
                 {
-                    sema_decl_variable_t* v = (sema_decl_variable_t*)node;
+                    goto Lvar;
+                }
+                else if (node->Kind == node_decl_variable)
+                Lvar:
+                {
+                    sema_decl_variable_t* v = cast(sema_decl_variable_t*)node;
                     result->Kind = exp_variable;
                     result->Variable = v;
                     result->TypeIndex = v->TypeIndex;
+                }
+                else if (node->Kind == node_decl_enum_member)
+                {
+                    metac_enum_member_t* enumMember = cast(metac_enum_member_t*)node;
+                    // result->Kind =enumMember->Value.Kind;
+                    result = enumMember->Value;
+                }
+                else
+                {
+                    printf("[%s:%u] NodeType unexpected: %s\n", __FILE__, __LINE__, MetaCNodeKind_toChars(node->Kind));
                 }
             }
         }

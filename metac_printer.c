@@ -1041,6 +1041,11 @@ static inline void PrintSemaExpression(metac_printer_t* self,
         if (!IsBinaryExp(semaExp->E1->Kind))
             PrintChar(self, ')');
     }
+    else if (semaExp->Kind == exp_variable)
+    {
+        // printf("Don't know how to print exp_variable\n");
+        PrintIdentifier(self, semaExp->Variable->VarIdentifier);
+    }
     else if (semaExp->Kind == exp_tuple)
     {
         PrintChar(self, '{');
@@ -1065,7 +1070,7 @@ static inline void PrintSemaExpression(metac_printer_t* self,
         PrintSemaType(self, sema, semaExp->TypeExp);
         PrintChar(self, ')');
     }
-    else if (semaExp->Kind == exp_identifier)
+    else if (semaExp->Kind == exp_identifier || semaExp->Kind == exp_variable)
     {
         PrintIdentifier(self, semaExp->IdentifierPtr);
     }
@@ -1558,21 +1563,21 @@ static inline void PrintSemaStatement(metac_printer_t* self, metac_semantic_stat
                     ++self->IndentLevel;
                     PrintNewline(self);
                     PrintIndent(self);
-                    metac_sema_statement_t* stmt = stmt_case->CaseBody;
-                    PrintSemaStatement(self, sema, stmt);
-/*
-                    while(stmt && stmt != emptyPointer)
+                    sema_stmt_case_body_t* caseBody = stmt_case->CaseBody;
+                    const uint32_t statementCount = caseBody->StatementCount;
+                    if (statementCount)
                     {
-                        PrintSemaStatement(self, sema, stmt);
-
-                        stmt = stmt->Next;
-                        if (stmt)
+                        for(uint32_t i = 1;
+                            i < statementCount;
+                            i++)
                         {
+                            metac_sema_statement_t* s = &caseBody->Statements[i - 1];
+                            PrintSemaStatement(self, sema, s);
                             PrintNewline(self);
                             PrintIndent(self);
                         }
-
-                    }*/
+                        PrintSemaStatement(self, sema, &caseBody->Statements[statementCount - 1]);
+                    }
                 }
                 else
                 {

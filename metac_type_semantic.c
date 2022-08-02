@@ -410,6 +410,9 @@ void MetaCSemantic_ComputeEnumValues(metac_semantic_state_t* self,
                                      decl_type_enum_t* enum_,
                                      metac_type_enum_t* semaEnum)
 {
+    uint32_t hash = enum_key;
+    hash = CRC32C_VALUE(hash, enum_->Identifier.v);
+
     //TODO you want to make CurrentValue a metac_sema_expression_t
     // such that you can interpret the increment operator
     int64_t nextValue = 0;
@@ -417,63 +420,72 @@ void MetaCSemantic_ComputeEnumValues(metac_semantic_state_t* self,
     //SetInProgress(semaEnum, "Members");
     semaEnum->Name = enum_->Identifier;
     semaEnum->Header.Kind = decl_type_enum;
-    printf("semaEnum->Members: %p\n", semaEnum->Members);
-    for(uint32_t memberIdx = 0;
-        memberIdx < memberCount;
-        memberIdx++)
     {
         decl_enum_member_t* member = enum_->Members;
-        if (member->Value != cast(metac_expression_t*)emptyPointer)
-        {
-            assert(member->Value);
-            metac_sema_expression_t* semaValue =
-                MetaCSemantic_doExprSemantic(self, member->Value, 0);
-            assert(semaValue->Kind == exp_signed_integer);
-            semaEnum->Members[memberIdx].Value = semaValue;
-            nextValue = semaValue->ValueI64 + 1;
-        }
-        else
-        {
-            // let's construct a metac_expression from currentValue
-            metac_expression_t Value = {exp_signed_integer, member->LocationIdx, 0, 0};
-            Value.ValueI64 = nextValue++;
-            printf("bp: %p - d %d\n", semaEnum->Members, memberIdx);
-            semaEnum->Members[memberIdx].Value =
-                MetaCSemantic_doExprSemantic(self, &Value, 0);
-            //TODO fix up the type of the value to be the enum type
-//            semaEnum->Members[memberIdx].Value->TypeIndex =
-        }
-        member = member->Next;
-    }
-    // Let's inject our values into the enclosing scope.
-    decl_enum_member_t* member = enum_->Members;
 
-    for(uint32_t i = 0;
-        i < semaEnum->MemberCount;
-        i++)
+        for(uint32_t memberIdx = 0;
+            memberIdx < memberCount;
+            memberIdx++, member = member->Next)
+        {
+
+            printf("member.Name: %s\n",
+                IdentifierPtrToCharPtr(self->ParserIdentifierTable, member->Name));
+
+           semaEnum->Members[memberIdx].Identifier = member->Name;
+
+            if (member->Value != cast(metac_expression_t*)emptyPointer)
+            {
+                assert(member->Value);
+                metac_sema_expression_t* semaValue =
+                    MetaCSemantic_doExprSemantic(self, member->Value, 0);
+                assert(semaValue->Kind == exp_signed_integer);
+                semaEnum->Members[memberIdx].Value = semaValue;
+                nextValue = semaValue->ValueI64 + 1;
+            }
+            else
+            {
+                // let's construct a metac_expression from currentValue
+                metac_expression_t Value = {exp_signed_integer, member->LocationIdx, 0, 0};
+                Value.ValueI64 = nextValue++;
+
+                semaEnum->Members[memberIdx].Value =
+                    MetaCSemantic_doExprSemantic(self, &Value, 0);
+                //TODO fix up the type of the value to be the enum type
+    //            semaEnum->Members[memberIdx].Value->TypeIndex =
+            }
+
+            semaEnum->Members[memberIdx].Header.LocationIdx = member->LocationIdx;
+            hash = CRC32C_VALUE(hash, semaEnum->Members[memberIdx].Identifier);
+            hash = CRC32C_VALUE(hash, semaEnum->Members[memberIdx].Value->ValueI64);
+        }
+    }
     {
+        // Let's inject our values into the enclosing scope.
+        decl_enum_member_t* member = enum_->Members;
 
-        sema_decl_enum_member_t* semaMember =
-            semaEnum->Members + i;
-        semaMember->DeclKind = decl_enum_member;
-        scope_insert_error_t gotInserted =
-            MetaCSemantic_RegisterInScope(self, member->Name, semaMember);
-        metac_node_t node =
-            MetaCSemantic_LookupIdentifier(self, member->Name);
-
-        if (gotInserted != success)
+        for(uint32_t i = 0;
+            i < semaEnum->MemberCount;
+            i++)
         {
-            int k = 12;
+
+            sema_decl_enum_member_t* semaMember =
+                semaEnum->Members + i;
+            semaMember->DeclKind = decl_enum_member;
+            scope_insert_error_t gotInserted =
+                MetaCSemantic_RegisterInScope(self, member->Name, semaMember);
+
+      //      assert(gotInserted != success ||
+      //             MetaCSemantic_LookupIdentifier(self, member->Name) == semaMember);
+
+            if (gotInserted != success)
+            {
+                int k = 12;
+            }
+
+            member = member->Next;
         }
-        printf("gotInserted: %s\n", ScopeInsertError_toChars(gotInserted));
-        assert(node == semaMember);
-        member = member->Next;
     }
-    const char* name =
-        IdentifierPtrToCharPtr(self->ParserIdentifierTable, semaEnum->Name);
-    scope_insert_error_t gotInserted =
-        MetaCSemantic_RegisterInScope(self, semaEnum->Name, semaEnum);
-    assert(gotInserted == success);
+
     return ;
 }
 
@@ -538,6 +550,11 @@ metac_type_index_t MetaCSemantic_TypeSemantic(metac_semantic_state_t* self,
         tmpSemaEnum.MemberCount = enm->MemberCount;
         tmpSemaEnum.Name = enm->Identifier;
 
+        metac_scope_t enumScope = { scope_flag_temporary };
+        MetaCScopeTable_InitN(&enumScope.ScopeTable, tmpSemaEnum.MemberCount);
+
+        MetaCSemantic_PushTemporaryScope(self, &enumScope);
+        bool keepEnumScope = false;
         STACK_ARENA_ARRAY(metac_enum_member_t, semaMembers, 64, &self->Allocator);
 
         STACK_ARENA_ENSURE_SIZE(semaMembers, tmpSemaEnum.MemberCount);
@@ -548,24 +565,51 @@ metac_type_index_t MetaCSemantic_TypeSemantic(metac_semantic_state_t* self,
             semaMembers[i] = (metac_enum_member_t){};
         }
 
-        uint32_t hash = ~0;
         tmpSemaEnum.Members = semaMembers;
 
         MetaCSemantic_ComputeEnumValues(self, enm, &tmpSemaEnum);
+        MetaCSemantic_PopTemporaryScope(self);
 
-        metac_type_enum_t key = {
-            {decl_type_enum, 0, hash},
-            enm->Identifier, semaMembers, enm->MemberCount
-        };
+        enumScope.Closed = true;
 
-        result = MetaCTypeTable_GetOrEmptyEnumType(&self->EnumTypeTable, &key);
+
+        result = MetaCTypeTable_GetOrEmptyEnumType(&self->EnumTypeTable, &tmpSemaEnum);
         if (result.v == 0)
         {
             STACK_ARENA_ARRAY_TO_HEAP(semaMembers);
-            key.Members = semaMembers;
-            result = MetaCTypeTable_AddEnumType(&self->EnumTypeTable, &key);
+            tmpSemaEnum.Members = semaMembers;
+            result = MetaCTypeTable_AddEnumType(&self->EnumTypeTable, &tmpSemaEnum);
 
+            keepEnumScope = true;
+            MetaCSemantic_RegisterInScope(self, tmpSemaEnum.Name, EnumTypePtr(self, result.Index));
         }
+
+        #define ISOLATED_ENUM_SCOPE 0
+        if (!ISOLATED_ENUM_SCOPE)
+        {
+            assert(self->CurrentScope->Owner.Kind == scope_parent_module);
+
+            for(uint32_t memberIndex = 0;
+                memberIndex < tmpSemaEnum.MemberCount;
+                memberIndex++)
+            {
+                metac_enum_member_t* member = tmpSemaEnum.Members + memberIndex;
+
+                scope_insert_error_t inserted =
+                    MetaCSemantic_RegisterInScope(self, member->Identifier, member);
+                if (inserted != success)
+                {
+                    printf("Identifier couldn't be registered in scope\n");
+                }
+            }
+        }
+
+        if (result.v != 0)
+        {
+            free(enumScope.ScopeTable.Slots);
+        }
+
+
 
         // STACK_ARENA_FREE(self->Allocator, members);
         // STACK_ARENA_FREE(self->Allocator, semaMembers);
@@ -675,10 +719,10 @@ metac_type_index_t MetaCSemantic_TypeSemantic(metac_semantic_state_t* self,
     {
         decl_type_functiontype_t* functionType =
             (decl_type_functiontype_t*) type;
-        metac_scope_t tmpScope = { scope_flag_temporary };
-        MetaCScopeTable_Init(&tmpScope.ScopeTable);
+        metac_scope_t enumScope = { scope_flag_temporary };
+        MetaCScopeTable_Init(&enumScope.ScopeTable);
 
-        MetaCSemantic_PushTemporaryScope(self, &tmpScope);
+        MetaCSemantic_PushTemporaryScope(self, &enumScope);
 
         metac_type_index_t returnType =
             MetaCSemantic_doTypeSemantic(self,

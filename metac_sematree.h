@@ -209,13 +209,26 @@ typedef struct sema_stmt_while_t
     SEMA_STATEMENT_HEADER
 
     metac_sema_expression_t* WhileExp;
+
+    struct metac_sema_statement_t* WhileBody;
 } sema_stmt_while_t;
+
+typedef struct sema_stmt_case_body_t
+{
+    SEMA_STATEMENT_HEADER
+
+    struct metac_sema_statement_t* Statements;
+
+    uint32_t StatementCount;
+} sema_stmt_case_body_t;
 
 typedef struct sema_stmt_case_t
 {
     SEMA_STATEMENT_HEADER
 
     metac_sema_expression_t* CaseExp;
+
+    sema_stmt_case_body_t* CaseBody;
 } sema_stmt_case_t;
 
 typedef struct sema_stmt_goto_t
@@ -232,12 +245,12 @@ typedef struct sema_stmt_exp_t
     metac_sema_expression_t* Expression;
 } sema_stmt_exp_t;
 
-typedef struct sema_stmt_sema_decl_t
+typedef struct sema_stmt_decl_t
 {
     SEMA_STATEMENT_HEADER
 
     struct metac_declaration_t* Declaration;
-} sema_stmt_sema_decl_t;
+} sema_stmt_decl_t;
 
 typedef struct sema_stmt_if_t
 {
@@ -267,7 +280,7 @@ typedef struct sema_stmt_switch_t
     SEMA_STATEMENT_HEADER
 
     metac_sema_expression_t* SwitchExp;
-    struct metac_sema_statement_t* SwitchBody;
+    struct sema_stmt_block_t* SwitchBody;
 } sema_stmt_switch_t;
 
 typedef struct sema_stmt_do_while_t
@@ -302,7 +315,7 @@ typedef struct metac_sema_statement_t
         // case sema_stmt_return :
         sema_stmt_return_t sema_stmt_return;
         // case sema_stmt_decl :
-        sema_stmt_sema_decl_t sema_stmt_decl;
+        sema_stmt_decl_t sema_stmt_decl;
     };
 } metac_sema_statement_t;
 

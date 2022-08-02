@@ -3288,7 +3288,7 @@ static stmt_block_t* MetaCParser_ParseBlockStatement(metac_parser_t* self,
     AllocNewStatement(stmt_block, &result);
     result->Hash = ~0;
     uint32_t hash = ~0;
-
+    uint32_t nStatements = 0;
     MetaCParser_PushBlockStatement(self, result);
 
     for (;;)
@@ -3304,6 +3304,7 @@ static stmt_block_t* MetaCParser_ParseBlockStatement(metac_parser_t* self,
             }
             break;
         }
+        nStatements++;
 
         if (!firstStatement)
         {
@@ -3332,6 +3333,7 @@ static stmt_block_t* MetaCParser_ParseBlockStatement(metac_parser_t* self,
 
     result->Body = firstStatement;
     result->Hash = hash;
+    result->StatementCount = nStatements;
 
     metac_token_t* rBrace = MetaCParser_Match(self, tok_rBrace);
     MetaCLocation_Expand(&loc, LocationFromToken(self, rBrace));

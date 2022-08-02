@@ -111,7 +111,6 @@ typedef struct handoff_walker_context_t
 #define POST_ADD(v, b)
     (__sync_fetch_and_add(&v, b))
 #endif
-
 metac_sema_expression_t* AllocNewSemaExpression(metac_semantic_state_t* self, metac_expression_t* expr)
 {
     metac_sema_expression_t* result = 0;
@@ -440,8 +439,9 @@ metac_sema_statement_t* AllocNewSemaStatement_(metac_semantic_state_t* self,
 
     {
         result = self->Statements + INC(self->Statements_size);
-        // result->Parent = 0;
 
+        // result->Parent = 0;
+        result->StmtKind = kind;
         result->Serial = INC(_nodeCounter);
         // result->TypeIndex.v = 0;
     }
@@ -467,6 +467,8 @@ sema_stmt_block_t* AllocNewSemaBlockStatement(metac_semantic_state_t* self,
 
         result = self->BlockStatements + POST_ADD(self->BlockStatements_size,
                                                         sizeInBlockStatements);
+        result->StmtKind = stmt_block;
+        result->StatementCount = statementCount;
         result->Serial = INC(_nodeCounter);
         result->Body = (metac_sema_statement_t*)(result + 1);
     }
@@ -690,6 +692,11 @@ void MetaCSemantic_Handoff(metac_semantic_state_t* self, metac_sema_declaration_
 void MetaCSemantic_Init(metac_semantic_state_t* self, metac_parser_t* parser,
                         metac_type_aggregate_t* compilerStruct)
 {
+    const metac_semantic_state_t _init = {};
+    *self = _init;
+
+    Allocator_Init(&self->Allocator, 0);
+
 #define INIT_TYPE_TABLE(TYPE_NAME, MEMBER_NAME, INDEX_KIND) \
     TypeTableInitImpl((metac_type_table_t*)&self->MEMBER_NAME, \
                       sizeof(metac_type_ ## TYPE_NAME ## _t), \
@@ -699,12 +706,18 @@ void MetaCSemantic_Init(metac_semantic_state_t* self, metac_parser_t* parser,
 
     FOREACH_SEMA_STATE_ARRAY(self, INIT_ARRAY)
 
+
     self->TemporaryScopeDepth = 0;
 
     self->ExpressionStackCapacity = 64;
     self->ExpressionStackSize = 0;
     self->ExpressionStack = (metac_sema_expression_t*)
         calloc(sizeof(metac_sema_expression_t), self->ExpressionStackCapacity);
+
+    self->SwitchStackCapacity = 4;
+    self->SwitchStackSize = 0;
+    self->SwitchStack = (sema_stmt_switch_t**)
+        calloc(sizeof(sema_stmt_switch_t*), self->SwitchStackCapacity);
 
     self->Waiters.WaiterLock._rwctr = 0;
     self->Waiters.WaiterCapacity = 64;
@@ -864,6 +877,10 @@ metac_sema_statement_t* MetaCSemantic_doStatementSemantic_(metac_semantic_state_
                                                            uint32_t callLine)
 {
     metac_sema_statement_t* result;
+
+    metac_printer_t printer;
+    MetaCPrinter_Init(&printer, self->ParserIdentifierTable, self->ParserStringTable);
+
     switch (stmt->StmtKind)
     {
         case stmt_exp:
@@ -871,14 +888,43 @@ metac_sema_statement_t* MetaCSemantic_doStatementSemantic_(metac_semantic_state_
             sema_stmt_exp_t* sse = AllocNewSemaStatement(self, stmt_exp, &result);
         } break;
 
+        case stmt_comment:
+        {
+            result = (metac_sema_statement_t*) stmt;
+        } break;
+
         default: assert(0);
+        case stmt_case:
+        {
+            stmt_case_t* caseStatement = (stmt_case_t*) stmt;
+            sema_stmt_case_t* semaCaseStatement =
+                AllocNewSemaStatement(self, stmt_case, &result);
+
+            assert(self->SwitchStackSize != 0);
+            // the default statement doesn't have a caseExp
+            // therefore we check it here so we can skip it.
+
+            if (cast(metac_node_t)caseStatement->CaseExp != emptyNode)
+            {
+                semaCaseStatement->CaseExp =
+                    MetaCSemantic_doExprSemantic(self, caseStatement->CaseExp, 0);
+            }
+            else
+            {
+                semaCaseStatement->CaseExp = (metac_sema_expression_t*)emptyNode;
+            }
+            semaCaseStatement->CaseBody =
+                MetaCSemantic_doStatementSemantic(self, caseStatement->CaseBody);
+            printf("caseBody:  %s\n", MetaCPrinter_PrintSemaNode(&printer, self, semaCaseStatement->CaseBody));
+        } break;
 
         case stmt_block:
         {
             stmt_block_t* blockStatement = (stmt_block_t*) stmt;
             uint32_t statementCount = blockStatement->StatementCount;
             sema_stmt_block_t* semaBlockStatement =
-                AllocNewSemaStatement(self, stmt_block, &result);
+                AllocNewSemaBlockStatement(self, 0, statementCount, &result);
+            printf("SemaStmtBlock.Serial: %u\n", semaBlockStatement->Serial);
 
             metac_scope_parent_t parent = {SCOPE_PARENT_V(scope_parent_statement,
                                            BlockStatementIndex(self, semaBlockStatement))};
@@ -892,10 +938,14 @@ metac_sema_statement_t* MetaCSemantic_doStatementSemantic_(metac_semantic_state_
                 i < statementCount;
                 i++)
             {
+                printf("statementIdx = %d\n", i);
+                printf("StmtKind: %s\n", StatementKind_toChars(currentStatement->StmtKind));
                 ((&semaBlockStatement->Body)[i]) =
                     MetaCSemantic_doStatementSemantic(self, currentStatement);
                 currentStatement = currentStatement->Next;
             }
+            //TODO this doesn't handle inject statements
+            semaBlockStatement->StatementCount = statementCount;
 
             MetaCSemantic_PopScope(self);
         } break;
@@ -941,6 +991,29 @@ metac_sema_statement_t* MetaCSemantic_doStatementSemantic_(metac_semantic_state_
             metac_sema_expression_t* returnValue =
                 MetaCSemantic_doExprSemantic(self, returnStatement->ReturnExp, 0);
             semaReturnStatement->ReturnExp = returnValue;
+        } break;
+
+        case stmt_switch:
+        {
+            stmt_switch_t* switchStatement = cast(stmt_switch_t*) stmt;
+            sema_stmt_switch_t* semaSwitchStatement =
+                AllocNewSemaStatement(self, stmt_switch, &result);
+            self->SwitchStack[self->SwitchStackSize++] = semaSwitchStatement;
+
+            semaSwitchStatement->SwitchExp =
+                MetaCSemantic_doExprSemantic(self, switchStatement->SwitchExp, 0);
+            semaSwitchStatement->SwitchBody =
+                cast(sema_stmt_block_t*)MetaCSemantic_doStatementSemantic(self, switchStatement->SwitchBody);
+            printf("SemaSwitch.Serial %u\n", semaSwitchStatement->Serial);
+            for(uint32_t i = 0;
+                i < semaSwitchStatement->SwitchBody->StatementCount;
+                i++
+            )
+            {
+                sema_stmt_case_t* s = semaSwitchStatement->SwitchBody->Body + i;
+            }
+
+            self->SwitchStack[--self->SwitchStackSize] = 0;
         } break;
     }
 
@@ -1026,6 +1099,11 @@ sema_decl_function_t* MetaCSemantic_doFunctionSemantic(metac_semantic_state_t* s
     self->CurrentDeclarationState = &declState;
 
     sema_decl_function_t* f = AllocNewSemaFunction(self, func);
+    // for now we don't nest functions.
+    f->ParentFunc = (sema_decl_function_t*)emptyNode;
+    f->Identifier = func->Identifier;
+    printf("doing Function: %s\n", IdentifierPtrToCharPtr(self->ParserIdentifierTable, func->Identifier));
+
     // let's first do the parameters
     sema_decl_variable_t* params =
         f->Parameters =
@@ -1040,7 +1118,10 @@ sema_decl_function_t* MetaCSemantic_doFunctionSemantic(metac_semantic_state_t* s
         // as we have an easier time if we know at which
         // param we are and how many follow
         f->Parameters[i].VarFlags |= variable_is_parameter;
-        f->Parameters[i].TypeIndex =
+        f->Parameters[i].VarIdentifier =
+            currentParam->Parameter->VarIdentifier;
+        metac_type_index_t idx;
+        idx = f->Parameters[i].TypeIndex =
             MetaCSemantic_doTypeSemantic(self,
                                          currentParam->Parameter->VarType);
         currentParam = currentParam->Next;
@@ -1065,13 +1146,13 @@ sema_decl_function_t* MetaCSemantic_doFunctionSemantic(metac_semantic_state_t* s
         i < func->ParameterCount;
         i++)
     {
-        metac_node_t ptr = cast(metac_node_t)(&f->Parameters[i]);
+        decl_variable_t* var = cast(metac_node_t)(f->Parameters +i);
         params[i].Storage.v = STORAGE_V(storage_stack, frameOffset);
         frameOffset += Align(MetaCSemantic_GetTypeSize(self, params[i].TypeIndex), 4);
 
         scope_insert_error_t result =
             MetaCScope_RegisterIdentifier(f->Scope, params[i].VarIdentifier,
-                                          ptr);
+                                          var);
     }
     f->FrameOffset = frameOffset;
     f->FunctionBody = cast(sema_stmt_block_t*)
@@ -1158,23 +1239,27 @@ metac_sema_declaration_t* MetaCSemantic_declSemantic(metac_semantic_state_t* sel
             var->VarIdentifier = v->VarIdentifier;
             MetaCSemantic_RegisterInScope(self, var->VarIdentifier, METAC_NODE(var));
         } break;
+        case decl_type_enum:
+            (cast(decl_type_t*)decl)->TypeKind = type_enum;
+            declId = ((decl_type_enum_t*) decl)->Identifier;
+            goto LdoTypeSemantic;
         case decl_type_struct:
-            ((decl_type_t*)decl)->TypeKind = type_struct;
+            (cast(decl_type_t*)decl)->TypeKind = type_struct;
             declId = ((decl_type_struct_t*) decl)->Identifier;
             goto LdoTypeSemantic;
         case decl_type_union:
-            ((decl_type_t*)decl)->TypeKind = type_union;
+            (cast(decl_type_t*)decl)->TypeKind = type_union;
             declId = ((decl_type_union_t*) decl)->Identifier;
             goto LdoTypeSemantic;
         case decl_type_array:
-            ((decl_type_t*)decl)->TypeKind = type_array;
+            (cast(decl_type_t*)decl)->TypeKind = type_array;
             goto LdoTypeSemantic;
         case decl_type_typedef:
-            ((decl_type_t*)decl)->TypeKind = type_typedef;
+            (cast(decl_type_t*)decl)->TypeKind = type_typedef;
             declId = ((decl_type_typedef_t*) decl)->Identifier;
         goto LdoTypeSemantic;
         case decl_type_ptr:
-            ((decl_type_t*)decl)->TypeKind = type_ptr;
+            (cast(decl_type_t*)decl)->TypeKind = type_ptr;
         goto LdoTypeSemantic;
     LdoTypeSemantic:
         {
