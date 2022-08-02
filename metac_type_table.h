@@ -31,7 +31,7 @@ bool Expression_IsEqual_(const struct metac_sema_expression_t* a,
                          const struct metac_sema_expression_t* b);
 
 static inline const bool EnumSlotsEqual(const metac_type_table_slot_t* a,
-                                  const metac_type_table_slot_t* b)
+                                        const metac_type_table_slot_t* b)
 {
     bool result = true;
     metac_type_enum_t* slotA = cast(metac_type_enum_t*) a;
@@ -58,7 +58,7 @@ static inline const bool EnumSlotsEqual(const metac_type_table_slot_t* a,
 }
 
 static inline const bool ArraySlotsEqual(const metac_type_table_slot_t* a,
-                                   const metac_type_table_slot_t* b)
+                                         const metac_type_table_slot_t* b)
 {
     metac_type_array_t* slotA = cast(metac_type_array_t*) a;
     metac_type_array_t* slotB = cast(metac_type_array_t*) b;
@@ -67,7 +67,7 @@ static inline const bool ArraySlotsEqual(const metac_type_table_slot_t* a,
 }
 
 static inline const bool AggregateSlotsEqual(const metac_type_table_slot_t* a,
-                                       const metac_type_table_slot_t* b)
+                                             const metac_type_table_slot_t* b)
 {
     bool result = true;
 
@@ -103,7 +103,7 @@ static inline const bool AggregateSlotsEqual(const metac_type_table_slot_t* a,
 }
 
 static inline const bool PtrSlotsEqual(const metac_type_table_slot_t* a,
-                                 const metac_type_table_slot_t* b)
+                                       const metac_type_table_slot_t* b)
 {
     metac_type_ptr_t* slotA = cast(metac_type_ptr_t*) a;
     metac_type_ptr_t* slotB = cast(metac_type_ptr_t*) b;
@@ -111,7 +111,7 @@ static inline const bool PtrSlotsEqual(const metac_type_table_slot_t* a,
 }
 
 static inline const bool FunctiontypeSlotsEqual(const metac_type_table_slot_t* a,
-                                          const metac_type_table_slot_t* b)
+                                                const metac_type_table_slot_t* b)
 {
     bool result = true;
     metac_type_functiontype_t* slotA =
@@ -145,7 +145,7 @@ static inline const bool FunctiontypeSlotsEqual(const metac_type_table_slot_t* a
 }
 
 static inline const bool TypedefSlotsEqual(const metac_type_table_slot_t* a,
-                                     const metac_type_table_slot_t* b)
+                                           const metac_type_table_slot_t* b)
 {
     metac_type_typedef_t* slotA = cast(metac_type_typedef_t*) a;
     metac_type_typedef_t* slotB = cast(metac_type_typedef_t*) b;
@@ -155,7 +155,7 @@ static inline const bool TypedefSlotsEqual(const metac_type_table_slot_t* a,
 
 
 static inline const bool TupleSlotsEqual(const metac_type_table_slot_t* a,
-                                   const metac_type_table_slot_t* b)
+                                         const metac_type_table_slot_t* b)
 {
    metac_type_tuple_t* slotA = cast(metac_type_tuple_t*) a;
    metac_type_tuple_t* slotB = cast(metac_type_tuple_t*) b;
