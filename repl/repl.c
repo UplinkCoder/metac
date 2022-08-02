@@ -303,7 +303,6 @@ void Repl_Init(repl_state_t* self)
     self->LPP.LexerState.Line = 1;
     self->LPP.LexerState.Column = 1;
     self->ParseMode = parse_mode_ee;
-
     self->CompilerInterface = 0;
 
     self->SrcBuffer = 0;
@@ -412,8 +411,9 @@ LswitchMode:
             } break;
             case 'l' :
             {
-                metac_lexer_t* fileLexer = &repl->FileLexer;
-                metac_lexer_state_t* fileLexerState;
+                metac_lexer_t *fileLexer = &repl->FileLexer;
+                MetaCLexer_Init(fileLexer);
+                metac_lexer_state_t fileLexerState;
                 repl->ParseMode = parse_mode_file;
                 const char* filename = repl->Line + 3;
                 MSGF("loading and lexing: '%s'\n", filename);
@@ -421,11 +421,7 @@ LswitchMode:
                 if (!fd)
                 {
                     perror(filename);
-#if defined(__linux__) && defined(TRACY_ENABLE)
-                    char message[256];
-                    uint32_t sz = sMSGF(message, "%s/%s", get_current_dir_name(), filename);
-#endif
-                    TracyCMessage(message, sz);
+//                    MSGF(message, "%s/%s", get_current_dir_name(), filename);
                 }
                 else
                 {
@@ -454,10 +450,10 @@ LswitchMode:
                     fread((void*)repl->SrcBuffer, 1, sz, fd);
                     repl->ParseMode = parse_mode_file;
 
-                    fileLexerState->Position = 0;
-                    fileLexerState->Line = 1;
-                    fileLexerState->Column = 1;
-                    fileLexerState->Size = sz;
+                    fileLexerState.Position = 0;
+                    fileLexerState.Line = 1;
+                    fileLexerState.Column = 1;
+                    fileLexerState.Size = sz;
                 }
                 break;
             }
