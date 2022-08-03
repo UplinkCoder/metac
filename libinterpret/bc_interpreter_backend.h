@@ -1,3 +1,6 @@
+#ifndef _BC_INTERPRETER_BACKEND_H_
+#define _BC_INTERPRETER_BACKEND_H_
+
 typedef struct RetainedCall
 {
     BCValue fn;
@@ -254,3 +257,5 @@ typedef struct byte_code_array_t
 } byte_code_array_t;
 
 byte_code_array_t* BCGen_Code(BCGen* self);
+
+#endif

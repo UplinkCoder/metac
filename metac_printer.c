@@ -1571,11 +1571,11 @@ static inline void PrintSemaStatement(metac_printer_t* self, metac_semantic_stat
             {
                 if (caseStatement->CaseBody->StmtKind == stmt_case)
                 {
-                    caseStatement =
-                        (sema_stmt_case_t*) caseStatement->CaseBody;
+                    caseStatement = cast(sema_stmt_case_t*)
+                        caseStatement->CaseBody;
                     PrintNewline(self);
                     PrintIndent(self);
-                  goto LprintCase;
+                    goto LprintCase;
                 }
                 else if (caseStatement->CaseBody->StmtKind == stmt_casebody)
                 {

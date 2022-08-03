@@ -6,6 +6,7 @@
 #include "crc32c.h"
 #include <stdlib.h>
 #include <stdio.h>
+#include <string.h>
 
 bool errored = false;
 #ifndef ALIGN4

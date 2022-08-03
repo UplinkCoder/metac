@@ -1,3 +1,6 @@
+#ifndef _BC_COMMON_C_
+#define _BC_COMMON_C_
+
 #include <stdint.h>
 #include <stdbool.h>
 #include <assert.h>
@@ -906,3 +909,5 @@ BCTypeEnum BCTypeEnum_commonTypeEnum(BCTypeEnum lhs, BCTypeEnum rhs)
 }
 
 #undef offsetof
+
+#endif

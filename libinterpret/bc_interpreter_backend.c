@@ -1,6 +1,8 @@
 /**
  * Written By Stefan Koch in 2016 - 2022
 */
+#ifndef _BC_INTERPRETER_C_
+#define _BC_INTERPRETER_C_
 
 #include <assert.h>
 #include <math.h>
@@ -3176,3 +3178,5 @@ const BackendInterface BCGen_interface = {
 
     .ReadI32 = (ReadI32_t) BCGen_ReadI32,
 };
+
+#endif
