@@ -174,6 +174,13 @@ LsetResult:
     return result;
 }
 
+/// After free Arena has been called
+/// acessing the area pointer itself is invalid
+void FreeArena (tagged_arena_t* arena)
+{
+    metac_alloc_t* alloc = arena->Alloc;
+
+}
 void* ReallocArenaArray(tagged_arena_t* arena, metac_alloc_t* alloc, uint32_t elemSize,
                         const char* file, uint32_t line)
 {
@@ -188,10 +195,3 @@ void* ReallocArenaArray(tagged_arena_t* arena, metac_alloc_t* alloc, uint32_t el
     return newArena->Memory;
 }
 
-/// After free Arena has been called
-/// acessing the area pointer itself is invalid
-void FreeArena (tagged_arena_t* arena)
-{
-    metac_alloc_t* alloc = arena->Alloc;
-
-}

@@ -42,6 +42,9 @@ if [ -d $DST ]; then
        metac.fpg TODO \
        $DST
 
+    cp semantic/handoff.c semnatic/node_alloc.c \
+       $DST/semantic
+
     chmod +x $DST/gen_code.sh $DST/sync_from.sh $DST/sync.sh $DST/run_tests.sh
 
     mkdir -p $DST/3rd_party

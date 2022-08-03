@@ -1380,6 +1380,7 @@ static inline void PrintSemaDeclaration(metac_printer_t* self,
                 i++
             )
             {
+                printf("paramCount: %u\n", paramCount);
                 PrintSemaVariable(self, sema, function_->Parameters + i);
                 if (i != (paramCount - 1))
                 {
@@ -1434,7 +1435,6 @@ static inline void PrintSemaStatement(metac_printer_t* self, metac_semantic_stat
             PrintNewline(self);
             PrintIndent(self);
 
-
             const uint32_t statementCount = stmt_block->StatementCount;
             for(uint32_t i = 0;
                 i < statementCount;
@@ -1462,13 +1462,14 @@ static inline void PrintSemaStatement(metac_printer_t* self, metac_semantic_stat
             PrintChar(self, ')');
 
             if (stmt_if_->IfBody->StmtKind != stmt_block)
+            {
                 ++self->IndentLevel;
+            }
             PrintNewline(self);
             PrintIndent(self);
             PrintSemaStatement(self, sema, stmt_if_->IfBody);
             if (stmt_if_->IfBody->StmtKind != stmt_block)
             {
-
                 --self->IndentLevel;
             }
             PrintNewline(self);

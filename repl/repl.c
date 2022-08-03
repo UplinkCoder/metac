@@ -11,7 +11,7 @@
 #include "../metac_compiler_interface.h"
 #include "../bsr.h"
 #include "../crc32c.h"
-
+#include "../semantic/handoff.c"
 #include "../int_to_str.c"
 #include <stdio.h>
 #include "exp_eval.c"
