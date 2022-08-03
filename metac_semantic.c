@@ -8,9 +8,7 @@
 #include "crc32c.h"
 #define AT(...)
 
-#if defined(SIMD)
-#  include "metac_simd.h"
-#endif
+#include "metac_simd.h"
 
 #ifndef NO_FIBERS
 #  include "metac_task.h"
@@ -20,12 +18,7 @@
 #include "metac_type_semantic.c"
 #include "metac_expr_semantic.c"
 
-#ifndef NO_FIBERS
 const char* MetaCExpressionKind_toChars(metac_expression_kind_t);
-extern void* CurrentFiber(void);
-extern task_t* CurrentTask(void);
-#endif
-
 bool IsExpressionNode(metac_node_kind_t);
 
 bool Expression_IsEqual_(const metac_sema_expression_t* a,
@@ -155,49 +148,49 @@ void MetaCSemantic_PopScope(metac_semantic_state_t* self)
     self->CurrentScope = self->CurrentScope->Parent;
 }
 
-metac_scope_parent_t ScopeParent(metac_semantic_state_t* sema,
-                                 metac_scope_parent_kind_t parentKind,
+metac_scope_owner_t ScopeParent(metac_semantic_state_t* sema,
+                                 metac_scope_owner_kind_t parentKind,
                                  metac_node_t parentNode)
 {
-    metac_scope_parent_t scopeParent;
+    metac_scope_owner_t scopeParent;
 
     uint32_t scopeParentIndex = 0;
     switch(parentKind)
     {
-    case scope_parent_invalid :
-    case scope_parent_extended :
-    case scope_parent_unknown :
+    case scope_owner_invalid :
+    case scope_owner_extended :
+    case scope_owner_unknown :
         assert(0);
 
-    case scope_parent_module :
+    case scope_owner_module :
     //FIXME TODO this is not how it should be;
     // we should allocate module structures and so on
         scopeParentIndex = (uint32_t) parentNode;
     break;
-    case scope_parent_function :
+    case scope_owner_function :
         scopeParentIndex = FunctionIndex(sema, (sema_decl_function_t*)parentNode);
     break;
-    case scope_parent_struct :
+    case scope_owner_struct :
         scopeParentIndex = StructIndex(sema, (metac_type_aggregate_t*)parentNode);
     break;
-    case scope_parent_statement :
+    case scope_owner_statement :
         scopeParentIndex = StatementIndex(sema, (metac_sema_statement_t*)parentNode);
     break;
-    case scope_parent_block :
+    case scope_owner_block :
         scopeParentIndex = BlockStatementIndex(sema, (sema_stmt_block_t*)parentNode);
     break;
-    case scope_parent_union :
+    case scope_owner_union :
         scopeParentIndex = UnionIndex(sema, (metac_type_aggregate_t*)parentNode);
     break;
     }
-    scopeParent.v = SCOPE_PARENT_V(parentKind, scopeParentIndex);
+    scopeParent.v = scope_owner_V(parentKind, scopeParentIndex);
 
     return scopeParent;
 }
 
 bool IsTemporaryScope(metac_scope_t* scope_)
 {
-    return (scope_->scopeFlags & scope_flag_temporary) != 0;
+    return (scope_->ScopeFlags & scope_flag_temporary) != 0;
 }
 #define MetaCSemantic_PushTemporaryScope(SELF, TMPSCOPE) \
     MetaCSemantic_PushTemporaryScope_(SELF, TMPSCOPE, __LINE__, __FILE__)
@@ -208,7 +201,7 @@ metac_scope_t* MetaCSemantic_PushTemporaryScope_(metac_semantic_state_t* self,
                                                  const char* file)
 {
     printf("[%u]Pushing tmpScope {%s:%u}\n", self->TemporaryScopeDepth, file, line);
-    assert((tmpScope->scopeFlags & scope_flag_temporary) != 0);
+    assert((tmpScope->ScopeFlags & scope_flag_temporary) != 0);
 
     assert ((!self->TemporaryScopeDepth) || IsTemporaryScope(self->CurrentScope));
     self->TemporaryScopeDepth++;
@@ -264,16 +257,94 @@ void MetaCSemantic_PopMountedScope_(metac_semantic_state_t* self,
 }
 */
 metac_scope_t* MetaCSemantic_PushNewScope(metac_semantic_state_t* self,
-                                          metac_scope_parent_kind_t parentKind,
+                                          metac_scope_owner_kind_t parentKind,
                                           metac_node_t parentNode)
 {
-    metac_scope_parent_t scopeParent = ScopeParent(self, parentKind, parentNode);
+    metac_scope_owner_t scopeParent = ScopeParent(self, parentKind, parentNode);
     self->CurrentScope = MetaCScope_PushNewScope(self,
                                                  self->CurrentScope,
                                                  scopeParent);
     return self->CurrentScope;
 }
 
+sema_stmt_switch_t* MetaCSemantic_doSwitchSemantic(metac_semantic_state_t* self,
+                                                  stmt_switch_t* switchStatement)
+{
+    sema_stmt_switch_t* semaSwitchStatement;
+
+    AllocNewSemaStatement(self, stmt_switch, &semaSwitchStatement);
+
+    semaSwitchStatement->SwitchExp =
+        MetaCSemantic_doExprSemantic(self, switchStatement->SwitchExp, 0);
+
+    self->SwitchStack[self->SwitchStackSize++] = &semaSwitchStatement;
+    semaSwitchStatement->SwitchBody =
+        cast(sema_stmt_block_t*)MetaCSemantic_doStatementSemantic(self, switchStatement->SwitchBody);
+
+
+    uint32_t statementCount =
+        semaSwitchStatement->SwitchBody->StatementCount;
+
+    for(uint32_t i = 0;
+        i < statementCount;
+        i++)
+    {
+        sema_stmt_case_t* s = semaSwitchStatement->SwitchBody->Body + i;
+        if (s->StmtKind == stmt_case)
+        {
+            if (METAC_NODE(s->CaseBody) != emptyNode)
+            {
+                printf("Saw some casebody\n");
+            }
+            else
+            {
+                printf("no case body\n");
+            }
+        }
+
+    }
+    printf("statementCount = %u\n", statementCount);
+
+    self->SwitchStack[--self->SwitchStackSize];
+
+    return semaSwitchStatement;
+}
+sema_stmt_casebody_t* MetaCSemantic_doCaseBodySemantic(metac_semantic_state_t* self,
+                                                       stmt_case_t* caseStmt)
+{
+    sema_stmt_casebody_t* result = 0;
+
+    STACK_ARENA_ARRAY(metac_statement_t*, caseBody, 16, &self->Allocator);
+    metac_statement_t* currentStatement = caseStmt->CaseBody;
+    while (METAC_NODE(currentStatement) != emptyNode)
+    {
+        ARENA_ARRAY_ADD(caseBody, currentStatement);
+        currentStatement = currentStatement->Next;
+    }
+
+    if (caseBodyCount > 1)
+    {
+        // AllocNewSemaStatement
+        AllocNewSemaCasebodyStatement(self, caseStmt, caseBodyCount, &result);
+
+        for(uint32_t stmtIndex = 0;
+            stmtIndex < caseBodyCount;
+            stmtIndex++)
+        {
+            result->Statements[stmtIndex] =
+                MetaCSemantic_doStatementSemantic(self, caseBody[stmtIndex]);
+        }
+    }
+    else
+    {
+        result = cast(sema_stmt_casebody_t*)
+            MetaCSemantic_doStatementSemantic(self, caseStmt->CaseBody);
+    }
+
+    ARENA_ARRAY_FREE(caseBody);
+    return  result;
+
+}
 metac_sema_statement_t* MetaCSemantic_doStatementSemantic_(metac_semantic_state_t* self,
                                                            metac_statement_t* stmt,
                                                            const char* callFile,
@@ -293,7 +364,33 @@ metac_sema_statement_t* MetaCSemantic_doStatementSemantic_(metac_semantic_state_
 
         case stmt_comment:
         {
-            result = (metac_sema_statement_t*) stmt;
+             //TODO it's funky to have statements which don't change in sema
+            result = cast(metac_sema_statement_t*) stmt;
+        } break;
+
+        case stmt_decl:
+        {
+            stmt_decl_t* declStatement = cast(stmt_decl_t*) stmt;
+            sema_stmt_decl_t* semaDeclStatement =
+                AllocNewSemaStatement(self, stmt_decl, &result);
+            // We now technically need to wrap to the created variable in a new scope
+            // however let's be civil with the creation of new scopes
+            // and only create one if the next statement is not a decl_stmt
+            // scopes are expensive ...
+            if (METAC_NODE(stmt->Next) != emptyNode && stmt->Next->StmtKind != stmt_decl)
+            {
+                metac_scope_owner_t owner = {
+                    scope_owner_V(scope_owner_statement, StatementIndex(self, semaDeclStatement))
+                };
+                metac_scope_t* declScope =
+                    MetaCScope_PushNewScope(self, self->CurrentScope, owner);
+
+                ARENA_ARRAY_ADD(self->DeclStatementScope, declScope);
+
+                // MetaCSemantic_PushTemporaryScope(self, &declScope);
+            }
+            semaDeclStatement->Declaration =
+                MetaCSemantic_doDeclSemantic(self, declStatement->Declaration);
         } break;
 
         default: assert(0);
@@ -317,7 +414,8 @@ metac_sema_statement_t* MetaCSemantic_doStatementSemantic_(metac_semantic_state_
                 semaCaseStatement->CaseExp = (metac_sema_expression_t*)emptyNode;
             }
             semaCaseStatement->CaseBody =
-                MetaCSemantic_doStatementSemantic(self, caseStatement->CaseBody);
+                MetaCSemantic_doCaseBodySemantic(self, caseStatement);
+
         } break;
 
         case stmt_block:
@@ -327,11 +425,11 @@ metac_sema_statement_t* MetaCSemantic_doStatementSemantic_(metac_semantic_state_
             sema_stmt_block_t* semaBlockStatement =
                 AllocNewSemaBlockStatement(self, 0, statementCount, &result);
 
-            metac_scope_parent_t parent = {SCOPE_PARENT_V(scope_parent_statement,
+            metac_scope_owner_t parent = {scope_owner_V(scope_owner_statement,
                                            BlockStatementIndex(self, semaBlockStatement))};
 
             MetaCSemantic_PushNewScope(self,
-                                       scope_parent_block,
+                                       scope_owner_block,
                                        (metac_node_t)semaBlockStatement);
 
             metac_statement_t* currentStatement = blockStatement->Body;
@@ -339,7 +437,7 @@ metac_sema_statement_t* MetaCSemantic_doStatementSemantic_(metac_semantic_state_
                 i < statementCount;
                 i++)
             {
-                ((&semaBlockStatement->Body)[i]) =
+                semaBlockStatement->Body[i] =
                     MetaCSemantic_doStatementSemantic(self, currentStatement);
                 currentStatement = currentStatement->Next;
             }
@@ -357,7 +455,7 @@ metac_sema_statement_t* MetaCSemantic_doStatementSemantic_(metac_semantic_state_
 
             metac_scope_t* forScope = semaFor->Scope =
                 MetaCSemantic_PushNewScope(self,
-                                           scope_parent_statement,
+                                           scope_owner_statement,
                                            METAC_NODE(semaFor));
 
             metac_sema_declaration_t* ForInit =
@@ -395,23 +493,8 @@ metac_sema_statement_t* MetaCSemantic_doStatementSemantic_(metac_semantic_state_
         case stmt_switch:
         {
             stmt_switch_t* switchStatement = cast(stmt_switch_t*) stmt;
-            sema_stmt_switch_t* semaSwitchStatement =
-                AllocNewSemaStatement(self, stmt_switch, &result);
-            self->SwitchStack[self->SwitchStackSize++] = semaSwitchStatement;
-
-            semaSwitchStatement->SwitchExp =
-                MetaCSemantic_doExprSemantic(self, switchStatement->SwitchExp, 0);
-            semaSwitchStatement->SwitchBody =
-                cast(sema_stmt_block_t*)MetaCSemantic_doStatementSemantic(self, switchStatement->SwitchBody);
-
-            for(uint32_t i = 0;
-                i < semaSwitchStatement->SwitchBody->StatementCount;
-                i++)
-            {
-                sema_stmt_case_t* s = semaSwitchStatement->SwitchBody->Body + i;
-            }
-
-            self->SwitchStack[--self->SwitchStackSize] = 0;
+            return cast(metac_sema_statement_t*)
+                MetaCSemantic_doSwitchSemantic(self, switchStatement);
         } break;
     }
 
@@ -532,9 +615,9 @@ sema_decl_function_t* MetaCSemantic_doFunctionSemantic(metac_semantic_state_t* s
         return f;
     }
 
-    metac_scope_parent_t Parent = {SCOPE_PARENT_V(scope_parent_function, FunctionIndex(self, f))};
+    metac_scope_owner_t Parent = {scope_owner_V(scope_owner_function, FunctionIndex(self, f))};
 
-    f->Scope = MetaCSemantic_PushNewScope(self, scope_parent_function, (metac_node_t)f);
+    f->Scope = MetaCSemantic_PushNewScope(self, scope_owner_function, (metac_node_t)f);
     // now we compute the position on the stack and Register them in the scope.
 
 	uint32_t frameOffset = ((f->ParentFunc != cast(sema_decl_function_t*)emptyNode)
@@ -568,11 +651,13 @@ metac_node_t NodeFromTypeIndex(metac_semantic_state_t* sema,
     switch(TYPE_INDEX_KIND(typeIndex))
     {
         case type_index_struct:
-            return (metac_node_t)StructPtr(sema, index);
+            return cast(metac_node_t) StructPtr(sema, index);
         case type_index_union:
-            return (metac_node_t)UnionPtr(sema, index);
+            return cast(metac_node_t) UnionPtr(sema, index);
         case type_index_typedef:
-            return (metac_node_t)(TypedefPtr(sema, index));
+            return cast (metac_node_t) TypedefPtr(sema, index);
+        case type_index_enum:
+            return cast(metac_node_t) EnumTypePtr(sema, index);
     }
 
     return 0;
@@ -668,7 +753,7 @@ metac_sema_declaration_t* MetaCSemantic_declSemantic(metac_semantic_state_t* sel
                 metac_node_t node =
                     NodeFromTypeIndex(self, type_index);
                 MetaCSemantic_RegisterInScope(self, declId, node);
-                                result = cast(metac_sema_declaration_t*)node;
+                result = cast(metac_sema_declaration_t*)node;
             }
         } break;
     }

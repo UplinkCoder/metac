@@ -8,8 +8,7 @@
 #include "metac_type_table.h"
 #include "metac_sematree.h"
 #include "metac_scope.h"
-//TODO get rid of exp_eval after testing
-#include "repl/exp_eval.h"
+
 #include "metac_coro.h"
 #include "3rd_party/rwlock.h"
 
@@ -30,10 +29,18 @@
     uint32_t VAR##_size; \
     uint32_t VAR##_capacity;
 
+#define DECLARE_ARENA_STATE_ARRAY(UNUSED, TYPE_NAME, VAR) \
+    metac_alloc_t VAR##Allocator; \
+    ARENA_ARRAY(TYPE_NAME, VAR)
+
 #define INIT_ARRAY(SELF, TYPE_NAME, VAR) \
    SELF->VAR = (TYPE_NAME*)0; \
    SELF->VAR##_size = 0; \
    SELF->VAR##_capacity = 0;
+
+#define INIT_ARENA_STATE_ARRAY(SELF, TYPE_NAME, VAR) \
+    SELF->VAR = (TYPE_NAME*) 0; \
+    Allocator_Init(SELF->VAR##Allocator, &(SELF->Allocator));
 
 noinline void _newMemRealloc(void** memP, uint32_t* capacityP, const uint32_t elementSize);
 //static uint32_t _nodeCounter = 1;
@@ -102,6 +109,13 @@ typedef struct metac_sema_decl_state_t
     M(functiontype, FunctionTypeTable, functiontype) \
     M(tuple,        TupleTypeTable,           tuple)
 
+typedef struct metac_switch_state_t
+{
+    ARENA_ARRAY(sema_stmt_case_t*, PendingCases)
+
+    metac_sema_expression_t* SwitchExp;
+} metac_switch_state_t;
+
 typedef struct metac_semantic_state_t
 {
     bool initialized;
@@ -132,9 +146,11 @@ typedef struct metac_semantic_state_t
     AT(transient) uint32_t ExpressionStackSize;
     AT(transient) uint32_t ExpressionStackCapacity;
 
-    AT(transient) sema_stmt_switch_t** SwitchStack;
+    AT(transient) metac_switch_state_t** SwitchStack;
     AT(transient) uint32_t SwitchStackSize;
     AT(transient) uint32_t SwitchStackCapacity;
+
+    ARENA_ARRAY(metac_scope_t*, DeclStatementScope);
 
     metac_type_aggregate_t* CompilerInterface;
 } metac_semantic_state_t;
@@ -229,7 +245,11 @@ sema_stmt_block_t* AllocNewSemaBlockStatement(metac_semantic_state_t* self,
                                               sema_stmt_block_t* Parent, uint32_t statementCount,
                                               void** result_ptr);
 
-metac_scope_t* AllocNewScope(metac_semantic_state_t* self, metac_scope_t* parent, metac_scope_parent_t owner);
+sema_stmt_casebody_t* AllocNewSemaCasebodyStatement(metac_semantic_state_t* self,
+                                                    sema_stmt_case_t* Parent, uint32_t statementCount,
+                                                    void** result_ptr);
+
+metac_scope_t* AllocNewScope(metac_semantic_state_t* self, metac_scope_t* parent, metac_scope_owner_t owner);
 metac_type_array_t* AllocNewSemaArrayType(metac_semantic_state_t* self, metac_type_index_t elementTypeIndex, uint32_t dim);
 
 void MetaCSemantic_Handoff(metac_semantic_state_t* self, metac_sema_declaration_t** declP,
@@ -263,7 +283,7 @@ metac_type_tuple_t* TupleTypePtr(metac_semantic_state_t* self, uint32_t index);
 
 metac_scope_t* MetaCScope_PushNewScope(metac_semantic_state_t* sema,
                                        metac_scope_t* parent,
-                                       metac_scope_parent_t owner);
+                                       metac_scope_owner_t owner);
 
 scope_insert_error_t MetaCSemantic_RegisterInScope(metac_semantic_state_t* self,
                                                    metac_identifier_ptr_t idPtr,

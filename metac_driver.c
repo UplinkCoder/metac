@@ -5,7 +5,7 @@
 #include "metac_printer.h"
 #include "crc32c.h"
 #include <stdlib.h>
-#include <string.h>
+#include <stdio.h>
 
 bool errored = false;
 #ifndef ALIGN4

@@ -1045,7 +1045,7 @@ static inline void PrintSemaExpression(metac_printer_t* self,
         if (!IsBinaryExp(semaExp->E1->Kind))
             PrintChar(self, '(');
 
-        PrintSemaStatement(self, sema,  semaExp->E1);
+        PrintSemaExpression(self, sema,  semaExp->E1);
 
         if (!IsBinaryExp(semaExp->E1->Kind))
             PrintChar(self, ')');
@@ -1064,7 +1064,7 @@ static inline void PrintSemaExpression(metac_printer_t* self,
             i < semaExp->TupleExpressionCount;
             i++)
         {
-            PrintSemaStatement(self, sema,  tupleElement + i);
+            PrintSemaExpression(self, sema,  tupleElement + i);
             if (i != (semaExp->TupleExpressionCount - 1))
             {
                 PrintChar(self, ',');
@@ -1105,14 +1105,14 @@ static inline void PrintSemaExpression(metac_printer_t* self,
     else if (IsBinaryExp(semaExp->Kind))
     {
         PrintChar(self, '(');
-        PrintSemaStatement(self, sema,  semaExp->E1);
+        PrintSemaExpression(self, sema,  semaExp->E1);
 
         PrintSpace(self);
         const char* op = BinExpTypeToChars((metac_binary_expression_kind_t)semaExp->Kind);
         PrintString(self, op, strlen(op));
         PrintSpace(self);
 
-        PrintSemaStatement(self, sema,  semaExp->E2);
+        PrintSemaExpression(self, sema,  semaExp->E2);
         PrintChar(self, ')');
     }
     else if (semaExp->Kind == exp_cast)
@@ -1122,11 +1122,11 @@ static inline void PrintSemaExpression(metac_printer_t* self,
         PrintSemaType(self, sema,semaExp->CastType);
         PrintChar(self, ')');
 
-        PrintSemaStatement(self, sema,  semaExp->CastExp);
+        PrintSemaExpression(self, sema,  semaExp->CastExp);
     }
     else if (semaExp->Kind == exp_call)
     {
-        PrintSemaStatement(self, sema,  semaExp->E1);
+        PrintSemaExpression(self, sema,  semaExp->E1);
         PrintChar(self, '(');
         sema_exp_argument_list_t* argList =
             semaExp->E2->ArgumentList;
@@ -1136,7 +1136,7 @@ static inline void PrintSemaExpression(metac_printer_t* self,
             arg < onePastLastArg;
             arg++)
         {
-            PrintSemaStatement(self, sema,  arg);
+            PrintSemaExpression(self, sema,  arg);
             if (arg != (onePastLastArg - 1))
                 PrintString(self, ", ", 2);
         }
@@ -1144,16 +1144,16 @@ static inline void PrintSemaExpression(metac_printer_t* self,
     }
     else if (semaExp->Kind == exp_index)
     {
-        PrintSemaStatement(self, sema,  semaExp->E1);
+        PrintSemaExpression(self, sema,  semaExp->E1);
         PrintToken(self, tok_lBracket);
-        PrintSemaStatement(self, sema,  semaExp->E2);
+        PrintSemaExpression(self, sema,  semaExp->E2);
         PrintToken(self, tok_rBracket);
     }
     else if (semaExp->Kind == exp_sizeof)
     {
         PrintKeyword(self, tok_kw_sizeof);
         PrintToken(self, tok_lParen);
-        PrintSemaStatement(self, sema,  semaExp->E1);
+        PrintSemaExpression(self, sema,  semaExp->E1);
         PrintToken(self, tok_rParen);
     }
     else if (semaExp->Kind == exp_addr || semaExp->Kind == exp_ptr
@@ -1179,7 +1179,7 @@ static inline void PrintSemaExpression(metac_printer_t* self,
         if (!IsBinaryExp(semaExp->E1->Kind))
             PrintChar(self, '(');
 
-        PrintSemaStatement(self, sema,  semaExp->E1);
+        PrintSemaExpression(self, sema,  semaExp->E1);
 
         if (!IsBinaryExp(semaExp->E1->Kind))
             PrintChar(self, ')');
@@ -1197,7 +1197,7 @@ static inline void PrintSemaExpression(metac_printer_t* self,
         if (!IsBinaryExp(semaExp->E1->Kind))
             PrintChar(self, '(');
 
-        PrintSemaStatement(self, sema,  semaExp->E1);
+        PrintSemaExpression(self, sema,  semaExp->E1);
 
         if (!IsBinaryExp(semaExp->E1->Kind))
             PrintChar(self, ')');
@@ -1229,7 +1229,7 @@ static inline void PrintSemaExpression(metac_printer_t* self,
         if (!IsBinaryExp(semaExp->E1->Kind))
            PrintChar(self, '(');
 
-        PrintSemaStatement(self, sema,  semaExp->E1);
+        PrintSemaExpression(self, sema,  semaExp->E1);
 
         if (!IsBinaryExp(semaExp->E1->Kind))
             PrintChar(self, ')');
@@ -1257,7 +1257,7 @@ static inline void PrintSemaVariable(metac_printer_t* self,
         PrintChar(self, ')');
         PrintSpace(self);
         PrintChar(self, '(');
-        PrintChar(self, '{');
+
         const uint32_t paramCount = funcType->ParameterTypeCount;
         for(uint32_t i = 0;
             i < paramCount;
@@ -1270,7 +1270,6 @@ static inline void PrintSemaVariable(metac_printer_t* self,
                 PrintSpace(self);
             }
         }
-        PrintChar(self, '}');
         PrintChar(self, ')');
     }
     else
@@ -1285,7 +1284,7 @@ static inline void PrintSemaVariable(metac_printer_t* self,
         PrintSpace(self);
         PrintToken(self, tok_assign);
         PrintSpace(self);
-        PrintSemaStatement(self, sema,  variable->VarInitExpression);
+        PrintSemaExpression(self, sema,  variable->VarInitExpression);
     }
 }
 
@@ -1380,7 +1379,6 @@ static inline void PrintSemaDeclaration(metac_printer_t* self,
                 i++
             )
             {
-                printf("paramCount: %u\n", paramCount);
                 PrintSemaVariable(self, sema, function_->Parameters + i);
                 if (i != (paramCount - 1))
                 {
@@ -1428,19 +1426,21 @@ static inline void PrintSemaStatement(metac_printer_t* self, metac_semantic_stat
         } break;
         case stmt_block :
         {
-            sema_stmt_block_t* stmt_block = cast(sema_stmt_block_t*) stmt;
+            sema_stmt_block_t* blockStatement
+                = cast(sema_stmt_block_t*) stmt;
 
             PrintToken(self, tok_lBrace);
             ++self->IndentLevel;
             PrintNewline(self);
             PrintIndent(self);
 
-            const uint32_t statementCount = stmt_block->StatementCount;
+
+            const uint32_t statementCount = blockStatement->StatementCount;
             for(uint32_t i = 0;
                 i < statementCount;
                 i++)
             {
-                PrintSemaStatement(self, sema, stmt_block->Body + i);
+                PrintSemaStatement(self, sema, blockStatement->Body[i]);
                 if(i < (statementCount - 1))
                 {
                     PrintNewline(self);
@@ -1449,6 +1449,8 @@ static inline void PrintSemaStatement(metac_printer_t* self, metac_semantic_stat
             }
 
             --self->IndentLevel;
+            PrintNewline(self);
+            PrintIndent(self);
             PrintToken(self, tok_rBrace);
         } break;
         case stmt_if :
@@ -1462,14 +1464,13 @@ static inline void PrintSemaStatement(metac_printer_t* self, metac_semantic_stat
             PrintChar(self, ')');
 
             if (stmt_if_->IfBody->StmtKind != stmt_block)
-            {
                 ++self->IndentLevel;
-            }
             PrintNewline(self);
             PrintIndent(self);
             PrintSemaStatement(self, sema, stmt_if_->IfBody);
             if (stmt_if_->IfBody->StmtKind != stmt_block)
             {
+
                 --self->IndentLevel;
             }
             PrintNewline(self);
@@ -1511,7 +1512,7 @@ static inline void PrintSemaStatement(metac_printer_t* self, metac_semantic_stat
         case stmt_decl:
         {
             sema_stmt_decl_t* decl_stmt = cast(sema_stmt_decl_t*) stmt;
-            PrintDeclaration(self, decl_stmt->Declaration, 0);
+            PrintSemaDeclaration(self, sema, decl_stmt->Declaration, 0);
         } break;
         case stmt_for:
         {
@@ -1554,6 +1555,7 @@ static inline void PrintSemaStatement(metac_printer_t* self, metac_semantic_stat
         case stmt_case:
         {
             sema_stmt_case_t* caseStatement = cast(sema_stmt_case_t*) stmt;
+        LprintCase:
             if (caseStatement->CaseExp == (metac_expression_t*) emptyPointer)
             {
                 PrintKeyword(self, tok_kw_default);
@@ -1569,31 +1571,34 @@ static inline void PrintSemaStatement(metac_printer_t* self, metac_semantic_stat
             {
                 if (caseStatement->CaseBody->StmtKind == stmt_case)
                 {
-                    --self->IndentLevel;
+                    caseStatement =
+                        (sema_stmt_case_t*) caseStatement->CaseBody;
                     PrintNewline(self);
                     PrintIndent(self);
-                    ++self->IndentLevel;
+                  goto LprintCase;
                 }
-/*
                 else if (caseStatement->CaseBody->StmtKind == stmt_casebody)
                 {
-                    sema_stmt_case_body_t* caseBody = caseStatement->CaseBody;
+                    sema_stmt_casebody_t* caseBody = caseStatement->CaseBody;
                     const uint32_t statementCount = caseBody->StatementCount;
-                    if (statementCount)
+                    assert(statementCount);
+
+                    ++self->IndentLevel;
+                    PrintNewline(self);
+                    PrintIndent(self);
+                    for(uint32_t i = 0;
+                        i < statementCount;
+                        i++)
                     {
-                        for(uint32_t i = 1;
-                            i < statementCount;
-                            i++)
+                        metac_sema_statement_t* s = caseBody->Statements[i];
+                        PrintSemaStatement(self, sema, s);
+                        if (i < (statementCount - 1))
                         {
-                            metac_sema_statement_t* s = &caseBody->Statements[i - 1];
-                            PrintSemaStatement(self, sema, s);
-                            PrintNewline(self);
                             PrintIndent(self);
                         }
-                        PrintSemaStatement(self, sema, &caseBody->Statements[statementCount - 1]);
                     }
+                    --self->IndentLevel;
                 }
-*/
                 else
                 {
                     if (caseStatement->CaseBody->StmtKind != stmt_block)
@@ -1605,8 +1610,10 @@ static inline void PrintSemaStatement(metac_printer_t* self, metac_semantic_stat
                     PrintSemaStatement(self, sema, caseStatement->CaseBody);
                     if (caseStatement->CaseBody->StmtKind != stmt_block)
                         --self->IndentLevel;
-                }
 
+                    PrintNewline(self);
+                    PrintIndent(self);
+                }
             }
         } break;
         case stmt_label:

@@ -155,7 +155,7 @@ typedef struct sema_stmt_block_t
 {
     SEMA_STATEMENT_HEADER
 
-    struct metac_sema_statement_t* Body;
+    struct metac_sema_statement_t** Body;
     uint32_t StatementCount;
 } sema_stmt_block_t;
 
@@ -213,14 +213,14 @@ typedef struct sema_stmt_while_t
     struct metac_sema_statement_t* WhileBody;
 } sema_stmt_while_t;
 
-typedef struct sema_stmt_case_body_t
+typedef struct sema_stmt_casebody_t
 {
     SEMA_STATEMENT_HEADER
 
-    struct metac_sema_statement_t* Statements;
+    struct metac_sema_statement_t** Statements;
 
     uint32_t StatementCount;
-} sema_stmt_case_body_t;
+} sema_stmt_casebody_t;
 
 typedef struct sema_stmt_case_t
 {
@@ -228,7 +228,7 @@ typedef struct sema_stmt_case_t
 
     metac_sema_expression_t* CaseExp;
 
-    sema_stmt_case_body_t* CaseBody;
+    sema_stmt_casebody_t* CaseBody;
 } sema_stmt_case_t;
 
 typedef struct sema_stmt_goto_t
@@ -249,7 +249,7 @@ typedef struct sema_stmt_decl_t
 {
     SEMA_STATEMENT_HEADER
 
-    struct metac_declaration_t* Declaration;
+    struct metac_sema_declaration_t* Declaration;
 } sema_stmt_decl_t;
 
 typedef struct sema_stmt_if_t
@@ -293,29 +293,35 @@ typedef struct sema_stmt_do_while_t
 
 typedef struct metac_sema_statement_t
 {
-    union // switch(Kind)
+    union // switch(StmtKind)
     {
         struct {
             SEMA_STATEMENT_HEADER
         };
 
-        // invalid case sema_stmt_max, sema_stmt_invalid :
-        // case sema_stmt_if :
+        // invalid case stmt_max, stmt_invalid :
+        // case stmt_if :
         sema_stmt_if_t sema_stmt_if;
-        // case sema_stmt_exp :
+        // case stmt_exp :
         sema_stmt_exp_t sema_stmt_exp;
-        // case sema_stmt_block :
+        // case stmt_block :
         sema_stmt_block_t sema_stmt_block;
-        // case sema_stmt_label :
+        // case stmt_label :
         sema_stmt_label_t sema_stmt_label;
-        // case sema_stmt_goto :
+        // case stmt_goto :
         sema_stmt_goto_t sema_stmt_goto;
-        // case sema_stmt_yield :
+        // case stmt_yield :
         sema_stmt_yield_t sema_stmt_yield;
-        // case sema_stmt_return :
+        // case stmt_return :
         sema_stmt_return_t sema_stmt_return;
-        // case sema_stmt_decl :
+        // case stmt_decl :
         sema_stmt_decl_t sema_stmt_decl;
+        // case stmt_switch :
+        sema_stmt_switch_t sema_stmt_switch;
+        // case stmt_case :
+        sema_stmt_case_t sema_stmt_case;
+        // case stmt_casbody
+        sema_stmt_casebody_t sema_stmt_casebody;
     };
 } metac_sema_statement_t;
 

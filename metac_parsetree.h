@@ -254,6 +254,11 @@ typedef struct stmt_do_while_t
     struct metac_statement_t* DoWhileBody;
 } stmt_do_while_t;
 
+typedef struct stmt_casebody_t
+{
+    void* invalid_as_parse_node;
+} stmt_casebody_t;
+
 typedef struct stmt_empty_t
 {
     STATEMENT_HEADER

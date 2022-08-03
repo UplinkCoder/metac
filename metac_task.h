@@ -200,8 +200,9 @@ typedef struct tasksystem_t
 void TaskSystem_Init(tasksystem_t* self, uint32_t workerThreads, void (*workerFunction)(worker_context_t* worker));
 bool AddTask(task_t* task);
 worker_context_t* CurrentWorker(void);
+
 void* CurrentFiber(void);
-extern task_t* CurrentTask(void);
+task_t* CurrentTask(void);
 
 /// copies the task pointed to by *taskP the queue
 bool TaskQueue_Push(taskqueue_t* self, task_t* taskP);

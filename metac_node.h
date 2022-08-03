@@ -165,6 +165,7 @@
     M(stmt_do_while) \
     M(stmt_label) \
     M(stmt_case) \
+    M(stmt_casebody) \
     M(stmt_break) \
     M(stmt_yield) \
     M(stmt_scope) \

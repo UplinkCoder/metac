@@ -427,10 +427,10 @@ void MetaCSemantic_ComputeEnumValues(metac_semantic_state_t* self,
             memberIdx < memberCount;
             memberIdx++, member = member->Next)
         {
-
+/*
             printf("member.Name: %s\n",
                 IdentifierPtrToCharPtr(self->ParserIdentifierTable, member->Name));
-
+*/
            semaEnum->Members[memberIdx].Identifier = member->Name;
 
             if (member->Value != cast(metac_expression_t*)emptyPointer)
@@ -459,8 +459,12 @@ void MetaCSemantic_ComputeEnumValues(metac_semantic_state_t* self,
             hash = CRC32C_VALUE(hash, semaEnum->Members[memberIdx].Value->ValueI64);
         }
     }
+    semaEnum->Header.Hash = hash;
+
     {
-        // Let's inject our values into the enclosing scope.
+        // Let's inject our values into the temporary scope.
+        // setup before this call
+        assert(self->CurrentScope->ScopeFlags & scope_flag_temporary);
         decl_enum_member_t* member = enum_->Members;
 
         for(uint32_t i = 0;
@@ -546,7 +550,9 @@ metac_type_index_t MetaCSemantic_TypeSemantic(metac_semantic_state_t* self,
     else if (type->DeclKind == decl_type_enum)
     {
         decl_type_enum_t* enm = cast(decl_type_enum_t*) type;
+
         metac_type_enum_t tmpSemaEnum;
+
         tmpSemaEnum.MemberCount = enm->MemberCount;
         tmpSemaEnum.Name = enm->Identifier;
 
@@ -557,13 +563,7 @@ metac_type_index_t MetaCSemantic_TypeSemantic(metac_semantic_state_t* self,
         bool keepEnumScope = false;
         STACK_ARENA_ARRAY(metac_enum_member_t, semaMembers, 64, &self->Allocator);
 
-        STACK_ARENA_ENSURE_SIZE(semaMembers, tmpSemaEnum.MemberCount);
-
-        // let's just touch every member just to make sure we can
-        for(uint32_t i = 0; i < tmpSemaEnum.MemberCount; i++)
-        {
-            semaMembers[i] = (metac_enum_member_t){};
-        }
+        ARENA_ARRAY_ENSURE_SIZE(semaMembers, tmpSemaEnum.MemberCount);
 
         tmpSemaEnum.Members = semaMembers;
 
@@ -571,7 +571,6 @@ metac_type_index_t MetaCSemantic_TypeSemantic(metac_semantic_state_t* self,
         MetaCSemantic_PopTemporaryScope(self);
 
         enumScope.Closed = true;
-
 
         result = MetaCTypeTable_GetOrEmptyEnumType(&self->EnumTypeTable, &tmpSemaEnum);
         if (result.v == 0)
@@ -587,7 +586,7 @@ metac_type_index_t MetaCSemantic_TypeSemantic(metac_semantic_state_t* self,
         #define ISOLATED_ENUM_SCOPE 0
         if (!ISOLATED_ENUM_SCOPE)
         {
-            assert(self->CurrentScope->Owner.Kind == scope_parent_module);
+            assert(self->CurrentScope->Owner.Kind == scope_owner_module);
 
             for(uint32_t memberIndex = 0;
                 memberIndex < tmpSemaEnum.MemberCount;
@@ -597,9 +596,9 @@ metac_type_index_t MetaCSemantic_TypeSemantic(metac_semantic_state_t* self,
 
                 scope_insert_error_t inserted =
                     MetaCSemantic_RegisterInScope(self, member->Identifier, member);
-                if (inserted != success)
+                if(inserted != success)
                 {
-                    printf("Identifier couldn't be registered in scope\n");
+                    // SemaError(member, "Couldn't be inserted into the scope");
                 }
             }
         }
@@ -608,8 +607,6 @@ metac_type_index_t MetaCSemantic_TypeSemantic(metac_semantic_state_t* self,
         {
             free(enumScope.ScopeTable.Slots);
         }
-
-
 
         // STACK_ARENA_FREE(self->Allocator, members);
         // STACK_ARENA_FREE(self->Allocator, semaMembers);
@@ -650,15 +647,15 @@ metac_type_index_t MetaCSemantic_TypeSemantic(metac_semantic_state_t* self,
         metac_scope_t tmpScopeMem = { scope_flag_temporary };
         MetaCScopeTable_Init(&tmpScopeMem.ScopeTable);
 
-        metac_scope_parent_kind_t scopeKind = scope_parent_invalid;
+        metac_scope_owner_kind_t scopeKind = scope_owner_invalid;
 
         switch(typeKind)
         {
             case type_struct:
-                scopeKind = scope_parent_struct;
+                scopeKind = scope_owner_struct;
             break;
             case type_union:
-                scopeKind = scope_parent_union;
+                scopeKind = scope_owner_union;
             break;
             default: assert(0);
         }
@@ -882,9 +879,6 @@ metac_type_index_t MetaCSemantic_doTypeSemantic_(metac_semantic_state_t* self,
                                                  uint32_t callLine)
 {
     metac_type_index_t result = {0};
-
-
-
 
 //   result =
 //        DO_TASK(MetaCSemantic_TypeSemantic, self, type);

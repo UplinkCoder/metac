@@ -29,7 +29,7 @@ const char* MetaCTokenEnum_toChars(metac_token_enum_t tok);
 #define ERRORF(FMT, ...) MSGF(FMT, __VA_ARGS__)
 #define ERROR(FMT) MSG(FMT)
 
-void HelpMessage(ui_interface_t uiInterface, uint32_t* uiState)
+void HelpMessage(ui_interface_t uiInterface, struct ui_state_t* uiState)
 {
     MSG(
        "Type  :e for expression mode\n"
@@ -197,7 +197,7 @@ void Presemantic_(repl_state_t* self)
 
         metac_semantic_state_t tmpSema;
         MetaCSemantic_Init(&tmpSema, &tmpParser, 0);
-        MetaCSemantic_PushNewScope(&tmpSema, scope_parent_module, 0);
+        MetaCSemantic_PushNewScope(&tmpSema, scope_owner_module, 0);
 
         presemantic_context_t presemanticContext = {
             sizeof(presemantic_context_t),
@@ -320,7 +320,7 @@ void Repl_Init(repl_state_t* self)
 
     MetaCLPP_Init(&self->LPP);
     MetaCSemantic_Init(&self->SemanticState, &LPP->Parser, 0);
-    MetaCSemantic_PushNewScope(&self->SemanticState, scope_parent_module, 1);
+    MetaCSemantic_PushNewScope(&self->SemanticState, scope_owner_module, 1);
 
     LPP->Lexer.Tokens =
         (metac_token_t*)malloc(128 * sizeof(metac_token_t));

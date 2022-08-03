@@ -123,7 +123,7 @@ metac_type_tuple_t* TupleTypePtr(metac_semantic_state_t* self, uint32_t index)
 
 metac_scope_t* MetaCScope_PushNewScope(metac_semantic_state_t* sema,
                                        metac_scope_t *parent,
-                                       metac_scope_parent_t scopeOwner)
+                                       metac_scope_owner_t scopeOwner)
 {
     metac_scope_t* result = AllocNewScope(sema, parent, scopeOwner);
 
@@ -192,7 +192,7 @@ metac_sema_expression_t* AllocNewSemaExpression(metac_semantic_state_t* self, me
 }
 
 metac_scope_t* AllocNewScope(metac_semantic_state_t* self,
-                             metac_scope_t* parent, metac_scope_parent_t owner)
+                             metac_scope_t* parent, metac_scope_owner_t owner)
 {
     metac_scope_t* result;
 
@@ -337,6 +337,9 @@ metac_sema_statement_t* AllocNewSemaStatement_(metac_semantic_state_t* self,
     return result;
 }
 
+#define AllocateArray(ALLOC, TYPE, COUNT) \
+    (cast(TYPE*) calloc(sizeof(TYPE), (COUNT)))
+
 sema_stmt_block_t* AllocNewSemaBlockStatement(metac_semantic_state_t* self,
                                               sema_stmt_block_t* Parent, uint32_t statementCount,
                                               void** result_ptr)
@@ -346,22 +349,40 @@ sema_stmt_block_t* AllocNewSemaBlockStatement(metac_semantic_state_t* self,
     REALLOC_BOILERPLATE(self->BlockStatements)
 
     {
-        uint32_t pointersSize = statementCount * sizeof(sema_stmt_block_t*);
-        uint32_t sizeInBlockStatements =
-            (pointersSize + sizeof(*self->BlockStatements)) /
-            sizeof(*self->BlockStatements);
-
-        result = self->BlockStatements + POST_ADD(self->BlockStatements_size,
-                                                        sizeInBlockStatements);
+        result = self->BlockStatements + INC(self->BlockStatements_size);
+        metac_statement_t* body =
+            AllocateArray(self->BS_Allocator, metac_statement_t*, statementCount);
+        result->Body = body;
         result->StmtKind = stmt_block;
         result->StatementCount = statementCount;
         result->Serial = INC(_nodeCounter);
-        result->Body = (metac_sema_statement_t*)(result + 1);
     }
     (*result_ptr) = result;
 
     return result;
 }
+
+sema_stmt_casebody_t* AllocNewSemaCasebodyStatement(metac_semantic_state_t* self,
+                                                    sema_stmt_case_t* Parent, uint32_t statementCount,
+                                                    void** result_ptr)
+{
+    sema_stmt_casebody_t* result;
+
+    REALLOC_BOILERPLATE(self->Statements)
+
+    {
+        result = cast(sema_stmt_casebody_t*)
+            AllocNewSemaStatement(self, stmt_casebody, &result);
+
+        result->StatementCount = statementCount;
+        result->Statements =
+            AllocateArray(self->BS_Allocator, metac_statement_t*, statementCount);
+        result->Serial = INC(_nodeCounter);
+    }
+    (*result_ptr) = result;
+}
+
+
 
 uint32_t BlockStatementIndex(metac_semantic_state_t* self,
                              sema_stmt_block_t* blockstmt)

@@ -59,6 +59,12 @@ typedef struct metac_alloc_t
     Add_Filename(FILE)
 #endif
 
+#define ARENA_ARRAY(TYPE, NAME) \
+    TYPE* NAME; \
+    uint32_t NAME##Count; \
+    metac_alloc_t* NAME##Alloc; \
+    tagged_arena_t NAME##Arena;
+
 #define STACK_ARENA_ARRAY(TYPE, NAME, DIM, ALLOC) \
     TYPE NAME##Stack [DIM]; \
     uint32_t NAME##Count = 0; \
@@ -70,7 +76,7 @@ typedef struct metac_alloc_t
     }; \
     TYPE* NAME = NAME##Stack;
 
-#define STACK_ARENA_ENSURE_SIZE(NAME, COUNT) do { \
+#define ARENA_ARRAY_ENSURE_SIZE(NAME, COUNT) do { \
     assert((NAME##Arena).Offset == 0); \
     uint32_t newCapa = (COUNT) * sizeof(*NAME); \
     if ((NAME##Arena).SizeLeft < newCapa) \
@@ -81,7 +87,7 @@ typedef struct metac_alloc_t
     } \
 } while(0)
 
-#define STACK_ARENA_ARRAY_ADD(NAME, VALUE) do { \
+#define ARENA_ARRAY_ADD(NAME, VALUE) do { \
     if (NAME##Arena.SizeLeft < sizeof(*NAME)) \
     { \
         (*cast(void**)&(NAME)) = ReallocArenaArray( \
@@ -100,6 +106,10 @@ typedef struct metac_alloc_t
         memcpy(newArena->Memory, (NAME), size); \
         (*cast(void**)&(NAME)) = newArena->Memory; \
     } \
+} while(0)
+
+#define ARENA_ARRAY_FREE(NAME) do { \
+        FreeArena(&(NAME##Arena)); \
 } while(0)
 
 #define Allocator_Init(ALLOC, PARENT) \
