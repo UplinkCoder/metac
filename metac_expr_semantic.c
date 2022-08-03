@@ -58,6 +58,7 @@ metac_sema_expression_t* MetaCSemantic_doExprSemantic_(metac_semantic_state_t* s
     switch(expr->Kind)
     {
         case exp_invalid:
+        default:
             assert(0);
 
         case exp_arrow:
@@ -171,6 +172,18 @@ metac_sema_expression_t* MetaCSemantic_doExprSemantic_(metac_semantic_state_t* s
 
         case exp_signed_integer :
             result->TypeIndex = MetaCSemantic_GetTypeIndex(self, type_int, (decl_type_t*)emptyPointer);
+        break;
+        case exp_eq:
+        case exp_neq:
+            //TODO assert that E1 and E2 are comperable
+        case exp_andand:
+        case exp_oror:
+            result->TypeIndex = MetaCSemantic_GetTypeIndex(self, type_bool, (decl_type_t*)emptyPointer);
+        break;
+        case exp_assert:
+            result->E1 =
+                MetaCSemantic_doExprSemantic(self, expr->E1, 0);
+            result->TypeIndex = MetaCSemantic_GetTypeIndex(self, type_void, (decl_type_t*)emptyPointer);
         break;
         case exp_tuple:
         {

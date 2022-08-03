@@ -359,7 +359,10 @@ metac_sema_statement_t* MetaCSemantic_doStatementSemantic_(metac_semantic_state_
     {
         case stmt_exp:
         {
+            stmt_exp_t* expStatement = (stmt_exp_t*) stmt;
             sema_stmt_exp_t* sse = AllocNewSemaStatement(self, stmt_exp, &result);
+            sse->Expression =
+                MetaCSemantic_doExprSemantic(self, expStatement->Expression, 0);
         } break;
 
         case stmt_comment:
