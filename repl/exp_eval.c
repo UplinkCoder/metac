@@ -6,6 +6,7 @@
 #include "../libinterpret/bc_common.c"
 #include "../libinterpret/bc_interpreter_backend.c"
 #include <stdio.h>
+#include "../metac_codegen.h"
 
 bool IsBinaryExp(metac_expression_kind_t k);
 
@@ -29,8 +30,8 @@ metac_identifier_ptr_t FindMatchingIdentifier(metac_identifier_table_t* searchTa
 }
 
 
-static inline metac_identifier_ptr_t GetVStoreID(variable_store_t* vstore,
-                                                 metac_sema_expression_t* varExp)
+metac_identifier_ptr_t GetVStoreID(variable_store_t* vstore,
+                                   metac_sema_expression_t* varExp)
 {
     assert(varExp->Kind == exp_variable);
     sema_decl_variable_t* var = varExp->Variable;
@@ -85,9 +86,6 @@ void ReadI32_cb (uint32_t value, void* userCtx)
 ReadI32_Ctx* _ReadContexts;
 uint32_t _ReadContextSize;
 uint32_t _ReadContextCapacity;
-static inline void WalkTree(void* c, BCValue* result,
-                            metac_sema_expression_t* e,
-                            variable_store_t* vstore);
 
 
 //FIXME we never hit this ... why?
@@ -117,9 +115,9 @@ static inline void TupleToValue(void* c, BCValue* result,
 
 }
 
-static inline void WalkTree(void* c, BCValue* result,
-                            metac_sema_expression_t* e,
-                            variable_store_t* vstore)
+void WalkTree(void* c, BCValue* result,
+              metac_sema_expression_t* e,
+              variable_store_t* vstore)
 {
     BCValue lhsT = BCGen_interface.genTemporary(c, BCType_i32);
     BCValue rhsT = BCGen_interface.genTemporary(c, BCType_i32);

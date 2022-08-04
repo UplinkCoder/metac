@@ -58,7 +58,7 @@ typedef void (*LoadFramePointer_t) (void* ctx, BCValue *result, const int32_t of
 typedef void (*Call_t) (void* ctx, BCValue *result, const BCValue* fn, const BCValue* args, uint32_t n_args);
 typedef BCLabel (*genLabel_t) (void* ctx);
 typedef void (*Jmp_t) (void* ctx, BCLabel target);
-typedef uint32_t (*beginJmp_t) (void* ctx);
+typedef BCAddr (*beginJmp_t) (void* ctx);
 typedef void (*endJmp_t) (void* ctx, BCAddr atIp, BCLabel target);
 typedef CndJmpBegin (*beginCndJmp_t) (void* ctx, const BCValue* cond, bool ifTrue);
 typedef void (*endCndJmp_t) (void* ctx, const CndJmpBegin *jmp, BCLabel target);
@@ -152,7 +152,7 @@ typedef struct BackendInterface
     void (*const Call) (void* ctx, BCValue *result, const BCValue* fn, const BCValue* args, uint32_t n_args);
     BCLabel (*const genLabel) (void* ctx);
     void (*const Jmp) (void* ctx, BCLabel target);
-    uint32_t (*const beginJmp) (void* ctx);
+    BCAddr (*const beginJmp) (void* ctx);
     void (*const endJmp) (void* ctx, BCAddr atIp, BCLabel target);
     CndJmpBegin (*const beginCndJmp) (void* ctx, const BCValue* cond, bool ifTrue);
     void (*const endCndJmp) (void* ctx, const CndJmpBegin *jmp, BCLabel target);
