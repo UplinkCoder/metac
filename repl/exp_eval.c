@@ -6,7 +6,6 @@
 #include "../libinterpret/bc_common.c"
 #include "../libinterpret/bc_interpreter_backend.c"
 #include <stdio.h>
-#include "../metac_codegen.h"
 
 bool IsBinaryExp(metac_expression_kind_t k);
 
@@ -14,7 +13,8 @@ const char* MetaCExpressionKind_toChars(metac_expression_kind_t k);
 
 metac_identifier_ptr_t FindMatchingIdentifier(metac_identifier_table_t* searchTable,
                                               metac_identifier_table_t* sourceTable,
-                                              metac_identifier_ptr_t sourcePtr)
+                                              metac_identifier_ptr_t sourcePtr,
+                                              bool addIfNotFound)
 {
     const char* idChars = IdentifierPtrToCharPtr(sourceTable, sourcePtr);
     uint32_t idLength = strlen(idChars);
@@ -23,23 +23,31 @@ metac_identifier_ptr_t FindMatchingIdentifier(metac_identifier_table_t* searchTa
 
     metac_identifier_ptr_t result = IsIdentifierInTable(searchTable, idKey, idChars);
 
-    if (result.v == 0)
-        assert(0);
+    if (!result.v && addIfNotFound)
+    {
+        result = GetOrAddIdentifier(searchTable, idKey, idChars);
+    }
 
     return result;
 }
 
-
-metac_identifier_ptr_t GetVStoreID(variable_store_t* vstore,
-                                   metac_sema_expression_t* varExp)
+metac_identifier_ptr_t AddVStoreID(variable_store_t* vstore,
+                                   sema_decl_variable_t* var)
 {
-    assert(varExp->Kind == exp_variable);
-    sema_decl_variable_t* var = varExp->Variable;
-
     metac_identifier_ptr_t vstoreId =
         FindMatchingIdentifier(&vstore->Table,
                                vstore->ExternalTable,
-                               var->VarIdentifier);
+                               var->VarIdentifier, true);
+    return vstoreId;
+}
+
+metac_identifier_ptr_t GetVStoreID(variable_store_t* vstore,
+                                   sema_decl_variable_t* var)
+{
+    metac_identifier_ptr_t vstoreId =
+        FindMatchingIdentifier(&vstore->Table,
+                               vstore->ExternalTable,
+                               var->VarIdentifier, false);
     return vstoreId;
 }
 
@@ -58,6 +66,39 @@ static inline BCValue* GetValueFromVariableStore(variable_store_t* vstore,
     }
 
     return 0;
+}
+
+void VariableStore_AddVariable(variable_store_t* vstore,
+                               sema_decl_variable_t* varDecl,
+                               void* value)
+{
+    metac_identifier_ptr_t vstoreId = GetVStoreID(vstore, varDecl);
+    assert(vstoreId.v == 0);
+    vstoreId = AddVStoreID(vstore, varDecl);
+
+    BCValue* v = GetValueFromVariableStore(vstore, vstoreId);
+    assert(!v);
+    assert(vstore->VariableCapacity > vstore->VariableSize);
+
+    vstore->Variables[vstore->VariableSize++] = (variable_t) { vstoreId, value };
+}
+
+void VariableStore_RemoveVariable(variable_store_t* vstore, void* value)
+{
+    bool foundVar = false;
+    for(uint32_t i = 0; i < vstore->VariableSize; i++)
+    {
+        if (foundVar)
+        {
+            vstore->Variables[i - 1] = vstore->Variables[i];
+        }
+        else if (vstore->Variables[i].value == value)
+        {
+            foundVar = true;
+        }
+    }
+    assert(foundVar);
+    --vstore->VariableSize;
 }
 
 
@@ -119,12 +160,19 @@ void WalkTree(void* c, BCValue* result,
               metac_sema_expression_t* e,
               variable_store_t* vstore)
 {
+    metac_expression_kind_t op = e->Kind;
+
+    if (op == exp_signed_integer)
+    {
+        (*result) = imm32(cast(int32_t)e->ValueI64);
+        return ;
+    }
+
     BCValue lhsT = BCGen_interface.genTemporary(c, BCType_i32);
     BCValue rhsT = BCGen_interface.genTemporary(c, BCType_i32);
     BCValue *lhs = &lhsT;
     BCValue *rhs = &rhsT;
 
-    metac_expression_kind_t op = e->Kind;
 
     if (IsBinaryAssignExp(op))
     {
@@ -229,11 +277,12 @@ void WalkTree(void* c, BCValue* result,
         case exp_variable:
         {
             metac_identifier_ptr_t vstoreId =
-                GetVStoreID(vstore, e);
+                GetVStoreID(vstore, e->Variable);
             BCValue* v = GetValueFromVariableStore(vstore, vstoreId);
             if (v)
             {
-                BCGen_interface.Set(c, result, v);
+                //BCGen_interface.Set(c, result, v);
+                (*result) = (*v);
             }
             else
             {

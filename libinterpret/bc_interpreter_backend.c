@@ -14,10 +14,6 @@
 #include "backend_interface_funcs.h"
 #include "bc_interpreter_backend.h"
 
-#ifdef PRINT_CODE
-# include "int_iter.c"
-#endif
-
 #define cast(T) (T)
 
 #ifndef NDEBUG
@@ -140,6 +136,11 @@ void BCGen_new_instance(BCGen** pResult)
     return ;
 }
 
+void BCGen_init_instance(BCGen* instance)
+{
+    BCGen_Init(instance);
+}
+
 uint32_t BCGen_sizeof_instance(void)
 {
     return sizeof(BCGen);
@@ -242,22 +243,26 @@ byte_code_array_t BCGen_CodeBytes(BCGen* self)
 }
 
 #ifdef PRINT_CODE
-void PrintCode(IntIter* iter)
+void BCGen_PrintCode(BCGen* self, uint32_t start, uint32_t end)
 {
+    uint32_t* codeP = self->byteCodeArray;
+
+    if (self->byteCodeCount > ARRAY_SIZE(self->byteCodeArray))
+    {
+        codeP = self->byteCodeArrayExtra;
+    }
+
     uint32_t ip = 0;
 
     uint32_t lw;
-    while (IntIter_NextInt(iter, (int32_t*)&lw))
+    uint32_t hi;
+    while (ip < end)
     {
         printf("%d: ", ip);
-        uint32_t hi;
-        bool worked = IntIter_NextInt(iter, (int32_t*)&hi);
-        assert(worked);
+        lw = codeP[ip++];
+        hi = codeP[ip++];
 
         const int32_t imm32c = (int32_t) hi;
-
-        ip += 2;
-        // consider splitting the framePointer in stackHigh and stackLow
 
         const uint8_t  opSpecial   = ((lw >> 8) & 0xFF);
         const uint32_t opRefOffset = (lw >> 16) & 0xFFFF;
@@ -934,7 +939,10 @@ void PrintCode(IntIter* iter)
 
         case LongInst_Comment:
             {
-                printf("LongInst_Comment [length:%d]\n", align4(hi) / 4);
+                printf("LongInst_Comment [length:%d]\n", hi);
+                uint32_t nWords = ((hi + 7) & ~7) / 4;
+                printf(" %.*s", (int) hi, (const char*) (codeP + ip));
+                ip += nWords;
             }
             break;
         case LongInst_Memcmp:
@@ -1950,7 +1958,7 @@ BCValue BCGen_interpret(BCGen* self, uint32_t fnIdx, BCValue* args, uint32_t n_a
         case LongInst_Comment:
             {
 L_LongInst_Comment:
-                state.ip += align4(hi) / 4;
+                state.ip += ((hi + 7) & ~7) / 4;
             }
             break;
 #if 1
@@ -2108,54 +2116,54 @@ static inline void BCGen_emitLongInstA(BCGen* self, const LongInst i, const BCAd
 }
 #else
 
-#define BCGen_emit2(SELF, LOW, HIGH) \
+#define BCGen_emit2(SELF, LOW, HIGH) do \
 { \
     uint32_t atIp = SELF->ip; \
     SELF->ip += 2; \
     BCGen_emit2_at(SELF, LOW, HIGH, atIp); \
-}
+} while (0)
 
-#define BCGen_emitLongInstSA(SELF, I, LHS_ADDR, TARGET_ADDR) \
+#define BCGen_emitLongInstSA(SELF, I, LHS_ADDR, TARGET_ADDR) do \
 { \
     BCGen_emit2(SELF \
               , I | LHS_ADDR.addr << 16 \
               , TARGET.addr); \
-}
+} while (0)
 
-#define BCGen_emitLongInstSS(SELF, I, LHS_ADDR, RHS_ADDR) \
+#define BCGen_emitLongInstSS(SELF, I, LHS_ADDR, RHS_ADDR) do \
 { \
     BCGen_emit2(SELF \
               , I \
               , LHS_ADDR.addr | RHS_ADDR.addr << 16); \
-}
+} while (0)
 
-#define BCGen_emitLongInstSI(SELF, I, LHS_ADDR, RHS) \
+#define BCGen_emitLongInstSI(SELF, I, LHS_ADDR, RHS) do \
 { \
     BCGen_emit2(SELF \
               , I | LHS_ADDR.addr << 16 \
               , RHS); \
-}
+} while (0)
 
-#define BCGen_emitLongInstSSS(SELF, I, OP_ADDR, LHS_ADDR, RHS_ADDR) \
+#define BCGen_emitLongInstSSS(SELF, I, OP_ADDR, LHS_ADDR, RHS_ADDR) do \
 { \
     BCGen_emit2(SELF \
               , I | OP_ADDR.addr << 16 \
               , LHS_ADDR.addr | RHS_ADDR.addr << 16); \
-}
+} while (0)
 
-#define BCGen_emitLongInstCtxM(SELF, CTX_M, ADDR, OFF32) \
+#define BCGen_emitLongInstCtxM(SELF, CTX_M, ADDR, OFF32) do \
 { \
     BCGen_emit2(SELF \
               , LongInst_ContextManip | ((uint8_t)CTX_M) << 8 | ADDR.addr << 16 \
               , OFF32); \
-}
+} while (0)
 
-#define BCGen_emitLongInstA(SELF, T, TARGET_ADDR) \
+#define BCGen_emitLongInstA(SELF, T, TARGET_ADDR) do \
 { \
     BCGen_emit2(SELF \
               , I \
               , TARGET_ADDR.addr); \
-}
+} while (0)
 #endif
 
 /// semi-public functions for the vtbl start here
@@ -2930,7 +2938,7 @@ void BCGen_outputBytes (BCGen* self, const uint8_t* bytes, uint32_t length)
         case 5 :
             lastField2 |= bytes[idx+4] << 0;
         case 4 :
-            lastField2 |= bytes[idx+3] << 24;
+            lastField1 |= bytes[idx+3] << 24;
         case 3 :
             lastField1 |= bytes[idx+2] << 16;
         case 2 :
@@ -3175,6 +3183,7 @@ const BackendInterface BCGen_interface = {
     .destroy_instance = (destroy_instance_t) BCGen_destroy_instance,
     .new_instance = (new_instance_t) BCGen_new_instance,
     .sizeof_instance = BCGen_sizeof_instance,
+    .init_instance = (init_instance_t) BCGen_init_instance,
 
     .ReadI32 = (ReadI32_t) BCGen_ReadI32,
 };

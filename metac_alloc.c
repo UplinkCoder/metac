@@ -96,6 +96,8 @@ tagged_arena_t* Allocate_(metac_alloc_t* allocator, uint32_t size,
     if (!size)
         return &nullArena;
 
+    assert(allocator != allocator->Parent);
+
     tagged_arena_t* result = 0;
     tagged_arena_t* arena = 0;
 
@@ -165,6 +167,7 @@ LsetResult:
             arena->Memory = cast(void*) arena;
             arena->Alloc = allocator;
             arena->Line = line;
+            arena->FileID = ADD_FILENAME(file);
         }
 
         if (!forChild)

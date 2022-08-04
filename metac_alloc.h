@@ -63,7 +63,17 @@ typedef struct metac_alloc_t
     TYPE* NAME; \
     uint32_t NAME##Count; \
     metac_alloc_t* NAME##Alloc; \
-    tagged_arena_t NAME##Arena;
+    tagged_arena_t NAME##Arena; \
+
+#define ARENA_ARRAY_INIT_SZ(TYPE, NAME, ALLOC, COUNT) \
+    (NAME) = cast(TYPE*)0; \
+    (NAME##Count) = 0; \
+    (NAME##Alloc) = (ALLOC); \
+    (NAME##Arena) = *Allocate(ALLOC, (sizeof(TYPE) * (COUNT)));
+
+#define ARENA_ARRAY_INIT(TYPE, NAME, ALLOC) \
+    ARENA_ARRAY_INIT_SZ(TYPE, NAME, ALLOC, 0)
+
 
 #define STACK_ARENA_ARRAY(TYPE, NAME, DIM, ALLOC) \
     TYPE NAME##Stack [DIM]; \

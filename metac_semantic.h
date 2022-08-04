@@ -111,7 +111,7 @@ typedef struct metac_sema_decl_state_t
 
 typedef struct metac_switch_state_t
 {
-    ARENA_ARRAY(sema_stmt_case_t*, PendingCases)
+    //ARENA_ARRAY(sema_stmt_case_t*, PendingCases)
 
     metac_sema_expression_t* SwitchExp;
 } metac_switch_state_t;

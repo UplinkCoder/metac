@@ -91,6 +91,7 @@ typedef BCValue (*run_t) (void* ctx, uint32_t fnIdx, const BCValue* args, uint32
 typedef void (*destroy_instance_t) (void* ctx);
 typedef void (*new_instance_t) (void ** result_p);
 typedef uint32_t (*sizeof_instance_t) (void);
+typedef void (*init_instance_t) (void * result_p);
 
 typedef void (*ReadI32_t) (void* ctx, const BCValue* val, const ReadI32_cb_t readCb, void* userCtx);
 typedef void (*ReadI32_cb_t)(uint32_t value, void* userCtx);
@@ -185,7 +186,7 @@ typedef struct BackendInterface
     void (*const destroy_instance) (void* ctx);
     void (*const new_instance) (void ** result_p);
     uint32_t (*const sizeof_instance) (void);
-
+    void (*const init_instance) (void* ctx);
     void (*const ReadI32) (void* ctx, const BCValue* val, const ReadI32_cb_t readCb, void* userCtx);
 } BackendInterface;
 

@@ -247,7 +247,7 @@ typedef struct BCGen
     uint32_t contextCapacity;
 
     bool finalized;
-    uint32_t byteCodeArray[8192];
+    uint32_t byteCodeArray[1024];
 } BCGen;
 
 typedef struct byte_code_array_t
