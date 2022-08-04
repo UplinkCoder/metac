@@ -790,12 +790,18 @@ void BCGen_PrintCode(BCGen* self, uint32_t start, uint32_t end)
             break;
         case LongInst_Ret32:
             {
-                printf("LongInst_Ret32 R[%d]\n", opRefOffset / 4);
+                if (hi)
+                    printf("LongInst_Ret32 %u\n", (hi == INT32_MIN ? 0 : hi));
+                else
+                    printf("LongInst_Ret32 R[%d]\n", opRefOffset / 4);
             }
             break;
         case LongInst_RetS32:
             {
-                printf("LongInst_RetS32 R[%d]\n", opRefOffset / 4);
+                if (hi)
+                    printf("LongInst_RetS32 %d\n", (hi == INT32_MIN ? 0 : hi));
+                else
+                    printf("LongInst_RetS32 R[%d]\n", opRefOffset / 4);
             }
             break;
         case LongInst_RetS64:
@@ -1350,32 +1356,32 @@ BCValue BCGen_interpret(BCGen* self, uint32_t fnIdx, BCValue* args, uint32_t n_a
             break;
         case LongInst_FGt32 :
             {
-                cond = !flhs > frhs;
+                cond = !(flhs > frhs);
             }
             break;
         case LongInst_FGe32 :
             {
-                cond = !flhs >= frhs;
+                cond = !(flhs >= frhs);
             }
             break;
         case LongInst_FEq32 :
             {
-                cond = !flhs == frhs;
+                cond = !(flhs == frhs);
             }
             break;
         case LongInst_FNeq32 :
             {
-                cond = !flhs != frhs;
+                cond = !(flhs != frhs);
             }
             break;
         case LongInst_FLt32 :
             {
-                cond = !flhs < frhs;
+                cond = !(flhs < frhs);
             }
             break;
         case LongInst_FLe32 :
             {
-                cond = !flhs <= frhs;
+                cond = !(flhs <= frhs);
             }
             break;
         case LongInst_F32ToF64 :
@@ -1434,32 +1440,32 @@ BCValue BCGen_interpret(BCGen* self, uint32_t fnIdx, BCValue* args, uint32_t n_a
             break;
         case LongInst_FEq64 :
             {
-                cond = !dlhs == drhs;
+                cond = !(dlhs == drhs);
             }
             break;
         case LongInst_FNeq64 :
             {
-                cond = !dlhs < drhs;
+                cond = !(dlhs < drhs);
             }
             break;
         case LongInst_FLt64 :
             {
-                cond = !dlhs < drhs;
+                cond = !(dlhs < drhs);
             }
             break;
         case LongInst_FLe64 :
             {
-                cond = !dlhs <= drhs;
+                cond = !(dlhs <= drhs);
             }
             break;
         case LongInst_FGt64 :
             {
-                cond = !dlhs > drhs;
+                cond = !(dlhs > drhs);
             }
             break;
         case LongInst_FGe64 :
             {
-                cond = !dlhs >= drhs;
+                cond = !(dlhs >= drhs);
             }
             break;
 
@@ -1731,13 +1737,21 @@ BCValue BCGen_interpret(BCGen* self, uint32_t fnIdx, BCValue* args, uint32_t n_a
 
         case LongInst_Ret32:
             {
-                state.cRetval = imm32(*opRef & UINT32_MAX);
+                if (hi)
+                    state.cRetval = imm32(hi == INT32_MIN ? 0 : hi);
+                else
+                    state.cRetval = imm32(*opRef & UINT32_MAX);
+
                 if (BCInterpreter_Return(&state)) return state.cRetval;
             }
             break;
         case LongInst_RetS32:
             {
-                state.cRetval = imm32_(*opRef & UINT32_MAX, true);
+                if (hi)
+                    state.cRetval = imm32_((hi == INT32_MIN ? 0 : hi), true);
+                else
+                    state.cRetval = imm32_(*opRef & UINT32_MAX, true);
+
                 if (BCInterpreter_Return(&state)) return state.cRetval;
             }
             break;
@@ -2648,7 +2662,7 @@ static inline void BCGen_Arith(BCGen* self, BCValue *result, const BCValue* lhs,
 
 
 #define BC_ARITH_FUNC(OP) \
-    static inline void BCGen_##OP##3(BCGen* self, BCValue *result, const BCValue* lhs, const BCValue* rhs)\
+    static inline void BCGen_##OP##3(BCGen* self, BCValue *result, const BCValue* lhs, const BCValue* rhs) \
     {     BCGen_Arith(self, result, lhs, rhs, LongInst_##OP); }
 
 BC_ARITH_FUNC(Add)
@@ -2731,17 +2745,29 @@ static inline void BCGen_Ret(BCGen* self, const BCValue* val)
     LongInst inst = ((BCTypeEnum_basicTypeSize(val->type.type) == 8) ? LongInst_Ret64 : LongInst_Ret32);
     _Bool newValTemp = 0;
     BCValue newVal;
+    uint32_t hi;
 
     if (val->vType == BCValueType_Immediate)
     {
-        newVal = BCGen_pushTemporary(self, val);
-        val = &newVal;
-        newValTemp |= 1;
+        if (inst == LongInst_Ret32 && val->imm32.imm32 != INT32_MIN)
+        {
+            if (val->imm32.imm32 == 0)
+                hi = INT32_MIN;
+            else
+                hi = val->imm32.imm32;
+        }
+        else
+        {
+            newVal = BCGen_pushTemporary(self, val);
+            val = &newVal;
+            newValTemp |= 1;
+        }
     }
 
-    if (BCValue_isStackValueOrParameter(val))
+    if (BCValue_isStackValueOrParameter(val)
+     || (val->vType == BCValueType_Immediate))
     {
-        BCGen_emit2(self, BCGen_ShortInst16(inst, val->stackAddr.addr), 0);
+        BCGen_emit2(self, BCGen_ShortInst16(inst, val->stackAddr.addr), hi);
     }
     else
     {

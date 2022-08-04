@@ -64,8 +64,6 @@ static inline void Printer_PutIndent(Printer* self)
     assert(!self->LineIndented);
     assert((self->CurrentIndent * 4) <= 128);
 
-    printf("CurrentIndent: %u\n", self->CurrentIndent);
-    
     Printer_EnsureCapacity(self, 128);
     for(int i = 0; i < self->CurrentIndent; i++)
     {
@@ -920,7 +918,7 @@ static inline void Printer_init_instance(Printer* intstance)
 {
     (*intstance) = (Printer){};
     const uint32_t initialSize = 8192 * 8;
-    
+
     intstance->BufferStart = intstance->Buffer = (char*)malloc(initialSize);
     intstance->BufferCapacity = initialSize;
     intstance->ErrorInfoCount = 0;
