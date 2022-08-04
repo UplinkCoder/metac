@@ -380,6 +380,8 @@ sema_stmt_casebody_t* AllocNewSemaCasebodyStatement(metac_semantic_state_t* self
         result->Serial = INC(_nodeCounter);
     }
     (*result_ptr) = result;
+
+    return result;
 }
 
 
