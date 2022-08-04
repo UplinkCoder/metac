@@ -12,6 +12,12 @@ typedef struct RetainedCall
     StackAddr callerSp;
 } RetainedCall;
 
+#define IS_CMP_INST(INST) \
+    (((INST) >= FIRST_REG_CMP & (INST) <= LAST_REG_CMP) || \
+     ((INST) >= FIRST_IMM_CMP & (INST) <= LAST_IMM_CMP) || \
+     ((INST) >= FIRST_F32_CMP & (INST) <= LAST_F32_CMP) || \
+     ((INST) >= FIRST_F64_CMP & (INST) <= LAST_F64_CMP))
+
 
 typedef enum LongInst
 {
@@ -129,7 +135,7 @@ typedef enum LongInst
     LongInst_FLe64,
     LongInst_FGt64,
     LongInst_FGe64,
-#define LAST_F64_CMP LongIst_FGe64
+#define LAST_F64_CMP LongInst_FGe64
 #define FLT64_END LongInst_FGe64
 
     LongInst_F64ToF32,
