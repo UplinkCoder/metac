@@ -173,6 +173,7 @@ typedef struct BCInterpreter {
     int64_t* fp;
     int64_t* sp;
     uint32_t ip;
+    uint32_t mode;
 
     uint32_t n_return_addrs;
 
@@ -960,6 +961,10 @@ void BCGen_PrintCode(BCGen* self, uint32_t start, uint32_t end)
         case LongInst_Line :
             {
                 printf("LongInst_Line \n");
+            } break;
+        case LongInst_SetMode :
+            {
+                printf("LongInst_SetMode \n");
             }
             break;
         }
@@ -979,6 +984,10 @@ static inline uint8_t* BCInterpreter_toRealPointer(const BCInterpreter* self, co
     return result;
 }
 
+#define MODE_STICKY_MASK  ((0x3) << 7)
+#define MODE_STICKY_TRUE  ((0x1) << 7)
+#define MODE_STICKY_FALSE ((0x2) << 7)
+#define MODE_CND_SET       0x7
 BCValue BCGen_interpret(BCGen* self, uint32_t fnIdx, BCValue* args, uint32_t n_args, BCHeap* heapPtr)
 {
     assert(self->finalized);
@@ -1061,6 +1070,23 @@ BCValue BCGen_interpret(BCGen* self, uint32_t fnIdx, BCValue* args, uint32_t n_a
         const int32_t imm32c = *(cast(int32_t*)&((codeP)[state.ip + 1]));
         state.ip += 2;
 
+        if (IsInstComparison(lw & INSTMASK) && (state.mode & MODE_STICKY_MASK))
+        {
+            switch(state.mode & MODE_STICKY_MASK)
+            {
+                case MODE_STICKY_TRUE:
+                {
+                    if ((state.mode & MODE_CND_SET) && cond == 0)
+                        continue;
+                } break;
+                case MODE_STICKY_FALSE:
+                {
+                    if ((state.mode & MODE_CND_SET) && (cond == 1 || cond == -1))
+                        continue;
+                } break;
+            }
+        }
+
         // consider splitting the framePointer in stackHigh and stackLow
         const uint8_t  opSpecial   = ((lw >> 8) & 0xFF);
         const uint32_t opRefOffset = (lw >> 16) & 0xFFFF;
@@ -1085,9 +1111,9 @@ BCValue BCGen_interpret(BCGen* self, uint32_t fnIdx, BCValue* args, uint32_t n_a
 
         if ((lw & INSTMASK) >= FLT32_BEGIN && (lw & INSTMASK) <= FLT32_END)
         {
-            uint32_t _lhs = *lhsRef & UINT32_MAX;
+            uint32_t _lhs = (*lhsRef) & UINT32_MAX;
             flhs = *(float*)&_lhs;
-            uint32_t _rhs = *rhs & UINT32_MAX;
+            uint32_t _rhs = (*rhs) & UINT32_MAX;
             frhs = *(float*)&_rhs;
         }
         else if ((lw & INSTMASK) >= FLT64_BEGIN && (lw & INSTMASK) <= FLT64_END)
@@ -1123,7 +1149,6 @@ BCValue BCGen_interpret(BCGen* self, uint32_t fnIdx, BCValue* args, uint32_t n_a
 
         case LongInst_ImmDiv:
             {
-                printf("LongInst_ImmDiv\n");
                 (*opRef) /= imm32c;
             }
             break;
@@ -1201,54 +1226,54 @@ BCValue BCGen_interpret(BCGen* self, uint32_t fnIdx, BCValue* args, uint32_t n_a
             break;
         case LongInst_ImmEq:
             {
-                cond = ((*opRef) == imm32c);
+                cond = !((*opRef) == imm32c);
             }
             break;
         case LongInst_ImmNeq:
             {
-                cond = ((*opRef) != imm32c);
+                cond = !((*opRef) != imm32c);
             }
             break;
 
         case LongInst_ImmUlt:
             {
-                cond = (((int64_t)(*opRef)) < cast(uint32_t)hi);
+                cond = !(((int64_t)(*opRef)) < cast(uint32_t)hi);
             }
             break;
         case LongInst_ImmUgt:
             {
-                cond = (((uint64_t)(*opRef)) > cast(uint32_t)hi);
+                cond = !(((uint64_t)(*opRef)) > cast(uint32_t)hi);
             }
             break;
         case LongInst_ImmUle:
             {
-                cond = (((uint64_t)(*opRef)) <= cast(uint32_t)hi);
+                cond = !(((uint64_t)(*opRef)) <= cast(uint32_t)hi);
             }
             break;
         case LongInst_ImmUge:
             {
-                cond = (((uint64_t)(*opRef)) >= cast(uint32_t)hi);
+                cond = !(((uint64_t)(*opRef)) >= cast(uint32_t)hi);
             }
             break;
 
         case LongInst_ImmLt:
             {
-                cond = ((*opRef) < imm32c);
+                cond = !((*opRef) < imm32c);
             }
             break;
         case LongInst_ImmGt:
             {
-                cond = ((*opRef) > imm32c);
+                cond = !((*opRef) > imm32c);
             }
             break;
         case LongInst_ImmLe:
             {
-                cond = ((*opRef) <= imm32c);
+                cond = !((*opRef) <= imm32c);
             }
             break;
         case LongInst_ImmGe:
             {
-                cond = ((*opRef) >= imm32c);
+                cond = !((*opRef) >= imm32c);
             }
             break;
 
@@ -1325,32 +1350,32 @@ BCValue BCGen_interpret(BCGen* self, uint32_t fnIdx, BCValue* args, uint32_t n_a
             break;
         case LongInst_FGt32 :
             {
-                cond = flhs > frhs;
+                cond = !flhs > frhs;
             }
             break;
         case LongInst_FGe32 :
             {
-                cond = flhs >= frhs;
+                cond = !flhs >= frhs;
             }
             break;
         case LongInst_FEq32 :
             {
-                cond = flhs == frhs;
+                cond = !flhs == frhs;
             }
             break;
         case LongInst_FNeq32 :
             {
-                cond = flhs != frhs;
+                cond = !flhs != frhs;
             }
             break;
         case LongInst_FLt32 :
             {
-                cond = flhs < frhs;
+                cond = !flhs < frhs;
             }
             break;
         case LongInst_FLe32 :
             {
-                cond = flhs <= frhs;
+                cond = !flhs <= frhs;
             }
             break;
         case LongInst_F32ToF64 :
@@ -1409,32 +1434,32 @@ BCValue BCGen_interpret(BCGen* self, uint32_t fnIdx, BCValue* args, uint32_t n_a
             break;
         case LongInst_FEq64 :
             {
-                cond = dlhs == drhs;
+                cond = !dlhs == drhs;
             }
             break;
         case LongInst_FNeq64 :
             {
-                cond = dlhs < drhs;
+                cond = !dlhs < drhs;
             }
             break;
         case LongInst_FLt64 :
             {
-                cond = dlhs < drhs;
+                cond = !dlhs < drhs;
             }
             break;
         case LongInst_FLe64 :
             {
-                cond = dlhs <= drhs;
+                cond = !dlhs <= drhs;
             }
             break;
         case LongInst_FGt64 :
             {
-                cond = dlhs > drhs;
+                cond = !dlhs > drhs;
             }
             break;
         case LongInst_FGe64 :
             {
-                cond = dlhs >= drhs;
+                cond = !dlhs >= drhs;
             }
             break;
 
@@ -1504,13 +1529,13 @@ BCValue BCGen_interpret(BCGen* self, uint32_t fnIdx, BCValue* args, uint32_t n_a
             break;
         case LongInst_Eq:
             {
-                cond = ((*lhsRef) == (*rhs));
+                cond = !((*lhsRef) == (*rhs));
             }
             break;
 
         case LongInst_Neq:
             {
-                cond = ((*lhsRef) != *rhs);
+                cond = !((*lhsRef) != *rhs);
             }
             break;
 
@@ -1522,43 +1547,43 @@ BCValue BCGen_interpret(BCGen* self, uint32_t fnIdx, BCValue* args, uint32_t n_a
 
         case LongInst_Ult:
             {
-                cond = (((uint64_t)(*lhsRef)) < ((uint64_t)*rhs));
+                cond = !(((uint64_t)(*lhsRef)) < ((uint64_t)*rhs));
             }
             break;
         case LongInst_Ugt:
             {
-                cond = ((uint64_t)(*lhsRef) > (uint64_t)*rhs);
+                cond = !((uint64_t)(*lhsRef) > (uint64_t)*rhs);
             }
             break;
         case LongInst_Ule:
             {
-                cond = (((uint64_t)(*lhsRef)) <= ((uint64_t)*rhs));
+                cond = !(((uint64_t)(*lhsRef)) <= ((uint64_t)*rhs));
             }
             break;
         case LongInst_Uge:
             {
-                cond = (((uint64_t)(*lhsRef)) >= ((uint64_t)*rhs));
+                cond = !(((uint64_t)(*lhsRef)) >= ((uint64_t)*rhs));
             }
             break;
 
         case LongInst_Lt:
             {
-                cond = ((*lhsRef) < *rhs);
+                cond = !((*lhsRef) < *rhs);
             }
             break;
         case LongInst_Gt:
             {
-                cond = ((*lhsRef) > *rhs);
+                cond = !((*lhsRef) > *rhs);
             }
             break;
         case LongInst_Le:
             {
-                cond = ((*lhsRef) <= *rhs);
+                cond = !((*lhsRef) <= *rhs);
             }
             break;
         case LongInst_Ge:
             {
-                cond = ((*lhsRef) >= *rhs);
+                cond = !((*lhsRef) >= *rhs);
             }
             break;
 #if 0
@@ -2023,8 +2048,12 @@ L_LongInst_Comment:
                     break;
                 }
 #endif
-            }
-            break;
+            } break;
+        case LongInst_SetMode:
+            {
+                uint16_t mode = lw >> 16;
+                int32_t value = (int32_t) hi;
+            } break;
         }
     }
     BCValue bailoutValue;
@@ -2900,11 +2929,12 @@ static inline void BCGen_Alloc(BCGen* self, BCValue *heapPtr, const BCValue* siz
 
 static inline void BCGen_Assert(BCGen* self, const BCValue* value, const BCValue* err)
 {
+/*
     assert((err->vType == BCValueType_Error
         || err->vType == BCValueType_Immediate)
         && (err->type.type == BCTypeEnum_i32
         || err->type.type == BCTypeEnum_u32));
-
+*/
     assert(BCValue_isStackValueOrParameter(value));
     {
         BCGen_emitLongInstSI(self, LongInst_Assert, value->stackAddr, err->imm32.imm32);

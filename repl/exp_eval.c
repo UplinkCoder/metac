@@ -155,6 +155,7 @@ static inline void TupleToValue(void* c, BCValue* result,
 {
 
 }
+extern const BackendInterface* bc;
 
 void WalkTree(void* c, BCValue* result,
               metac_sema_expression_t* e,
@@ -168,8 +169,8 @@ void WalkTree(void* c, BCValue* result,
         return ;
     }
 
-    BCValue lhsT = BCGen_interface.genTemporary(c, BCType_i32);
-    BCValue rhsT = BCGen_interface.genTemporary(c, BCType_i32);
+    BCValue lhsT = bc->genTemporary(c, BCType_i32);
+    BCValue rhsT = bc->genTemporary(c, BCType_i32);
     BCValue *lhs = &lhsT;
     BCValue *rhs = &rhsT;
 
@@ -178,6 +179,7 @@ void WalkTree(void* c, BCValue* result,
     {
         op -= (exp_add_ass - exp_add);
     }
+
 
     if (IsBinaryExp(op))
     {
@@ -200,15 +202,23 @@ void WalkTree(void* c, BCValue* result,
             // this should not happen, we should have made it into a pointer I think
             assert(0);
         }
-
+        case exp_assert:
+        {
+            /*
+            BCValue errVal = imm32(0);
+            BCValue cond = bc->genTemporary(c, (BCType){BCTypeEnum_u32});
+            WalkTree(c, &cond, e->E1, vstore);
+            bc->Assert(c, &cond, &errVal);
+             */
+        } break;
         case exp_assign:
         {
             assert(e->E1->Kind == exp_variable);
 
             //metac_identifier_ptr_t idPtr = e->E1->Variable->VarIdentifier;
             //metac_identifier_ptr_t vStorePtr = GetVStoreID(vstore, e->E1);
-            BCGen_interface.Set(c, lhs, rhs);
-            BCGen_interface.Set(c, result, lhs);
+            bc->Set(c, lhs, rhs);
+            bc->Set(c, result, lhs);
         } break;
 
         case exp_tuple:
@@ -219,56 +229,57 @@ void WalkTree(void* c, BCValue* result,
         case exp_type:
         {
             BCValue imm = imm32(e->TypeExp.v);
-            BCGen_interface.Set(c, result, &imm);
+            bc->Set(c, result, &imm);
         } break;
 
         case exp_signed_integer:
         {
             BCValue imm = imm32((int32_t)e->ValueU64);
-            BCGen_interface.Set(c, result, &imm);
+            bc->Set(c, result, &imm);
         } break;
 
         case exp_neq:
         {
-            BCGen_interface.Neq3(c, result, lhs, rhs);
+            bc->Neq3(c, result, lhs, rhs);
         } break;
 
         case exp_eq:
         {
-            BCGen_interface.Eq3(c, result, lhs, rhs);
+            bc->Eq3(c, result, lhs, rhs);
         } break;
 
         case exp_add:
         {
-            BCGen_interface.Add3(c, result, lhs, rhs);
+            bc->Add3(c, result, lhs, rhs);
         } break;
         case exp_sub:
         {
-            BCGen_interface.Sub3(c, result, lhs, rhs);
+            bc->Sub3(c, result, lhs, rhs);
         } break;
         case exp_mul:
         {
-            BCGen_interface.Mul3(c, result, lhs, rhs);
+            bc->Mul3(c, result, lhs, rhs);
         } break;
         case exp_div:
         {
-            BCGen_interface.Div3(c, result, lhs, rhs);
+            bc->Div3(c, result, lhs, rhs);
         } break;
         case exp_rem:
         {
-            BCGen_interface.Mod3(c, result, lhs, rhs);
+            bc->Mod3(c, result, lhs, rhs);
         } break;
+        // case exp_andand:
         case exp_and:
         {
-            BCGen_interface.And3(c, result, lhs, rhs);
+            bc->And3(c, result, lhs, rhs);
         } break;
         case exp_or:
         {
-            BCGen_interface.Or3(c, result, lhs, rhs);
+            bc->Or3(c, result, lhs, rhs);
         } break;
         case exp_xor:
         {
-            BCGen_interface.Xor3(c, result, lhs, rhs);
+            bc->Xor3(c, result, lhs, rhs);
         } break;
         case exp_identifier:
         {
@@ -281,7 +292,7 @@ void WalkTree(void* c, BCValue* result,
             BCValue* v = GetValueFromVariableStore(vstore, vstoreId);
             if (v)
             {
-                //BCGen_interface.Set(c, result, v);
+                //bc->Set(c, result, v);
                 (*result) = (*v);
             }
             else
@@ -298,33 +309,33 @@ void WalkTree(void* c, BCValue* result,
         case exp_compl:
         {
             WalkTree(c, rhs, e->E1, vstore);
-            BCGen_interface.Not(c, result, rhs);
+            bc->Not(c, result, rhs);
         } break;
         case exp_not:
         {
             WalkTree(c, lhs, e->E1, vstore);
             BCValue zero = imm32(0);
-            BCGen_interface.Eq3(c, result, lhs, &zero);
+            bc->Eq3(c, result, lhs, &zero);
         } break;
         case exp_umin:
         {
             WalkTree(c, lhs, e->E1, vstore);
             BCValue zero = imm32(0);
-            BCGen_interface.Sub3(c, result, &zero, lhs);
+            bc->Sub3(c, result, &zero, lhs);
         } break;
         case exp_post_increment:
         {
             WalkTree(c, lhs, e->E1, vstore);
-            BCGen_interface.Set(c, result, lhs);
+            bc->Set(c, result, lhs);
             BCValue one = imm32(1);
-            BCGen_interface.Add3(c, lhs, lhs, &one);
+            bc->Add3(c, lhs, lhs, &one);
             if (e->E1->Kind == exp_variable)
             {
                 assert(_ReadContextSize < _ReadContextCapacity);
                 ReadI32_Ctx* userCtx = &_ReadContexts[_ReadContextSize++];
                 *userCtx = (ReadI32_Ctx){ vstore, e->E1 };
                 //TODO provide an allocExecutionContext in the BCgeninterface
-                BCGen_interface.ReadI32(c, lhs, ReadI32_cb, userCtx);
+                bc->ReadI32(c, lhs, ReadI32_cb, userCtx);
             }
             else
             {
@@ -342,42 +353,44 @@ void WalkTree(void* c, BCValue* result,
 
     if (IsBinaryAssignExp(e->Kind))
     {
-        BCGen_interface.Set(c, lhs, result);
+        bc->Set(c, lhs, result);
         ReadI32_Ctx* userCtx = &_ReadContexts[_ReadContextSize++];
         *userCtx = (ReadI32_Ctx){ vstore, e->E1 };
         //TODO provide an allocExecutionContext in the BCgeninterface
-        BCGen_interface.ReadI32(c, lhs, ReadI32_cb, userCtx);
+        bc->ReadI32(c, lhs, ReadI32_cb, userCtx);
     }
+    if (rhs->vType == BCValueType_Temporary)
+        bc->destroyTemporary(c, rhs);
 
-    BCGen_interface.destroyTemporary(c, rhs);
-    BCGen_interface.destroyTemporary(c, lhs);
+    if (lhs->vType == BCValueType_Temporary)
+        bc->destroyTemporary(c, lhs);
 }
 
 metac_sema_expression_t evalWithVariables(metac_sema_expression_t* e,
                                           variable_store_t* vstore)
 {
     void* c;
-    BCGen_interface.new_instance(&c);
+    bc->new_instance(&c);
 
     uint32_t fIdx;
 
-    BCGen_interface.Initialize(c, 0); // zero extra arguments
+    bc->Initialize(c, 0); // zero extra arguments
     {
-        fIdx = BCGen_interface.beginFunction(c, 0, "eval_func");
-        BCValue result = BCGen_interface.genLocal(c, (BCType){BCTypeEnum_i64}, "result");
+        fIdx = bc->beginFunction(c, 0, "eval_func");
+        BCValue result = bc->genLocal(c, (BCType){BCTypeEnum_i64}, "result");
 
         // walk the tree;
         WalkTree(c, &result, e, vstore);
 
-        BCGen_interface.Ret(c, &result);
+        bc->Ret(c, &result);
 
-        void * func = BCGen_interface.endFunction(c, fIdx);
+        void * func = bc->endFunction(c, fIdx);
     }
-    BCGen_interface.Finalize(c);
+    bc->Finalize(c);
 
     // BCGen_printFunction(c);
 
-    BCValue res = BCGen_interface.run(c, fIdx, 0, 0);
+    BCValue res = bc->run(c, fIdx, 0, 0);
 
     metac_sema_expression_t result;
 

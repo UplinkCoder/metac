@@ -187,6 +187,7 @@ typedef struct BackendInterface
     void (*const new_instance) (void ** result_p);
     uint32_t (*const sizeof_instance) (void);
     void (*const init_instance) (void* ctx);
+
     void (*const ReadI32) (void* ctx, const BCValue* val, const ReadI32_cb_t readCb, void* userCtx);
 } BackendInterface;
 

@@ -2,6 +2,7 @@
 #include "libinterpret/bc_common.h"
 #include "libinterpret/backend_interface_funcs.h"
 #include "libinterpret/bc_interpreter_backend.h"
+#include "libinterpret/printer_backend.c"
 #include "repl/exp_eval.h"
 #include "metac_codegen.h"
 
@@ -10,9 +11,16 @@ uint32_t MetaCCodegen_GetTypeABISize(metac_bytecode_ctx_t* ctx, metac_type_index
     return 0;
 }
 
+void MetaCCodegen_doStatement(metac_bytecode_ctx_t* ctx,
+                              metac_sema_statement_t* stmt);
+
 BCType MetaCCodegen_GetBCType(metac_bytecode_ctx_t* ctx, metac_type_index_t type)
 {
     BCType result = {};
+
+    if (type.Kind == type_index_enum)
+        result = (BCType){BCTypeEnum_i32};
+
     if (type.Kind == type_index_basic)
     {
         switch(type.Index)
@@ -76,13 +84,35 @@ BCType MetaCCodegen_GetBCType(metac_bytecode_ctx_t* ctx, metac_type_index_t type
 }
 
 extern const BackendInterface BCGen_interface;
-static const BackendInterface* bc;
+const BackendInterface* bc;
+
+int MetaCCodegen_RunFunction(metac_bytecode_ctx_t* self,
+                             metac_bytecode_function_t f, int32_t argument)
+{
+    BCValue arg = imm32(argument);
+    BCValue result = bc->run(self->c, f.FunctionIndex, &arg, 1);
+    return result.imm32.imm32;
+}
+void MetaCCodegen_End(metac_bytecode_ctx_t* self)
+{
+    bc->Finalize(self->c);
+/*
+    if (bc == &Printer_interface)
+    {
+        Printer* printer = (Printer*)self->c;
+        printf("%s\n\n", printer->BufferStart);
+    }
+*/
+}
 
 void MetaCCodegen_Init(metac_bytecode_ctx_t* self, metac_alloc_t* parentAlloc)
 {
     //TODO take BC as a parameter
+#if BC_PRINTER
+    bc = &Printer_interface;
+#else
     bc = &BCGen_interface;
-
+#endif
     (*self) = (metac_bytecode_ctx_t) {};
 //    printf("self->Allocator->Parent: %x\n", self->Allocator->Parent);
     Allocator_Init(&self->Allocator, parentAlloc);
@@ -119,7 +149,7 @@ metac_bytecode_function_t MetaCCodegen_GenerateFunction(metac_bytecode_ctx_t* ct
     uint32_t functionId =
         bc->beginFunction(c, 0, fName);
 
-    bc->Comment(c, "Function Begin.\n");
+    bc->Comment(c, "Function Begin.");
 
     metac_bytecode_function_t result;
     result.FunctionIndex = functionId;
@@ -150,9 +180,12 @@ metac_bytecode_function_t MetaCCodegen_GenerateFunction(metac_bytecode_ctx_t* ct
     {
         MetaCCodegen_doStatement(ctx, function->FunctionBody->Body[i]);
     }
-    bc->Comment(c, "Function body end\n");
+    bc->Comment(c, "Function body end");
 
-    // BCGen_PrintCode(c, 0, 600);
+    if (bc == &BCGen_interface)
+    {
+        BCGen_PrintCode(c, 0, 600);
+    }
 
     return result;
 }
@@ -229,9 +262,10 @@ static inline void MetaCCodegen_doCaseStmt(metac_bytecode_ctx_t* ctx,
         swtch->DefaultBody = caseBody;
         return ;
     }
+    BCValue* switchExp = &swtch->Exp;
     BCValue exp_result = MetaCCodegen_doExpression(ctx, caseExp);
     bc->Eq3(c, 0,
-            &ctx->SwitchStack[ctx->SwitchStackCount].Exp,
+            switchExp,
             &exp_result);
 
     bool hasBody =
@@ -314,6 +348,12 @@ void MetaCCodegen_doStatement(metac_bytecode_ctx_t* ctx,
             sema_stmt_return_t* returnStmt = cast(sema_stmt_return_t*) stmt;
             BCValue retVal = MetaCCodegen_doExpression(ctx, returnStmt->ReturnExp);
             bc->Ret(c, &retVal);
+        } break;
+
+        case stmt_exp:
+        {
+            sema_stmt_exp_t* expStmt = cast(sema_stmt_exp_t*) stmt;
+            MetaCCodegen_doExpression(ctx, expStmt->Expression);
         } break;
 
         default:

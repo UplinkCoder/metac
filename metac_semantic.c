@@ -397,6 +397,32 @@ metac_sema_statement_t* MetaCSemantic_doStatementSemantic_(metac_semantic_state_
         } break;
 
         default: assert(0);
+        case stmt_if:
+        {
+            stmt_if_t* ifStmt = cast(stmt_if_t*) stmt;
+            sema_stmt_if_t* semaIfStmt =
+                AllocNewSemaStatement(self, stmt_if, &result);
+            semaIfStmt->IfCond =
+                MetaCSemantic_doExprSemantic(self, ifStmt->IfCond, 0);
+            if (METAC_NODE(ifStmt->IfBody) != emptyNode)
+            {
+                semaIfStmt->IfBody = MetaCSemantic_doStatementSemantic(self, ifStmt->IfBody);
+            }
+            else
+            {
+                METAC_NODE(semaIfStmt->IfBody) = emptyNode;
+            }
+
+            if (METAC_NODE(ifStmt->ElseBody) != emptyNode)
+            {
+                semaIfStmt->ElseBody = MetaCSemantic_doStatementSemantic(self, ifStmt->ElseBody);
+            }
+            else
+            {
+                METAC_NODE(semaIfStmt->ElseBody) = emptyNode;
+            }
+        } break;
+
         case stmt_case:
         {
             stmt_case_t* caseStatement = (stmt_case_t*) stmt;
