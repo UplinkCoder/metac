@@ -6,8 +6,6 @@
 #include <string.h>
 #include <stdlib.h>
 
-#define abort()
-
 static inline void Dot_PrintSpace(metac_dot_printer_t* self)
 {
     self->StringMemorySize++;
@@ -37,7 +35,7 @@ static inline void Dot_CheckAndRellocIfNeeded(metac_dot_printer_t* self,
         self->StringMemory = (char*)realloc(self->StringMemory, newCapa);
         if (self->StringMemory == 0)
         {
-            abort();
+            assert(0);
         }
     }
 }

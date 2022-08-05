@@ -6,8 +6,6 @@
 #include <assert.h>
 #include <string.h>
 
-#define abort()
-
 static inline void PrintExpression(metac_printer_t* self, metac_expression_t* exp);
 static inline void PrintSemaExpression(metac_printer_t* self, metac_semantic_state_t* sema, metac_sema_expression_t* exp);
 
@@ -58,7 +56,7 @@ static inline void CheckAndRellocIfNeeded(metac_printer_t* self,
         self->StringMemory = (char*)realloc(self->StringMemory, newCapa);
         if (self->StringMemory == 0)
         {
-            abort();
+            assert(0);
         }
     }
 }
@@ -567,7 +565,7 @@ static inline void PrintStatement(metac_printer_t* self, metac_statement_t* stmt
             PrintChar(self, ')');
             PrintNewline(self);
             PrintIndent(self);
-            PrintStatement(self, stmt_switch->SwitchBody);
+            PrintStatement(self, cast(metac_statement_t*)stmt_switch->SwitchBody);
         } break;
         case stmt_while:
         {
@@ -1037,7 +1035,7 @@ static inline void PrintSemaType(metac_printer_t* self,
             metac_identifier_ptr_t unionName =
                 UnionPtr(sema, unionIdx)->Identifier;
             PrintString(self, "union ", sizeof("union"));
-            if (structName.v != empty_identifier.v)
+            if (unionName.v != empty_identifier.v)
             {
                 PrintIdentifier(self, unionName);
             }
@@ -1544,12 +1542,12 @@ static inline void PrintSemaStatement(metac_printer_t* self, metac_semantic_stat
                 PrintToken(self, tok_semicolon);
             }
 
-            if (stmt_for->ForCond != cast(metac_expression_t*) emptyPointer)
+            if (stmt_for->ForCond != cast(metac_sema_expression_t*) emptyPointer)
             {
                 PrintSemaExpression(self, sema, stmt_for->ForCond);
             }
             PrintToken(self, tok_semicolon);
-            if (stmt_for->ForPostLoop != cast(metac_expression_t*) emptyPointer)
+            if (stmt_for->ForPostLoop != cast(metac_sema_expression_t*) emptyPointer)
             {
                 PrintSemaExpression(self, sema, stmt_for->ForPostLoop);
             }
@@ -1572,7 +1570,7 @@ static inline void PrintSemaStatement(metac_printer_t* self, metac_semantic_stat
         {
             sema_stmt_case_t* caseStatement = cast(sema_stmt_case_t*) stmt;
         LprintCase:
-            if (caseStatement->CaseExp == (metac_expression_t*) emptyPointer)
+            if (caseStatement->CaseExp == (metac_sema_expression_t*) emptyPointer)
             {
                 PrintKeyword(self, tok_kw_default);
             }
@@ -1583,7 +1581,7 @@ static inline void PrintSemaStatement(metac_printer_t* self, metac_semantic_stat
                 PrintSemaExpression(self, sema, caseStatement->CaseExp);
             }
             PrintChar(self, ':');
-            if (caseStatement->CaseBody != cast(metac_statement_t*) emptyPointer)
+            if (caseStatement->CaseBody != cast(sema_stmt_casebody_t*) emptyPointer)
             {
                 if (caseStatement->CaseBody->StmtKind == stmt_case)
                 {
@@ -1623,7 +1621,7 @@ static inline void PrintSemaStatement(metac_printer_t* self, metac_semantic_stat
                         PrintNewline(self);
                         PrintIndent(self);
                     }
-                    PrintSemaStatement(self, sema, caseStatement->CaseBody);
+                    PrintSemaStatement(self, sema, cast(metac_sema_statement_t*)caseStatement->CaseBody);
                     if (caseStatement->CaseBody->StmtKind != stmt_block)
                         --self->IndentLevel;
 
@@ -1656,7 +1654,7 @@ static inline void PrintSemaStatement(metac_printer_t* self, metac_semantic_stat
             PrintChar(self, ')');
             PrintNewline(self);
             PrintIndent(self);
-            PrintSemaStatement(self, sema, stmt_switch->SwitchBody);
+            PrintSemaStatement(self, sema, cast(metac_sema_statement_t*)stmt_switch->SwitchBody);
         } break;
         case stmt_while:
         {

@@ -93,7 +93,7 @@ typedef struct metac_alloc_t
     { \
         (NAME##Arena) = \
             *Allocate_((NAME##Alloc), newCapa, __FILE__, __LINE__, false); \
-        NAME = NAME##Arena.Memory; \
+        (*cast(void**)(&NAME)) = NAME##Arena.Memory; \
     } \
 } while(0)
 

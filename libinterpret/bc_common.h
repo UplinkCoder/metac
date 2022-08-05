@@ -610,6 +610,7 @@ template ensureIsBCGen(BCGenT)
 static const BCTypeEnum smallIntegerTypes[] = {BCTypeEnum_u16, BCTypeEnum_u8,
                                       BCTypeEnum_i16, BCTypeEnum_i8,
                                       BCTypeEnum_c32, BCTypeEnum_c16, BCTypeEnum_c8};
+#undef ARRAY_SIZE
 #define ARRAY_SIZE(A) (sizeof(A) / sizeof(A[0]))
 
 EXTERN_C BCTypeEnum BCTypeEnum_commonTypeEnum(BCTypeEnum lhs, BCTypeEnum rhs);

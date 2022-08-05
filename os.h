@@ -4,11 +4,12 @@
 
 #ifdef __unix__
 #  include <unistd.h>
+#  include <sys/mman.h>
 #  define POSIX
 #endif
 
 #ifdef _MSC_VER
-#  include <winbase.h>
+#  include <windows.h>
 #  define WINDOWS
 #endif
 

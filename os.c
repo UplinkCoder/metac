@@ -1,6 +1,5 @@
 /// Small platfrom abstraction
 #include "os.h"
-#include <sys/mman.h>
 #define DEFAULT_PAGESIZE 4096
 os_error_t PageAlloc(uint32_t minSize, uint32_t* allocatedSize, void** outMemory);
 

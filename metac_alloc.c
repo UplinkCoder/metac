@@ -119,9 +119,9 @@ LsearchArena:
 LsetResult:
     if (arena)
     {
-        result = cast(tagged_arena_t*) (arena->Memory + arena->Offset);
+        result = cast(tagged_arena_t*) ((cast(uint8_t*)arena->Memory) + arena->Offset);
 
-        result->Memory = arena->Memory + arena->Offset
+        result->Memory = (cast(uint8_t*)arena->Memory) + arena->Offset
                        + ALIGN16(sizeof(tagged_arena_t));
         result->SizeLeft = size - ALIGN16(sizeof(tagged_arena_t));
         result->Alloc = arena->Alloc;
