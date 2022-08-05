@@ -96,6 +96,8 @@ typedef void (*init_instance_t) (void * result_p);
 typedef void (*ReadI32_t) (void* ctx, const BCValue* val, const ReadI32_cb_t readCb, void* userCtx);
 typedef void (*ReadI32_cb_t)(uint32_t value, void* userCtx);
 
+typedef void (*ValueCallback_cb_t)(BCValue* value, void* userCtx);
+
 typedef struct BackendInterface
 {
     const char* name;

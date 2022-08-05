@@ -1790,7 +1790,8 @@ metac_expression_t* MetaCParser_ParseBinaryExpression(metac_parser_t* self,
 
 bool IsBinaryExp(metac_expression_kind_t kind)
 {
-    return ((kind >= FIRST_BINARY_EXP(TOK_SELF)) && (kind <= LAST_BINARY_EXP(TOK_SELF)));
+    return ((kind >= FIRST_BINARY_EXP(TOK_SELF)) && (kind <= LAST_BINARY_EXP(TOK_SELF))
+            || kind == exp_index);
 }
 
 bool IsBinaryAssignExp(metac_expression_kind_t kind)

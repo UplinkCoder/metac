@@ -45,7 +45,11 @@ metac_sema_expression_t* MetaCSemantic_doExprSemantic_(metac_semantic_state_t* s
     }
 
     if (IsBinaryExp(expr->Kind)
-        && (expr->Kind != exp_arrow && expr->Kind != exp_dot))
+        && (   expr->Kind != exp_arrow
+            && expr->Kind != exp_dot
+            && expr->Kind != exp_index
+        )
+    )
     {
         MetaCSemantic_PushExpr(self, result);
 
@@ -349,7 +353,7 @@ metac_sema_expression_t* MetaCSemantic_doExprSemantic_(metac_semantic_state_t* s
                 {
                     metac_enum_member_t* enumMember = cast(metac_enum_member_t*)node;
                     // result->Kind =enumMember->Value.Kind;
-                    result = enumMember->Value;
+                    result = enumMember;
                 }
                 else
                 {

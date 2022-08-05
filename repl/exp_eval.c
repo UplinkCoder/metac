@@ -197,6 +197,11 @@ void WalkTree(void* c, BCValue* result,
             );
             assert(0);
         } break;
+        case decl_enum_member:
+        {
+            metac_enum_member_t* enumMember = cast(metac_enum_member_t*) e;
+            *result = imm32((int32_t)enumMember->Value->ValueI64);
+        } break;
         case exp_string:
         {
             // this should not happen, we should have made it into a pointer I think
@@ -236,6 +241,11 @@ void WalkTree(void* c, BCValue* result,
         {
             BCValue imm = imm32((int32_t)e->ValueU64);
             bc->Set(c, result, &imm);
+        } break;
+
+        case exp_eq:
+        {
+            bc->Eq3(c, result, lhs, rhs);
         } break;
 
         case exp_neq:
@@ -288,6 +298,8 @@ void WalkTree(void* c, BCValue* result,
         {
             bc->And3(c, result, lhs, rhs);
         } break;
+
+        case exp_oror:
         case exp_or:
         {
             bc->Or3(c, result, lhs, rhs);

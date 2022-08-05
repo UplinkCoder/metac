@@ -200,7 +200,7 @@ metac_scope_t* MetaCSemantic_PushTemporaryScope_(metac_semantic_state_t* self,
                                                  uint32_t line,
                                                  const char* file)
 {
-    printf("[%u]Pushing tmpScope {%s:%u}\n", self->TemporaryScopeDepth, file, line);
+    // printf("[%u]Pushing tmpScope {%s:%u}\n", self->TemporaryScopeDepth, file, line);
     assert((tmpScope->ScopeFlags & scope_flag_temporary) != 0);
 
     assert ((!self->TemporaryScopeDepth) || IsTemporaryScope(self->CurrentScope));
@@ -219,7 +219,7 @@ void MetaCSemantic_PopTemporaryScope_(metac_semantic_state_t* self,
 {
     assert(self->TemporaryScopeDepth != 0 && IsTemporaryScope(self->CurrentScope));
     --self->TemporaryScopeDepth;
-    printf("[%u] Popping tmpScope {%s:%u}\n", self->TemporaryScopeDepth, file, line);
+    // printf("[%u] Popping tmpScope {%s:%u}\n", self->TemporaryScopeDepth, file, line);
     self->CurrentScope = self->CurrentScope->Parent;
 }
 /*
@@ -612,7 +612,7 @@ sema_decl_function_t* MetaCSemantic_doFunctionSemantic(metac_semantic_state_t* s
     // for now we don't nest functions.
     f->ParentFunc = (sema_decl_function_t*)emptyNode;
     f->Identifier = func->Identifier;
-    printf("doing Function: %s\n", IdentifierPtrToCharPtr(self->ParserIdentifierTable, func->Identifier));
+    // printf("doing Function: %s\n", IdentifierPtrToCharPtr(self->ParserIdentifierTable, func->Identifier));
 
     // let's first do the parameters
     sema_decl_variable_t* params =
@@ -1034,7 +1034,16 @@ metac_sema_expression_t* MetaCSemantic_doIndexSemantic_(metac_semantic_state_t* 
         {
             fprintf(stderr, "index is not a constant value\n");
         }
+    }
+    else if (indexed->Kind == exp_variable)
+    {
+        assert(TYPE_INDEX_KIND(indexed->TypeIndex) == type_index_array
+            || TYPE_INDEX_KIND(indexed->TypeIndex) == type_index_ptr);
 
+        result = AllocNewSemaExpression(self, expr);
+        result->TypeIndex = MetaCSemantic_GetElementType(self, indexed->TypeIndex);
+        result->E1 = indexed;
+        result->E2 = index;
     }
 
     return  result;

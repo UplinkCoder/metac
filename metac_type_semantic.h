@@ -14,6 +14,9 @@ metac_type_index_t MetaCSemantic_GetTypeIndex(metac_semantic_state_t* state,
 metac_type_index_t  MetaCSemantic_CommonSubtype(metac_semantic_state_t* state,
                                                 metac_type_index_t a, metac_type_index_t b);
 
+metac_type_index_t MetaCSemantic_GetElementType(metac_semantic_state_t* self,
+                                                metac_type_index_t typeIndex);
+
 metac_type_index_t MetaCSemantic_GetArrayTypeOf(metac_semantic_state_t* state,
                                                 metac_type_index_t elementTypeIndex,
                                                 uint32_t dimension);

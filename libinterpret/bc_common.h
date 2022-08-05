@@ -97,6 +97,9 @@ typedef enum BCTypeEnum
     BCTypeEnum_Function, // synonymous to i32
     BCTypeEnum_Delegate, // synonymous to {i32, i32}
 
+    BCTypeEnum_ValueCallback, // {void (*f)(BCValue*, void*), void*}
+    BCTypeEnum_VoidCallback, // {void (*f)(void*), void*}
+
     //  everything below here is not used by the bc layer.
     BCTypeEnum_Array,
     BCTypeEnum_AArray,

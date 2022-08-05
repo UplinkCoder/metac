@@ -9,6 +9,7 @@
 #define abort()
 
 static inline void PrintExpression(metac_printer_t* self, metac_expression_t* exp);
+static inline void PrintSemaExpression(metac_printer_t* self, metac_semantic_state_t* sema, metac_sema_expression_t* exp);
 
 static inline void PrintSpace(metac_printer_t* self)
 {
@@ -1035,6 +1036,163 @@ static inline void PrintSemaType(metac_printer_t* self,
         } break;
     }
 }
+static inline void PrintSemaVariable(metac_printer_t* self,
+                                     metac_semantic_state_t* sema,
+                                     sema_decl_variable_t* variable)
+{
+    if (TYPE_INDEX_KIND(variable->TypeIndex) == type_index_functiontype)
+    {
+        metac_type_functiontype_t* funcType =
+            FunctiontypePtr(sema, TYPE_INDEX_INDEX(variable->TypeIndex));
+
+        PrintSemaType(self, sema, funcType->ReturnType);
+        PrintSpace(self);
+        PrintChar(self, '(');
+        PrintChar(self, '*');
+        PrintIdentifier(self, variable->VarIdentifier);
+        PrintChar(self, ')');
+        PrintSpace(self);
+        PrintChar(self, '(');
+
+        const uint32_t paramCount = funcType->ParameterTypeCount;
+        for(uint32_t i = 0;
+            i < paramCount;
+            i++)
+        {
+            PrintSemaType(self, sema, funcType->ParameterTypes[i]);
+            if (i != paramCount - 1)
+            {
+                PrintChar(self, ',');
+                PrintSpace(self);
+            }
+        }
+        PrintChar(self, ')');
+    }
+    else
+    {
+        PrintSemaType(self, sema, variable->TypeIndex);
+        PrintSpace(self);
+        PrintIdentifier(self, variable->VarIdentifier);
+    }
+
+    if (variable->VarInitExpression != emptyPointer)
+    {
+        PrintSpace(self);
+        PrintToken(self, tok_assign);
+        PrintSpace(self);
+        PrintSemaExpression(self, sema,  variable->VarInitExpression);
+    }
+}
+
+static inline void PrintSemaDeclaration(metac_printer_t* self,
+                                        metac_semantic_state_t* sema,
+                                        metac_sema_declaration_t* semaDecl,
+                                        uint32_t level)
+{
+    bool printSemicolon = true;
+
+    switch (semaDecl->DeclKind)
+    {
+        case decl_type_enum:
+        {
+            PrintIdentifier(self, semaDecl->sema_decl_type_enum.Name);
+        } break;
+        case decl_type_typedef:
+        case decl_type:
+            assert(0);
+
+        case decl_type_union :
+        case decl_type_struct :
+        {
+            metac_type_aggregate_t* struct_ = (metac_type_aggregate_t*) semaDecl;
+            PrintKeyword(self, AggToken(semaDecl->DeclKind));
+            if (struct_->Identifier.v != empty_identifier.v)
+            {
+                PrintSpace(self);
+                PrintIdentifier(self, struct_->Identifier);
+            }
+            PrintSpace(self);
+            PrintToken(self, tok_lBrace);
+            ++level;
+            ++self->IndentLevel;
+            PrintNewline(self);
+            PrintIndent(self);
+            metac_type_aggregate_field_t* f = struct_->Fields;
+            for(uint32_t memberIndex = 0;
+                memberIndex < struct_->FieldCount;
+                memberIndex++)
+            {
+                //PrintSemaDeclaration(self, sema, f + memberIndex, level);
+                sema_decl_variable_t synVar;
+                synVar.TypeIndex = (f + memberIndex)->Type;
+                synVar.VarIdentifier = (f + memberIndex)->Identifier;
+                PrintSemaVariable(self, sema, &synVar);
+                //PrintChar(self, ';');
+                if (memberIndex && memberIndex != (struct_->FieldCount - 1))
+                    PrintIndent(self);
+            }
+            --self->IndentLevel;
+            --level;
+            //PrintNewline(self);
+            PrintIndent(self);
+            PrintToken(self, tok_rBrace);
+            if (self->IndentLevel)
+                PrintNewline(self);
+            else
+                PrintSpace(self);
+        } break;
+        case decl_type_array:
+        {
+            //PrintType(self, (decl_type_t*)decl);
+            assert(0);
+        } break;
+        case decl_field :
+        {
+            //decl_field_t* field = (decl_field_t*) decl;
+            //PrintVariable(self, field->Field);
+            assert(0);
+        } break;
+        case decl_variable:
+        {
+            sema_decl_variable_t* variable = (sema_decl_variable_t*) semaDecl;
+            PrintSemaVariable(self, sema, variable);
+        } break;
+        case decl_function:
+        {
+            sema_decl_function_t* function_ = (sema_decl_function_t*) semaDecl;
+            metac_type_functiontype_t* functionType =
+                FunctiontypePtr(sema, TYPE_INDEX_INDEX(function_->TypeIndex));
+
+            PrintSemaType(self, sema, functionType->ReturnType);
+            PrintSpace(self);
+            PrintIdentifier(self, function_->Identifier);
+
+            PrintChar(self, '(');
+            const uint32_t paramCount = functionType->ParameterTypeCount;
+            for(uint32_t i = 0;
+                i < paramCount;
+                i++
+            )
+            {
+                PrintSemaVariable(self, sema, function_->Parameters + i);
+                if (i != (paramCount - 1))
+                {
+                    PrintChar(self, ',');
+                    PrintSpace(self);
+                }
+            }
+            PrintChar(self, ')');
+            PrintSpace(self);
+            if (function_->FunctionBody != emptyPointer)
+            {
+                PrintSemaStatement(self, sema, (metac_sema_statement_t*)function_->FunctionBody);
+                printSemicolon = false;
+            }
+        } break;
+    }
+    if (!!printSemicolon) PrintToken(self, tok_semicolon);
+    PrintNewline(self);
+}
 
 static inline void PrintSemaExpression(metac_printer_t* self,
                                        metac_semantic_state_t* sema,
@@ -1102,7 +1260,7 @@ static inline void PrintSemaExpression(metac_printer_t* self,
         PrintString(self, semaExp->Chars, LENGTH_FROM_CHAR_KEY(semaExp->CharKey));
         PrintChar(self, '\'');
     }
-    else if (IsBinaryExp(semaExp->Kind))
+    else if (IsBinaryExp(semaExp->Kind) && semaExp->Kind != exp_index)
     {
         PrintChar(self, '(');
         PrintSemaExpression(self, sema,  semaExp->E1);
@@ -1234,170 +1392,18 @@ static inline void PrintSemaExpression(metac_printer_t* self,
         if (!IsBinaryExp(semaExp->E1->Kind))
             PrintChar(self, ')');
     }
+    else if (semaExp->Kind == decl_enum_member)
+    {
+        metac_enum_member_t* enumMember = cast(metac_enum_member_t*) semaExp;
+        //PrintSemaDeclaration(self, sema, enumMember, self->IndentLevel);
+        PrintIdentifier(self, enumMember->Identifier);
+    }
     else
     {
         printf("don't know how to print %s\n", (MetaCExpressionKind_toChars(semaExp->Kind)));
     }
 }
 
-static inline void PrintSemaVariable(metac_printer_t* self,
-                                     metac_semantic_state_t* sema,
-                                     sema_decl_variable_t* variable)
-{
-    if (TYPE_INDEX_KIND(variable->TypeIndex) == type_index_functiontype)
-    {
-        metac_type_functiontype_t* funcType =
-            FunctiontypePtr(sema, TYPE_INDEX_INDEX(variable->TypeIndex));
-
-        PrintSemaType(self, sema, funcType->ReturnType);
-        PrintSpace(self);
-        PrintChar(self, '(');
-        PrintChar(self, '*');
-        PrintIdentifier(self, variable->VarIdentifier);
-        PrintChar(self, ')');
-        PrintSpace(self);
-        PrintChar(self, '(');
-
-        const uint32_t paramCount = funcType->ParameterTypeCount;
-        for(uint32_t i = 0;
-            i < paramCount;
-            i++)
-        {
-            PrintSemaType(self, sema, funcType->ParameterTypes[i]);
-            if (i != paramCount - 1)
-            {
-                PrintChar(self, ',');
-                PrintSpace(self);
-            }
-        }
-        PrintChar(self, ')');
-    }
-    else
-    {
-        PrintSemaType(self, sema, variable->TypeIndex);
-        PrintSpace(self);
-        PrintIdentifier(self, variable->VarIdentifier);
-    }
-
-    if (variable->VarInitExpression != emptyPointer)
-    {
-        PrintSpace(self);
-        PrintToken(self, tok_assign);
-        PrintSpace(self);
-        PrintSemaExpression(self, sema,  variable->VarInitExpression);
-    }
-}
-
-
-static inline void PrintSemaDeclaration(metac_printer_t* self,
-                                        metac_semantic_state_t* sema,
-                                        metac_sema_declaration_t* semaDecl,
-                                        uint32_t level)
-{
-    bool printSemicolon = true;
-
-    switch (semaDecl->DeclKind)
-    {
-        case decl_type_enum:
-        {
-            PrintIdentifier(self, semaDecl->sema_decl_type_enum.Name);
-        } break;
-        case decl_type_typedef:
-        case decl_type:
-            assert(0);
-
-        case decl_type_union :
-        case decl_type_struct :
-        {
-            metac_type_aggregate_t* struct_ = (metac_type_aggregate_t*) semaDecl;
-            PrintKeyword(self, AggToken(semaDecl->DeclKind));
-            if (struct_->Identifier.v != empty_identifier.v)
-            {
-                PrintSpace(self);
-                PrintIdentifier(self, struct_->Identifier);
-            }
-            PrintSpace(self);
-            PrintToken(self, tok_lBrace);
-            ++level;
-            ++self->IndentLevel;
-            PrintNewline(self);
-            PrintIndent(self);
-            metac_type_aggregate_field_t* f = struct_->Fields;
-            for(uint32_t memberIndex = 0;
-                memberIndex < struct_->FieldCount;
-                memberIndex++)
-            {
-                //PrintSemaDeclaration(self, sema, f + memberIndex, level);
-                sema_decl_variable_t synVar;
-                synVar.TypeIndex = (f + memberIndex)->Type;
-                synVar.VarIdentifier = (f + memberIndex)->Identifier;
-                PrintSemaVariable(self, sema, &synVar);
-                //PrintChar(self, ';');
-                if (memberIndex && memberIndex != (struct_->FieldCount - 1))
-                    PrintIndent(self);
-            }
-            --self->IndentLevel;
-            --level;
-            //PrintNewline(self);
-            PrintIndent(self);
-            PrintToken(self, tok_rBrace);
-            if (self->IndentLevel)
-                PrintNewline(self);
-            else
-                PrintSpace(self);
-        } break;
-        case decl_type_array:
-        {
-            //PrintType(self, (decl_type_t*)decl);
-            assert(0);
-        } break;
-        case decl_field :
-        {
-            //decl_field_t* field = (decl_field_t*) decl;
-            //PrintVariable(self, field->Field);
-            assert(0);
-        } break;
-        case decl_variable:
-        {
-            sema_decl_variable_t* variable = (sema_decl_variable_t*) semaDecl;
-            PrintSemaVariable(self, sema, variable);
-        } break;
-        case decl_function:
-        {
-            sema_decl_function_t* function_ = (sema_decl_function_t*) semaDecl;
-            metac_type_functiontype_t* functionType =
-                FunctiontypePtr(sema, TYPE_INDEX_INDEX(function_->TypeIndex));
-
-            PrintSemaType(self, sema, functionType->ReturnType);
-            PrintSpace(self);
-            PrintIdentifier(self, function_->Identifier);
-
-            PrintChar(self, '(');
-            const uint32_t paramCount = functionType->ParameterTypeCount;
-            for(uint32_t i = 0;
-                i < paramCount;
-                i++
-            )
-            {
-                PrintSemaVariable(self, sema, function_->Parameters + i);
-                if (i != (paramCount - 1))
-                {
-                    PrintChar(self, ',');
-                    PrintSpace(self);
-                }
-            }
-            PrintChar(self, ')');
-            PrintSpace(self);
-            if (function_->FunctionBody != emptyPointer)
-            {
-                PrintSemaStatement(self, sema, (metac_sema_statement_t*)function_->FunctionBody);
-                printSemicolon = false;
-            }
-        } break;
-    }
-    if (!!printSemicolon) PrintToken(self, tok_semicolon);
-    PrintNewline(self);
-}
 
 static inline void PrintSemaStatement(metac_printer_t* self, metac_semantic_state_t* sema, metac_sema_statement_t* stmt)
 {

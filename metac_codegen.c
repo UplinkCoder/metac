@@ -6,6 +6,7 @@
 #include "repl/exp_eval.h"
 #include "metac_codegen.h"
 
+#include <stdarg.h>
 uint32_t MetaCCodegen_GetTypeABISize(metac_bytecode_ctx_t* ctx, metac_type_index_t type)
 {
     return 0;
@@ -87,22 +88,57 @@ extern const BackendInterface BCGen_interface;
 const BackendInterface* bc;
 
 int MetaCCodegen_RunFunction(metac_bytecode_ctx_t* self,
-                             metac_bytecode_function_t f, int32_t argument)
+                             metac_bytecode_function_t f,
+                             metac_alloc_t* interpAlloc,
+                             const char* fargs, ...)
 {
-    BCValue arg = imm32(argument);
-    BCValue result = bc->run(self->c, f.FunctionIndex, &arg, 1);
+    va_list l;
+    va_start(l, fargs);
+    STACK_ARENA_ARRAY(BCValue, args, 8, interpAlloc);
+
+    const char* farg = fargs;
+    uint32_t nArgs = 0;
+    for(char c = *farg++;c; c = *farg++)
+    {
+        switch(c)
+        {
+            case 'd' :
+            {
+                nArgs++;
+                int32_t a = va_arg(l, int32_t);
+                ARENA_ARRAY_ADD(args, imm32_(a, true));
+            }
+            break;
+            case 'u':
+            {
+                nArgs++;
+                uint32_t a = va_arg(l, uint32_t);
+                ARENA_ARRAY_ADD(args, imm32(a));
+            }
+            break;
+            default:
+            {
+                fprintf(stderr, "arg specifier, '%c' unsupported\n");
+                assert(!"Value format unsupported");
+            }
+
+        }
+    }
+    va_end(l);
+
+    BCValue result = bc->run(self->c, f.FunctionIndex, args, nArgs);
     return result.imm32.imm32;
 }
 void MetaCCodegen_End(metac_bytecode_ctx_t* self)
 {
     bc->Finalize(self->c);
-/*
+
     if (bc == &Printer_interface)
     {
         Printer* printer = (Printer*)self->c;
         printf("%s\n\n", printer->BufferStart);
     }
-*/
+
 }
 
 void MetaCCodegen_Init(metac_bytecode_ctx_t* self, metac_alloc_t* parentAlloc)
@@ -182,11 +218,13 @@ metac_bytecode_function_t MetaCCodegen_GenerateFunction(metac_bytecode_ctx_t* ct
     }
     bc->Comment(c, "Function body end");
 
+    bc->endFunction(c, result.FunctionIndex);
+/*
     if (bc == &BCGen_interface)
     {
         BCGen_PrintCode(c, 0, 600);
     }
-
+*/
     return result;
 }
 static BCValue MetaCCodegen_doExpression(metac_bytecode_ctx_t* ctx, metac_sema_expression_t* exp)
@@ -377,7 +415,8 @@ void MetaCCodegen_doStatement(metac_bytecode_ctx_t* ctx,
                 }
                 bc->endJmp(c, skipElse, bc->genLabel(c));
             }
-        }
+        } break;
+
         default:
         {
             printf("Statement unsupported %s\n", StatementKind_toChars(stmt->StmtKind));

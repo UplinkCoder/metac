@@ -2745,7 +2745,7 @@ static inline void BCGen_Ret(BCGen* self, const BCValue* val)
     LongInst inst = ((BCTypeEnum_basicTypeSize(val->type.type) == 8) ? LongInst_Ret64 : LongInst_Ret32);
     _Bool newValTemp = 0;
     BCValue newVal;
-    uint32_t hi;
+    uint32_t hi = 0;
 
     if (val->vType == BCValueType_Immediate)
     {

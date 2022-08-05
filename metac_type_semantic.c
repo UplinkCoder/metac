@@ -254,6 +254,27 @@ static inline uint32_t Align(uint32_t size, uint32_t alignment)
     return (alignSize & alignMask);
 }
 
+metac_type_index_t MetaCSemantic_GetElementType(metac_semantic_state_t* self,
+                                                metac_type_index_t typeIndex)
+{
+    metac_type_index_t result = {0};
+
+    switch(TYPE_INDEX_KIND(typeIndex))
+    {
+        case type_array:
+        {
+            metac_type_array_t* arrayType = ArrayTypePtr(self, TYPE_INDEX_INDEX(typeIndex));
+            result = arrayType->ElementType;
+        } break;
+        case type_ptr:
+        {
+            metac_type_array_t* ptrType = PtrTypePtr(self, TYPE_INDEX_INDEX(typeIndex));
+            result = ptrType->ElementType;
+        } break;
+    }
+
+    return result;
+}
 
 uint32_t MetaCSemantic_GetTypeAlignment(metac_semantic_state_t* self,
                                         metac_type_index_t typeIndex)
