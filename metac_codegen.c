@@ -191,8 +191,10 @@ metac_bytecode_function_t MetaCCodegen_GenerateFunction(metac_bytecode_ctx_t* ct
 }
 static BCValue MetaCCodegen_doExpression(metac_bytecode_ctx_t* ctx, metac_sema_expression_t* exp)
 {
-    //BCType expType = MetaCCodegen_GetBCType(ctx, exp->TypeIndex);
+    BCType expType = MetaCCodegen_GetBCType(ctx, exp->TypeIndex);
     BCValue v;
+    if (exp->Kind != exp_signed_integer)
+        v = bc->genTemporary(ctx->c, expType);
     WalkTree(ctx->c, &v, exp, &ctx->Vstore);
     return v;
 }
@@ -355,7 +357,27 @@ void MetaCCodegen_doStatement(metac_bytecode_ctx_t* ctx,
             sema_stmt_exp_t* expStmt = cast(sema_stmt_exp_t*) stmt;
             MetaCCodegen_doExpression(ctx, expStmt->Expression);
         } break;
+        case stmt_if:
+        {
+            sema_stmt_if_t* ifStmt = cast(sema_stmt_if_t*) stmt;
+            BCValue cond = MetaCCodegen_doExpression(ctx, ifStmt->IfCond);
+            CndJmpBegin cj = bc->beginCndJmp(c, &cond, false);
+            {
+                MetaCCodegen_doStatement(ctx, ifStmt->IfBody);
+            }
+            BCAddr skipElse;
+            if (METAC_NODE(ifStmt->ElseBody) != emptyNode)
+                skipElse =  bc->beginJmp(c);
+            bc->endCndJmp(c, &cj, bc->genLabel(c));
 
+            if (METAC_NODE(ifStmt->ElseBody) != emptyNode)
+            {
+                {
+                    MetaCCodegen_doStatement(ctx, ifStmt->ElseBody);
+                }
+                bc->endJmp(c, skipElse, bc->genLabel(c));
+            }
+        }
         default:
         {
             printf("Statement unsupported %s\n", StatementKind_toChars(stmt->StmtKind));

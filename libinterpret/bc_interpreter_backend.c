@@ -1232,54 +1232,54 @@ BCValue BCGen_interpret(BCGen* self, uint32_t fnIdx, BCValue* args, uint32_t n_a
             break;
         case LongInst_ImmEq:
             {
-                cond = !((*opRef) == imm32c);
+               cond = ((*opRef) == imm32c);
             }
             break;
         case LongInst_ImmNeq:
             {
-                cond = !((*opRef) != imm32c);
+               cond = ((*opRef) != imm32c);
             }
             break;
 
         case LongInst_ImmUlt:
             {
-                cond = !(((int64_t)(*opRef)) < cast(uint32_t)hi);
+               cond = (((int64_t)(*opRef)) < cast(uint32_t)hi);
             }
             break;
         case LongInst_ImmUgt:
             {
-                cond = !(((uint64_t)(*opRef)) > cast(uint32_t)hi);
+               cond = (((uint64_t)(*opRef)) > cast(uint32_t)hi);
             }
             break;
         case LongInst_ImmUle:
             {
-                cond = !(((uint64_t)(*opRef)) <= cast(uint32_t)hi);
+               cond = (((uint64_t)(*opRef)) <= cast(uint32_t)hi);
             }
             break;
         case LongInst_ImmUge:
             {
-                cond = !(((uint64_t)(*opRef)) >= cast(uint32_t)hi);
+               cond = (((uint64_t)(*opRef)) >= cast(uint32_t)hi);
             }
             break;
 
         case LongInst_ImmLt:
             {
-                cond = !((*opRef) < imm32c);
+               cond = ((*opRef) < imm32c);
             }
             break;
         case LongInst_ImmGt:
             {
-                cond = !((*opRef) > imm32c);
+               cond = ((*opRef) > imm32c);
             }
             break;
         case LongInst_ImmLe:
             {
-                cond = !((*opRef) <= imm32c);
+               cond = ((*opRef) <= imm32c);
             }
             break;
         case LongInst_ImmGe:
             {
-                cond = !((*opRef) >= imm32c);
+               cond = ((*opRef) >= imm32c);
             }
             break;
 
@@ -1356,32 +1356,32 @@ BCValue BCGen_interpret(BCGen* self, uint32_t fnIdx, BCValue* args, uint32_t n_a
             break;
         case LongInst_FGt32 :
             {
-                cond = !(flhs > frhs);
+               cond = (flhs > frhs);
             }
             break;
         case LongInst_FGe32 :
             {
-                cond = !(flhs >= frhs);
+               cond = (flhs >= frhs);
             }
             break;
         case LongInst_FEq32 :
             {
-                cond = !(flhs == frhs);
+               cond = (flhs == frhs);
             }
             break;
         case LongInst_FNeq32 :
             {
-                cond = !(flhs != frhs);
+               cond = (flhs != frhs);
             }
             break;
         case LongInst_FLt32 :
             {
-                cond = !(flhs < frhs);
+               cond = (flhs < frhs);
             }
             break;
         case LongInst_FLe32 :
             {
-                cond = !(flhs <= frhs);
+               cond = (flhs <= frhs);
             }
             break;
         case LongInst_F32ToF64 :
@@ -1440,32 +1440,32 @@ BCValue BCGen_interpret(BCGen* self, uint32_t fnIdx, BCValue* args, uint32_t n_a
             break;
         case LongInst_FEq64 :
             {
-                cond = !(dlhs == drhs);
+               cond = (dlhs == drhs);
             }
             break;
         case LongInst_FNeq64 :
             {
-                cond = !(dlhs < drhs);
+               cond = (dlhs < drhs);
             }
             break;
         case LongInst_FLt64 :
             {
-                cond = !(dlhs < drhs);
+               cond = (dlhs < drhs);
             }
             break;
         case LongInst_FLe64 :
             {
-                cond = !(dlhs <= drhs);
+               cond = (dlhs <= drhs);
             }
             break;
         case LongInst_FGt64 :
             {
-                cond = !(dlhs > drhs);
+               cond = (dlhs > drhs);
             }
             break;
         case LongInst_FGe64 :
             {
-                cond = !(dlhs >= drhs);
+               cond = (dlhs >= drhs);
             }
             break;
 
@@ -1535,13 +1535,13 @@ BCValue BCGen_interpret(BCGen* self, uint32_t fnIdx, BCValue* args, uint32_t n_a
             break;
         case LongInst_Eq:
             {
-                cond = !((*lhsRef) == (*rhs));
+               cond = ((*lhsRef) == (*rhs));
             }
             break;
 
         case LongInst_Neq:
             {
-                cond = !((*lhsRef) != *rhs);
+               cond = ((*lhsRef) != *rhs);
             }
             break;
 
@@ -1553,43 +1553,43 @@ BCValue BCGen_interpret(BCGen* self, uint32_t fnIdx, BCValue* args, uint32_t n_a
 
         case LongInst_Ult:
             {
-                cond = !(((uint64_t)(*lhsRef)) < ((uint64_t)*rhs));
+               cond = (((uint64_t)(*lhsRef)) < ((uint64_t)*rhs));
             }
             break;
         case LongInst_Ugt:
             {
-                cond = !((uint64_t)(*lhsRef) > (uint64_t)*rhs);
+               cond = ((uint64_t)(*lhsRef) > (uint64_t)*rhs);
             }
             break;
         case LongInst_Ule:
             {
-                cond = !(((uint64_t)(*lhsRef)) <= ((uint64_t)*rhs));
+               cond = (((uint64_t)(*lhsRef)) <= ((uint64_t)*rhs));
             }
             break;
         case LongInst_Uge:
             {
-                cond = !(((uint64_t)(*lhsRef)) >= ((uint64_t)*rhs));
+               cond = (((uint64_t)(*lhsRef)) >= ((uint64_t)*rhs));
             }
             break;
 
         case LongInst_Lt:
             {
-                cond = !((*lhsRef) < *rhs);
+               cond = ((*lhsRef) < *rhs);
             }
             break;
         case LongInst_Gt:
             {
-                cond = !((*lhsRef) > *rhs);
+               cond = ((*lhsRef) > *rhs);
             }
             break;
         case LongInst_Le:
             {
-                cond = !((*lhsRef) <= *rhs);
+               cond = ((*lhsRef) <= *rhs);
             }
             break;
         case LongInst_Ge:
             {
-                cond = !((*lhsRef) >= *rhs);
+               cond = ((*lhsRef) >= *rhs);
             }
             break;
 #if 0
@@ -1647,7 +1647,7 @@ BCValue BCGen_interpret(BCGen* self, uint32_t fnIdx, BCValue* args, uint32_t n_a
             break;
         case LongInst_JmpFalse:
             {
-                if (cond != 0)
+                if (cond == 0)
                 {
                     state.ip = hi;
                 }
@@ -1655,7 +1655,7 @@ BCValue BCGen_interpret(BCGen* self, uint32_t fnIdx, BCValue* args, uint32_t n_a
             break;
         case LongInst_JmpTrue:
             {
-                if (cond == 0)
+                if (cond != 0)
                 {
                     state.ip = hi;
                 }

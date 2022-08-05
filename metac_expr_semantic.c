@@ -175,6 +175,10 @@ metac_sema_expression_t* MetaCSemantic_doExprSemantic_(metac_semantic_state_t* s
         break;
         case exp_eq:
         case exp_neq:
+        case exp_lt:
+        case exp_le:
+        case exp_gt:
+        case exp_ge:
             //TODO assert that E1 and E2 are comperable
         case exp_andand:
         case exp_oror:

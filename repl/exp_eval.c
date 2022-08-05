@@ -243,9 +243,24 @@ void WalkTree(void* c, BCValue* result,
             bc->Neq3(c, result, lhs, rhs);
         } break;
 
-        case exp_eq:
+        case exp_lt:
         {
-            bc->Eq3(c, result, lhs, rhs);
+            bc->Lt3(c, result, lhs, rhs);
+        } break;
+
+        case exp_le:
+        {
+            bc->Le3(c, result, lhs, rhs);
+        } break;
+
+        case exp_ge:
+        {
+            bc->Ge3(c, result, lhs, rhs);
+        } break;
+
+        case exp_gt:
+        {
+            bc->Gt3(c, result, lhs, rhs);
         } break;
 
         case exp_add:
@@ -268,7 +283,7 @@ void WalkTree(void* c, BCValue* result,
         {
             bc->Mod3(c, result, lhs, rhs);
         } break;
-        // case exp_andand:
+        case exp_andand:
         case exp_and:
         {
             bc->And3(c, result, lhs, rhs);

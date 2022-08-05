@@ -15,6 +15,11 @@ typedef struct metac_bytecode_function_t
     uint32_t FunctionIndex;
 } metac_bytecode_function_t;
 
+typedef struct function_metadata_t
+{
+    metac_parser_t* Parser;
+} function_metadata_t;
+
 typedef struct metac_bytecode_switch_t
 {
     /// expression to compare case against
@@ -41,6 +46,7 @@ typedef struct metac_bytecode_ctx_t
 
     AT(transient) AT(per_function) uint32_t VariablesCount;
     AT(transient) AT(per_function) ARENA_ARRAY(BCAddr, Breaks);
+    AT(transient) AT(per_function) ARENA_ARRAY(BCAddr, Continues);
 
     AT(transient) AT(per_function) ARENA_ARRAY(metac_bytecode_switch_t, SwitchStack);
 
