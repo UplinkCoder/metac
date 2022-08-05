@@ -353,7 +353,8 @@ metac_sema_expression_t* MetaCSemantic_doExprSemantic_(metac_semantic_state_t* s
                 {
                     metac_enum_member_t* enumMember = cast(metac_enum_member_t*)node;
                     // result->Kind =enumMember->Value.Kind;
-                    result = enumMember;
+                    // I don't love this cast but oh well
+                    result = cast(metac_sema_expression_t*)enumMember;
                 }
                 else
                 {

@@ -197,7 +197,8 @@ metac_type_index_t MetaCSemantic_CommonSubtype(metac_semantic_state_t* self,
                                                const metac_type_index_t a,
                                                const metac_type_index_t b)
 {
-        metac_type_index_t result = {-1};
+    metac_type_index_t result = {-1};
+
     if (a.v == b.v)
         result = a;
     else
@@ -211,7 +212,8 @@ metac_type_index_t MetaCSemantic_CommonSubtype(metac_semantic_state_t* self,
             }
         }
     }
-        return result;
+    
+    return result;
 }
 
 uint32_t FieldHash(metac_type_aggregate_field_t* field)
@@ -261,14 +263,14 @@ metac_type_index_t MetaCSemantic_GetElementType(metac_semantic_state_t* self,
 
     switch(TYPE_INDEX_KIND(typeIndex))
     {
-        case type_array:
+        case type_index_array:
         {
             metac_type_array_t* arrayType = ArrayTypePtr(self, TYPE_INDEX_INDEX(typeIndex));
             result = arrayType->ElementType;
         } break;
-        case type_ptr:
+        case type_index_ptr:
         {
-            metac_type_array_t* ptrType = PtrTypePtr(self, TYPE_INDEX_INDEX(typeIndex));
+            metac_type_ptr_t* ptrType = PtrTypePtr(self, TYPE_INDEX_INDEX(typeIndex));
             result = ptrType->ElementType;
         } break;
     }
@@ -493,11 +495,11 @@ void MetaCSemantic_ComputeEnumValues(metac_semantic_state_t* self,
             i++)
         {
 
-            sema_decl_enum_member_t* semaMember =
+            metac_enum_member_t* semaMember =
                 semaEnum->Members + i;
-            semaMember->DeclKind = decl_enum_member;
+            semaMember->Header.Kind = decl_enum_member;
             scope_insert_error_t gotInserted =
-                MetaCSemantic_RegisterInScope(self, member->Name, semaMember);
+                MetaCSemantic_RegisterInScope(self, member->Name, METAC_NODE(semaMember));
 
       //      assert(gotInserted != success ||
       //             MetaCSemantic_LookupIdentifier(self, member->Name) == semaMember);
@@ -601,7 +603,7 @@ metac_type_index_t MetaCSemantic_TypeSemantic(metac_semantic_state_t* self,
             result = MetaCTypeTable_AddEnumType(&self->EnumTypeTable, &tmpSemaEnum);
 
             keepEnumScope = true;
-            MetaCSemantic_RegisterInScope(self, tmpSemaEnum.Name, EnumTypePtr(self, result.Index));
+            MetaCSemantic_RegisterInScope(self, tmpSemaEnum.Name, cast(metac_node_t)EnumTypePtr(self, result.Index));
         }
 
         #define ISOLATED_ENUM_SCOPE 0
@@ -616,7 +618,7 @@ metac_type_index_t MetaCSemantic_TypeSemantic(metac_semantic_state_t* self,
                 metac_enum_member_t* member = tmpSemaEnum.Members + memberIndex;
 
                 scope_insert_error_t inserted =
-                    MetaCSemantic_RegisterInScope(self, member->Identifier, member);
+                    MetaCSemantic_RegisterInScope(self, member->Identifier, METAC_NODE(member));
                 if(inserted != success)
                 {
                     // SemaError(member, "Couldn't be inserted into the scope");

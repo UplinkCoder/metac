@@ -112,7 +112,7 @@ void MetaCSemantic_Init(metac_semantic_state_t* self, metac_parser_t* parser,
 
     self->SwitchStackCapacity = 4;
     self->SwitchStackSize = 0;
-    self->SwitchStack = (sema_stmt_switch_t**)
+    self->SwitchStack = cast(sema_stmt_switch_t**)
         calloc(sizeof(sema_stmt_switch_t*), self->SwitchStackCapacity);
 
     self->Waiters.WaiterLock._rwctr = 0;
@@ -277,33 +277,12 @@ sema_stmt_switch_t* MetaCSemantic_doSwitchSemantic(metac_semantic_state_t* self,
     semaSwitchStatement->SwitchExp =
         MetaCSemantic_doExprSemantic(self, switchStatement->SwitchExp, 0);
 
-    self->SwitchStack[self->SwitchStackSize++] = &semaSwitchStatement;
+    self->SwitchStack[self->SwitchStackSize++] = semaSwitchStatement;
     semaSwitchStatement->SwitchBody =
         cast(sema_stmt_block_t*)MetaCSemantic_doStatementSemantic(self, switchStatement->SwitchBody);
 
-
     uint32_t statementCount =
         semaSwitchStatement->SwitchBody->StatementCount;
-
-    for(uint32_t i = 0;
-        i < statementCount;
-        i++)
-    {
-        sema_stmt_case_t* s = semaSwitchStatement->SwitchBody->Body + i;
-        if (s->StmtKind == stmt_case)
-        {
-            if (METAC_NODE(s->CaseBody) != emptyNode)
-            {
-                printf("Saw some casebody\n");
-            }
-            else
-            {
-                printf("no case body\n");
-            }
-        }
-
-    }
-    printf("statementCount = %u\n", statementCount);
 
     self->SwitchStack[--self->SwitchStackSize];
 
@@ -314,25 +293,25 @@ sema_stmt_casebody_t* MetaCSemantic_doCaseBodySemantic(metac_semantic_state_t* s
 {
     sema_stmt_casebody_t* result = 0;
 
-    STACK_ARENA_ARRAY(metac_statement_t*, caseBody, 16, &self->Allocator);
+    STACK_ARENA_ARRAY(metac_statement_t*, caseBodyStatements, 16, &self->Allocator);
     metac_statement_t* currentStatement = caseStmt->CaseBody;
     while (METAC_NODE(currentStatement) != emptyNode)
     {
-        ARENA_ARRAY_ADD(caseBody, currentStatement);
+        ARENA_ARRAY_ADD(caseBodyStatements, currentStatement);
         currentStatement = currentStatement->Next;
     }
 
-    if (caseBodyCount > 1)
+    if (caseBodyStatementsCount > 1)
     {
         // AllocNewSemaStatement
-        AllocNewSemaCasebodyStatement(self, caseStmt, caseBodyCount, &result);
+        AllocNewSemaCasebodyStatement(self, caseBodyStatementsCount, cast(void**)&result);
 
         for(uint32_t stmtIndex = 0;
-            stmtIndex < caseBodyCount;
+            stmtIndex < caseBodyStatementsCount;
             stmtIndex++)
         {
             result->Statements[stmtIndex] =
-                MetaCSemantic_doStatementSemantic(self, caseBody[stmtIndex]);
+                MetaCSemantic_doStatementSemantic(self, caseBodyStatements[stmtIndex]);
         }
     }
     else
@@ -341,7 +320,7 @@ sema_stmt_casebody_t* MetaCSemantic_doCaseBodySemantic(metac_semantic_state_t* s
             MetaCSemantic_doStatementSemantic(self, caseStmt->CaseBody);
     }
 
-    ARENA_ARRAY_FREE(caseBody);
+    ARENA_ARRAY_FREE(caseBodyStatements);
     return  result;
 
 }
@@ -360,7 +339,7 @@ metac_sema_statement_t* MetaCSemantic_doStatementSemantic_(metac_semantic_state_
         case stmt_exp:
         {
             stmt_exp_t* expStatement = (stmt_exp_t*) stmt;
-            sema_stmt_exp_t* sse = AllocNewSemaStatement(self, stmt_exp, &result);
+            sema_stmt_exp_t* sse = AllocNewSemaStatement(self, stmt_exp, cast(void**)&result);
             sse->Expression =
                 MetaCSemantic_doExprSemantic(self, expStatement->Expression, 0);
         } break;
@@ -452,7 +431,7 @@ metac_sema_statement_t* MetaCSemantic_doStatementSemantic_(metac_semantic_state_
             stmt_block_t* blockStatement = (stmt_block_t*) stmt;
             uint32_t statementCount = blockStatement->StatementCount;
             sema_stmt_block_t* semaBlockStatement =
-                AllocNewSemaBlockStatement(self, 0, statementCount, &result);
+                AllocNewSemaBlockStatement(self, 0, statementCount, cast(void**)&result);
 
             metac_scope_owner_t parent = {scope_owner_V(scope_owner_statement,
                                            BlockStatementIndex(self, semaBlockStatement))};
@@ -656,13 +635,13 @@ sema_decl_function_t* MetaCSemantic_doFunctionSemantic(metac_semantic_state_t* s
         i < func->ParameterCount;
         i++)
     {
-        decl_variable_t* var = cast(metac_node_t)(f->Parameters +i);
+        decl_variable_t* var = cast(decl_variable_t*)(f->Parameters +i);
         params[i].Storage.v = STORAGE_V(storage_stack, frameOffset);
         frameOffset += Align(MetaCSemantic_GetTypeSize(self, params[i].TypeIndex), 4);
 
         scope_insert_error_t result =
             MetaCScope_RegisterIdentifier(f->Scope, params[i].VarIdentifier,
-                                          var);
+                                          cast(metac_node_t)var);
     }
     f->FrameOffset = frameOffset;
     f->FunctionBody = cast(sema_stmt_block_t*)

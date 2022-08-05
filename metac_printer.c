@@ -136,6 +136,7 @@ static inline void PrintToken(metac_printer_t* self,
         break;
     }
 }
+#undef CASE_
 
 static inline void PrintU64(metac_printer_t* self, uint64_t value)
 {
@@ -1525,7 +1526,7 @@ static inline void PrintSemaStatement(metac_printer_t* self, metac_semantic_stat
             sema_stmt_for_t* stmt_for = cast(sema_stmt_for_t*) stmt;
             PrintKeyword(self, tok_kw_for);
             PrintChar(self, '(');
-            if (stmt_for->ForInit != cast(metac_node_t) emptyPointer)
+            if (stmt_for->ForInit != emptyPointer)
             {
                 MetaCPrinter_PrintNode(self, stmt_for->ForInit, 0);
             }

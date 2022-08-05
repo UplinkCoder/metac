@@ -2528,7 +2528,7 @@ uint32_t HashDecl(metac_declaration_t* decl)
             else
             {
                 result = CRC32C_VALUE(
-                    (type_key ^ type->TypeModifiers & typemod_unsigned),
+                    (type_key ^ (type->TypeModifiers & typemod_unsigned)),
                     type->TypeKind
                 );
             }
@@ -2845,7 +2845,7 @@ metac_declaration_t* MetaCParser_ParseDeclaration(metac_parser_t* self, metac_de
                     //TODO make sure this is only done for structs
                     MetaCParser_Match(self, tok_colon);
                     metac_token_t* bitSz = MetaCParser_Match(self, tok_uint);
-                    printf("ignoring bitfield spec : %d\n", bitSz->ValueI64);
+                    printf("ignoring bitfield spec : %d\n", cast(int)bitSz->ValueI64);
                 }
 
                 if (MetaCParser_PeekMatch(self, tok_assign, 1))
@@ -3072,7 +3072,7 @@ metac_statement_t* MetaCParser_ParseStatement(metac_parser_t* self,
         }
 
         switch_->SwitchBody =
-            (metac_statement_t*)MetaCParser_ParseBlockStatement(self, result, 0);
+            MetaCParser_ParseBlockStatement(self, result, 0);
         hash = CRC32C_VALUE(hash, switch_->SwitchBody->Hash);
         switch_->Hash = hash;
     }

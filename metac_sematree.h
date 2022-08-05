@@ -195,7 +195,7 @@ typedef struct sema_stmt_for_t
 {
     SEMA_STATEMENT_HEADER
 
-    metac_sema_expression_t* ForInit;
+    metac_node_t ForInit;
     metac_sema_expression_t* ForCond;
     metac_sema_expression_t* ForPostLoop;
 

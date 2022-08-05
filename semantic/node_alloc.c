@@ -350,8 +350,8 @@ sema_stmt_block_t* AllocNewSemaBlockStatement(metac_semantic_state_t* self,
 
     {
         result = self->BlockStatements + INC(self->BlockStatements_size);
-        metac_statement_t* body =
-            AllocateArray(self->BS_Allocator, metac_statement_t*, statementCount);
+        metac_sema_statement_t** body =
+            AllocateArray(self->BS_Allocator, metac_sema_statement_t*, statementCount);
         result->Body = body;
         result->StmtKind = stmt_block;
         result->StatementCount = statementCount;
@@ -363,7 +363,7 @@ sema_stmt_block_t* AllocNewSemaBlockStatement(metac_semantic_state_t* self,
 }
 
 sema_stmt_casebody_t* AllocNewSemaCasebodyStatement(metac_semantic_state_t* self,
-                                                    sema_stmt_case_t* Parent, uint32_t statementCount,
+                                                    uint32_t statementCount,
                                                     void** result_ptr)
 {
     sema_stmt_casebody_t* result;
@@ -376,7 +376,7 @@ sema_stmt_casebody_t* AllocNewSemaCasebodyStatement(metac_semantic_state_t* self
 
         result->StatementCount = statementCount;
         result->Statements =
-            AllocateArray(self->BS_Allocator, metac_statement_t*, statementCount);
+            AllocateArray(self->BS_Allocator, metac_sema_statement_t*, statementCount);
         result->Serial = INC(_nodeCounter);
     }
     (*result_ptr) = result;

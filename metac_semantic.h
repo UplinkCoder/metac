@@ -146,7 +146,7 @@ typedef struct metac_semantic_state_t
     AT(transient) uint32_t ExpressionStackSize;
     AT(transient) uint32_t ExpressionStackCapacity;
 
-    AT(transient) metac_switch_state_t** SwitchStack;
+    AT(transient) sema_stmt_switch_t** SwitchStack;
     AT(transient) uint32_t SwitchStackSize;
     AT(transient) uint32_t SwitchStackCapacity;
 
@@ -246,7 +246,7 @@ sema_stmt_block_t* AllocNewSemaBlockStatement(metac_semantic_state_t* self,
                                               void** result_ptr);
 
 sema_stmt_casebody_t* AllocNewSemaCasebodyStatement(metac_semantic_state_t* self,
-                                                    sema_stmt_case_t* Parent, uint32_t statementCount,
+                                                    uint32_t statementCount,
                                                     void** result_ptr);
 
 metac_scope_t* AllocNewScope(metac_semantic_state_t* self, metac_scope_t* parent, metac_scope_owner_t owner);
