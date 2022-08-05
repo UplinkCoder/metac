@@ -1031,10 +1031,19 @@ static inline void PrintSemaType(metac_printer_t* self,
                 PrintIdentifier(self, structName);
             }
         } break;
-        case type_index_ptr:
+        case type_index_union:
         {
-
+            uint32_t unionIdx = TYPE_INDEX_INDEX(typeIndex);
+            metac_identifier_ptr_t unionName =
+                UnionPtr(sema, unionIdx)->Identifier;
+            PrintString(self, "union ", sizeof("union"));
+            if (structName.v != empty_identifier.v)
+            {
+                PrintIdentifier(self, unionName);
+            }
         } break;
+
+        default: assert(0);
     }
 }
 static inline void PrintSemaVariable(metac_printer_t* self,
