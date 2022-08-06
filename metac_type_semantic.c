@@ -521,11 +521,11 @@ metac_type_index_t MetaCSemantic_TypeSemantic(metac_semantic_state_t* self,
 
     metac_type_kind_t typeKind = type->TypeKind;
 
-    if (type->DeclKind == decl_type && isBasicType(typeKind))
+    if (type->Kind == decl_type && isBasicType(typeKind))
     {
         result = MetaCSemantic_GetTypeIndex(self, typeKind, type);
     }
-    else if (type->DeclKind == decl_type_array)
+    else if (type->Kind == decl_type_array)
     {
         decl_type_array_t* arrayType =
             cast(decl_type_array_t*)type;
@@ -543,7 +543,7 @@ metac_type_index_t MetaCSemantic_TypeSemantic(metac_semantic_state_t* self,
                                         elementType,
                                         (uint32_t)dim->ValueU64);
     }
-    else if (type->DeclKind == decl_type_typedef)
+    else if (type->Kind == decl_type_typedef)
     {
         decl_type_typedef_t* typedef_ = cast(decl_type_typedef_t*) type;
         metac_type_index_t elementTypeIndex =
@@ -568,7 +568,7 @@ metac_type_index_t MetaCSemantic_TypeSemantic(metac_semantic_state_t* self,
         scope_insert_error_t scopeInsertError =
             MetaCSemantic_RegisterInScope(self, typedef_->Identifier, (metac_node_t)semaTypedef);
     }
-    else if (type->DeclKind == decl_type_enum)
+    else if (type->Kind == decl_type_enum)
     {
         decl_type_enum_t* enm = cast(decl_type_enum_t*) type;
 
@@ -632,12 +632,12 @@ metac_type_index_t MetaCSemantic_TypeSemantic(metac_semantic_state_t* self,
         // STACK_ARENA_FREE(self->Allocator, members);
         // STACK_ARENA_FREE(self->Allocator, semaMembers);
     }
-    else if (IsAggregateTypeDecl(type->DeclKind))
+    else if (IsAggregateTypeDecl(type->Kind))
     {
         decl_type_struct_t* agg = (decl_type_struct_t*) type;
-        if (type->DeclKind == decl_type_struct)
+        if (type->Kind == decl_type_struct)
             typeKind = type_struct;
-        else if (type->DeclKind == decl_type_union)
+        else if (type->Kind == decl_type_union)
             typeKind = type_union;
         else
             assert(0);
@@ -646,7 +646,7 @@ metac_type_index_t MetaCSemantic_TypeSemantic(metac_semantic_state_t* self,
         ARENA_ARRAY_ENSURE_SIZE(tmpFields, agg->FieldCount);
 
         metac_type_aggregate_t tmpSemaAggMem = {(metac_declaration_kind_t)0};
-        tmpSemaAggMem.Header.Kind = agg->DeclKind;
+        tmpSemaAggMem.Header.Kind = agg->Kind;
         metac_type_aggregate_t* tmpSemaAgg = &tmpSemaAggMem;
         tmpSemaAgg->Fields = tmpFields;
         tmpSemaAgg->FieldCount = agg->FieldCount;
@@ -696,7 +696,7 @@ metac_type_index_t MetaCSemantic_TypeSemantic(metac_semantic_state_t* self,
         ARENA_ARRAY_FREE(tmpFields);
         MetaCSemantic_PopTemporaryScope(self);
     }
-    else if (IsPointerType(type->DeclKind))
+    else if (IsPointerType(type->Kind))
     {
         metac_type_index_t elementTypeIndex = {0};
         decl_type_ptr_t* typePtr = (decl_type_ptr_t*) type;
@@ -705,7 +705,7 @@ metac_type_index_t MetaCSemantic_TypeSemantic(metac_semantic_state_t* self,
         assert(elementTypeIndex.v && elementTypeIndex.v != -1);
         result = MetaCSemantic_GetPtrTypeOf(self, elementTypeIndex);
     }
-    else if (type->DeclKind == decl_type_functiontype)
+    else if (type->Kind == decl_type_functiontype)
     {
         decl_type_functiontype_t* functionType =
             (decl_type_functiontype_t*) type;
@@ -745,9 +745,9 @@ metac_type_index_t MetaCSemantic_TypeSemantic(metac_semantic_state_t* self,
                 MetaCTypeTable_AddFunctionType(&self->FunctionTypeTable, &key);
         }
     }
-    else if (type->DeclKind == decl_type && type->TypeKind == type_identifier)
+    else if (type->Kind == decl_type && type->TypeKind == type_identifier)
     {
-        //printf("MetaCNodeKind_toChars: %s\n", MetaCNodeKind_toChars((metac_node_kind_t)type->DeclKind));
+        //printf("MetaCNodeKind_toChars: %s\n", MetaCNodeKind_toChars((metac_node_kind_t)type->Kind));
         //printf("TypeIdentifier: %s\n", IdentifierPtrToCharPtr(self->ParserIdentifierTable, type->TypeIdentifier));
 LtryAgian: {}
         metac_node_t node =

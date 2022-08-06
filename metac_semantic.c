@@ -335,7 +335,7 @@ metac_sema_statement_t* MetaCSemantic_doStatementSemantic_(metac_semantic_state_
     // metac_printer_t printer;
     // MetaCPrinter_Init(&printer, self->ParserIdentifierTable, self->ParserStringTable);
 
-    switch (stmt->StmtKind)
+    switch (stmt->Kind)
     {
         case stmt_exp:
         {
@@ -360,7 +360,7 @@ metac_sema_statement_t* MetaCSemantic_doStatementSemantic_(metac_semantic_state_
             // however let's be civil with the creation of new scopes
             // and only create one if the next statement is not a decl_stmt
             // scopes are expensive ...
-            if (METAC_NODE(stmt->Next) != emptyNode && stmt->Next->StmtKind != stmt_decl)
+            if (METAC_NODE(stmt->Next) != emptyNode && stmt->Next->Kind != stmt_decl)
             {
                 metac_scope_owner_t owner = {
                     scope_owner_V(scope_owner_statement, StatementIndex(self, semaDeclStatement))
@@ -703,7 +703,7 @@ metac_sema_declaration_t* MetaCSemantic_declSemantic(metac_semantic_state_t* sel
     metac_sema_declaration_t* result = cast(metac_sema_declaration_t*)0xFEFEFEFE;
     metac_identifier_ptr_t declId = {0};
 
-    switch(decl->DeclKind)
+    switch(decl->Kind)
     {
         case decl_function:
         {

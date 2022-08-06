@@ -2030,7 +2030,7 @@ LreturnExp:
 
 static inline bool IsDeclType(metac_declaration_t* decl)
 {
-    metac_declaration_kind_t kind = decl->DeclKind;
+    metac_declaration_kind_t kind = decl->Kind;
     return (kind == decl_type
          || kind == decl_type_struct
          || kind == decl_type_enum
@@ -2159,12 +2159,12 @@ decl_type_t* MetaCParser_ParseTypeDeclaration(metac_parser_t* self, metac_declar
             if (isStruct)
             {
                 struct_->TypeKind = type_struct;
-                struct_->DeclKind = decl_type_struct;
+                struct_->Kind = decl_type_struct;
             }
             else
             {
                 struct_->TypeKind = type_union;
-                struct_->DeclKind = decl_type_union;
+                struct_->Kind = decl_type_union;
             }
 
             if (MetaCParser_PeekMatch(self, tok_identifier, 1))
@@ -2221,18 +2221,18 @@ decl_type_t* MetaCParser_ParseTypeDeclaration(metac_parser_t* self, metac_declar
                     assert(decl->Hash != 0);
                     hash = CRC32C_VALUE(hash, decl->Hash);
 
-                    if (decl->DeclKind == decl_comment)
+                    if (decl->Kind == decl_comment)
                         continue;
 
-                    if (decl->DeclKind == decl_variable)
+                    if (decl->Kind == decl_variable)
                     {
                         field->Field = (decl_variable_t*)decl;
                     }
                     else
                     {
                         // make sure only struct or unions are anonymous
-                        assert(decl->DeclKind == decl_type_struct
-                            || decl->DeclKind == decl_type_union);
+                        assert(decl->Kind == decl_type_struct
+                            || decl->Kind == decl_type_union);
                         // he have to synthezise the variable
                         AllocNewDeclaration(decl_variable, &field->Field);
                         field->Field->VarType = cast(decl_type_t*)decl;
@@ -2393,12 +2393,12 @@ decl_parameter_list_t ParseParameterList(metac_parser_t* self,
 
         metac_declaration_t* paramDecl =
 			MetaCParser_ParseDeclaration(self, (metac_declaration_t*)parent);
-        if (paramDecl->DeclKind == decl_variable)
+        if (paramDecl->Kind == decl_variable)
         {
             param->Parameter = (decl_variable_t*)
                 paramDecl;
         }
-        else if (IsTypeDecl(paramDecl->DeclKind))
+        else if (IsTypeDecl(paramDecl->Kind))
         {
             // now we synthezie a variable without name
             decl_variable_t* var;
@@ -2502,7 +2502,7 @@ uint32_t HashDecl(metac_declaration_t* decl)
 {
     uint32_t result = 0;
 
-    switch(decl->DeclKind)
+    switch(decl->Kind)
     {
         case decl_label:
         {
@@ -3230,7 +3230,7 @@ metac_statement_t* MetaCParser_ParseStatement(metac_parser_t* self,
 
     if (result && !result->Hash)
     {
-        printf("Hash for %s unimplemented\n", StatementKind_toChars(result->StmtKind));
+        printf("Hash for %s unimplemented\n", StatementKind_toChars(result->Kind));
     }
 
     // if we didn't parse as a declaration try an expression as the last resort

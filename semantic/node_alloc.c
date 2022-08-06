@@ -132,20 +132,28 @@ metac_scope_t* MetaCScope_PushNewScope(metac_semantic_state_t* sema,
     return result;
 }
 
+#define BREAK_ON_SERIAL(NODE, SERIAL) do { \
+    if ((cast(metac_node_t)NODE)->Kind == node_exp_tuple) { \
+        for(uint32_t i = 0; i < cast(exp_tuple_t)) \
+    \ }
 
 metac_sema_expression_t* AllocNewSemaExpression(metac_semantic_state_t* self, metac_expression_t* expr)
 {
     metac_sema_expression_t* result = 0;
+    REALLOC_BOILERPLATE(self->Expressions);
 
-    REALLOC_BOILERPLATE(self->Expressions)
+    result = self->Expressions + self->Expressions_size;
 
     {
-        result = self->Expressions + INC(self->Expressions_size);
-        (*(metac_expression_header_t*) result) = (*(metac_expression_header_t*) expr);
+        metac_sema_expression_t exp;
+        METAC_COPY_HEADER(expr, &exp);
 
-        result->TypeIndex.v = 0;
-        result->Serial = INC(_nodeCounter);
+
+        exp.TypeIndex.v = 0;
+        exp.Serial = INC(_nodeCounter);
+        (*result) = exp;
     }
+
 
     if (expr->Kind == exp_tuple)
     {
@@ -236,9 +244,8 @@ sema_decl_variable_t* AllocNewSemaVariable(metac_semantic_state_t* self, decl_va
     result = self->Variables + INC(self->Variables_size);
     (*result_ptr) = (metac_sema_declaration_t*)result;
 
-    result->DeclKind = decl_variable;
+    result->Kind = decl_variable;
     result->Serial = INC(_nodeCounter);
-    decl->LocationIdx = result->LocationIdx;
 
 
     return result;
@@ -258,7 +265,7 @@ sema_decl_variable_t* AllocFunctionParameters(metac_semantic_state_t* self,
             i < parameterCount;
             i++)
         {
-            (result + i)->DeclKind = decl_parameter;
+            (result + i)->Kind = decl_parameter;
             (result + i)->Serial = INC(_nodeCounter);
         }
 
@@ -327,9 +334,13 @@ metac_sema_statement_t* AllocNewSemaStatement_(metac_semantic_state_t* self,
         result = self->Statements + INC(self->Statements_size);
 
         // result->Parent = 0;
-        result->StmtKind = kind;
+        result->Kind = kind;
         result->Serial = INC(_nodeCounter);
         // result->TypeIndex.v = 0;
+        if (result->Serial == 10921)
+        {
+            asm ("int $3");
+        }
     }
 
     *result_ptr = result;
@@ -353,7 +364,7 @@ sema_stmt_block_t* AllocNewSemaBlockStatement(metac_semantic_state_t* self,
         metac_sema_statement_t** body =
             AllocateArray(self->BS_Allocator, metac_sema_statement_t*, statementCount);
         result->Body = body;
-        result->StmtKind = stmt_block;
+        result->Kind = stmt_block;
         result->StatementCount = statementCount;
         result->Serial = INC(_nodeCounter);
     }

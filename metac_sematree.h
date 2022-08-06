@@ -55,6 +55,7 @@ typedef struct metac_sema_expression_header_t
 } metac_sema_expression_header_t;
 
 #pragma pack(push, 1)
+
 typedef struct metac_sema_expression_t
 {
     SEMA_EXPRESSION_HEADER
@@ -110,21 +111,12 @@ typedef struct metac_sema_expression_t
         // case identifier_exp :
         struct {
             uint32_t IdentifierKey;
-#ifdef ACCEL
             metac_identifier_ptr_t IdentifierPtr;
-#else
-            const char* Identifier;
-#endif
         };
         // case exp_string :
         struct {
             uint32_t StringKey;
-
-#ifdef ACCEL
             metac_identifier_ptr_t StringPtr;
-#else
-            const char* String;
-#endif
         };
         // case exp_char:
         struct {
@@ -136,11 +128,16 @@ typedef struct metac_sema_expression_t
         int64_t ValueI64;
         // case exp_unsigned_integer :
         uint64_t ValueU64;
+
+        uint8_t _Body[METAC_MAX_EXP_BODY_SIZE];
     };
 } metac_sema_expression_t;
 
+_Static_assert(sizeof(metac_sema_expression_t) - sizeof(metac_sema_expression_header_t) <= METAC_MAX_EXP_BODY_SIZE,
+    "METAC_MAX_EXP_BODY_SIZE is less than the actual expression body size");
+
 #define SEMA_STATEMENT_HEADER \
-    metac_statement_kind_t StmtKind; \
+    metac_statement_kind_t Kind; \
     uint32_t LocationIdx; \
     uint32_t Hash; \
     uint32_t Serial;
@@ -293,7 +290,7 @@ typedef struct sema_stmt_do_while_t
 
 typedef struct metac_sema_statement_t
 {
-    union // switch(StmtKind)
+    union // switch(Kind)
     {
         struct {
             SEMA_STATEMENT_HEADER

@@ -178,7 +178,7 @@ static inline void PrintParameterList(metac_printer_t* self,
 static inline void PrintVariable(metac_printer_t* self,
                                  decl_variable_t* variable)
 {
-    if (variable->VarType->DeclKind == decl_type_functiontype)
+    if (variable->VarType->Kind == decl_type_functiontype)
     {
         decl_type_functiontype_t *funcType =
             (decl_type_functiontype_t*) variable->VarType;
@@ -235,7 +235,7 @@ static inline void PrintParameterList(metac_printer_t* self,
 
 static inline void PrintType(metac_printer_t* self, decl_type_t* type)
 {
-    switch(type->DeclKind)
+    switch(type->Kind)
     {
         case decl_type_array:
         {
@@ -357,8 +357,8 @@ static inline void PrintComment(metac_printer_t* self,
 }
 static inline void PrintStatement(metac_printer_t* self, metac_statement_t* stmt)
 {
-    // printf("StmtKind: %s\n", StatementKind_toChars(stmt->StmtKind));
-    switch(stmt->StmtKind)
+    // printf("Kind: %s\n", StatementKind_toChars(stmt->Kind));
+    switch(stmt->Kind)
     {
         case stmt_return :
         {
@@ -419,13 +419,13 @@ static inline void PrintStatement(metac_printer_t* self, metac_statement_t* stmt
             PrintExpression(self, stmt_if_->IfCond);
             PrintChar(self, ')');
 
-            if (stmt_if_->IfBody->StmtKind != stmt_block)
+            if (stmt_if_->IfBody->Kind != stmt_block)
                 ++self->IndentLevel;
 
             PrintNewline(self);
             PrintIndent(self);
             PrintStatement(self, stmt_if_->IfBody);
-            if (stmt_if_->IfBody->StmtKind != stmt_block)
+            if (stmt_if_->IfBody->Kind != stmt_block)
                 --self->IndentLevel;
 
             PrintNewline(self);
@@ -434,13 +434,13 @@ static inline void PrintStatement(metac_printer_t* self, metac_statement_t* stmt
             if (stmt_if_->ElseBody != emptyPointer)
             {
                 PrintKeyword(self, tok_kw_else);
-                if (stmt_if_->ElseBody->StmtKind == stmt_if)
+                if (stmt_if_->ElseBody->Kind == stmt_if)
                 {
                     PrintSpace(self);
                 }
                 else
                 {
-                    if (stmt_if_->ElseBody->StmtKind != stmt_block)
+                    if (stmt_if_->ElseBody->Kind != stmt_block)
                         ++self->IndentLevel;
 
                     PrintNewline(self);
@@ -448,9 +448,9 @@ static inline void PrintStatement(metac_printer_t* self, metac_statement_t* stmt
                 }
                 PrintStatement(self, stmt_if_->ElseBody);
 
-                if (stmt_if_->ElseBody->StmtKind != stmt_if)
+                if (stmt_if_->ElseBody->Kind != stmt_if)
                 {
-                    if (stmt_if_->ElseBody->StmtKind != stmt_block)
+                    if (stmt_if_->ElseBody->Kind != stmt_block)
                         --self->IndentLevel;
                 }
 
@@ -523,11 +523,11 @@ static inline void PrintStatement(metac_printer_t* self, metac_statement_t* stmt
             PrintChar(self, ':');
             if (caseStatement->CaseBody != cast(metac_statement_t*) emptyPointer)
             {
-                if (caseStatement->CaseBody->StmtKind == stmt_block)
+                if (caseStatement->CaseBody->Kind == stmt_block)
                 {
                     PrintStatement(self, caseStatement->CaseBody);
                 }
-                else if (caseStatement->CaseBody->StmtKind == stmt_case)
+                else if (caseStatement->CaseBody->Kind == stmt_case)
                 {
                     PrintNewline(self);
                     PrintIndent(self);
@@ -544,7 +544,7 @@ static inline void PrintStatement(metac_printer_t* self, metac_statement_t* stmt
                         PrintStatement(self, stmt);
                         if (stmt->Next)
                         {
-                            if (stmt->StmtKind != stmt_decl)
+                            if (stmt->Kind != stmt_decl)
                             {
                                 PrintNewline(self);
                             }
@@ -605,7 +605,7 @@ static inline void PrintStatement(metac_printer_t* self, metac_statement_t* stmt
         default : {
             fprintf(stderr,
                 "Statement Kind: not handled by printer %s\n",
-                    StatementKind_toChars(stmt->StmtKind));
+                    StatementKind_toChars(stmt->Kind));
             assert(0);
         }
     }
@@ -639,7 +639,7 @@ static inline void PrintDeclaration(metac_printer_t* self,
 {
     bool printSemicolon = true;
 
-    switch (decl->DeclKind)
+    switch (decl->Kind)
     {
         case decl_type_enum:
         {
@@ -711,7 +711,7 @@ static inline void PrintDeclaration(metac_printer_t* self,
         case decl_type_struct :
         {
             decl_type_struct_t* struct_ = (decl_type_struct_t*) decl;
-            PrintKeyword(self, AggToken(decl->DeclKind));
+            PrintKeyword(self, AggToken(decl->Kind));
             if (struct_->Identifier.v != empty_identifier.v)
             {
                 PrintSpace(self);
@@ -1027,7 +1027,7 @@ static inline void PrintSemaType(metac_printer_t* self,
         case type_index_basic:
         {
             decl_type_t basicType = {(metac_declaration_kind_t)0};
-            basicType.DeclKind = decl_type;
+            basicType.Kind = decl_type;
             metac_type_kind_t Kind =
                 cast(metac_type_kind_t) TYPE_INDEX_INDEX(typeIndex);
             basicType.TypeKind = Kind;
@@ -1114,7 +1114,7 @@ static inline void PrintSemaDeclaration(metac_printer_t* self,
 {
     bool printSemicolon = true;
 
-    switch (semaDecl->DeclKind)
+    switch (semaDecl->Kind)
     {
         case decl_type_enum:
         {
@@ -1128,7 +1128,7 @@ static inline void PrintSemaDeclaration(metac_printer_t* self,
         case decl_type_struct :
         {
             metac_type_aggregate_t* struct_ = (metac_type_aggregate_t*) semaDecl;
-            PrintKeyword(self, AggToken(semaDecl->DeclKind));
+            PrintKeyword(self, AggToken(semaDecl->Kind));
             if (struct_->Identifier.v != empty_identifier.v)
             {
                 PrintSpace(self);
@@ -1430,8 +1430,8 @@ static inline void PrintSemaExpression(metac_printer_t* self,
 
 static inline void PrintSemaStatement(metac_printer_t* self, metac_semantic_state_t* sema, metac_sema_statement_t* stmt)
 {
-    // printf("StmtKind: %s\n", StatementKind_toChars(stmt->StmtKind));
-    switch(stmt->StmtKind)
+    // printf("Kind: %s\n", StatementKind_toChars(stmt->Kind));
+    switch(stmt->Kind)
     {
         case stmt_return :
         {
@@ -1492,12 +1492,12 @@ static inline void PrintSemaStatement(metac_printer_t* self, metac_semantic_stat
             PrintSemaExpression(self, sema, stmt_if_->IfCond);
             PrintChar(self, ')');
 
-            if (stmt_if_->IfBody->StmtKind != stmt_block)
+            if (stmt_if_->IfBody->Kind != stmt_block)
                 ++self->IndentLevel;
             PrintNewline(self);
             PrintIndent(self);
             PrintSemaStatement(self, sema, stmt_if_->IfBody);
-            if (stmt_if_->IfBody->StmtKind != stmt_block)
+            if (stmt_if_->IfBody->Kind != stmt_block)
             {
 
                 --self->IndentLevel;
@@ -1508,13 +1508,13 @@ static inline void PrintSemaStatement(metac_printer_t* self, metac_semantic_stat
             if (stmt_if_->ElseBody != emptyPointer)
             {
                 PrintKeyword(self, tok_kw_else);
-                if (stmt_if_->ElseBody->StmtKind == stmt_if)
+                if (stmt_if_->ElseBody->Kind == stmt_if)
                 {
                     PrintSpace(self);
                 }
                 else
                 {
-                    if (stmt_if_->ElseBody->StmtKind != stmt_block)
+                    if (stmt_if_->ElseBody->Kind != stmt_block)
                         ++self->IndentLevel;
 
                     PrintNewline(self);
@@ -1522,9 +1522,9 @@ static inline void PrintSemaStatement(metac_printer_t* self, metac_semantic_stat
                 }
                 PrintSemaStatement(self, sema, stmt_if_->ElseBody);
 
-                if (stmt_if_->ElseBody->StmtKind != stmt_if)
+                if (stmt_if_->ElseBody->Kind != stmt_if)
                 {
-                    if (stmt_if_->ElseBody->StmtKind != stmt_block)
+                    if (stmt_if_->ElseBody->Kind != stmt_block)
                         --self->IndentLevel;
                 }
 
@@ -1598,7 +1598,7 @@ static inline void PrintSemaStatement(metac_printer_t* self, metac_semantic_stat
             PrintChar(self, ':');
             if (caseStatement->CaseBody != cast(sema_stmt_casebody_t*) emptyPointer)
             {
-                if (caseStatement->CaseBody->StmtKind == stmt_case)
+                if (caseStatement->CaseBody->Kind == stmt_case)
                 {
                     caseStatement = cast(sema_stmt_case_t*)
                         caseStatement->CaseBody;
@@ -1606,7 +1606,7 @@ static inline void PrintSemaStatement(metac_printer_t* self, metac_semantic_stat
                     PrintIndent(self);
                     goto LprintCase;
                 }
-                else if (caseStatement->CaseBody->StmtKind == stmt_casebody)
+                else if (caseStatement->CaseBody->Kind == stmt_casebody)
                 {
                     sema_stmt_casebody_t* caseBody = caseStatement->CaseBody;
                     const uint32_t statementCount = caseBody->StatementCount;
@@ -1630,14 +1630,14 @@ static inline void PrintSemaStatement(metac_printer_t* self, metac_semantic_stat
                 }
                 else
                 {
-                    if (caseStatement->CaseBody->StmtKind != stmt_block)
+                    if (caseStatement->CaseBody->Kind != stmt_block)
                     {
                         ++self->IndentLevel;
                         PrintNewline(self);
                         PrintIndent(self);
                     }
                     PrintSemaStatement(self, sema, cast(metac_sema_statement_t*)caseStatement->CaseBody);
-                    if (caseStatement->CaseBody->StmtKind != stmt_block)
+                    if (caseStatement->CaseBody->Kind != stmt_block)
                         --self->IndentLevel;
 
                     PrintNewline(self);
@@ -1694,7 +1694,7 @@ static inline void PrintSemaStatement(metac_printer_t* self, metac_semantic_stat
         default : {
             fprintf(stderr,
                 "Statement Kind: not handled by printer %s\n",
-                    StatementKind_toChars(stmt->StmtKind));
+                    StatementKind_toChars(stmt->Kind));
             assert(0);
         }
     }

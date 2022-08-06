@@ -143,6 +143,8 @@ typedef struct metac_semantic_state_t
 
     FOREACH_SEMA_STATE_ARRAY(NULL, DECLARE_ARRAY)
 
+    // FOREACH_SEMA_STATE_ARRAY(NULL, DECLARE_ARENA_STATE_ARRAY)
+
     AT(transient) metac_sema_expression_t* ExpressionStack;
     AT(transient) uint32_t ExpressionStackSize;
     AT(transient) uint32_t ExpressionStackCapacity;

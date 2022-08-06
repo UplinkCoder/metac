@@ -73,7 +73,7 @@ int MetaCSemaTree_Walk_Real(metac_sema_declaration_t* decl, struct metac_semanti
     if (result)
         return result;
 
-    switch(decl->DeclKind)
+    switch(decl->Kind)
     {
         //default 0:
         case decl_min:

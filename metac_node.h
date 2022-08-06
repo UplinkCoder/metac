@@ -185,6 +185,13 @@
     FOREACH_STMT_KIND(M) \
     FOREACH_DECL_KIND(M)
 
+/// Omits hash and serial
+#define METAC_COPY_HEADER(SRCP, DSTP) do { \
+    (DSTP)->Kind = (SRCP)->Kind; \
+    (DSTP)->LocationIdx = (SRCP)->LocationIdx; \
+} while (0);
+
+
 #ifndef _METAC_NODE_H_
 #define _METAC_NODE_H_
 

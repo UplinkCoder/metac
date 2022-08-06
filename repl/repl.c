@@ -220,10 +220,10 @@ void Presemantic_(repl_state_t* self)
 
             metac_declaration_t* decl = decls.Ptr[i];
 
-            if (decl->DeclKind == decl_type_typedef)
+            if (decl->Kind == decl_type_typedef)
             {
                 decl_type_typedef_t* typedef_ = (decl_type_typedef_t*) decl;
-                if (typedef_->Type->DeclKind == decl_type_struct)
+                if (typedef_->Type->Kind == decl_type_struct)
                 {
                     decl_type_struct_t* structPtr = (decl_type_struct_t*)typedef_->Type;
                     if (structPtr->Identifier.v == empty_identifier.v)
@@ -234,7 +234,7 @@ void Presemantic_(repl_state_t* self)
                 }
             }
 
-            if (decl->DeclKind == decl_type_struct)
+            if (decl->Kind == decl_type_struct)
             {
                 decl_type_struct_t* struct_ = (decl_type_struct_t*) decl;
                 if (struct_->Identifier.v != empty_identifier.v)
@@ -691,12 +691,12 @@ LswitchMode:
                     metac_identifier_ptr_t dstoreId
                         = GetOrAddIdentifier(&dstore.Table, idKey, idChars);
 
-                    if (decl->DeclKind == decl_function)
+                    if (decl->Kind == decl_function)
                     {
                         decl->decl_function.Identifier = dstoreId;
                         MSGF("Setting dStore ID: %u\n", dstoreId.v);
                     }
-                    else if (decl->DeclKind == decl_variable)
+                    else if (decl->Kind == decl_variable)
                     {
                         decl->decl_variable.VarIdentifier = dstoreId;
 

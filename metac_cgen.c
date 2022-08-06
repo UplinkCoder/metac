@@ -26,7 +26,7 @@ int GenerateFunctionCode(metac_codegen_function_t* cgfunction, void* c)
         stmt != emptyPointer;
         stmt = stmt->Next)
     {
-        switch(stmt->StmtKind)
+        switch(stmt->Kind)
         {
             case stmt_return:
             {

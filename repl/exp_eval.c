@@ -451,7 +451,7 @@ metac_identifier_ptr_t IdentifierPtrFromDecl(metac_declaration_t* decl)
 {
     metac_identifier_ptr_t idPtr = {0};
 
-    switch(decl->DeclKind)
+    switch(decl->Kind)
     {
         case decl_function:
         {

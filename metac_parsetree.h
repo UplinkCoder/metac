@@ -36,6 +36,13 @@ typedef struct exp_tuple_t
     struct exp_tuple_t* Next;
 } exp_tuple_t;
 
+#define METAC_MAX_EXP_BODY_SIZE 24
+
+typedef struct _metac_exp_body_t
+{
+    uint8_t Bytes[METAC_MAX_EXP_BODY_SIZE];
+} _metac_exp_body_t;
+
 typedef struct metac_expression_t
 {
     EXPRESSION_HEADER
@@ -113,9 +120,14 @@ typedef struct metac_expression_t
     };
 } metac_expression_t;
 
+#define COPY_EXP_BODY(SRCP, DSTP) do { \
+    (DSTP)->Kind = (SRCP)->Kind; \
+    (DSTP)->LocationIdx = (SRCP)->LocationIdx; \
+} while (0);
 
+_Static_assert((sizeof(metac_expression_t) - sizeof(metac_expression_header_t)) <= METAC_MAX_EXP_BODY_SIZE, "Dumb");
 #define STATEMENT_HEADER \
-    metac_statement_kind_t StmtKind; \
+    metac_statement_kind_t Kind; \
     uint32_t LocationIdx; \
     uint32_t Hash; \
     uint32_t Serial; \
@@ -290,7 +302,7 @@ typedef struct metac_statement_t
 } metac_statement_t;
 
 #define DECLARATION_HEADER \
-    metac_declaration_kind_t DeclKind; \
+    metac_declaration_kind_t Kind; \
     uint32_t LocationIdx; \
     uint32_t Hash; \
     uint32_t Serial; \

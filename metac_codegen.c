@@ -278,7 +278,7 @@ static void FixupBreaks(metac_bytecode_ctx_t* ctx, uint32_t breakCount, BCLabel 
 static void MetaCCodegen_doBlockStmt(metac_bytecode_ctx_t* ctx,
                                      sema_stmt_block_t* stmt)
 {
-    assert(stmt->StmtKind == stmt_block);
+    assert(stmt->Kind == stmt_block);
     uint32_t variableCount = ctx->VariablesCount;
     for(uint32_t i = 0; i < stmt->StatementCount; i++)
     {
@@ -310,7 +310,7 @@ static inline void MetaCCodegen_doCaseStmt(metac_bytecode_ctx_t* ctx,
             &exp_result);
 
     bool hasBody =
-        !(caseBody && caseBody->StmtKind == stmt_case);
+        !(caseBody && caseBody->Kind == stmt_case);
     // if we have our own body we want to jump is the cnd is false
     // otherwise we want to jump if it's true
     CndJmpBegin cndJmp = bc->beginCndJmp(c, 0, !hasBody);
@@ -346,7 +346,7 @@ void MetaCCodegen_doStatement(metac_bytecode_ctx_t* ctx,
                               metac_sema_statement_t* stmt)
 {
     void* c = ctx->c;
-    switch(stmt->StmtKind)
+    switch(stmt->Kind)
     {
         case stmt_switch:
         {
@@ -420,7 +420,7 @@ void MetaCCodegen_doStatement(metac_bytecode_ctx_t* ctx,
 
         default:
         {
-            printf("Statement unsupported %s\n", StatementKind_toChars(stmt->StmtKind));
+            printf("Statement unsupported %s\n", StatementKind_toChars(stmt->Kind));
         } break;
     }
 }

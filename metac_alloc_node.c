@@ -180,7 +180,7 @@ metac_declaration_t* AllocNewDeclaration_(metac_declaration_kind_t kind, uint32_
 
     {
         (*result_ptr) = result = _newDecl_mem + INC(_newDecl_size);
-        result->DeclKind = kind;
+        result->Kind = kind;
         result->Serial = INC(_nodeCounter);
         memset(&result->Serial + 1, 0, nodeSize - offsetof(metac_declaration_t, Serial));
     }
@@ -198,7 +198,7 @@ metac_statement_t* AllocNewStatement_(metac_statement_kind_t kind, uint32_t node
 
     {
         (*result_ptr) = result = _newStmt_mem + INC(_newStmt_size);
-        result->StmtKind = kind;
+        result->Kind = kind;
         result->Serial = INC(_nodeCounter);
         result->Next = (metac_statement_t*)EMPTY_POINTER_VALUE;
     }
