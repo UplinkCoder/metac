@@ -118,7 +118,7 @@ int MetaCCodegen_RunFunction(metac_bytecode_ctx_t* self,
             break;
             default:
             {
-                fprintf(stderr, "arg specifier, '%c' unsupported\n");
+                fprintf(stderr, "arg specifier, '%c' unsupported\n", c);
                 assert(!"Value format unsupported");
             }
 
@@ -152,14 +152,21 @@ void MetaCCodegen_Init(metac_bytecode_ctx_t* self, metac_alloc_t* parentAlloc)
     (*self) = (metac_bytecode_ctx_t) {};
     Allocator_Init(&self->Allocator, parentAlloc, 0);
 
+#ifndef BC_PRINTER
     tagged_arena_t* arena =
         AllocateArena(&self->Allocator, bc->sizeof_instance());
     self->c = arena->Memory;
     bc->init_instance(self->c);
-
+#else
+    bc->new_instance(&self->c);
+    Printer* printer = (Printer*) self->c;
+#endif
     bc->Initialize(self->c, 0);
 
     ARENA_ARRAY_INIT(metac_bytecode_function_t, self->Functions, &self->Allocator);
+
+    // ARENA_ARRAY_INIT(sema_decl_variable_t, self->Locals, &self->Allocator);
+    ARENA_ARRAY_INIT(BCValue, self->Globals, &self->Allocator);
 }
 
 
@@ -179,6 +186,7 @@ metac_bytecode_function_t MetaCCodegen_GenerateFunction(metac_bytecode_ctx_t* ct
     uint32_t frameSize = 0;
     uint32_t functionParameterCount = 1;
     STACK_ARENA_ARRAY(BCValue, parameters, 16, 0);
+    STACK_ARENA_ARRAY(BCValue, locals, 16, 0);
 
     const char* fName =
         IdentifierPtrToCharPtr(ctx->IdentifierTable, function->Identifier);
@@ -293,7 +301,7 @@ static inline void MetaCCodegen_doCaseStmt(metac_bytecode_ctx_t* ctx,
 
     metac_bytecode_switch_t* swtch = &ctx->SwitchStack[ctx->SwitchStackCount - 1];
     metac_sema_expression_t* caseExp = caseStmt->CaseExp;
-    metac_sema_statement_t*  caseBody = caseStmt->CaseBody;
+    metac_sema_statement_t*  caseBody = cast(metac_sema_statement_t*)caseStmt->CaseBody;
 
     // if there's no exp it's the default case
     if (METAC_NODE(caseExp) == emptyNode)
@@ -332,7 +340,7 @@ static inline void MetaCCodegen_doCaseStmt(metac_bytecode_ctx_t* ctx,
             swtch->PrevCaseJumpsCount = 0;
         }
 
-        MetaCCodegen_doStatement(ctx, caseStmt->CaseBody);
+        MetaCCodegen_doStatement(ctx, cast(metac_sema_statement_t*)caseStmt->CaseBody);
         bc->endCndJmp(c, &cndJmp, bc->genLabel(c));
     }
     else
@@ -342,6 +350,22 @@ static inline void MetaCCodegen_doCaseStmt(metac_bytecode_ctx_t* ctx,
             MetaCCodegen_doStatement(ctx, caseBody);
     }
 }
+
+static inline bool IsEmpty(metac_statement_t* stmt)
+{
+}
+
+void MetaCCodegen_doLocalVar(metac_bytecode_ctx_t* ctx,
+                             sema_decl_variable_t* localVar)
+{
+    const char* localName = IdentifierPtrToCharPtr(ctx->IdentifierTable,
+                                                   localVar->VarIdentifier);
+    BCType localType = MetaCCodegen_GetBCType(ctx, localVar->TypeIndex);
+    BCValue local = bc->genLocal(ctx->c, localType, localName);
+    ARENA_ARRAY_ADD(ctx->Locals, local);
+    VariableStore_AddVariable(&ctx->Vstore, localVar, &ctx->Locals[(ctx->LocalsCount) - 1]);
+}
+
 void MetaCCodegen_doStatement(metac_bytecode_ctx_t* ctx,
                               metac_sema_statement_t* stmt)
 {
@@ -369,12 +393,34 @@ void MetaCCodegen_doStatement(metac_bytecode_ctx_t* ctx,
 
         case stmt_block:
         {
-            MetaCCodegen_doBlockStmt(ctx, stmt);
+            MetaCCodegen_doBlockStmt(ctx, cast(sema_stmt_block_t*)stmt);
         } break;
 
         case stmt_break:
         {
             ARENA_ARRAY_ADD(ctx->Breaks, bc->beginJmp(c));
+        } break;
+
+        case stmt_decl:
+        {
+            sema_stmt_decl_t* declStmt = cast(sema_stmt_decl_t*) stmt;
+            sema_decl_variable_t* localVar = (sema_decl_variable_t*) declStmt->Declaration;
+            MetaCCodegen_doLocalVar(ctx, localVar);
+            // MetaCCodegen_doStatement(ctx, decl)
+        } break;
+
+        case stmt_while:
+        {
+            sema_stmt_while_t* whileStatement = cast(sema_stmt_while_t*) stmt;
+            BCLabel evalCond = bc->genLabel(c);
+            BCValue* condPtr = 0;
+            BCValue cond = MetaCCodegen_doExpression(ctx, whileStatement->WhileExp);
+            if (whileStatement->WhileExp->Kind == exp_variable)
+                condPtr = &cond;
+
+            CndJmpBegin condExpJmp = bc->beginCndJmp(c, condPtr, false);
+            MetaCCodegen_doStatement(ctx, whileStatement->WhileBody);
+            bc->endCndJmp(c, &condExpJmp, evalCond);
         } break;
 
         case stmt_case:

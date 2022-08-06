@@ -40,6 +40,10 @@ typedef struct metac_bytecode_ctx_t
     metac_alloc_t Allocator;
 
     ARENA_ARRAY(metac_bytecode_function_t, Functions);
+    ARENA_ARRAY(BCValue, Globals);
+
+    AT(transient) AT(per_function) ARENA_ARRAY(BCValue, Locals);
+
     AT(transient) AT(per_function) metac_identifier_table_t* IdentifierTable;
     AT(transient) AT(per_function) BCValue* Parameters;
     AT(transient) AT(per_function) uint32_t ParameterCount;

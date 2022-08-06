@@ -103,6 +103,7 @@ void MetaCSemantic_Init(metac_semantic_state_t* self, metac_parser_t* parser,
 
     FOREACH_SEMA_STATE_ARRAY(self, INIT_ARRAY)
 
+    ARENA_ARRAY_INIT(metac_scope_t*, self->DeclStatementScope, &self->Allocator);
 
     self->TemporaryScopeDepth = 0;
 
@@ -337,6 +338,23 @@ metac_sema_statement_t* MetaCSemantic_doStatementSemantic_(metac_semantic_state_
 
     switch (stmt->Kind)
     {
+        case stmt_while:
+        {
+            stmt_while_t* whileStmt = cast(stmt_while_t*) stmt;
+            sema_stmt_while_t* semaWhileStmt =
+                AllocNewSemaStatement(self, stmt_while, &result);
+            semaWhileStmt->WhileExp =
+                MetaCSemantic_doExprSemantic(self, whileStmt->WhileExp, 0);
+            if (METAC_NODE(whileStmt->WhileBody) != emptyNode)
+            {
+                semaWhileStmt->WhileBody = MetaCSemantic_doStatementSemantic(self, whileStmt->WhileBody);
+            }
+            else
+            {
+                METAC_NODE(semaWhileStmt->WhileBody) = emptyNode;
+            }
+        } break;
+
         case stmt_exp:
         {
             stmt_exp_t* expStatement = (stmt_exp_t*) stmt;
@@ -375,8 +393,14 @@ metac_sema_statement_t* MetaCSemantic_doStatementSemantic_(metac_semantic_state_
             semaDeclStatement->Declaration =
                 MetaCSemantic_doDeclSemantic(self, declStatement->Declaration);
         } break;
-
-        default: assert(0);
+/*
+        default: {
+            fprintf(stderr,
+                "Statement not supported by semantic: %s\n",
+                MetaCStatementKind_toChars(stmt->StmtKind));
+                assert(0);
+        } break;
+*/
         case stmt_if:
         {
             stmt_if_t* ifStmt = cast(stmt_if_t*) stmt;

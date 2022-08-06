@@ -140,6 +140,10 @@ metac_sema_expression_t* MetaCSemantic_doExprSemantic_(metac_semantic_state_t* s
             result->TypeExp = E1->TypeIndex;
         } break;
 
+        case exp_decrement:
+        case exp_increment:
+        case exp_post_decrement:
+        case exp_post_increment:
         case exp_compl:
         case exp_not:
         case exp_umin:
@@ -173,9 +177,11 @@ metac_sema_expression_t* MetaCSemantic_doExprSemantic_(metac_semantic_state_t* s
                 MetaCSemantic_GetTypeIndex(self, type_char, (decl_type_t*)emptyPointer),
                 LENGTH_FROM_STRING_KEY(expr->StringKey) + 1);
         break;
-
         case exp_signed_integer :
             result->TypeIndex = MetaCSemantic_GetTypeIndex(self, type_int, (decl_type_t*)emptyPointer);
+        break;
+        case exp_assign:
+            result->TypeIndex = result->E1->TypeIndex;
         break;
         case exp_eq:
         case exp_neq:

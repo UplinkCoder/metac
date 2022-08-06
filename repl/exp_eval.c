@@ -358,11 +358,14 @@ void WalkTree(void* c, BCValue* result,
             bc->Add3(c, lhs, lhs, &one);
             if (e->E1->Kind == exp_variable)
             {
+/*
                 assert(_ReadContextSize < _ReadContextCapacity);
                 ReadI32_Ctx* userCtx = &_ReadContexts[_ReadContextSize++];
                 *userCtx = (ReadI32_Ctx){ vstore, e->E1 };
                 //TODO provide an allocExecutionContext in the BCgeninterface
                 bc->ReadI32(c, lhs, ReadI32_cb, userCtx);
+*/
+                // if (lhs->vType == BCValueType_StackValue || lhs->vType == BCValueType_Local)
             }
             else
             {
