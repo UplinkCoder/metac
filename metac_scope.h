@@ -3,6 +3,7 @@
 #include "compat.h"
 #include "metac_identifier_table.h"
 #include "metac_node.h"
+#include "metac_alloc.h"
 
 struct metac_sema_declaration_t;
 
@@ -22,7 +23,9 @@ typedef enum metac_scope_owner_kind_t
 
     scope_owner_extended  = 0x7,
 
-    // unused range 9-D 9, A, B, C, D
+    scope_owner_enum      = 0x9,
+
+    // unused range A-D A, B, C, D
     scope_owner_invalid  = 0xF
 
 } metac_scope_owner_kind_t;
@@ -87,6 +90,7 @@ typedef struct metac_scope_table_t
     metac_scope_table_slot_t* Slots;
     uint32_t SlotCount_Log2;
     uint32_t SlotsUsed;
+    tagged_arena_t* Arena;
 } metac_scope_table_t;
 
 

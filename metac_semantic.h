@@ -120,6 +120,7 @@ typedef struct metac_semantic_state_t
 {
     bool initialized;
     metac_alloc_t Allocator;
+    metac_alloc_t TempAlloc;
 
     metac_identifier_table_t SemanticIdentifierTable;
     metac_identifier_table_t* ParserIdentifierTable;

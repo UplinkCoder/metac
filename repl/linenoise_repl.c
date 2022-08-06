@@ -56,6 +56,7 @@ int main(int argc, const char* argv[])
     aco_global_init();
 #endif
     linenoiseHistoryLoad(".repl_history");
+    printf("Please enter :h for help\n");
     repl_state_t repl;
     ui_state_t uiState = {0};
 

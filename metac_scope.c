@@ -8,17 +8,21 @@
 
 #include "bsr.h"
 
-void MetaCScopeTable_InitN(metac_scope_table_t* self, uint32_t nMembers)
+void MetaCScopeTable_InitN(metac_scope_table_t* self, uint32_t nMembers, metac_alloc_t* alloc)
 {
-    self->SlotCount_Log2 = LOG2(nMembers);
+    // we need to avoid the table being 100% full
+    // so allocate 25% more than needed.
+    uint32_t extraMembers = (nMembers / 4);
+    self->SlotCount_Log2 = LOG2(nMembers + extraMembers);
     const uint32_t maxSlots = (1 << self->SlotCount_Log2);
-    self->Slots = (metac_scope_table_slot_t*) calloc(maxSlots, sizeof(metac_scope_table_slot_t));
+    self->Arena = AllocateArena(alloc, maxSlots * sizeof(metac_scope_table_slot_t));
+    self->Slots = (metac_scope_table_slot_t*) self->Arena->Memory;
     self->SlotsUsed = 0;
 }
 
-void MetaCScopeTable_Init(metac_scope_table_t* self)
+void MetaCScopeTable_Init(metac_scope_table_t* self, metac_alloc_t* alloc)
 {
-    MetaCScopeTable_InitN(self, 255);
+    MetaCScopeTable_InitN(self, 192, alloc);
 }
 
 void MetaCScopeTable_Free(metac_scope_table_t* self)

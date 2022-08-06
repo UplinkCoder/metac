@@ -486,7 +486,11 @@ metac_token_t* MetaCParser_NextToken(metac_parser_t* self)
     {
         if (result->TokenType == tok_identifier && preProc)
         {
-            printf(IdentifierPtrToCharPtr(&self->Lexer->IdentifierTable, result->IdentifierPtr));
+/*
+            printf("%s\n",
+                IdentifierPtrToCharPtr(
+                    &self->Lexer->IdentifierTable, result->IdentifierPtr));
+*/
             uint32_t oldDefineStackTop = preProc->DefineTokenStackCount;
             result = MetaCParser_HandleIdentifier(self, result, preProc);
             bool wasDefine =

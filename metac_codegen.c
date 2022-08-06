@@ -150,10 +150,10 @@ void MetaCCodegen_Init(metac_bytecode_ctx_t* self, metac_alloc_t* parentAlloc)
     bc = &BCGen_interface;
 #endif
     (*self) = (metac_bytecode_ctx_t) {};
-    Allocator_Init(&self->Allocator, parentAlloc);
+    Allocator_Init(&self->Allocator, parentAlloc, 0);
 
     tagged_arena_t* arena =
-        Allocate(&self->Allocator, bc->sizeof_instance());
+        AllocateArena(&self->Allocator, bc->sizeof_instance());
     self->c = arena->Memory;
     bc->init_instance(self->c);
 

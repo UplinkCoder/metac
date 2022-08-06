@@ -68,9 +68,24 @@ static inline void PrintString(metac_printer_t* self,
 
     while((c = *string++))
     {
+        assert(c != '\n');
         self->StringMemory[self->StringMemorySize++] = c;
     }
     self->CurrentColumn += length;
+}
+
+static inline void PrintStringWithNewline(metac_printer_t* self,
+                 const char* string, uint32_t length)
+{
+    char c;
+
+    while((c = *string++))
+    {
+        if (c == '\n' || c == '\r')
+            self->CurrentColumn = 0;
+        self->CurrentColumn++;
+        self->StringMemory[self->StringMemorySize++] = c;
+    }
 }
 
 static inline void PrintIdentifier(metac_printer_t* self,
@@ -336,7 +351,7 @@ static inline void PrintComment(metac_printer_t* self,
 {
     // bool isMultiline = (memchr(Text, '\n', Length) != 0);
     PrintString(self, "/*", 2);
-    PrintString(self, Text, Length);
+    PrintStringWithNewline(self, Text, Length);
     PrintString(self, "*/", 2);
 
 }
@@ -583,7 +598,7 @@ static inline void PrintStatement(metac_printer_t* self, metac_statement_t* stmt
         {
             stmt_comment_t* comment = (stmt_comment_t*)stmt;
             PrintString(self, "/*", 2);
-            PrintString(self, comment->Text, comment->Length);
+            PrintStringWithNewline(self, comment->Text, comment->Length);
             PrintString(self, "*/", 2);
         } break;
 
@@ -1672,7 +1687,7 @@ static inline void PrintSemaStatement(metac_printer_t* self, metac_semantic_stat
         {
             stmt_comment_t* comment = (stmt_comment_t*)stmt;
             PrintString(self, "/*", 2);
-            PrintString(self, comment->Text, comment->Length);
+            PrintStringWithNewline(self, comment->Text, comment->Length);
             PrintString(self, "*/", 2);
         } break;
 

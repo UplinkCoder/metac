@@ -212,7 +212,7 @@ metac_type_index_t MetaCSemantic_CommonSubtype(metac_semantic_state_t* self,
             }
         }
     }
-    
+
     return result;
 }
 
@@ -310,8 +310,7 @@ uint32_t MetaCSemantic_GetTypeAlignment(metac_semantic_state_t* self,
         metac_type_index_t elementTypeIndex =
             self->TypedefTypeTable.Slots[idx].Type;
 
-        result = MetaCSemantic_GetTypeAlignment(self,
-                                           elementTypeIndex);
+        result = MetaCSemantic_GetTypeAlignment(self, elementTypeIndex);
     }
     else if (TYPE_INDEX_KIND(typeIndex) == type_index_struct)
     {
@@ -331,7 +330,6 @@ uint32_t MetaCSemantic_GetTypeAlignment(metac_semantic_state_t* self,
         metac_type_index_t elementTypeIndex = arrayType_->ElementType;
         result = MetaCSemantic_GetTypeAlignment(self, elementTypeIndex);
     }
-
     else
     {
         assert(0);
@@ -580,7 +578,7 @@ metac_type_index_t MetaCSemantic_TypeSemantic(metac_semantic_state_t* self,
         tmpSemaEnum.Name = enm->Identifier;
 
         metac_scope_t enumScope = { scope_flag_temporary };
-        MetaCScopeTable_InitN(&enumScope.ScopeTable, tmpSemaEnum.MemberCount);
+        MetaCScopeTable_InitN(&enumScope.ScopeTable, tmpSemaEnum.MemberCount, &self->TempAlloc);
 
         MetaCSemantic_PushTemporaryScope(self, &enumScope);
         bool keepEnumScope = false;
@@ -598,7 +596,7 @@ metac_type_index_t MetaCSemantic_TypeSemantic(metac_semantic_state_t* self,
         result = MetaCTypeTable_GetOrEmptyEnumType(&self->EnumTypeTable, &tmpSemaEnum);
         if (result.v == 0)
         {
-            STACK_ARENA_ARRAY_TO_HEAP(semaMembers);
+            STACK_ARENA_ARRAY_TO_HEAP(semaMembers, &self->Allocator);
             tmpSemaEnum.Members = semaMembers;
             result = MetaCTypeTable_AddEnumType(&self->EnumTypeTable, &tmpSemaEnum);
 
@@ -628,7 +626,7 @@ metac_type_index_t MetaCSemantic_TypeSemantic(metac_semantic_state_t* self,
 
         if (result.v != 0)
         {
-            free(enumScope.ScopeTable.Slots);
+            FreeArena(enumScope.ScopeTable.Arena);
         }
 
         // STACK_ARENA_FREE(self->Allocator, members);
@@ -643,24 +641,9 @@ metac_type_index_t MetaCSemantic_TypeSemantic(metac_semantic_state_t* self,
             typeKind = type_union;
         else
             assert(0);
-/*
-        metac_type_aggregate_t* semaAgg = AllocNewAggregate(agg->DeclKind);
-        semaAgg->FieldCount = agg->FieldCount;
 
-        metac_type_aggregate_field_t* semaFields =
-            AllocAggregateFields(semaAgg, typeKind, agg->FieldCount);
-        semaAgg->Fields = semaFields;
-*/
-        // for starters we allocate a temporary structure of our aggregate
-        // where we then do the layout determination we need to look it up in the cache
-
-
-       metac_type_aggregate_field_t* tmpFields =
-            cast(metac_type_aggregate_field_t* )
-                                malloc(sizeof(metac_type_aggregate_field_t)
-                                * agg->FieldCount);
-        // ideally it wouldn't matter if this memset was here or not
-        memset(tmpFields, 0x0, sizeof(*tmpFields) * agg->FieldCount);
+        STACK_ARENA_ARRAY(metac_type_aggregate_field_t, tmpFields, 128, &self->TempAlloc);
+        ARENA_ARRAY_ENSURE_SIZE(tmpFields, agg->FieldCount);
 
         metac_type_aggregate_t tmpSemaAggMem = {(metac_declaration_kind_t)0};
         tmpSemaAggMem.Header.Kind = agg->DeclKind;
@@ -668,20 +651,7 @@ metac_type_index_t MetaCSemantic_TypeSemantic(metac_semantic_state_t* self,
         tmpSemaAgg->Fields = tmpFields;
         tmpSemaAgg->FieldCount = agg->FieldCount;
         metac_scope_t tmpScopeMem = { scope_flag_temporary };
-        MetaCScopeTable_Init(&tmpScopeMem.ScopeTable);
-
-        metac_scope_owner_kind_t scopeKind = scope_owner_invalid;
-
-        switch(typeKind)
-        {
-            case type_struct:
-                scopeKind = scope_owner_struct;
-            break;
-            case type_union:
-                scopeKind = scope_owner_union;
-            break;
-            default: assert(0);
-        }
+        MetaCScopeTable_Init(&tmpScopeMem.ScopeTable, &self->TempAlloc);
 
         // XXX temporary scope might want to know thier parents
         tmpSemaAgg->Scope = MetaCSemantic_PushTemporaryScope(self, &tmpScopeMem);
@@ -722,8 +692,8 @@ metac_type_index_t MetaCSemantic_TypeSemantic(metac_semantic_state_t* self,
             default: assert(0);
 
         }
-        MetaCScopeTable_Free(&tmpSemaAgg->Scope->ScopeTable);
-        free(tmpFields);
+        FreeArena(tmpSemaAgg->Scope->ScopeTable.Arena);
+        ARENA_ARRAY_FREE(tmpFields);
         MetaCSemantic_PopTemporaryScope(self);
     }
     else if (IsPointerType(type->DeclKind))
@@ -739,10 +709,6 @@ metac_type_index_t MetaCSemantic_TypeSemantic(metac_semantic_state_t* self,
     {
         decl_type_functiontype_t* functionType =
             (decl_type_functiontype_t*) type;
-        metac_scope_t enumScope = { scope_flag_temporary };
-        MetaCScopeTable_Init(&enumScope.ScopeTable);
-
-        MetaCSemantic_PushTemporaryScope(self, &enumScope);
 
         metac_type_index_t returnType =
             MetaCSemantic_doTypeSemantic(self,
@@ -752,8 +718,8 @@ metac_type_index_t MetaCSemantic_TypeSemantic(metac_semantic_state_t* self,
         decl_parameter_t* currentParam = functionType->Parameters;
 
         const uint32_t nParams = functionType->ParameterCount;
-        metac_type_index_t* parameterTypes = cast(metac_type_index_t*)
-            malloc(sizeof(metac_type_index_t) * nParams);
+        STACK_ARENA_ARRAY(metac_type_index_t, parameterTypes, 64, &self->TempAlloc);
+        ARENA_ARRAY_ENSURE_SIZE(parameterTypes, nParams);
 
         for(uint32_t i = 0;
             i < nParams;
@@ -764,17 +730,17 @@ metac_type_index_t MetaCSemantic_TypeSemantic(metac_semantic_state_t* self,
             currentParam = currentParam->Next;
         }
 
-        hash = crc32c_nozero(hash, &parameterTypes, sizeof(*parameterTypes) * nParams);
+        hash = crc32c_nozero(hash, parameterTypes, sizeof(*parameterTypes) * nParams);
         metac_type_functiontype_t key = {
             {decl_type_functiontype, hash, 0, },
             returnType, parameterTypes, nParams
         };
 
-        MetaCSemantic_PopTemporaryScope(self);
-
         result = MetaCTypeTable_GetOrEmptyFunctionType(&self->FunctionTypeTable, &key);
         if (result.v == 0)
         {
+            STACK_ARENA_ARRAY_TO_HEAP(parameterTypes, &self->Allocator);
+            key.ParameterTypes = parameterTypes;
             result =
                 MetaCTypeTable_AddFunctionType(&self->FunctionTypeTable, &key);
         }

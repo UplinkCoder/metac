@@ -88,10 +88,11 @@ Lret:
 void MetaCSemantic_Init(metac_semantic_state_t* self, metac_parser_t* parser,
                         metac_type_aggregate_t* compilerStruct)
 {
-    const metac_semantic_state_t _init = {};
-    *self = _init;
+    //const metac_semantic_state_t _init = {};
+    // *self = _init;
 
-    Allocator_Init(&self->Allocator, 0);
+    Allocator_Init(&self->Allocator, 0, 0);
+    Allocator_Init(&self->TempAlloc, 0, AllocFlags_Temporary);
 
 #define INIT_TYPE_TABLE(TYPE_NAME, MEMBER_NAME, INDEX_KIND) \
     TypeTableInitImpl((metac_type_table_t*)&self->MEMBER_NAME, \

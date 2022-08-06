@@ -127,7 +127,7 @@ metac_scope_t* MetaCScope_PushNewScope(metac_semantic_state_t* sema,
 {
     metac_scope_t* result = AllocNewScope(sema, parent, scopeOwner);
 
-    MetaCScopeTable_Init(&result->ScopeTable);
+    MetaCScopeTable_Init(&result->ScopeTable, &sema->Allocator);
 
     return result;
 }
