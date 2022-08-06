@@ -219,6 +219,11 @@ metac_bytecode_function_t MetaCCodegen_GenerateFunction(metac_bytecode_ctx_t* ct
     ctx->Parameters = parameters;
     ctx->ParameterCount = functionParameterCount;
 
+    ctx->Locals = locals;
+    ctx->LocalsArena = localsArena;
+    ctx->LocalsAlloc = localsAlloc;
+    ctx->LocalsCount = localsCount;
+
     for (uint32_t i = 0;
          i < function->FunctionBody->StatementCount;
          i++)
