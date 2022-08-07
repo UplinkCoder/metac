@@ -1,4 +1,3 @@
-
 typedef struct handoff_walker_context_t
 {
     uint32_t FunctionKey;
@@ -25,13 +24,15 @@ static inline void HandoffIdentifier(metac_identifier_table_t* dstTable,
 
     idPtrP->v = newPtr.v;
 }
-
+#if 0
 static void HandoffField(metac_semantic_state_t* dstState,
                           const metac_semantic_state_t* srcState,
                           metac_type_aggregate_field_t* field)
 {
 
 }
+#endif
+
 static inline void HandoffType(metac_semantic_state_t* dstState,
                                const metac_semantic_state_t* srcState,
                                metac_type_index_t* typeIndexP)
@@ -42,7 +43,21 @@ static inline void HandoffType(metac_semantic_state_t* dstState,
     metac_type_index_t idx = *typeIndexP;
     switch(TYPE_INDEX_KIND(idx))
     {
+        case type_index_ptr:
+        {
+            metac_type_ptr_t tmpSlot = *PtrTypePtr(srcState, TYPE_INDEX_INDEX(idx));
+            metac_type_index_t newElem = tmpSlot.ElementType;
+            HandoffType(dstState, srcState, &newElem);
+            tmpSlot.ElementType = newElem;
+            result =
+                MetaCTypeTable_GetOrEmptyPtrType(&dstState->PtrTypeTable, &tmpSlot);
 
+            if (result.v == 0)
+            {
+                result =
+                    MetaCTypeTable_AddPtrType(&dstState->PtrTypeTable, &tmpSlot);
+            }
+        } break;
         case type_index_basic:
             result = *typeIndexP;
         break;
@@ -57,12 +72,16 @@ static inline void HandoffType(metac_semantic_state_t* dstState,
             const uint32_t paramTypeCount = oldSlot->ParameterTypeCount;
             metac_type_index_t* newParams = cast(metac_type_index_t*)
                 calloc(sizeof(metac_type_index_t), oldSlot->ParameterTypeCount);
+
             memcpy(newParams, oldSlot->ParameterTypes,
                 sizeof(metac_type_index_t) * paramTypeCount);
+
             for(uint32_t i = 0;
                 i < paramTypeCount;
                 i++)
             {
+                metac_type_index_t elmT =
+                    MetaCSemantic_GetElementType(srcState, newParams[i]);
                 HandoffType(dstState, srcState, newParams + i);
             }
             if (tmpSlot.ParameterTypeCount != 0)
@@ -107,6 +126,12 @@ static inline void HandoffType(metac_semantic_state_t* dstState,
 
             uint32_t newHash = AggregateHash(&tmpSlot);
             tmpSlot.Header.Hash = newHash;
+            if (oldSlot->Identifier.v)
+            {
+                HandoffIdentifier(dstState->ParserIdentifierTable,
+                                  srcState->ParserIdentifierTable,
+                                  &tmpSlot.Identifier);
+            }
 
             result =
                 MetaCTypeTable_GetOrEmptyStructType(&dstState->StructTypeTable,
@@ -114,6 +139,8 @@ static inline void HandoffType(metac_semantic_state_t* dstState,
             assert(result.v == 0);
             result =
                 MetaCTypeTable_AddStructType(&dstState->StructTypeTable, &tmpSlot);
+
+                metac_type_aggregate_t* s = StructPtr(dstState, result.Index);
             assert(result.v != -1 && result.v != 0);
         } break;
         case type_index_union:
@@ -133,8 +160,6 @@ static inline void HandoffType(metac_semantic_state_t* dstState,
 
         } break;
     }
-
-    assert(result.v);
     (*typeIndexP) = result;
 }
 
@@ -207,8 +232,10 @@ void MetaCSemantic_Handoff(metac_semantic_state_t* self, metac_sema_declaration_
         self, newOwner, decl, 0
     };
 
+
+
     //TODO
-    // MetaCSemaDeclaration_Walk(decl, HandoffWalker, &handoff_context);
+    MetaCNode_TreeWalk_Real(decl, HandoffWalker, &handoff_context);
 
     *declP = (metac_sema_declaration_t*)handoff_context.result;
 }

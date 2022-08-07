@@ -1,8 +1,14 @@
 typedef unsigned int uint32_t;
 
+enum node_type
+{
+    some_type,
+    antr_type,
+};
+
 typedef struct metac_compiler_t
 {
-    uint32_t StartTimeStmap;
+    uint32_t StartTimeStamp;
     uint32_t (*CurrentTimeStamp)();
     uint32_t (*BuiltinCount)();
 

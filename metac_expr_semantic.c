@@ -20,6 +20,9 @@ void MetaCSemantic_doExprSemantic_Task(task_t* task)
 }
 #endif
 
+#define report_error(FMT, ...) \
+    fprintf(stderr, FMT "\n")
+
 static bool IsAggregateType(metac_type_index_kind_t typeKind)
 {
     switch(typeKind)
@@ -32,7 +35,7 @@ static bool IsAggregateType(metac_type_index_kind_t typeKind)
 
     return false;
 }
-
+extern metac_type_aggregate_t* g_compilerInterface;
 metac_sema_expression_t* MetaCSemantic_doExprSemantic_(metac_semantic_state_t* self,
                                                        metac_expression_t* expr,
                                                        metac_sema_expression_t* result,
@@ -267,16 +270,22 @@ metac_sema_expression_t* MetaCSemantic_doExprSemantic_(metac_semantic_state_t* s
             exp_argument_t* args = (METAC_NODE(call->E2) != emptyNode ?
                 call->E2->ArgumentList : (exp_argument_t*)emptyNode);
 
-            printf("Type(fn) %s\n", MetaCExpressionKind_toChars(fn->Kind));
+            if (!g_compilerInterface)
+            {
+                report_error("There's no compiler interface loaded\n");
+                return 0;
+            }
+
+            // printf("Type(fn) %s\n", MetaCExpressionKind_toChars(fn->Kind));
 
             int callIdx = -1;
 
             for(int memberIdx = 0;
-                memberIdx < self->CompilerInterface->FieldCount;
+                memberIdx < g_compilerInterface->FieldCount;
                 memberIdx++)
             {
                 metac_identifier_ptr_t id =
-                    self->CompilerInterface->Fields[memberIdx].Identifier;
+                    g_compilerInterface->Fields[memberIdx].Identifier;
                 if (id.v == fn->IdentifierPtr.v)
                 {
                     printf("Field: %s\n",

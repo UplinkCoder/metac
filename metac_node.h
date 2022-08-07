@@ -1,6 +1,5 @@
 #include "compat.h"
 
-
 #define FIRST_BINARY_EXP(M) \
     M(exp_comma)
 
@@ -97,7 +96,7 @@
     FOREACH_BIN_ARITH_ASSIGN_EXP(M) \
     \
     FOREACH_CMP_EXP(M)
-    \
+
 #define FOREACH_EXP(M) \
     M(exp_invalid) \
     \

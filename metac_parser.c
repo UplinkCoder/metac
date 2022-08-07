@@ -1313,9 +1313,12 @@ static inline metac_expression_t* ParseDotSpecialExpression(metac_parser_t* self
         else
         {
             result = AllocNewExpression(k);
+            uint32_t hash = CRC32C_VALUE(~0, k);
             result->E1 = MetaCParser_ParseExpression(self, expr_flags_none, 0);
+            hash = CRC32C_VALUE(hash, result->E1->Hash);
             metac_location_t endLoc = self->LocationStorage.Locations[result->E1->LocationIdx - 4];
             MetaCLocation_Expand(&loc, endLoc);
+            result->Hash = hash;
             result->LocationIdx = MetaCLocationStorage_Store(&self->LocationStorage, loc);
         }
     }

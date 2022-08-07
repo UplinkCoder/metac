@@ -166,10 +166,17 @@ static inline int Presemantic(metac_node_t node, void* ctx)
     return 0;
 }
 
+extern repl_ui_context_t* g_uiContext;
+metac_type_aggregate_t* g_compilerInterface;
 
 void Presemantic_(repl_state_t* self)
 {
     metac_type_aggregate_t* compilerStruct = 0;
+
+    repl_ui_context_t* uiContext = g_uiContext;
+    ui_interface_t uiInterface = uiContext->UiInterface;
+    struct ui_state_t* uiState = uiContext->UiState;
+
 
     read_result_t fCompilterInterface =
         ReadFileAndZeroTerminate("metac_compiler_interface.h");
@@ -241,16 +248,30 @@ void Presemantic_(repl_state_t* self)
                 {
                     printIdentifier = struct_->Identifier;
                 }
- //               MSGF("found struct : '%s'\n",
- //                   IdentifierPtrToCharPtr(&tmpParser.IdentifierTable, printIdentifier));
+                else
+                {
+                    // struct_->Identifier = printIdentifier;
+                }
+               MSGF("found struct : '%s'\n",
+                   IdentifierPtrToCharPtr(&tmpParser.IdentifierTable, printIdentifier));
 
                 compilerStruct = MetaCSemantic_doDeclSemantic(&tmpSema, struct_);
+                metac_printer_t printer;
+                MetaCPrinter_Init(&printer,
+                    tmpSema.ParserIdentifierTable, tmpSema.ParserStringTable);
+                printf("struct: %s\n", MetaCPrinter_PrintNode(&printer, struct_, 0));
+                printf("compilerStruct: %s\n",
+                    MetaCPrinter_PrintSemaNode(&printer, &tmpSema, cast(metac_node_t)compilerStruct));
             }
         }
 
         MetaCSemantic_Handoff(&tmpSema,
-                              (metac_sema_declaration_t**)&self->SemanticState.CompilerInterface,
+                              (metac_sema_declaration_t**)&compilerStruct,
                               &self->SemanticState);
+        printf("performed handoff to :%p\n", self->SemanticState.CompilerInterface);
+
+        g_compilerInterface = self->SemanticState.CompilerInterface;
+        self->CompilerInterface = g_compilerInterface;
         // FreeSema
         MetaCParser_Free(&tmpParser);
     }
@@ -603,6 +624,8 @@ LswitchMode:
                     MetaCSemantic_doExprSemantic(&repl->SemanticState, exp, 0);
 
                 metac_expression_t printExpStorage;
+                if (!result)
+                    goto LnextLine;
 
                 metac_sema_expression_t eval_exp = evalWithVariables(result, &repl->vstore);
                 result = &eval_exp;
@@ -882,16 +905,16 @@ repl_ui_context_t* g_uiContext = 0;
 
 void Repl_Fiber(void)
 {
-    repl_ui_context_t* uiContext = g_uiContext;
 
     repl_state_t repl_;
     repl_state_t* repl = &repl_;
     Repl_Init(repl);
 
+    repl_ui_context_t* uiContext = g_uiContext;
     ui_interface_t uiInterface = uiContext->UiInterface;
     struct ui_state_t* uiState = uiContext->UiState;
 
-    // Presemantic_(repl);
+    Presemantic_(repl);
 
     while (Repl_Loop(repl, uiContext) != false)
     {

@@ -646,8 +646,9 @@ metac_type_index_t MetaCSemantic_TypeSemantic(metac_semantic_state_t* self,
         ARENA_ARRAY_ENSURE_SIZE(tmpFields, agg->FieldCount);
 
         metac_type_aggregate_t tmpSemaAggMem = {(metac_declaration_kind_t)0};
-        tmpSemaAggMem.Header.Kind = agg->Kind;
         metac_type_aggregate_t* tmpSemaAgg = &tmpSemaAggMem;
+        tmpSemaAgg->Header.Kind = agg->Kind;
+        tmpSemaAgg->Identifier = agg->Identifier;
         tmpSemaAgg->Fields = tmpFields;
         tmpSemaAgg->FieldCount = agg->FieldCount;
         metac_scope_t tmpScopeMem = { scope_flag_temporary };

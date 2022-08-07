@@ -117,7 +117,6 @@ typedef struct metac_alloc_t
         uint32_t size = (NAME##Count) * sizeof(*(NAME)); \
         tagged_arena_t* newArena = \
             AllocateArena((ALLOC), size); \
-        assert(newArena->Memory); \
         memcpy(newArena->Memory, (NAME), size); \
         (*cast(void**)&(NAME)) = newArena->Memory; \
     } \

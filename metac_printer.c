@@ -280,6 +280,26 @@ static inline void PrintType(metac_printer_t* self, decl_type_t* type)
                     ((type->TypeKind - type_auto) + tok_kw_auto);
                 PrintKeyword(self, tok);
             }
+            else if (type->TypeKind == type_unsigned_char)
+            {
+                PrintString(self, "unsigned char", sizeof("unsigned char") - 1);
+            }
+            else if (type->TypeKind == type_unsigned_short)
+            {
+                PrintString(self, "unsigned short", sizeof("unsigned short") - 1);
+            }
+            else if (type->TypeKind == type_unsigned_int)
+            {
+                PrintString(self, "unsigned int", sizeof("unsigned int") - 1);
+            }
+            else if (type->TypeKind == type_unsigned_long)
+            {
+                PrintString(self, "unsigned long", sizeof("unsigned long") - 1);
+            }
+            else if (type->TypeKind == type_unsigned_long_long)
+            {
+                PrintString(self, "long long", sizeof("unsigned long long") - 1);
+            }
             else if (type->TypeKind == type_long_long)
             {
                 PrintString(self, "long long", sizeof("long long") - 1);
@@ -1020,6 +1040,42 @@ static inline void PrintSemaStatement(metac_printer_t* self,
 
 static inline void PrintSemaType(metac_printer_t* self,
                                  metac_semantic_state_t* sema,
+                                 metac_type_index_t typeIndex);
+
+static inline void PrintSemaFunctionType(metac_printer_t* self,
+                                         metac_semantic_state_t* sema,
+                                         metac_type_functiontype_t* funcType,
+                                         metac_identifier_ptr_t optId)
+{
+    PrintSemaType(self, sema, funcType->ReturnType);
+    PrintSpace(self);
+    PrintChar(self, '(');
+    PrintChar(self, '*');
+    if (optId.v != 0)
+    {
+        PrintIdentifier(self, optId);
+    }
+    PrintChar(self, ')');
+    PrintSpace(self);
+    PrintChar(self, '(');
+
+    const uint32_t paramCount = funcType->ParameterTypeCount;
+    for(uint32_t i = 0;
+        i < paramCount;
+        i++)
+    {
+        PrintSemaType(self, sema, funcType->ParameterTypes[i]);
+        if (i != paramCount - 1)
+        {
+            PrintChar(self, ',');
+            PrintSpace(self);
+        }
+    }
+    PrintChar(self, ')');
+}
+
+static inline void PrintSemaType(metac_printer_t* self,
+                                 metac_semantic_state_t* sema,
                                  metac_type_index_t typeIndex)
 {
     switch(TYPE_INDEX_KIND(typeIndex))
@@ -1066,6 +1122,22 @@ static inline void PrintSemaType(metac_printer_t* self,
                 PrintIdentifier(self, enumName);
             }
         } break;
+        case type_index_ptr:
+        {
+            uint32_t ptrIdx = TYPE_INDEX_INDEX(typeIndex);
+            metac_type_index_t elementType =
+                PtrTypePtr(sema, ptrIdx)->ElementType;
+            PrintSemaType(self, sema, elementType);
+            PrintString(self, "*", sizeof("*") - 1);
+        } break;
+        case type_index_functiontype:
+        {
+            uint32_t funcTypeIdx = TYPE_INDEX_INDEX(typeIndex);
+            metac_type_functiontype_t* fnType =
+                FunctiontypePtr(sema, funcTypeIdx);
+            metac_identifier_ptr_t nullIdPtr = {};
+            PrintSemaFunctionType(self, sema, fnType, nullIdPtr);
+        } break;
 
         default: assert(0);
     }
@@ -1078,29 +1150,16 @@ static inline void PrintSemaVariable(metac_printer_t* self,
     {
         metac_type_functiontype_t* funcType =
             FunctiontypePtr(sema, TYPE_INDEX_INDEX(variable->TypeIndex));
+        PrintSemaFunctionType(self, sema, funcType, variable->VarIdentifier);
+    }
+    else if (variable->VarInitExpression != emptyPointer)
+    {
+        assert(variable->VarInitExpression);
 
-        PrintSemaType(self, sema, funcType->ReturnType);
         PrintSpace(self);
-        PrintChar(self, '(');
-        PrintChar(self, '*');
-        PrintIdentifier(self, variable->VarIdentifier);
-        PrintChar(self, ')');
+        PrintToken(self, tok_assign);
         PrintSpace(self);
-        PrintChar(self, '(');
-
-        const uint32_t paramCount = funcType->ParameterTypeCount;
-        for(uint32_t i = 0;
-            i < paramCount;
-            i++)
-        {
-            PrintSemaType(self, sema, funcType->ParameterTypes[i]);
-            if (i != paramCount - 1)
-            {
-                PrintChar(self, ',');
-                PrintSpace(self);
-            }
-        }
-        PrintChar(self, ')');
+        PrintSemaExpression(self, sema, variable->VarInitExpression);
     }
     else
     {
@@ -1109,13 +1168,7 @@ static inline void PrintSemaVariable(metac_printer_t* self,
         PrintIdentifier(self, variable->VarIdentifier);
     }
 
-    if (variable->VarInitExpression != emptyPointer)
-    {
-        PrintSpace(self);
-        PrintToken(self, tok_assign);
-        PrintSpace(self);
-        PrintSemaExpression(self, sema,  variable->VarInitExpression);
-    }
+
 }
 
 static inline void PrintSemaDeclaration(metac_printer_t* self,
@@ -1161,9 +1214,11 @@ static inline void PrintSemaDeclaration(metac_printer_t* self,
                 synVar.TypeIndex = (f + memberIndex)->Type;
                 synVar.VarIdentifier = (f + memberIndex)->Identifier;
                 PrintSemaVariable(self, sema, &synVar);
-                //PrintChar(self, ';');
+                PrintChar(self, ';');
+                PrintNewline(self);
                 if (memberIndex && memberIndex != (struct_->FieldCount - 1))
                     PrintIndent(self);
+
             }
             --self->IndentLevel;
             --level;

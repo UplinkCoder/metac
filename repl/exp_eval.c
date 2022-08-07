@@ -188,6 +188,10 @@ void WalkTree(void* c, BCValue* result,
 
     switch(op)
     {
+        case exp_dot_compiler:
+        {
+            printf("ignoring unprocessed .compiler expression\n");
+        } break;
         default : {
             fprintf(stderr,
                 "Evaluator doesn't know how to eval: %s\n",
