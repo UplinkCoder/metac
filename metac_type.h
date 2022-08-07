@@ -147,6 +147,8 @@ typedef struct metac_type_functiontype_t
     metac_type_index_t* ParameterTypes;
 
     uint32_t ParameterTypeCount;
+
+    metac_identifier_ptr_t* ParameterNames;
 } metac_type_functiontype_t;
 
 typedef struct metac_type_typedef_t

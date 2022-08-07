@@ -68,6 +68,20 @@ metac_sema_expression_t* MetaCSemantic_doExprSemantic_(metac_semantic_state_t* s
         default:
             assert(0);
 
+        case exp_call:
+        {
+            metac_expression_t* fn = expr->E1;
+            exp_argument_t* argList = (METAC_NODE(expr->E2) != emptyNode ?
+                expr->E2->ArgumentList : (exp_argument_t*)emptyNode);
+            uint32_t nArgs = 0;
+            while(argList && argList != emptyNode)
+            {
+                nArgs++;
+                argList = argList->Next;
+            }
+            printf("function call with: %u arguments\n", nArgs);
+        } break;
+
         case exp_arrow:
         case exp_dot:
         {
@@ -322,10 +336,20 @@ metac_sema_expression_t* MetaCSemantic_doExprSemantic_(metac_semantic_state_t* s
             uint32_t size = -1;
             metac_sema_expression_t* e1 =
                 MetaCSemantic_doExprSemantic(self, expr->E1, 0);
+
             metac_type_index_t type = e1->TypeIndex;
-            if (type.v == TYPE_INDEX_V(type_index_basic, type_type))
+            // usually we assume the type of which we want
+            // to get the size is the type of the expression
+            if (e1->Kind == exp_type)
             {
+                // Execpt if it's a exp_type expression
+                // which is something that resolves to a type such as the identifier int
                 type = e1->TypeExp;
+            } else if (e1->TypeIndex.v == TYPE_INDEX_V(type_index_basic, type_type))
+            {
+                // if the expression is any other kind of expression and it is of type type
+                // it indicates we want this sizeof be resolved at a later time
+                // possibly when calling a function
             }
 
             if (e1->TypeIndex.v != 0 && e1->TypeIndex.v != -1)

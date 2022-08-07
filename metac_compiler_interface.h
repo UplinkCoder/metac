@@ -1,4 +1,5 @@
 typedef unsigned int uint32_t;
+typedef void* type;
 
 enum node_type
 {
@@ -9,14 +10,16 @@ enum node_type
 typedef struct metac_compiler_t
 {
     uint32_t StartTimeStamp;
-    uint32_t (*CurrentTimeStamp)();
-    uint32_t (*BuiltinCount)();
+    uint32_t (*CurrentTimeStamp) ();
+    uint32_t (*BuiltinCount) ();
 
-    const char* (*BuiltinName)(uint32_t builtinNumber);
-    const char* (*help)();
+    const char* (*PrintType) (type T);
 
-    void (*message)(const char* str);
-    void (*error)(const char* str);
+    const char* (*BuiltinName) (uint32_t builtinNumber);
+    const char* (*help) ();
 
-    void (*RegisterLogCallback)(void (*LogCb)(const char* msg, void* context), void* context);
+    void (*message) (const char* str);
+    void (*error) (const char* str);
+
+    void (*RegisterLogCallback) (void (*LogCb)(const char* msg, void* context), void* context);
 } metac_compiler_t;

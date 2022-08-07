@@ -38,7 +38,10 @@ static inline bool isBasicType(metac_type_kind_t typeKind)
     if ((typeKind >= type_void) & (typeKind <= type_unsigned_long_long))
     {
         return true;
-    }
+    } else if (typeKind == type_type)
+    {
+        return true;
+    } else
     return false;
 }
 
@@ -347,7 +350,10 @@ uint32_t MetaCSemantic_GetTypeSize(metac_semantic_state_t* self,
     if (TYPE_INDEX_KIND(typeIndex) == type_index_basic)
     {
         uint32_t idx = TYPE_INDEX_INDEX(typeIndex);
-
+        if (idx == type_type)
+        {
+            return 0;
+        }
         if ((idx >= type_unsigned_char)
          && (idx <= type_unsigned_long))
         {
@@ -524,6 +530,10 @@ metac_type_index_t MetaCSemantic_TypeSemantic(metac_semantic_state_t* self,
     if (type->Kind == decl_type && isBasicType(typeKind))
     {
         result = MetaCSemantic_GetTypeIndex(self, typeKind, type);
+    }
+    else if (typeKind == type_type)
+    {
+        result = MetaCSemantic_GetTypeIndex(self, type_type, type);
     }
     else if (type->Kind == decl_type_array)
     {
