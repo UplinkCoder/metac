@@ -256,7 +256,8 @@ metac_bytecode_function_t MetaCCodegen_GenerateFunction(metac_bytecode_ctx_t* ct
 #endif
     return result;
 }
-static BCValue MetaCCodegen_doExpression(metac_bytecode_ctx_t* ctx, metac_sema_expression_t* exp)
+static BCValue MetaCCodegen_doExpression(metac_bytecode_ctx_t* ctx,
+                                         metac_sema_expression_t* exp)
 {
     BCType expType = MetaCCodegen_GetBCType(ctx, exp->TypeIndex);
     BCValue v;
@@ -266,7 +267,8 @@ static BCValue MetaCCodegen_doExpression(metac_bytecode_ctx_t* ctx, metac_sema_e
     return v;
 }
 
-static metac_bytecode_switch_t* MetaCCodegen_PushSwitch(metac_bytecode_ctx_t* ctx, BCValue exp)
+static metac_bytecode_switch_t* MetaCCodegen_PushSwitch(metac_bytecode_ctx_t* ctx,
+                                                        BCValue exp)
 {
     metac_bytecode_switch_t swtch = {};
     swtch.Exp = exp;
@@ -289,7 +291,8 @@ static void MetaCCodegen_PopSwitch(metac_bytecode_ctx_t* ctx, BCValue exp)
     --ctx->SwitchStackCount;
 }
 
-static void FixupBreaks(metac_bytecode_ctx_t* ctx, uint32_t breakCount, BCLabel breakLabel)
+static void FixupBreaks(metac_bytecode_ctx_t* ctx, uint32_t breakCount,
+                        BCLabel breakLabel)
 {
     void* c = ctx->c;
     if (ctx->BreaksCount > breakCount)
@@ -313,6 +316,7 @@ static void MetaCCodegen_doBlockStmt(metac_bytecode_ctx_t* ctx,
         MetaCCodegen_doStatement(ctx, stmt->Body[i]);
     }
 }
+
 static inline void MetaCCodegen_doCaseStmt(metac_bytecode_ctx_t* ctx,
                                            sema_stmt_case_t* caseStmt)
 {
@@ -333,9 +337,7 @@ static inline void MetaCCodegen_doCaseStmt(metac_bytecode_ctx_t* ctx,
     }
     BCValue* switchExp = &swtch->Exp;
     BCValue exp_result = MetaCCodegen_doExpression(ctx, caseExp);
-    bc->Eq3(c, 0,
-            switchExp,
-            &exp_result);
+    bc->Eq3(c, 0, switchExp, &exp_result);
 
     bool hasBody =
         !(caseBody && caseBody->Kind == stmt_case);
@@ -501,6 +503,7 @@ void MetaCCodegen_doStatement(metac_bytecode_ctx_t* ctx,
             sema_stmt_exp_t* expStmt = cast(sema_stmt_exp_t*) stmt;
             MetaCCodegen_doExpression(ctx, expStmt->Expression);
         } break;
+
         case stmt_if:
         {
             sema_stmt_if_t* ifStmt = cast(sema_stmt_if_t*) stmt;

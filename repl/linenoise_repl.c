@@ -4,6 +4,7 @@
 #define LINENOISE_UI
 
 #include "repl.c"
+#include "../metac_codegen.c"
 #include "../3rd_party/linenoise/linenoise.c"
 //#include "../3rd_party/debugbreak/debugbreak.h"
 
@@ -24,7 +25,6 @@ const char* Linenoise_GetInputLine(repl_state_t* repl, ui_state_t* state, uint32
     else
     {
         *length = 0;
-        printf("Got no line\n", line);
     }
 
     return line;
@@ -55,6 +55,10 @@ int main(int argc, const char* argv[])
 #ifndef NO_FIBERS
     aco_global_init();
 #endif
+    if (bc == 0)
+    {
+        bc = &BCGen_interface;
+    }
     linenoiseHistoryLoad(".repl_history");
     printf("Please enter :h for help\n");
     repl_state_t repl;

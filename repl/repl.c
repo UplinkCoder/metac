@@ -209,7 +209,7 @@ void Presemantic_(repl_state_t* self)
             i < decls.Length;
             i++)
         {
-            MetaCNode_TreeWalk_Real(decls.Ptr[i], Presemantic, &presemanticContext);
+            MetaCNode_TreeWalk_Real(cast(metac_node_t)decls.Ptr[i], Presemantic, &presemanticContext);
         }
 
         for(int i = 0;
@@ -320,7 +320,7 @@ void Repl_Init(repl_state_t* self)
 
     MetaCLPP_Init(&self->LPP);
     MetaCSemantic_Init(&self->SemanticState, &LPP->Parser, 0);
-    MetaCSemantic_PushNewScope(&self->SemanticState, scope_owner_module, 1);
+    MetaCSemantic_PushNewScope(&self->SemanticState, scope_owner_module, cast(void*)cast(intptr_t)1);
 
     LPP->Lexer.Tokens =
         (metac_token_t*)malloc(128 * sizeof(metac_token_t));
@@ -610,11 +610,11 @@ LswitchMode:
                 const char* result_str;
                 if (eval_exp.Kind == exp_type)
                 {
-                    result_str = MetaCPrinter_PrintSemaNode(&repl->printer, &repl->SemanticState, &eval_exp);
+                    result_str = MetaCPrinter_PrintSemaNode(&repl->printer, &repl->SemanticState, cast(metac_node_t)&eval_exp);
                 }
                 else
                 {
-                    result_str = MetaCPrinter_PrintSemaNode(&repl->printer, &repl->SemanticState, &eval_exp);
+                    result_str = MetaCPrinter_PrintSemaNode(&repl->printer, &repl->SemanticState, cast(metac_node_t)&eval_exp);
                 }
                 MSGF("%s = %s\n", str, result_str);
                 MetaCPrinter_Reset(&repl->printer);
@@ -706,7 +706,7 @@ LswitchMode:
                     DeclarationStore_SetDecl(&dstore, dstoreId, decl);
 */
                     MSGF("Registering %s [v=%u] in scope\n", idChars, idPtr.v);
-                    MetaCSemantic_RegisterInScope(&repl->SemanticState, idPtr, decl);
+                    MetaCSemantic_RegisterInScope(&repl->SemanticState, idPtr, METAC_NODE(decl));
                     goto LnextLine;
                 }
                 else

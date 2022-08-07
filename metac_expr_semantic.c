@@ -362,6 +362,13 @@ metac_sema_expression_t* MetaCSemantic_doExprSemantic_(metac_semantic_state_t* s
                     // I don't love this cast but oh well
                     result = cast(metac_sema_expression_t*)enumMember;
                 }
+                else if (node->Kind == node_decl_type_struct)
+                {
+                    result->Kind = exp_type;
+                    result->TypeExp.v =
+                        TYPE_INDEX_V(type_index_struct, StructIndex(self, node));
+                    result->TypeIndex.v = TYPE_INDEX_V(type_index_basic, type_type);
+                }
                 else
                 {
                     printf("[%s:%u] NodeType unexpected: %s\n", __FILE__, __LINE__, MetaCNodeKind_toChars(node->Kind));
