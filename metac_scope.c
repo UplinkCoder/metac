@@ -22,7 +22,7 @@ void MetaCScopeTable_InitN(metac_scope_table_t* self, uint32_t nMembers, metac_a
 
 void MetaCScopeTable_Init(metac_scope_table_t* self, metac_alloc_t* alloc)
 {
-    MetaCScopeTable_InitN(self, 192, alloc);
+    MetaCScopeTable_InitN(self, 32, alloc);
 }
 
 void MetaCScopeTable_Free(metac_scope_table_t* self)

@@ -46,11 +46,11 @@ void VariableStore_SetValueI32(variable_store_t* vstore,
                                int32_t value);
 
 metac_identifier_ptr_t GetVStoreID(variable_store_t* vstore,
-                                   sema_decl_variable_t* varExp);
+                                   sema_decl_variable_t* varDecl);
 
 
 metac_identifier_ptr_t AddVStoreID(variable_store_t* vstore,
-                                   sema_decl_variable_t* varExp);
+                                   sema_decl_variable_t* varDecl);
 
 typedef struct ReadI32_Ctx
 {

@@ -17,6 +17,8 @@
 #endif
 
 metac_identifier_table_t g_filenames = {0};
+metac_alloc_t*           g_allocators = 0;
+uint32_t                 g_allocatorCount = 0;
 
 inline metac_identifier_ptr_t Add_Filename(const char* file)
 {
@@ -35,6 +37,7 @@ void Allocator_Init_(metac_alloc_t* allocator, metac_alloc_t* parent,
 {
     allocator->FreelistCount = 0;
     allocator->Parent = parent;
+    allocator->Freelist = 0;
 
     allocator->ArenaCapacity = 64;
     allocator->ArenaCount = 16;
@@ -70,11 +73,14 @@ tagged_arena_t* Allocator_AddArena(metac_alloc_t* allocator, tagged_arena_t* are
 {
     tagged_arena_t* result = 0;
 
-    if (allocator->ArenaCount < allocator->ArenaCapacity)
+    if (allocator->ArenaCount < (allocator->ArenaCapacity - allocator->inuseArenaCount))
     {
 LaddArena:
-        allocator->Arenas[allocator->ArenaCount++] = *arena;
-        result = &allocator->Arenas[allocator->ArenaCount - 1];
+        result = &allocator->Arenas[(arena->Flags & arena_flag_inUse) ?
+                                    (allocator->ArenaCapacity - allocator->inuseArenaCount++) :
+                                    (allocator->ArenaCount++)];
+        (*result) = *arena;
+
     }
     else
     {
@@ -109,10 +115,14 @@ LsearchArena:
        arenaIdx < arenaCount;
        arenaIdx++)
     {
-        if (arenas[arenaIdx].SizeLeft >= size)
+        tagged_arena_t canidate = arenas[arenaIdx];
+        if (!(canidate.Flags & arena_flag_inUse))
         {
-            arena = &arenas[arenaIdx];
-            break;
+            if (canidate.SizeLeft >= size)
+            {
+                arena = &arenas[arenaIdx];
+                break;
+            }
         }
     }
 

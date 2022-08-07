@@ -142,12 +142,11 @@ metac_sema_expression_t* AllocNewSemaExpression(metac_semantic_state_t* self, me
     metac_sema_expression_t* result = 0;
     REALLOC_BOILERPLATE(self->Expressions);
 
-    result = self->Expressions + self->Expressions_size;
+    result = self->Expressions + INC(self->Expressions_size);
 
     {
         metac_sema_expression_t exp;
         METAC_COPY_HEADER(expr, &exp);
-
 
         exp.TypeIndex.v = 0;
         exp.Serial = INC(_nodeCounter);
@@ -337,10 +336,6 @@ metac_sema_statement_t* AllocNewSemaStatement_(metac_semantic_state_t* self,
         result->Kind = kind;
         result->Serial = INC(_nodeCounter);
         // result->TypeIndex.v = 0;
-        if (result->Serial == 10921)
-        {
-            asm ("int $3");
-        }
     }
 
     *result_ptr = result;

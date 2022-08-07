@@ -1055,6 +1055,17 @@ static inline void PrintSemaType(metac_printer_t* self,
                 PrintIdentifier(self, unionName);
             }
         } break;
+        case type_index_enum:
+        {
+            uint32_t enumIdx = TYPE_INDEX_INDEX(typeIndex);
+            metac_identifier_ptr_t enumName =
+                EnumTypePtr(sema, enumIdx)->Name;
+            PrintString(self, "enum ", sizeof("enum"));
+            if (enumName.v != empty_identifier.v)
+            {
+                PrintIdentifier(self, enumName);
+            }
+        } break;
 
         default: assert(0);
     }
@@ -1433,6 +1444,23 @@ static inline void PrintSemaStatement(metac_printer_t* self, metac_semantic_stat
     // printf("Kind: %s\n", StatementKind_toChars(stmt->Kind));
     switch(stmt->Kind)
     {
+        case stmt_casebody :
+        {
+            sema_stmt_casebody_t* stmtCasebody = cast(sema_stmt_casebody_t*) stmt;
+            const uint32_t statementCount = stmtCasebody->StatementCount;
+            for(uint32_t i = 0;
+                i < statementCount;
+                i++)
+            {
+                PrintSemaStatement(self, sema, stmtCasebody->Statements[i]);
+
+                if (i < (statementCount - 1))
+                {
+                    PrintNewline(self);
+                    PrintIndent(self);
+                }
+            }
+        } break;
         case stmt_return :
         {
             sema_stmt_return_t* stmt_return = cast(sema_stmt_return_t*) stmt;

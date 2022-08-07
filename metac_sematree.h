@@ -491,13 +491,13 @@ typedef struct metac_sema_declaration_t
             SEMA_DECLARATION_HEADER
         };
         sema_decl_variable_t sema_decl_variable;
-        sema_decl_type_typedef_t sema_decl_typedef;
+        metac_type_typedef_t sema_decl_typedef;
         sema_decl_type_t sema_decl_type;
-        sema_decl_enum_member_t sema_decl_enum_member;
-        sema_decl_type_enum_t sema_decl_type_enum;
-        sema_decl_type_ptr_t sema_decl_type_ptr;
+        metac_enum_member_t sema_decl_enum_member;
+        metac_type_enum_t sema_decl_type_enum;
+        metac_type_ptr_t sema_decl_type_ptr;
         sema_decl_function_t sema_decl_function;
-        sema_decl_type_array_t sema_decl_type_array;
+        metac_type_array_t sema_decl_type_array;
         metac_type_aggregate_t sema_type_aggergate;
     };
 

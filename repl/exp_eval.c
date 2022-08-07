@@ -108,7 +108,7 @@ void VariableStore_SetValueI32(variable_store_t* vstore,
 {
     assert(varExp->Kind == exp_variable);
 
-    metac_identifier_ptr_t vstoreId = GetVStoreID(vstore, varExp);
+    metac_identifier_ptr_t vstoreId = GetVStoreID(vstore, varExp->Variable);
     BCValue* v = GetValueFromVariableStore(vstore, vstoreId);
     if (!v)
     {
@@ -180,13 +180,11 @@ void WalkTree(void* c, BCValue* result,
         op -= (exp_add_ass - exp_add);
     }
 
-
     if (IsBinaryExp(op))
     {
         WalkTree(c, lhs, e->E1, vstore);
         WalkTree(c, rhs, e->E2, vstore);
     }
-
 
     switch(op)
     {
@@ -384,10 +382,12 @@ void WalkTree(void* c, BCValue* result,
     if (IsBinaryAssignExp(e->Kind))
     {
         bc->Set(c, lhs, result);
+/*
         ReadI32_Ctx* userCtx = &_ReadContexts[_ReadContextSize++];
         *userCtx = (ReadI32_Ctx){ vstore, e->E1 };
         //TODO provide an allocExecutionContext in the BCgeninterface
         bc->ReadI32(c, lhs, ReadI32_cb, userCtx);
+*/
     }
     if (rhs->vType == BCValueType_Temporary)
         bc->destroyTemporary(c, rhs);

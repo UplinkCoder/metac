@@ -3078,7 +3078,7 @@ static inline CndJmpBegin BCGen_beginCndJmp(BCGen* self, const BCValue* cond, bo
     assert(!cond ||
            cond->vType != BCValueType_Immediate);
 
-    CndJmpBegin result = {{self->ip}, cond, ifTrue};
+    CndJmpBegin result = {{self->ip}, cast(BCValue*)cond, ifTrue};
     self->ip += 2;
     return result;
 }

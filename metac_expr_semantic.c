@@ -331,8 +331,8 @@ metac_sema_expression_t* MetaCSemantic_doExprSemantic_(metac_semantic_state_t* s
             metac_node_t node =
                 MetaCSemantic_LookupIdentifier(self,
                                                result->IdentifierPtr);
-            //printf("Looking up: %s\n",
-            //    IdentifierPtrToCharPtr(self->ParserIdentifierTable, result->IdentifierPtr));
+//            printf("Looking up: %s\n",
+//                IdentifierPtrToCharPtr(self->ParserIdentifierTable, result->IdentifierPtr));
             if (node == emptyPointer)
             {
                 fprintf(stderr, "Identifier lookup failed\n");

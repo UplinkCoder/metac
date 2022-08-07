@@ -2839,7 +2839,7 @@ metac_declaration_t* MetaCParser_ParseDeclaration(metac_parser_t* self, metac_de
                 while (MetaCParser_PeekMatch(self, tok_full_slice, 1))
                 {
                     MetaCParser_Match(self, tok_full_slice);
-                    printf("saw a [] ...  we should do something about that\n");
+                    // printf("saw a [] ...  we should do something about that\n");
                     //varDecl->VarType = (decl_type_t*)ParseArraySuffix(self, varDecl->VarType);
                 }
 

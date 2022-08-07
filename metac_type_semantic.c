@@ -725,14 +725,14 @@ metac_type_index_t MetaCSemantic_TypeSemantic(metac_semantic_state_t* self,
             i < nParams;
             i++)
         {
-            parameterTypes[i] =
-                MetaCSemantic_doTypeSemantic(self, currentParam->Parameter->VarType);
+            ARENA_ARRAY_ADD(parameterTypes,
+                MetaCSemantic_doTypeSemantic(self, currentParam->Parameter->VarType));
             currentParam = currentParam->Next;
         }
 
         hash = crc32c_nozero(hash, parameterTypes, sizeof(*parameterTypes) * nParams);
         metac_type_functiontype_t key = {
-            {decl_type_functiontype, hash, 0, },
+            {decl_type_functiontype, 0, hash, 0, },
             returnType, parameterTypes, nParams
         };
 
@@ -743,6 +743,11 @@ metac_type_index_t MetaCSemantic_TypeSemantic(metac_semantic_state_t* self,
             key.ParameterTypes = parameterTypes;
             result =
                 MetaCTypeTable_AddFunctionType(&self->FunctionTypeTable, &key);
+#ifndef NDEBUG
+            metac_type_index_t test =
+                MetaCTypeTable_GetOrEmptyFunctionType(&self->FunctionTypeTable, &key);
+            assert(result.v == test.v);
+#endif
         }
     }
     else if (type->Kind == decl_type && type->TypeKind == type_identifier)

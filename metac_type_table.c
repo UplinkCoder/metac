@@ -120,6 +120,7 @@ metac_type_index_t MetaCTypeTable_AddImpl(metac_type_table_t* self,
         {
             // we've found the first empty space to put this entry
             memcpy(slot, entry, keySize);
+            self->SlotsUsed++;
             result.v = TYPE_INDEX_V(self->Kind, slotIndex);
         }
         else if (slot->Hash == hash)

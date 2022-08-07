@@ -167,7 +167,7 @@ metac_scope_owner_t ScopeParent(metac_semantic_state_t* sema,
     case scope_owner_module :
     //FIXME TODO this is not how it should be;
     // we should allocate module structures and so on
-        scopeParentIndex = (uint32_t) parentNode;
+        scopeParentIndex = (intptr_t) parentNode;
     break;
     case scope_owner_function :
         scopeParentIndex = FunctionIndex(sema, (sema_decl_function_t*)parentNode);
@@ -338,6 +338,12 @@ metac_sema_statement_t* MetaCSemantic_doStatementSemantic_(metac_semantic_state_
 
     switch (stmt->Kind)
     {
+        default:
+        {
+            printf("Statement unsupported %s\n", StatementKind_toChars(stmt->Kind));
+            assert(0);
+        } break;
+
         case stmt_while:
         {
             stmt_while_t* whileStmt = cast(stmt_while_t*) stmt;
@@ -529,6 +535,16 @@ metac_sema_statement_t* MetaCSemantic_doStatementSemantic_(metac_semantic_state_
             return cast(metac_sema_statement_t*)
                 MetaCSemantic_doSwitchSemantic(self, switchStatement);
         } break;
+
+        case stmt_break:
+        {
+            AllocNewSemaStatement(self, stmt_break, &result);
+        } break;
+
+        case stmt_continue:
+        {
+            AllocNewSemaStatement(self, stmt_break, &result);
+        } break;
     }
 
     return result;
@@ -631,9 +647,18 @@ sema_decl_function_t* MetaCSemantic_doFunctionSemantic(metac_semantic_state_t* s
         // let's do the parameter semantic inline
         // as we have an easier time if we know at which
         // param we are and how many follow
+        decl_variable_t* paramVar = currentParam->Parameter;
         f->Parameters[i].VarFlags |= variable_is_parameter;
-        f->Parameters[i].VarIdentifier =
-            currentParam->Parameter->VarIdentifier;
+        f->Parameters[i].VarIdentifier = paramVar->VarIdentifier;
+        if (METAC_NODE(paramVar->VarInitExpression) != emptyNode)
+        {
+            f->Parameters[i].VarInitExpression =
+                MetaCSemantic_doExprSemantic(self, paramVar->VarInitExpression, 0);
+        }
+        else
+        {
+            METAC_NODE(f->Parameters[i].VarInitExpression) = emptyNode;
+        }
         metac_type_index_t idx;
         idx = f->Parameters[i].TypeIndex =
             MetaCSemantic_doTypeSemantic(self,
@@ -656,6 +681,36 @@ sema_decl_function_t* MetaCSemantic_doFunctionSemantic(metac_semantic_state_t* s
 	uint32_t frameOffset = ((f->ParentFunc != cast(sema_decl_function_t*)emptyNode)
                            ? f->ParentFunc->FrameOffset : 0);
 
+    metac_type_index_t returnType = MetaCSemantic_doTypeSemantic(self, func->ReturnType);
+
+    // synthesize function type
+    decl_type_functiontype_t fType = {};
+    fType.Kind = decl_type_functiontype;
+    fType.ReturnType = func->ReturnType;
+    fType.Parameters = func->Parameters;
+    fType.ParameterCount = func->ParameterCount;
+
+    metac_type_index_t fTypeIndex = MetaCSemantic_doTypeSemantic(self, &fType);
+    f->TypeIndex = fTypeIndex;
+
+#if 0 // the code below is just for debugging
+    {
+        uint32_t hash = crc32c_nozero(~0, &returnType, sizeof(returnType));
+        STACK_ARENA_ARRAY(metac_type_index_t, fParameterTypes, 16, &self->TempAlloc);
+        ARENA_ARRAY_ENSURE_SIZE(fParameterTypes, func->ParameterCount);
+        for(uint32_t i = 0; i < func->ParameterCount; i++)
+        {
+            ARENA_ARRAY_ADD(fParameterTypes, f->Parameters[i].TypeIndex);
+        }
+
+        hash = crc32c_nozero(hash, fParameterTypes, sizeof(*fParameterTypes) * func->ParameterCount);
+        metac_type_functiontype_t functionType = {
+            { decl_type_functiontype, 0, hash, 0 },
+            returnType, fParameterTypes, func->ParameterCount
+        };
+        printf("hash: %x\n", hash);
+    }
+#endif
     for(uint32_t i = 0;
         i < func->ParameterCount;
         i++)

@@ -185,8 +185,9 @@ metac_bytecode_function_t MetaCCodegen_GenerateFunction(metac_bytecode_ctx_t* ct
 
     uint32_t frameSize = 0;
     uint32_t functionParameterCount = 1;
-    STACK_ARENA_ARRAY(BCValue, parameters, 16, 0);
-    STACK_ARENA_ARRAY(BCValue, locals, 16, 0);
+    STACK_ARENA_ARRAY(BCValue, parameters, 16, &ctx->Allocator);
+    STACK_ARENA_ARRAY(BCValue, locals, 16, &ctx->Allocator);
+    STACK_ARENA_ARRAY(BCAddr, breaks, 32, &ctx->Allocator);
 
     const char* fName =
         IdentifierPtrToCharPtr(ctx->IdentifierTable, function->Identifier);
@@ -224,6 +225,11 @@ metac_bytecode_function_t MetaCCodegen_GenerateFunction(metac_bytecode_ctx_t* ct
     ctx->LocalsAlloc = localsAlloc;
     ctx->LocalsCount = localsCount;
 
+    ctx->Breaks = breaks;
+    ctx->BreaksArena = breaksArena;
+    ctx->BreaksAlloc = breaksAlloc;
+    ctx->BreaksCount = breaksCount;
+
     for (uint32_t i = 0;
          i < function->FunctionBody->StatementCount;
          i++)
@@ -232,13 +238,22 @@ metac_bytecode_function_t MetaCCodegen_GenerateFunction(metac_bytecode_ctx_t* ct
     }
     bc->Comment(c, "Function body end");
 
+    if (ctx->BreaksAlloc)
+    {
+        FreeArena(&ctx->BreaksArena);
+    }
+    if (ctx->LocalsAlloc)
+    {
+        FreeArena(&ctx->LocalsArena);
+    }
+
     bc->endFunction(c, result.FunctionIndex);
-/*
+#ifdef PRINT_BYTECODE
     if (bc == &BCGen_interface)
     {
         BCGen_PrintCode(c, 0, 600);
     }
-*/
+#endif
     return result;
 }
 static BCValue MetaCCodegen_doExpression(metac_bytecode_ctx_t* ctx, metac_sema_expression_t* exp)
@@ -256,7 +271,7 @@ static metac_bytecode_switch_t* MetaCCodegen_PushSwitch(metac_bytecode_ctx_t* ct
     metac_bytecode_switch_t swtch = {};
     swtch.Exp = exp;
     METAC_NODE(swtch.DefaultBody) = emptyNode;
-    ARENA_ARRAY_INIT(CndJmpBegin, swtch.PrevCaseJumps, &ctx->Allocator);
+    ARENA_ARRAY_INIT(metac_bytecode_casejmp_t, swtch.PrevCaseJumps, &ctx->Allocator);
 
     ARENA_ARRAY_ADD(ctx->SwitchStack, swtch);
 
@@ -339,18 +354,52 @@ static inline void MetaCCodegen_doCaseStmt(metac_bytecode_ctx_t* ctx,
                 i < caseCount;
                 i++)
             {
-                CndJmpBegin* cj = swtch->PrevCaseJumps + i;
-                bc->endCndJmp(c, cj, caseLabel);
+                metac_bytecode_casejmp_t caseJmp = swtch->PrevCaseJumps[i];
+                switch(caseJmp.Kind)
+                {
+                    case casejmp_condJmp:
+                    {
+                       bc->endCndJmp(c, &caseJmp.cndJmp, caseLabel);
+                    } break;
+                    case casejmp_jmp:
+                    {
+                        bc->endJmp(c, caseJmp.jmp, caseLabel);
+                    } break;
+                }
             }
             swtch->PrevCaseJumpsCount = 0;
         }
+        if (caseStmt->CaseBody->Kind == stmt_casebody)
+        {
+            const uint32_t stmtCount =
+                caseStmt->CaseBody->StatementCount;
 
-        MetaCCodegen_doStatement(ctx, cast(metac_sema_statement_t*)caseStmt->CaseBody);
+            for(uint32_t i = 0;
+                i < stmtCount;
+                i++)
+            {
+                MetaCCodegen_doStatement(ctx, caseStmt->CaseBody->Statements[i]);
+            }
+        }
+        else
+        {
+            MetaCCodegen_doStatement(ctx, cast(metac_sema_statement_t*)caseStmt->CaseBody);
+        }
+        BCAddr nextCaseJmp = bc->beginJmp(c);
+        metac_bytecode_casejmp_t caseJmp;
+        caseJmp.Kind = casejmp_jmp;
+        caseJmp.jmp = nextCaseJmp;
+        ARENA_ARRAY_ADD(swtch->PrevCaseJumps, caseJmp);
+
         bc->endCndJmp(c, &cndJmp, bc->genLabel(c));
     }
     else
     {
-        ARENA_ARRAY_ADD(swtch->PrevCaseJumps, cndJmp);
+        metac_bytecode_casejmp_t caseJmp;
+        caseJmp.Kind = casejmp_condJmp;
+        caseJmp.cndJmp = cndJmp;
+
+        ARENA_ARRAY_ADD(swtch->PrevCaseJumps, caseJmp);
         if (caseBody)
             MetaCCodegen_doStatement(ctx, caseBody);
     }
@@ -369,6 +418,11 @@ void MetaCCodegen_doLocalVar(metac_bytecode_ctx_t* ctx,
     BCValue local = bc->genLocal(ctx->c, localType, localName);
     ARENA_ARRAY_ADD(ctx->Locals, local);
     VariableStore_AddVariable(&ctx->Vstore, localVar, &ctx->Locals[(ctx->LocalsCount) - 1]);
+    if (localVar->VarInitExpression)
+    {
+        BCValue initVal = MetaCCodegen_doExpression(ctx, localVar->VarInitExpression);
+        bc->Set(ctx->c, &local, &initVal);
+    }
 }
 
 void MetaCCodegen_doStatement(metac_bytecode_ctx_t* ctx,
@@ -387,7 +441,7 @@ void MetaCCodegen_doStatement(metac_bytecode_ctx_t* ctx,
                 MetaCCodegen_PushSwitch(ctx, switchExp);
             MetaCCodegen_doBlockStmt(ctx, switchStatement->SwitchBody);
             // gen default case if there is one.
-            if (swtch->DefaultBody)
+            if (METAC_NODE(swtch->DefaultBody) != emptyPointer)
             {
                 MetaCCodegen_doStatement(ctx, swtch->DefaultBody);
             }

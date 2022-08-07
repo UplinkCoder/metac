@@ -35,17 +35,9 @@ typedef struct Printer
     char* functionName;
 } Printer;
 
-#ifdef _WIN32
-#  define LIKELY(EXPR) EXPR
-#  define UNLIKELY(EXPR) EXPR
-#else
-#  define LIKELY(EXPR) __builtin_expect(!!(EXPR), 1)
-#  define UNLIKELY(EXPR) __builtin_expect(!!(EXPR), 0)
-#endif
-
 void static inline Printer_EnsureCapacity(Printer* self, uint32_t capacity)
 {
-    if (UNLIKELY(self->BufferCapacity < capacity))
+    if (self->BufferCapacity < capacity)
     {
         assert(0); // we don't support growing yet :->
     }
@@ -86,7 +78,7 @@ static inline void Printer_PutStr(Printer* self, const char* str)
     uint32_t length = 0;
     Printer_EnsureCapacity(self, 128);
 
-    if (UNLIKELY(!self->LineIndented))
+    if (!self->LineIndented)
     {
         Printer_PutIndent(self);
         Printer_EnsureCapacity(self, 128);
@@ -100,7 +92,7 @@ static inline void Printer_PutStr(Printer* self, const char* str)
             length++;
             *self->Buffer++ = c;
 
-            if (UNLIKELY((length & 128)))
+            if (length & 128)
             {
                 self->BufferCapacity -= 128;
                 length -= 128;
@@ -114,7 +106,7 @@ static inline void Printer_PutStr(Printer* self, const char* str)
 
 static inline void Printer_PutChar(Printer *self, char c)
 {
-    if (UNLIKELY(UNLIKELY(!self->LineIndented) && UNLIKELY(c != '\n')))
+    if ((!self->LineIndented) && (c != '\n'))
     {
         Printer_PutIndent(self);
     }
@@ -127,10 +119,10 @@ static inline void Printer_PutChar(Printer *self, char c)
 
 static inline void Printer_PutQuotedStr(Printer* self, const char* str)
 {
-    if (LIKELY(str))
+    if (str)
     {
         Printer_PutChar(self, '"');
-        if (LIKELY(*str)) Printer_PutStr(self, str);
+        if (*str) Printer_PutStr(self, str);
         Printer_PutChar(self, '"');
     }
     else
@@ -210,7 +202,7 @@ static inline void Printer_PrintType(Printer* self, const BCType* type)
 static inline void Printer_PrintLocal(Printer* self, const BCValue* local)
 {
     assert(local->vType == BCValueType_Local);
-    if (LIKELY(local->name))
+    if (local->name)
     {
         Printer_PutStr(self, local->name);
     }
@@ -224,7 +216,7 @@ static inline void Printer_PrintLocal(Printer* self, const BCValue* local)
 static inline void Printer_PrintParameter(Printer* self, const BCValue* param)
 {
     assert(param->vType == BCValueType_Parameter);
-    if (LIKELY(param->name))
+    if (param->name)
     {
         Printer_PutStr(self, param->name);
     }
@@ -688,7 +680,7 @@ static inline BCValue Printer_genParameter(Printer* self, BCType bct, const char
     Printer_PrintType(self, &bct);
     Printer_PutStr(self, ", ");
 
-    if (LIKELY(name))
+    if (name)
         Printer_PutQuotedStr(self, name);
     else
         Printer_PutChar(self, '0');
@@ -850,7 +842,7 @@ static inline void Printer_PrintCndJmp(Printer* self, const CndJmpBegin* jmp)
 static inline CndJmpBegin Printer_beginCndJmp(Printer* self, const BCValue* cond, _Bool ifTrue)
 {
     CndJmpBegin result =
-        {.at = {self->vIp}, .cond = cond, .ifTrue = ifTrue};
+        {.at = {self->vIp}, .cond = cast(BCValue*)cond, .ifTrue = ifTrue};
 
     Printer_PutStr(self, "CndJmpBegin ");
     Printer_PrintCndJmp(self, &result);

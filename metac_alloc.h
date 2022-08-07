@@ -14,6 +14,11 @@
 
 static inline metac_identifier_ptr_t Add_Filename(const char* file);
 
+enum arena_flags_t
+{
+    arena_flag_none = 0,
+    arena_flag_inUse = (1 << 0)
+};
 
 typedef struct tagged_arena_t
 {
@@ -34,7 +39,7 @@ typedef struct metac_alloc_t
     uint32_t ArenaCount;
     uint32_t ArenaCapacity;
 
-    uint32_t MaxAllocSize;
+    uint32_t inuseArenaCount;
     uint32_t AllocatedBlocks;
 
     struct metac_alloc_t* Parent;
@@ -112,6 +117,7 @@ typedef struct metac_alloc_t
         uint32_t size = (NAME##Count) * sizeof(*(NAME)); \
         tagged_arena_t* newArena = \
             AllocateArena((ALLOC), size); \
+        assert(newArena->Memory); \
         memcpy(newArena->Memory, (NAME), size); \
         (*cast(void**)&(NAME)) = newArena->Memory; \
     } \
