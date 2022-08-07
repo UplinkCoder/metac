@@ -1210,9 +1210,10 @@ static inline void PrintSemaDeclaration(metac_printer_t* self,
                 memberIndex++)
             {
                 //PrintSemaDeclaration(self, sema, f + memberIndex, level);
-                sema_decl_variable_t synVar;
+                sema_decl_variable_t synVar = {};
                 synVar.TypeIndex = (f + memberIndex)->Type;
                 synVar.VarIdentifier = (f + memberIndex)->Identifier;
+                METAC_NODE(synVar.VarInitExpression) = emptyPointer;
                 PrintSemaVariable(self, sema, &synVar);
                 PrintChar(self, ';');
                 PrintNewline(self);
