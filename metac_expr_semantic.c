@@ -333,14 +333,17 @@ metac_sema_expression_t* MetaCSemantic_doExprSemantic_(metac_semantic_state_t* s
         } break;
         case exp_type:
         {
-            metac_type_index_t TypeIndex
+            hash = type_key;
+            metac_type_index_t type
                 = MetaCSemantic_doTypeSemantic(self, expr->TypeExp);
-            result->TypeExp = TypeIndex;
+            result->TypeExp = type;
             result->TypeIndex.v = TYPE_INDEX_V(type_index_basic, type_type);
+            hash = CRC32C_VALUE(hash, type);
         } break;
         case exp_sizeof:
         {
             uint32_t size = -1;
+            hash = sizeof_key;
             metac_sema_expression_t* e1 =
                 MetaCSemantic_doExprSemantic(self, expr->E1, 0);
 
@@ -352,6 +355,7 @@ metac_sema_expression_t* MetaCSemantic_doExprSemantic_(metac_semantic_state_t* s
                 // Execpt if it's a exp_type expression
                 // which is something that resolves to a type such as the identifier int
                 type = e1->TypeExp;
+                hash = CRC32C_VALUE(hash, e1->TypeExp);
             } else if (e1->TypeIndex.v == TYPE_INDEX_V(type_index_basic, type_type))
             {
                 // if the expression is any other kind of expression and it is of type type
@@ -376,6 +380,7 @@ metac_sema_expression_t* MetaCSemantic_doExprSemantic_(metac_semantic_state_t* s
             if (node == emptyPointer)
             {
                 fprintf(stderr, "Identifier lookup failed\n");
+                hash = result->IdentifierPtr.v;
             }
             else
             {
@@ -440,7 +445,7 @@ metac_sema_expression_t* MetaCSemantic_doExprSemantic_(metac_semantic_state_t* s
         break;
     }
 
-    assert(hash != 0);
+//    assert(hash != 0);
     result->Hash = hash;
 
     return result;

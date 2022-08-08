@@ -18,8 +18,6 @@
 #include "metac_type_semantic.c"
 #include "metac_expr_semantic.c"
 
-void * g_locked_addr;
-
 const char* MetaCExpressionKind_toChars(metac_expression_kind_t);
 bool IsExpressionNode(metac_node_kind_t);
 
@@ -453,8 +451,6 @@ metac_sema_statement_t* MetaCSemantic_doStatementSemantic_(metac_semantic_state_
             {
                 METAC_NODE(semaIfStmt->ElseBody) = emptyNode;
             }
-            g_locked_addr = (void*)&semaIfStmt->LocationIdx;
-            assert((void*)result == (void*)semaIfStmt);
         } break;
 
         case stmt_case:
@@ -576,7 +572,6 @@ metac_sema_statement_t* MetaCSemantic_doStatementSemantic_(metac_semantic_state_
 
             if (METAC_NODE(for_->ForBody) != emptyNode)
             {
-                assert(g_locked_addr == 0);
                 metac_sema_statement_t* forBody =
                     MetaCSemantic_doStatementSemantic(self, for_->ForBody);
                 semaFor->ForBody = forBody;
@@ -637,7 +632,7 @@ metac_sema_statement_t* MetaCSemantic_doStatementSemantic_(metac_semantic_state_
         } break;
     }
 
-    assert(hash != ~0 && result->Serial != 0);
+    assert(result->Serial != 0);
     return result;
 }
 
@@ -754,6 +749,9 @@ sema_decl_function_t* MetaCSemantic_doFunctionSemantic(metac_semantic_state_t* s
         idx = f->Parameters[i].TypeIndex =
             MetaCSemantic_doTypeSemantic(self,
                                          currentParam->Parameter->VarType);
+        uint32_t hash = f->Parameters[i].TypeIndex.v;
+        hash = CRC32C_VALUE(hash, i);
+        f->Parameters[i].Hash = hash;
         currentParam = currentParam->Next;
     }
     // now we should know the sizes
