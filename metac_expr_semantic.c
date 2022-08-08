@@ -70,7 +70,12 @@ metac_sema_expression_t* MetaCSemantic_doExprSemantic_(metac_semantic_state_t* s
     {
         case exp_invalid:
         default:
+        {
+            fprintf(stderr, "expression semantic doesn't support %s yet.\n",
+                    MetaCExpressionKind_toChars(expr->Kind));
             assert(0);
+        }
+
 
         case exp_call:
         {
@@ -149,16 +154,6 @@ metac_sema_expression_t* MetaCSemantic_doExprSemantic_(metac_semantic_state_t* s
                 }
 #endif
             }
-        } break;
-
-        case exp_typeof:
-        {
-            metac_sema_expression_t* E1 =
-                MetaCSemantic_doExprSemantic(self, expr->E1, 0);
-            //result->Kind = exp_type;
-            result->TypeIndex.v =
-                TYPE_INDEX_V(type_index_basic, type_type);
-            result->TypeExp = E1->TypeIndex;
         } break;
 
         case exp_decrement:
@@ -339,6 +334,26 @@ metac_sema_expression_t* MetaCSemantic_doExprSemantic_(metac_semantic_state_t* s
             result->TypeExp = type;
             result->TypeIndex.v = TYPE_INDEX_V(type_index_basic, type_type);
             hash = CRC32C_VALUE(hash, type);
+        } break;
+        case exp_typeof:
+        {
+            hash = typeof_key;
+            metac_sema_expression_t* e1 =
+                MetaCSemantic_doExprSemantic(self, expr->E1, 0);
+
+            metac_type_index_t type = e1->TypeIndex;
+            // usually we assume the type of which we want
+            // to get the size is the type of the expression
+            if (e1->TypeIndex.v == TYPE_INDEX_V(type_index_basic, type_type))
+            {
+                // if the expression is any other kind of expression and it is of type type
+                // it indicates we want this sizeof be resolved at a later time
+                // possibly when calling a function
+            }
+
+            result->TypeIndex.v = TYPE_INDEX_V(type_index_basic, type_type);
+            result->Kind = exp_type;
+            result->TypeExp = type;
         } break;
         case exp_sizeof:
         {

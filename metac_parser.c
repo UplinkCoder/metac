@@ -1452,6 +1452,8 @@ metac_expression_t* MetaCParser_ParseUnaryExpression(metac_parser_t* self, parse
         //PopOperator(exp_typeof);
         assert(parenExp->Kind == exp_paren);
         result->E1 = parenExp->E1;
+        result->Hash = CRC32C_VALUE(typeof_key, result->E1->Hash);
+
     }
     else if (tokenType == tok_kw_sizeof)
     {
