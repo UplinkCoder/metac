@@ -526,6 +526,31 @@ void MetaCCodegen_doStatement(metac_bytecode_ctx_t* ctx,
             }
         } break;
 
+        case stmt_for:
+        {
+            sema_stmt_for_t* forStatement = cast(sema_stmt_for_t*) stmt;
+            BCLabel evalCond = bc->genLabel(c);
+
+            BCValue* condPtr = 0;
+            if (IsExpressionNode(forStatement->ForInit->Kind))
+            {
+                MetaCCodegen_doExpression(ctx,
+                    (metac_sema_expression_t*)forStatement->ForInit);
+            }
+            else
+            {
+                MetaCCodegen_doLocalVar(ctx,
+                    (sema_decl_variable_t*)forStatement->ForInit);
+            }
+            BCValue cond = MetaCCodegen_doExpression(ctx, forStatement->ForCond);
+            if (forStatement->ForCond->Kind == exp_variable)
+                condPtr = &cond;
+
+            CndJmpBegin condExpJmp = bc->beginCndJmp(c, condPtr, false);
+            MetaCCodegen_doStatement(ctx, forStatement->ForBody);
+            bc->endCndJmp(c, &condExpJmp, evalCond);
+        } break;
+
         default:
         {
             printf("Statement unsupported %s\n", StatementKind_toChars(stmt->Kind));

@@ -246,7 +246,6 @@ sema_decl_variable_t* AllocNewSemaVariable(metac_semantic_state_t* self, decl_va
     result->Kind = decl_variable;
     result->Serial = INC(_nodeCounter);
 
-
     return result;
 }
 

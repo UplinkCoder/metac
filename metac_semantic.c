@@ -18,6 +18,8 @@
 #include "metac_type_semantic.c"
 #include "metac_expr_semantic.c"
 
+void * g_locked_addr;
+
 const char* MetaCExpressionKind_toChars(metac_expression_kind_t);
 bool IsExpressionNode(metac_node_kind_t);
 
@@ -326,6 +328,7 @@ sema_stmt_casebody_t* MetaCSemantic_doCaseBodySemantic(metac_semantic_state_t* s
     return  result;
 
 }
+
 metac_sema_statement_t* MetaCSemantic_doStatementSemantic_(metac_semantic_state_t* self,
                                                            metac_statement_t* stmt,
                                                            const char* callFile,
@@ -335,6 +338,7 @@ metac_sema_statement_t* MetaCSemantic_doStatementSemantic_(metac_semantic_state_
 
     // metac_printer_t printer;
     // MetaCPrinter_Init(&printer, self->ParserIdentifierTable, self->ParserStringTable);
+    uint32_t hash = ~0;
 
     switch (stmt->Kind)
     {
@@ -346,14 +350,18 @@ metac_sema_statement_t* MetaCSemantic_doStatementSemantic_(metac_semantic_state_
 
         case stmt_while:
         {
+            hash ^= stmt_while;
             stmt_while_t* whileStmt = cast(stmt_while_t*) stmt;
             sema_stmt_while_t* semaWhileStmt =
                 AllocNewSemaStatement(self, stmt_while, &result);
             semaWhileStmt->WhileExp =
                 MetaCSemantic_doExprSemantic(self, whileStmt->WhileExp, 0);
+            hash = CRC32C_VALUE(hash, whileStmt->WhileExp->Hash);
             if (METAC_NODE(whileStmt->WhileBody) != emptyNode)
             {
-                semaWhileStmt->WhileBody = MetaCSemantic_doStatementSemantic(self, whileStmt->WhileBody);
+                semaWhileStmt->WhileBody =
+                    MetaCSemantic_doStatementSemantic(self, whileStmt->WhileBody);
+                hash = CRC32C_VALUE(hash, semaWhileStmt->WhileBody->Hash);
             }
             else
             {
@@ -363,20 +371,26 @@ metac_sema_statement_t* MetaCSemantic_doStatementSemantic_(metac_semantic_state_
 
         case stmt_exp:
         {
+            hash ^= stmt_exp;
             stmt_exp_t* expStatement = (stmt_exp_t*) stmt;
             sema_stmt_exp_t* sse = AllocNewSemaStatement(self, stmt_exp, cast(void**)&result);
             sse->Expression =
                 MetaCSemantic_doExprSemantic(self, expStatement->Expression, 0);
+            hash = CRC32C_VALUE(hash, sse->Hash);
         } break;
 
         case stmt_comment:
         {
+            hash ^= stmt_comment;
              //TODO it's funky to have statements which don't change in sema
             result = cast(metac_sema_statement_t*) stmt;
+            assert(stmt->Hash != 0);
+            hash = CRC32C_VALUE(hash, stmt->Hash);
         } break;
 
         case stmt_decl:
         {
+            hash ^= stmt_decl;
             stmt_decl_t* declStatement = cast(stmt_decl_t*) stmt;
             sema_stmt_decl_t* semaDeclStatement =
                 AllocNewSemaStatement(self, stmt_decl, &result);
@@ -409,14 +423,20 @@ metac_sema_statement_t* MetaCSemantic_doStatementSemantic_(metac_semantic_state_
 */
         case stmt_if:
         {
+            hash ^= stmt_if;
             stmt_if_t* ifStmt = cast(stmt_if_t*) stmt;
             sema_stmt_if_t* semaIfStmt =
                 AllocNewSemaStatement(self, stmt_if, &result);
+
             semaIfStmt->IfCond =
                 MetaCSemantic_doExprSemantic(self, ifStmt->IfCond, 0);
+            hash = CRC32C_VALUE(hash, ifStmt->IfCond->Hash);
+
             if (METAC_NODE(ifStmt->IfBody) != emptyNode)
             {
-                semaIfStmt->IfBody = MetaCSemantic_doStatementSemantic(self, ifStmt->IfBody);
+                semaIfStmt->IfBody =
+                    MetaCSemantic_doStatementSemantic(self, ifStmt->IfBody);
+                hash = CRC32C_VALUE(hash, semaIfStmt->IfBody->Hash);
             }
             else
             {
@@ -425,12 +445,16 @@ metac_sema_statement_t* MetaCSemantic_doStatementSemantic_(metac_semantic_state_
 
             if (METAC_NODE(ifStmt->ElseBody) != emptyNode)
             {
-                semaIfStmt->ElseBody = MetaCSemantic_doStatementSemantic(self, ifStmt->ElseBody);
+                semaIfStmt->ElseBody =
+                    MetaCSemantic_doStatementSemantic(self, ifStmt->ElseBody);
+                hash = CRC32C_VALUE(hash, semaIfStmt->ElseBody->Hash);
             }
             else
             {
                 METAC_NODE(semaIfStmt->ElseBody) = emptyNode;
             }
+            g_locked_addr = (void*)&semaIfStmt->LocationIdx;
+            assert((void*)result == (void*)semaIfStmt);
         } break;
 
         case stmt_case:
@@ -442,11 +466,11 @@ metac_sema_statement_t* MetaCSemantic_doStatementSemantic_(metac_semantic_state_
             assert(self->SwitchStackSize != 0);
             // the default statement doesn't have a caseExp
             // therefore we check it here so we can skip it.
-
             if (cast(metac_node_t)caseStatement->CaseExp != emptyNode)
             {
                 semaCaseStatement->CaseExp =
                     MetaCSemantic_doExprSemantic(self, caseStatement->CaseExp, 0);
+                hash = CRC32C_VALUE(hash, semaCaseStatement->CaseExp->Hash);
             }
             else
             {
@@ -454,11 +478,15 @@ metac_sema_statement_t* MetaCSemantic_doStatementSemantic_(metac_semantic_state_
             }
             semaCaseStatement->CaseBody =
                 MetaCSemantic_doCaseBodySemantic(self, caseStatement);
-
+            if (METAC_NODE(semaCaseStatement->CaseBody) != emptyNode)
+            {
+                hash = CRC32C_VALUE(hash, semaCaseStatement->CaseBody->Hash);
+            }
         } break;
 
         case stmt_block:
         {
+            hash ^= stmt_block;
             stmt_block_t* blockStatement = (stmt_block_t*) stmt;
             uint32_t statementCount = blockStatement->StatementCount;
             sema_stmt_block_t* semaBlockStatement =
@@ -476,8 +504,15 @@ metac_sema_statement_t* MetaCSemantic_doStatementSemantic_(metac_semantic_state_
                 i < statementCount;
                 i++)
             {
+
                 semaBlockStatement->Body[i] =
                     MetaCSemantic_doStatementSemantic(self, currentStatement);
+
+                if (METAC_NODE(semaBlockStatement->Body[i]) != emptyPointer)
+                {
+                    hash = CRC32C_VALUE(hash, semaBlockStatement->Body[i]->Hash);
+                }
+
                 currentStatement = currentStatement->Next;
             }
             //TODO this doesn't handle inject statements
@@ -488,21 +523,73 @@ metac_sema_statement_t* MetaCSemantic_doStatementSemantic_(metac_semantic_state_
 
         case stmt_for:
         {
+            hash ^= stmt_for;
+
             stmt_for_t* for_ = (stmt_for_t*) stmt;
             sema_stmt_for_t* semaFor =
-                AllocNewSemaStatement(self, stmt_for, for_);
+                AllocNewSemaStatement(self, stmt_for, &result);
 
             metac_scope_t* forScope = semaFor->Scope =
                 MetaCSemantic_PushNewScope(self,
                                            scope_owner_statement,
                                            METAC_NODE(semaFor));
 
-            metac_sema_declaration_t* ForInit =
-                MetaCSemantic_doDeclSemantic(self, for_->ForInit);
-            metac_sema_expression_t* ForCond =
-                MetaCSemantic_doExprSemantic(self, for_->ForCond, 0);
-            metac_sema_expression_t* ForPostLoop =
-                MetaCSemantic_doExprSemantic(self, for_->ForPostLoop, 0);
+            if (METAC_NODE(for_->ForInit) != emptyNode)
+            {
+                if (IsExpressionNode(for_->ForInit->Kind))
+                {
+
+                    semaFor->ForInit = cast(metac_node_t)
+                        MetaCSemantic_doExprSemantic(self,
+                            (cast(metac_expression_t*)for_->ForInit), 0);
+                }
+                else
+                {
+                    semaFor->ForInit = cast(metac_node_t)
+                        MetaCSemantic_doDeclSemantic(self,
+                            (cast(metac_declaration_t*)for_->ForInit));
+                }
+                hash = CRC32C_VALUE(hash, semaFor->ForInit->Hash);
+            }
+
+            if (METAC_NODE(for_->ForCond) != emptyNode)
+            {
+                semaFor->ForCond =
+                    MetaCSemantic_doExprSemantic(self, for_->ForCond, 0);
+                hash = CRC32C_VALUE(hash, semaFor->ForCond->Hash);
+            }
+            else
+            {
+                METAC_NODE(semaFor->ForCond) = emptyNode;
+            }
+
+            if (METAC_NODE(for_->ForPostLoop) != emptyNode)
+            {
+                semaFor->ForPostLoop =
+                    MetaCSemantic_doExprSemantic(self, for_->ForPostLoop, 0);
+                hash = CRC32C_VALUE(hash, semaFor->ForPostLoop->Hash);
+            }
+            else
+            {
+                METAC_NODE(semaFor->ForPostLoop) = emptyNode;
+            }
+
+            if (METAC_NODE(for_->ForBody) != emptyNode)
+            {
+                assert(g_locked_addr == 0);
+                metac_sema_statement_t* forBody =
+                    MetaCSemantic_doStatementSemantic(self, for_->ForBody);
+                semaFor->ForBody = forBody;
+
+                hash = CRC32C_VALUE(hash, semaFor->ForBody->Hash);
+            }
+            else
+            {
+                METAC_NODE(semaFor->ForBody) = emptyNode;
+            }
+            int n = 1993;
+            // Pop the forScope
+            MetaCSemantic_PopScope(self);
         } break;
 
         //TODO for now stmt_yield and stmt_return
@@ -532,21 +619,25 @@ metac_sema_statement_t* MetaCSemantic_doStatementSemantic_(metac_semantic_state_
         case stmt_switch:
         {
             stmt_switch_t* switchStatement = cast(stmt_switch_t*) stmt;
-            return cast(metac_sema_statement_t*)
+            result = cast(metac_sema_statement_t*)
                 MetaCSemantic_doSwitchSemantic(self, switchStatement);
+            hash = result->Hash;
         } break;
 
         case stmt_break:
         {
             AllocNewSemaStatement(self, stmt_break, &result);
+            hash = break_key;
         } break;
 
         case stmt_continue:
         {
-            AllocNewSemaStatement(self, stmt_break, &result);
+            AllocNewSemaStatement(self, stmt_continue, &result);
+            hash = continue_key;
         } break;
     }
 
+    assert(hash != ~0 && result->Serial != 0);
     return result;
 }
 
@@ -797,7 +888,13 @@ metac_sema_declaration_t* MetaCSemantic_declSemantic(metac_semantic_state_t* sel
         {
             decl_variable_t* v = cast(decl_variable_t*) decl;
             sema_decl_variable_t* var = AllocNewSemaVariable(self, v, &result);
+            /// XXX FIXME we want to assign a variable serial
+            /// after we have determined the storage location ideally.
+            /// to keep stuff wokring htough we just assign the decl hash
+
+            var->Hash = v->Hash;
             var->TypeIndex = MetaCSemantic_doTypeSemantic(self, v->VarType);
+
             if (METAC_NODE(v->VarInitExpression) != emptyNode)
             {
                 var->VarInitExpression = MetaCSemantic_doExprSemantic(self, v->VarInitExpression, 0);
@@ -808,6 +905,7 @@ metac_sema_declaration_t* MetaCSemantic_declSemantic(metac_semantic_state_t* sel
             }
             //TODO RegisterIdentifier
             var->VarIdentifier = v->VarIdentifier;
+
             MetaCSemantic_RegisterInScope(self, var->VarIdentifier, METAC_NODE(var));
         } break;
         case decl_type_enum:

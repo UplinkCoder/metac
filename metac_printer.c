@@ -44,7 +44,7 @@ void static inline PrintIndent(metac_printer_t* self)
 }
 
 static inline void CheckAndRellocIfNeeded(metac_printer_t* self,
-                                   uint32_t length)
+                                          uint32_t length)
 {
     int32_t underflow =
         self->StringMemoryCapacity -
@@ -496,7 +496,16 @@ static inline void PrintStatement(metac_printer_t* self, metac_statement_t* stmt
             PrintChar(self, '(');
             if (stmt_for->ForInit != cast(metac_node_t) emptyPointer)
             {
-                MetaCPrinter_PrintNode(self, stmt_for->ForInit, 0);
+                if (IsExpressionNode(stmt_for->ForInit->Kind))
+                {
+                    PrintExpression(self, (metac_expression_t*)stmt_for->ForInit);
+                }
+                else
+                {
+                    self->SupressNewlineAfterDeclaration = true;
+                    PrintDeclaration(self, (metac_declaration_t*)stmt_for->ForInit, 0);
+                    PrintSpace(self);
+                }
             }
             else
             {
@@ -515,7 +524,10 @@ static inline void PrintStatement(metac_printer_t* self, metac_statement_t* stmt
             PrintChar(self, ')');
             PrintNewline(self);
             PrintIndent(self);
-            PrintStatement(self, stmt_for->ForBody);
+            if (stmt_for->ForBody != (metac_statement_t*) emptyPointer)
+            {
+                PrintStatement(self, stmt_for->ForBody);
+            }
         } break;
         case stmt_break:
         {
@@ -808,7 +820,14 @@ static inline void PrintDeclaration(metac_printer_t* self,
         } break;
     }
     if (!!printSemicolon) PrintToken(self, tok_semicolon);
-    PrintNewline(self);
+    if (self->SupressNewlineAfterDeclaration)
+    {
+        self->SupressNewlineAfterDeclaration = false;
+    }
+    else
+    {
+        PrintNewline(self);
+    }
 }
 
 static inline void PrintExpression(metac_printer_t* self, metac_expression_t* exp)
@@ -1152,20 +1171,21 @@ static inline void PrintSemaVariable(metac_printer_t* self,
             FunctiontypePtr(sema, TYPE_INDEX_INDEX(variable->TypeIndex));
         PrintSemaFunctionType(self, sema, funcType, variable->VarIdentifier);
     }
-    else if (variable->VarInitExpression != emptyPointer)
-    {
-        assert(variable->VarInitExpression);
-
-        PrintSpace(self);
-        PrintToken(self, tok_assign);
-        PrintSpace(self);
-        PrintSemaExpression(self, sema, variable->VarInitExpression);
-    }
     else
     {
         PrintSemaType(self, sema, variable->TypeIndex);
         PrintSpace(self);
         PrintIdentifier(self, variable->VarIdentifier);
+     
+       if (variable->VarInitExpression != emptyPointer)
+        {
+            assert(variable->VarInitExpression);
+
+            PrintSpace(self);
+            PrintToken(self, tok_assign);
+            PrintSpace(self);
+            PrintSemaExpression(self, sema, variable->VarInitExpression);
+        }
     }
 
 
@@ -1634,7 +1654,15 @@ static inline void PrintSemaStatement(metac_printer_t* self, metac_semantic_stat
             PrintChar(self, '(');
             if (stmt_for->ForInit != emptyPointer)
             {
-                MetaCPrinter_PrintNode(self, stmt_for->ForInit, 0);
+                if (IsExpressionNode(stmt_for->ForInit->Kind))
+                {
+                    PrintSemaExpression(self, sema, (cast(metac_sema_expression_t*)stmt_for->ForInit));
+                }
+                else
+                {
+                    self->SupressNewlineAfterDeclaration = true;
+                    PrintSemaDeclaration(self, sema, (cast(metac_sema_declaration_t*)stmt_for->ForInit), self->IndentLevel);
+                }
             }
             else
             {
@@ -1842,7 +1870,7 @@ void MetaCPrinter_InitSz(metac_printer_t* self,
     self->StringMemoryCapacity = initialSize;
     self->StringMemory = (char*)malloc(self->StringMemoryCapacity);
     self->StringMemorySize = self->StringMemoryCapacity;
-
+    self->SupressNewlineAfterDeclaration = false;
     MetaCPrinter_Reset(self);
 
     self->IdentifierTable = identifierTable;

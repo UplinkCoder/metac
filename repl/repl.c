@@ -142,6 +142,7 @@ typedef struct presemantic_context_t
     metac_semantic_state_t* Sema;
 } presemantic_context_t;
 
+/*
 static inline int Presemantic(metac_node_t node, void* ctx)
 {
     presemantic_context_t* context =
@@ -165,10 +166,10 @@ static inline int Presemantic(metac_node_t node, void* ctx)
 
     return 0;
 }
-
+*/
 extern repl_ui_context_t* g_uiContext;
 metac_type_aggregate_t* g_compilerInterface;
-
+/*
 void Presemantic_(repl_state_t* self)
 {
     metac_type_aggregate_t* compilerStruct = 0;
@@ -272,11 +273,12 @@ void Presemantic_(repl_state_t* self)
 
         g_compilerInterface = self->SemanticState.CompilerInterface;
         self->CompilerInterface = g_compilerInterface;
+
         // FreeSema
         MetaCParser_Free(&tmpParser);
     }
 }
-
+*/
 void Repl_SwtichMode(repl_state_t* self)
 {
     switch (self->ParseMode)
@@ -646,6 +648,7 @@ LswitchMode:
                 _ReadContextSize = 0;
                 goto LnextLine;
             }
+
             case parse_mode_es:
             {
                 exp =
@@ -776,6 +779,30 @@ LswitchMode:
                     MSGF("stmt = %s\n", MetaCPrinter_PrintStatement(&repl->printer, stmt));
                 else
                    ERROR("couldn't parse statement\n");
+                MetaCPrinter_Reset(&repl->printer);
+                goto LnextLine;
+            }
+
+            case parse_mode_ss :
+            {
+                stmt = MetaCLPP_ParseStatementFromString(&repl->LPP, repl->Line);
+                /*
+                if (stmt)
+                    MSGF("stmt = %s\n", MetaCPrinter_PrintStatement(&repl->printer, stmt));
+                else
+                   ERROR("couldn't parse statement\n");
+                */
+                if (stmt)
+                {
+                    metac_sema_statement_t* semaStmt =
+                        MetaCSemantic_doStatementSemantic(&repl->SemanticState, stmt);
+                    MSGF("stmt = %s\n",
+                        MetaCPrinter_PrintSemaNode(&repl->printer, &repl->SemanticState, semaStmt));
+                }
+                else
+                {
+                   ERROR("couldn't parse statement\n");
+                }
                 MetaCPrinter_Reset(&repl->printer);
                 goto LnextLine;
             }
@@ -914,7 +941,7 @@ void Repl_Fiber(void)
     ui_interface_t uiInterface = uiContext->UiInterface;
     struct ui_state_t* uiState = uiContext->UiState;
 
-    Presemantic_(repl);
+    // Presemantic_(repl);
 
     while (Repl_Loop(repl, uiContext) != false)
     {

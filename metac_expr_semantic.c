@@ -35,7 +35,6 @@ static bool IsAggregateType(metac_type_index_kind_t typeKind)
 
     return false;
 }
-extern metac_type_aggregate_t* g_compilerInterface;
 metac_sema_expression_t* MetaCSemantic_doExprSemantic_(metac_semantic_state_t* self,
                                                        metac_expression_t* expr,
                                                        metac_sema_expression_t* result,
@@ -46,6 +45,8 @@ metac_sema_expression_t* MetaCSemantic_doExprSemantic_(metac_semantic_state_t* s
     {
         result = AllocNewSemaExpression(self, expr);
     }
+
+    uint32_t hash = 0;
 
     if (IsBinaryExp(expr->Kind)
         && (   expr->Kind != exp_arrow
@@ -58,6 +59,9 @@ metac_sema_expression_t* MetaCSemantic_doExprSemantic_(metac_semantic_state_t* s
 
         result->E1 = MetaCSemantic_doExprSemantic(self, expr->E1, 0);
         result->E2 = MetaCSemantic_doExprSemantic(self, expr->E2, 0);
+
+        hash = CRC32C_VALUE(hash, result->E1->Hash);
+        hash = CRC32C_VALUE(hash, result->E2->Hash);
 
         MetaCSemantic_PopExpr(self, result);
     }
@@ -74,7 +78,7 @@ metac_sema_expression_t* MetaCSemantic_doExprSemantic_(metac_semantic_state_t* s
             exp_argument_t* argList = (METAC_NODE(expr->E2) != emptyNode ?
                 expr->E2->ArgumentList : (exp_argument_t*)emptyNode);
             uint32_t nArgs = 0;
-            while(argList && argList != emptyNode)
+            while(argList && (cast(metac_node_t) argList) != emptyNode)
             {
                 nArgs++;
                 argList = argList->Next;
@@ -168,6 +172,8 @@ metac_sema_expression_t* MetaCSemantic_doExprSemantic_(metac_semantic_state_t* s
         {
             metac_sema_expression_t* E1 =
                 MetaCSemantic_doExprSemantic(self, expr->E1, 0);
+            hash = CRC32C_VALUE(hash, E1->Hash);
+
             //result->Kind = exp_paren;
             result->TypeIndex = E1->TypeIndex;
             result->E1 = E1;
@@ -195,6 +201,7 @@ metac_sema_expression_t* MetaCSemantic_doExprSemantic_(metac_semantic_state_t* s
                 LENGTH_FROM_STRING_KEY(expr->StringKey) + 1);
         break;
         case exp_signed_integer :
+            hash = CRC32C_VALUE(exp_signed_integer, expr->ValueU64);
             result->TypeIndex = MetaCSemantic_GetTypeIndex(self, type_int, (decl_type_t*)emptyPointer);
         break;
         case exp_assign:
@@ -283,7 +290,7 @@ metac_sema_expression_t* MetaCSemantic_doExprSemantic_(metac_semantic_state_t* s
             metac_expression_t* fn = call->E1;
             exp_argument_t* args = (METAC_NODE(call->E2) != emptyNode ?
                 call->E2->ArgumentList : (exp_argument_t*)emptyNode);
-
+#if 0
             if (!g_compilerInterface)
             {
                 report_error("There's no compiler interface loaded\n");
@@ -310,7 +317,6 @@ metac_sema_expression_t* MetaCSemantic_doExprSemantic_(metac_semantic_state_t* s
                     break;
                 }
             }
-
             if (callIdx == -1)
             {
                 printf("CallNotFound\n");
@@ -323,6 +329,7 @@ metac_sema_expression_t* MetaCSemantic_doExprSemantic_(metac_semantic_state_t* s
 
             }
             // CompilerInterface_Call(
+#endif
         } break;
         case exp_type:
         {
@@ -387,6 +394,7 @@ metac_sema_expression_t* MetaCSemantic_doExprSemantic_(metac_semantic_state_t* s
                     result->Kind = exp_variable;
                     result->Variable = v;
                     result->TypeIndex = v->TypeIndex;
+                    hash = v->Hash;
                 }
                 else if (node->Kind == node_decl_enum_member)
                 {
@@ -399,7 +407,7 @@ metac_sema_expression_t* MetaCSemantic_doExprSemantic_(metac_semantic_state_t* s
                 {
                     result->Kind = exp_type;
                     result->TypeExp.v =
-                        TYPE_INDEX_V(type_index_struct, StructIndex(self, node));
+                        TYPE_INDEX_V(type_index_struct, StructIndex(self, cast(metac_type_aggregate_t*)node));
                     result->TypeIndex.v = TYPE_INDEX_V(type_index_basic, type_type);
                 }
                 else
@@ -407,6 +415,8 @@ metac_sema_expression_t* MetaCSemantic_doExprSemantic_(metac_semantic_state_t* s
                     printf("[%s:%u] NodeType unexpected: %s\n", __FILE__, __LINE__, MetaCNodeKind_toChars(node->Kind));
                 }
             }
+            //printf("Resolved exp_identifier to: %s\n",
+            //    MetaCExpressionKind_toChars(result->Kind));
         }
         break;
         case exp_addr:
@@ -429,6 +439,9 @@ metac_sema_expression_t* MetaCSemantic_doExprSemantic_(metac_semantic_state_t* s
             }
         break;
     }
+
+    assert(hash != 0);
+    result->Hash = hash;
 
     return result;
 }
@@ -457,3 +470,4 @@ bool MetaCSemantic_CanHaveAddress(metac_semantic_state_t* self,
         default: return false;
     }
 }
+

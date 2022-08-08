@@ -317,8 +317,10 @@ typedef struct metac_sema_statement_t
         sema_stmt_switch_t sema_stmt_switch;
         // case stmt_case :
         sema_stmt_case_t sema_stmt_case;
-        // case stmt_casbody
+        // case stmt_casbody :
         sema_stmt_casebody_t sema_stmt_casebody;
+        // case stmt_for :
+        sema_stmt_for_t sema_stmt_for;
     };
 } metac_sema_statement_t;
 

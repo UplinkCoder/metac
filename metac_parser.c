@@ -61,6 +61,8 @@ void MetaCParser_Init(metac_parser_t* self)
     IdentifierTable_Init(&self->IdentifierTable, IDENTIFIER_LENGTH_SHIFT, 13);
     IdentifierTable_Init(&self->StringTable, STRING_LENGTH_SHIFT, 13);
 
+    self->CurrentBlockStatement = 0;
+
     self->PackStackCapacity = 8;
     self->PackStack = (uint16_t*)
         calloc(sizeof(*self->PackStack), self->PackStackCapacity);
@@ -173,7 +175,9 @@ void AddDefine(metac_parser_t* self, metac_token_t* token, uint32_t nParameters)
     }
 }
 */
-static inline bool MetaCParser_PeekMatch(metac_parser_t* self, metac_token_enum_t expectedType, bool optional)
+static inline bool MetaCParser_PeekMatch(metac_parser_t* self,
+                                         metac_token_enum_t expectedType,
+                                         bool optional)
 {
     metac_token_t* peekToken =
         MetaCParser_PeekToken(self, 1);
@@ -2923,7 +2927,8 @@ metac_statement_t* MetaCParser_ParseStatement(metac_parser_t* self,
     metac_token_t* currentToken = MetaCParser_PeekToken(self, 1);
     metac_token_enum_t tokenType =
         (currentToken ? currentToken->TokenType : tok_invalid);
-    metac_location_t loc = LocationFromToken(self, currentToken);
+    metac_location_t loc = currentToken ? LocationFromToken(self, currentToken) : 
+                                          (metac_location_t){};
     metac_token_t* peek2;
     uint32_t hash = 0;
 
