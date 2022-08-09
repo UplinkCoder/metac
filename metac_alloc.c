@@ -187,6 +187,16 @@ LsetResult:
     return result;
 }
 
+#define Allocator_Calloc(ALLOC, TYPE, ELEM_COUNT) \
+    (cast(TYPE*)Allocator_Calloc_((ALLOC), sizeof(TYPE), ELEM_COUNT, __FILE__, __LINE__))
+
+void* Allocator_Calloc_(metac_alloc_t* alloc, uint32_t elemSize, uint32_t elemCount,
+                        const char* file, uint32_t line)
+{
+    tagged_arena_t* arena =
+        Allocate_(alloc, elemSize * elemCount, file, line, false);
+    return arena->Memory;
+}
 /// After free Arena has been called
 /// acessing the area pointer itself is invalid
 void FreeArena (tagged_arena_t* arena)

@@ -97,7 +97,7 @@ typedef struct metac_sema_expression_t
         };
         // case exp_tuple
         struct {
-            struct metac_sema_expression_t* TupleExpressions;
+            struct metac_sema_expression_t** TupleExpressions;
             uint32_t TupleExpressionCount;
         };
         // case exp_argument:
@@ -311,6 +311,8 @@ typedef struct metac_sema_statement_t
         sema_stmt_yield_t sema_stmt_yield;
         // case stmt_return :
         sema_stmt_return_t sema_stmt_return;
+        // case stmt_while :
+        sema_stmt_while_t sema_stmt_while;
         // case stmt_decl :
         sema_stmt_decl_t sema_stmt_decl;
         // case stmt_switch :
@@ -336,7 +338,7 @@ typedef struct sema_declaration_header_t
 
 #define SEMA_TYPE_HEADER \
     TYPE_HEADER \
-    uint32_t structuralHash;
+    uint32_t StructuralHash;
 
 typedef struct sema_decl_type_t
 {
@@ -376,17 +378,16 @@ typedef struct sema_decl_function_t
 
     metac_type_index_t TypeIndex;
 
-    struct metac_scope_t* Scope;
     metac_identifier_ptr_t Identifier;
+
+    uint32_t FrameOffset;
+
+    struct metac_scope_t* Scope;
 
     sema_decl_variable_t* Parameters;
 
     sema_stmt_block_t* FunctionBody;
 
-    /// non-null if this function is nested
-    struct sema_decl_function_t* ParentFunc;
-
-    uint32_t FrameOffset;
 } sema_decl_function_t;
 
 typedef struct sema_decl_type_ptr_t

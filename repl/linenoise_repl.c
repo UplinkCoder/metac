@@ -10,7 +10,7 @@
 
 typedef struct ui_state_t
 {
-    parse_mode_t parseMode;
+    repl_mode_t parseMode;
 } ui_state_t;
 
 const char* Linenoise_GetInputLine(repl_state_t* repl, ui_state_t* state, uint32_t* length)
@@ -29,6 +29,7 @@ const char* Linenoise_GetInputLine(repl_state_t* repl, ui_state_t* state, uint32
 
     return line;
 }
+
 #include <stdarg.h>
 void Linenoise_Message(ui_state_t* state, const char* fmt, ...)
 {
@@ -38,7 +39,7 @@ void Linenoise_Message(ui_state_t* state, const char* fmt, ...)
     va_end (args);
 }
 
-parse_mode_t Linenoise_QueryMode(ui_state_t* uiState)
+repl_mode_t Linenoise_QueryMode(ui_state_t* uiState)
 {
 
 }

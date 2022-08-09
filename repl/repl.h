@@ -9,29 +9,29 @@
 #  endif
 #endif
 
-typedef enum parse_mode_t
+typedef enum repl_mode_t
 {
-    parse_mode_token = 0,
+    repl_mode_token = 0,
 
-    parse_mode_decl,
-    parse_mode_stmt,
-    parse_mode_expr,
-    parse_mode_file,
-    parse_mode_preproc,
+    repl_mode_decl,
+    repl_mode_stmt,
+    repl_mode_expr,
+    repl_mode_lex_file,
+    repl_mode_preproc,
 
-    parse_mode_ds,
-    parse_mode_ss,
+    repl_mode_ds,
+    repl_mode_ss,
 
-    parse_mode_ee,
-    parse_mode_es,
-    parse_mode_setvars,
+    repl_mode_ee,
+    repl_mode_es,
+    repl_mode_setvars,
 
-    parse_mode_max
-} parse_mode_t;
+    repl_mode_max
+} repl_mode_t;
 
 typedef struct repl_state_t
 {
-    parse_mode_t ParseMode;
+    repl_mode_t ParseMode;
 
     metac_lpp_t LPP;
 
@@ -72,7 +72,7 @@ typedef struct ui_interface_t
     /// Regular output that would go to printf otherwise
     void (*Message) (struct ui_state_t* state, const char* fmt, ...);
     /// Query current mode for the repl;
-    parse_mode_t (*QueryMode)(struct ui_state_t* state);
+    repl_mode_t (*QueryMode)(struct ui_state_t* state);
 
     /// [Optional] Extra information that'll go to a diffrent area if possible
     void (*Info) (struct ui_state_t* state, const char* fmt, ...);

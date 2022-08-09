@@ -279,6 +279,8 @@ sema_stmt_switch_t* MetaCSemantic_doSwitchSemantic(metac_semantic_state_t* self,
     semaSwitchStatement->SwitchExp =
         MetaCSemantic_doExprSemantic(self, switchStatement->SwitchExp, 0);
 
+    semaSwitchStatement->Hash = CRC32C_VALUE(stmt_switch, switchStatement->SwitchExp->Hash);
+
     self->SwitchStack[self->SwitchStackSize++] = semaSwitchStatement;
     semaSwitchStatement->SwitchBody =
         cast(sema_stmt_block_t*)MetaCSemantic_doStatementSemantic(self, switchStatement->SwitchBody);
@@ -346,12 +348,16 @@ metac_sema_statement_t* MetaCSemantic_doStatementSemantic_(metac_semantic_state_
             assert(0);
         } break;
 
+        case stmt_do_while:
         case stmt_while:
         {
-            hash ^= stmt_while;
+            hash ^= stmt->Kind;
+
             stmt_while_t* whileStmt = cast(stmt_while_t*) stmt;
             sema_stmt_while_t* semaWhileStmt =
                 AllocNewSemaStatement(self, stmt_while, &result);
+            semaWhileStmt->Kind = stmt->Kind;
+
             semaWhileStmt->WhileExp =
                 MetaCSemantic_doExprSemantic(self, whileStmt->WhileExp, 0);
             hash = CRC32C_VALUE(hash, whileStmt->WhileExp->Hash);
@@ -575,14 +581,13 @@ metac_sema_statement_t* MetaCSemantic_doStatementSemantic_(metac_semantic_state_
                 metac_sema_statement_t* forBody =
                     MetaCSemantic_doStatementSemantic(self, for_->ForBody);
                 semaFor->ForBody = forBody;
-
                 hash = CRC32C_VALUE(hash, semaFor->ForBody->Hash);
             }
             else
             {
                 METAC_NODE(semaFor->ForBody) = emptyNode;
             }
-            int n = 1993;
+
             // Pop the forScope
             MetaCSemantic_PopScope(self);
         } break;
@@ -591,6 +596,8 @@ metac_sema_statement_t* MetaCSemantic_doStatementSemantic_(metac_semantic_state_
         // can share the same code as the layout is the same
         case stmt_yield:
         {
+            hash ^= stmt_yield;
+
             stmt_yield_t* yieldStatement = (stmt_yield_t*) stmt;
             sema_stmt_yield_t* semaYieldStatement =
                 AllocNewSemaStatement(self, stmt_yield, &result);
@@ -598,10 +605,17 @@ metac_sema_statement_t* MetaCSemantic_doStatementSemantic_(metac_semantic_state_
             metac_sema_expression_t* yieldValue =
                 MetaCSemantic_doExprSemantic(self, yieldStatement->YieldExp, 0);
             semaYieldStatement->YieldExp = yieldValue;
+
+            if (cast(metac_node_t)yieldValue != emptyNode)
+            {
+                hash = CRC32C_VALUE(hash, yieldValue->Hash);
+            }
         } break;
 
         case stmt_return:
         {
+            hash ^= stmt_return;
+
             stmt_return_t* returnStatement = (stmt_return_t*) stmt;
             sema_stmt_return_t* semaReturnStatement =
                 AllocNewSemaStatement(self, stmt_return, &result);
@@ -609,14 +623,20 @@ metac_sema_statement_t* MetaCSemantic_doStatementSemantic_(metac_semantic_state_
             metac_sema_expression_t* returnValue =
                 MetaCSemantic_doExprSemantic(self, returnStatement->ReturnExp, 0);
             semaReturnStatement->ReturnExp = returnValue;
+
+            if (cast(metac_node_t)returnValue != emptyNode)
+            {
+                hash = CRC32C_VALUE(hash, returnValue->Hash);
+            }
         } break;
 
         case stmt_switch:
         {
             stmt_switch_t* switchStatement = cast(stmt_switch_t*) stmt;
+
             result = cast(metac_sema_statement_t*)
                 MetaCSemantic_doSwitchSemantic(self, switchStatement);
-            hash = result->Hash;
+            hash = CRC32C_VALUE(hash, result->Hash);
         } break;
 
         case stmt_break:
@@ -693,10 +713,12 @@ scope_insert_error_t MetaCSemantic_RegisterInScope(metac_semantic_state_t* self,
             printf("Found matching waiter\n");
             waitingTask->TaskFlags &= (~Task_Waiting);
             waitingTask->TaskFlags |= Task_Resumable;
+            // Worker_EnqueueTask(worker, waitingTask);
             //RWLOCK(&self->Waiters.WaiterLock);
             {
                 *waiter = self->Waiters.Waiters[--self->Waiters.WaiterCount];
             }
+            break;
             //RWUNLOCK(&self->Waiters.WaiterLock);
         }
     }
@@ -716,7 +738,6 @@ sema_decl_function_t* MetaCSemantic_doFunctionSemantic(metac_semantic_state_t* s
 
     sema_decl_function_t* f = AllocNewSemaFunction(self, func);
     // for now we don't nest functions.
-    f->ParentFunc = (sema_decl_function_t*)emptyNode;
     f->Identifier = func->Identifier;
     // printf("doing Function: %s\n", IdentifierPtrToCharPtr(self->ParserIdentifierTable, func->Identifier));
 
@@ -767,8 +788,10 @@ sema_decl_function_t* MetaCSemantic_doFunctionSemantic(metac_semantic_state_t* s
     f->Scope = MetaCSemantic_PushNewScope(self, scope_owner_function, (metac_node_t)f);
     // now we compute the position on the stack and Register them in the scope.
 
-	uint32_t frameOffset = ((f->ParentFunc != cast(sema_decl_function_t*)emptyNode)
-                           ? f->ParentFunc->FrameOffset : 0);
+    sema_decl_function_t* parentFunc = cast(sema_decl_function_t*) emptyNode;
+
+	uint32_t frameOffset = ((parentFunc != cast(sema_decl_function_t*)emptyNode)
+                           ? parentFunc->FrameOffset : 0);
 
     metac_type_index_t returnType = MetaCSemantic_doTypeSemantic(self, func->ReturnType);
 
@@ -1145,61 +1168,4 @@ const char* TypeToChars(metac_semantic_state_t* self, metac_type_index_t typeInd
 const metac_scope_t* GetAggregateScope(metac_type_aggregate_t* agg)
 {
     return agg->Scope;
-}
-
-
-static inline int32_t GetConstI32(metac_semantic_state_t* self, metac_sema_expression_t* index, bool *errored)
-{
-    int32_t result = ~0;
-
-    if (index->Kind == exp_signed_integer)
-    {
-        result = cast(int32_t) index->ValueI64;
-    }
-    else
-    {
-        *errored = true;
-    }
-
-    return result;
-}
-
-metac_sema_expression_t* MetaCSemantic_doIndexSemantic_(metac_semantic_state_t* self,
-                                                        metac_expression_t* expr,
-                                                        const char* callFun,
-                                                        uint32_t callLine)
-{
-    metac_sema_expression_t* result = 0;
-
-    metac_sema_expression_t* indexed = MetaCSemantic_doExprSemantic(self, expr->E1, 0/*, expr_asAddress*/);
-    metac_sema_expression_t* index = MetaCSemantic_doExprSemantic(self, expr->E2, 0);
-    if (indexed->Kind ==  exp_tuple)
-    {
-        bool errored = false;
-        int32_t idx = GetConstI32(self, index, &errored);
-        if ((int32_t)indexed->TupleExpressionCount > idx)
-        {
-            result = indexed->TupleExpressions + idx;
-        }
-        else if (!errored)
-        {
-            fprintf(stderr, "TupleIndex needs to be less than: %u", indexed->TupleExpressionCount);
-        }
-        else
-        {
-            fprintf(stderr, "index is not a constant value\n");
-        }
-    }
-    else if (indexed->Kind == exp_variable)
-    {
-        assert(TYPE_INDEX_KIND(indexed->TypeIndex) == type_index_array
-            || TYPE_INDEX_KIND(indexed->TypeIndex) == type_index_ptr);
-
-        result = AllocNewSemaExpression(self, expr);
-        result->TypeIndex = MetaCSemantic_GetElementType(self, indexed->TypeIndex);
-        result->E1 = indexed;
-        result->E2 = index;
-    }
-
-    return  result;
 }

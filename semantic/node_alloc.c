@@ -185,6 +185,7 @@ metac_sema_expression_t* AllocNewSemaExpression(metac_semantic_state_t* self, me
 
         }
         result->TupleExpressions = elements;
+        result->TupleExpressionCount = tupleExpCount;
     }
     else
     {

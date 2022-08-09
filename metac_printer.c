@@ -904,6 +904,13 @@ static inline void PrintExpression(metac_printer_t* self, metac_expression_t* ex
         PrintString(self, exp->Chars, LENGTH_FROM_CHAR_KEY(exp->CharKey));
         PrintChar(self, '\'');
     }
+    else if (exp->Kind == exp_index)
+    {
+        PrintExpression(self, exp->E1);
+        PrintToken(self, tok_lBracket);
+        PrintExpression(self, exp->E2);
+        PrintToken(self, tok_rBracket);
+    }
     else if (IsBinaryExp(exp->Kind))
     {
         PrintChar(self, '(');
@@ -950,13 +957,6 @@ static inline void PrintExpression(metac_printer_t* self, metac_expression_t* ex
                 PrintString(self, ", ", 2);
         }
         PrintChar(self, ')');
-    }
-    else if (exp->Kind == exp_index)
-    {
-        PrintExpression(self, exp->E1);
-        PrintToken(self, tok_lBracket);
-        PrintExpression(self, exp->E2);
-        PrintToken(self, tok_rBracket);
     }
     else if (exp->Kind == exp_sizeof)
     {

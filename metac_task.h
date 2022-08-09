@@ -75,11 +75,11 @@ typedef void (*task_fn_t)(struct task_t*);
 
 typedef enum task_flags_t
 {
-    Task_Halted,
+    Task_Halted    = 0,
 
-    Task_Running   = (1 << 0),
-    Task_Resumable = (1 << 1),
-    Task_Complete  = (1 << 2),
+    Task_Running   = (1 << 1),
+    Task_Resumable = (1 << 2),
+    Task_Complete  = (1 << 3),
     Task_Waiting   = Task_Resumable | Task_Running,
 
     Task_Continuation_JumpToLabel = (1 << 4),

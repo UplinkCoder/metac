@@ -352,6 +352,14 @@ void WalkTree(void* c, BCValue* result,
             BCValue zero = imm32(0);
             bc->Sub3(c, result, &zero, lhs);
         } break;
+        case exp_post_decrement:
+        {
+            WalkTree(c, lhs, e->E1, vstore);
+            bc->Set(c, result, lhs);
+            BCValue one = imm32(1);
+            bc->Sub3(c, lhs, lhs, &one);
+            
+        } break;
         case exp_post_increment:
         {
             WalkTree(c, lhs, e->E1, vstore);

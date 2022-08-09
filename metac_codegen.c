@@ -144,11 +144,15 @@ void MetaCCodegen_End(metac_bytecode_ctx_t* self)
 void MetaCCodegen_Init(metac_bytecode_ctx_t* self, metac_alloc_t* parentAlloc)
 {
     //TODO take BC as a parameter
+    if (bc == 0)
+    {
 #if BC_PRINTER
-    bc = &Printer_interface;
+        bc = &Printer_interface;
 #else
-    bc = &BCGen_interface;
+        bc = &BCGen_interface;
 #endif
+    }
+
     (*self) = (metac_bytecode_ctx_t) {};
     Allocator_Init(&self->Allocator, parentAlloc, 0);
 
@@ -470,20 +474,6 @@ void MetaCCodegen_doStatement(metac_bytecode_ctx_t* ctx,
             // MetaCCodegen_doStatement(ctx, decl)
         } break;
 
-        case stmt_while:
-        {
-            sema_stmt_while_t* whileStatement = cast(sema_stmt_while_t*) stmt;
-            BCLabel evalCond = bc->genLabel(c);
-            BCValue* condPtr = 0;
-            BCValue cond = MetaCCodegen_doExpression(ctx, whileStatement->WhileExp);
-            if (whileStatement->WhileExp->Kind == exp_variable)
-                condPtr = &cond;
-
-            CndJmpBegin condExpJmp = bc->beginCndJmp(c, condPtr, false);
-            MetaCCodegen_doStatement(ctx, whileStatement->WhileBody);
-            bc->endCndJmp(c, &condExpJmp, evalCond);
-        } break;
-
         case stmt_case:
         {
             sema_stmt_case_t* caseStmt = cast(sema_stmt_case_t*) stmt;
@@ -526,34 +516,71 @@ void MetaCCodegen_doStatement(metac_bytecode_ctx_t* ctx,
             }
         } break;
 
+        case stmt_do_while:
+        {
+            sema_stmt_while_t* whileStatement = cast(sema_stmt_while_t*) stmt;
+            BCLabel beginLoop = bc->genLabel(c);
+
+            MetaCCodegen_doStatement(ctx, whileStatement->WhileBody);
+
+            BCLabel evalCond = bc->genLabel(c);
+            BCValue cond = MetaCCodegen_doExpression(ctx, whileStatement->WhileExp);
+            CndJmpBegin condExpJmp = bc->beginCndJmp(c, &cond, true);
+            bc->endCndJmp(c, &condExpJmp, beginLoop);
+        } break;
+
+        case stmt_while:
+        {
+            sema_stmt_while_t* whileStatement = cast(sema_stmt_while_t*) stmt;
+            BCLabel evalCond = bc->genLabel(c);
+            BCValue cond = MetaCCodegen_doExpression(ctx, whileStatement->WhileExp);
+
+            CndJmpBegin condExpJmp = bc->beginCndJmp(c, &cond, false);
+            MetaCCodegen_doStatement(ctx, whileStatement->WhileBody);
+            bc->Jmp(c, evalCond);
+            bc->endCndJmp(c, &condExpJmp, bc->genLabel(c));
+        } break;
+
         case stmt_for:
         {
             sema_stmt_for_t* forStatement = cast(sema_stmt_for_t*) stmt;
-            BCLabel evalCond = bc->genLabel(c);
 
-            BCValue* condPtr = 0;
-            if (IsExpressionNode(forStatement->ForInit->Kind))
+            if (forStatement->ForInit != emptyNode)
             {
-                MetaCCodegen_doExpression(ctx,
-                    (metac_sema_expression_t*)forStatement->ForInit);
+                if (IsExpressionNode(forStatement->ForInit->Kind))
+                {
+                    MetaCCodegen_doExpression(ctx,
+                        (metac_sema_expression_t*)forStatement->ForInit);
+                }
+                else
+                {
+                    MetaCCodegen_doLocalVar(ctx,
+                        (sema_decl_variable_t*)forStatement->ForInit);
+                }
             }
-            else
-            {
-                MetaCCodegen_doLocalVar(ctx,
-                    (sema_decl_variable_t*)forStatement->ForInit);
-            }
-            BCValue cond = MetaCCodegen_doExpression(ctx, forStatement->ForCond);
-            if (forStatement->ForCond->Kind == exp_variable)
-                condPtr = &cond;
 
-            CndJmpBegin condExpJmp = bc->beginCndJmp(c, condPtr, false);
+            CndJmpBegin cndJmpToCondEval;
+            BCLabel loopBegin = bc->genLabel(c);
+
+            if (forStatement->ForCond != emptyNode)
+            {
+                BCValue cond = MetaCCodegen_doExpression(ctx, forStatement->ForCond);
+                cndJmpToCondEval = bc->beginCndJmp(c, &cond, false);
+            }
+
             MetaCCodegen_doStatement(ctx, forStatement->ForBody);
-            bc->endCndJmp(c, &condExpJmp, evalCond);
+            bc->Jmp(c, loopBegin);
+
+            if (forStatement->ForCond != emptyNode)
+            {
+                bc->endCndJmp(c, &cndJmpToCondEval, bc->genLabel(c));
+            }
         } break;
 
         default:
         {
             printf("Statement unsupported %s\n", StatementKind_toChars(stmt->Kind));
+            assert(0);
         } break;
     }
 }

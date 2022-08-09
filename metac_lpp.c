@@ -2,13 +2,13 @@
 
 static inline void LexString(metac_lexer_t* lexer, const char* line)
 {
-    uint32_t line_length = strlen(line);
+    int32_t line_length = strlen(line);
     metac_lexer_state_t lexer_state =
         MetaCLexerStateFromString(0, line);
 
     while(line_length > 0)
     {
-        uint32_t initialPosition = lexer_state.Position;
+        int32_t initialPosition = lexer_state.Position;
 
         metac_token_t token =
             *MetaCLexerLexNextToken(lexer, &lexer_state, line, line_length);

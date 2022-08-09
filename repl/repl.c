@@ -16,9 +16,6 @@
 #include <stdio.h>
 #include "exp_eval.c"
 #include "../metac_type_table.h"
-#ifndef NO_FIBERS
-#  include "../metac_task.h"
-#endif
 #include "repl.h"
 
 const char* MetaCTokenEnum_toChars(metac_token_enum_t tok);
@@ -142,7 +139,7 @@ typedef struct presemantic_context_t
     metac_semantic_state_t* Sema;
 } presemantic_context_t;
 
-/*
+
 static inline int Presemantic(metac_node_t node, void* ctx)
 {
     presemantic_context_t* context =
@@ -166,10 +163,10 @@ static inline int Presemantic(metac_node_t node, void* ctx)
 
     return 0;
 }
-*/
+
 extern repl_ui_context_t* g_uiContext;
 metac_type_aggregate_t* g_compilerInterface;
-/*
+
 void Presemantic_(repl_state_t* self)
 {
     metac_type_aggregate_t* compilerStruct = 0;
@@ -278,43 +275,43 @@ void Presemantic_(repl_state_t* self)
         MetaCParser_Free(&tmpParser);
     }
 }
-*/
+
 void Repl_SwtichMode(repl_state_t* self)
 {
     switch (self->ParseMode)
     {
-    case parse_mode_max: assert(0);
-    case parse_mode_file:
+    case repl_mode_max: assert(0);
+    case repl_mode_lex_file:
         self->Promt = ">File<";
         break;
-    case parse_mode_token:
+    case repl_mode_token:
         self->Promt = "Token>";
         break;
-    case parse_mode_decl:
+    case repl_mode_decl:
         self->Promt = "Decl>";
         break;
-    case parse_mode_expr:
+    case repl_mode_expr:
         self->Promt = "Exp>";
         break;
-    case parse_mode_stmt:
+    case repl_mode_stmt:
         self->Promt = "Stmt>";
         break;
-    case parse_mode_preproc:
+    case repl_mode_preproc:
         self->Promt = "Preproc>";
         break;
-    case parse_mode_ee:
+    case repl_mode_ee:
         self->Promt = "EE>";
         break;
-    case parse_mode_es:
+    case repl_mode_es:
         self->Promt = "ES>";
         break;
-    case parse_mode_ss:
+    case repl_mode_ss:
         self->Promt = "SS>";
         break;
-    case parse_mode_ds:
+    case repl_mode_ds:
         self->Promt = "DS>";
         break;
-    case parse_mode_setvars:
+    case repl_mode_setvars:
         self->Promt = "SetVars>";
         break;
     }
@@ -325,7 +322,7 @@ void Repl_Init(repl_state_t* self)
     self->LPP.LexerState.Position = 0;
     self->LPP.LexerState.Line = 1;
     self->LPP.LexerState.Column = 1;
-    self->ParseMode = parse_mode_ee;
+    self->ParseMode = repl_mode_ee;
     self->CompilerInterface = 0;
 
     self->SrcBuffer = 0;
@@ -426,19 +423,21 @@ LswitchMode:
                 return false;
             case 'f' :
             {
-                repl->ParseMode = parse_mode_file;
+                repl->ParseMode = repl_mode_lex_file;
                 const char* filename = repl->Line + 3;
                 MSG("querying fileStorage");
                 // metac_file_storage_t* fs = Global_GetFileStorage(worker);
                 // metac_file_ptr_t f = MetaCFileStorage_LoadFile(fs, filename);
             } break;
+            case 'c' :
+            {
+
+            } break;
             case 'l' :
             {
-                metac_lexer_t *fileLexer = &repl->FileLexer;
-                MetaCLexer_Init(fileLexer);
-                metac_lexer_state_t fileLexerState;
-                repl->ParseMode = parse_mode_file;
+                repl->ParseMode = repl_mode_lex_file;
                 const char* filename = repl->Line + 3;
+
                 MSGF("loading and lexing: '%s'\n", filename);
                 FILE* fd = fopen(filename, "rb");
                 if (!fd)
@@ -448,11 +447,15 @@ LswitchMode:
                 }
                 else
                 {
+                    metac_lexer_t *fileLexer = &repl->FileLexer;
+                    MetaCLexer_Init(fileLexer);
+                    metac_lexer_state_t fileLexerState = {};
+
                     fseek(fd, 0, SEEK_END);
                     int32_t sz = cast(int32_t) ftell(fd);
                     fseek(fd, 0, SEEK_SET);
 
-                    uint32_t estimatedTokenCount = (((sz / 5) + 128) & ~127);
+                    uint32_t estimatedTokenCount = (((sz / 4) + 128) & ~127);
                     if (fileLexer->TokenCapacity < estimatedTokenCount)
                     {
                         fileLexer->Tokens = (metac_token_t*)
@@ -471,7 +474,7 @@ LswitchMode:
                     repl->FreePtr = repl->SrcBuffer = calloc(1, sz + 4);
                     repl->SrcBufferLength = sz;
                     fread((void*)repl->SrcBuffer, 1, sz, fd);
-                    repl->ParseMode = parse_mode_file;
+                    repl->ParseMode = repl_mode_lex_file;
 
                     fileLexerState.Position = 0;
                     fileLexerState.Line = 1;
@@ -481,50 +484,50 @@ LswitchMode:
                 break;
             }
             case 't' :
-                repl->ParseMode = parse_mode_token;
+                repl->ParseMode = repl_mode_token;
                 goto LswitchMode;
             case 'd' :
                 switch (repl->Line[2])
                 {
                 default:
-                    repl->ParseMode = parse_mode_decl;
+                    repl->ParseMode = repl_mode_decl;
                     goto LswitchMode;
 
                  case 's':
-                    repl->ParseMode = parse_mode_ds;
+                    repl->ParseMode = repl_mode_ds;
                     goto LswitchMode;
                 }
 
             case 'v' :
-                repl->ParseMode = parse_mode_setvars;
+                repl->ParseMode = repl_mode_setvars;
                 goto LswitchMode;
             case 'e' :
                 switch(repl->Line[2])
                 {
                 default:
-                    repl->ParseMode = parse_mode_expr;
+                    repl->ParseMode = repl_mode_expr;
                     goto LswitchMode;
                 case 'e':
-                    repl->ParseMode = parse_mode_ee;
+                    repl->ParseMode = repl_mode_ee;
                     goto LswitchMode;
                 case 's':
-                    repl->ParseMode = parse_mode_es;
+                    repl->ParseMode = repl_mode_es;
                     goto LswitchMode;
                 }
             case 's' :
                 switch (repl->Line[2])
                 {
                 default:
-                    repl->ParseMode = parse_mode_stmt;
+                    repl->ParseMode = repl_mode_stmt;
                     goto LswitchMode;
                 case 's':
-                    repl->ParseMode = parse_mode_ss;
+                    repl->ParseMode = repl_mode_ss;
                     goto LswitchMode;
                 }
                 break;
             case 'p' :
             {
-                repl->ParseMode = parse_mode_preproc;
+                repl->ParseMode = repl_mode_preproc;
                 goto LswitchMode;
             } break;
 
@@ -561,7 +564,7 @@ LswitchMode:
             }
         }
 
-        if (repl->ParseMode != parse_mode_file)
+        if (repl->ParseMode != repl_mode_lex_file)
         {
             repl->SrcBuffer = (char*)repl->Line;
             repl->SrcBufferLength = line_length;
@@ -578,8 +581,8 @@ LswitchMode:
             uint32_t initalPosition = repl->LPP.LexerState.Position;
             switch(repl->ParseMode)
             {
-            case parse_mode_max: break;
-            case parse_mode_expr:
+            case repl_mode_max: break;
+            case repl_mode_expr:
             {
                  exp =
                     MetaCLPP_ParseExpressionFromString(&repl->LPP, repl->Line);
@@ -590,7 +593,7 @@ LswitchMode:
                 goto LnextLine;
             }
 
-            case parse_mode_preproc:
+            case repl_mode_preproc:
             {
                 metac_token_t _inlineTokens[32];
 
@@ -615,7 +618,7 @@ LswitchMode:
                 goto LnextLine;
             }
 
-            case parse_mode_ee:
+            case repl_mode_ee:
             {
                 exp =
                     MetaCLPP_ParseExpressionFromString(&repl->LPP, repl->Line);
@@ -649,13 +652,12 @@ LswitchMode:
                 goto LnextLine;
             }
 
-            case parse_mode_es:
+            case repl_mode_es:
             {
                 exp =
                     MetaCLPP_ParseExpressionFromString(&repl->LPP, repl->Line);
 
                 const char* str = MetaCPrinter_PrintExpression(&repl->printer, exp);
-
                 metac_sema_expression_t* result =
                     MetaCSemantic_doExprSemantic(&repl->SemanticState, exp, 0);
 
@@ -664,13 +666,7 @@ LswitchMode:
                     MSGF("typeIndex.v: %x\n", result->TypeIndex.v);
                     const char* type_str = TypeToChars(&repl->SemanticState, result->TypeIndex);
 
-                    metac_printer_t printer;
-                    MetaCPrinter_InitSz(&printer,
-                                        &repl->LPP.Lexer.IdentifierTable,
-                                        &repl->LPP.Lexer.StringTable, 512);
-
-                    MSGF("typeof(%s) = %s\n",
-                           MetaCPrinter_PrintExpression(&repl->printer, exp), type_str);
+                    MSGF("typeof(%s) = %s\n", str, type_str);
                 }
 #if 0
 
@@ -695,7 +691,7 @@ LswitchMode:
                 goto LnextLine;
             }
 
-            case parse_mode_setvars :
+            case repl_mode_setvars :
             {
                 metac_declaration_t* decl = MetaCLPP_ParseDeclarationFromString(&repl->LPP, repl->Line);
                 if (decl)
@@ -772,7 +768,7 @@ LswitchMode:
                 }
             } break;
 
-            case parse_mode_stmt :
+            case repl_mode_stmt :
             {
                 stmt = MetaCLPP_ParseStatementFromString(&repl->LPP, repl->Line);
                 if (stmt)
@@ -783,7 +779,7 @@ LswitchMode:
                 goto LnextLine;
             }
 
-            case parse_mode_ss :
+            case repl_mode_ss :
             {
                 stmt = MetaCLPP_ParseStatementFromString(&repl->LPP, repl->Line);
                 /*
@@ -807,7 +803,7 @@ LswitchMode:
                 goto LnextLine;
             }
 
-            case parse_mode_decl :
+            case repl_mode_decl :
             {
                 decl = MetaCLPP_ParseDeclarationFromString(&repl->LPP, repl->Line);
                 if (decl)
@@ -818,7 +814,7 @@ LswitchMode:
                 goto LnextLine;
             }
 
-            case parse_mode_ds :
+            case repl_mode_ds :
             {
                 decl = MetaCLPP_ParseDeclarationFromString(&repl->LPP, repl->Line);
                 if (decl)
@@ -853,9 +849,9 @@ LswitchMode:
                 goto LnextLine;
             }
 
-            case parse_mode_file :
+            case repl_mode_lex_file :
                 goto LlexSrcBuffer;
-            case parse_mode_token :
+            case repl_mode_token :
 
 LlexSrcBuffer: {}
 #if 1
@@ -909,7 +905,7 @@ LlexSrcBuffer: {}
         {
             free(repl->FreePtr);
             repl->FreePtr = 0;
-            repl->ParseMode = parse_mode_token;
+            repl->ParseMode = repl_mode_token;
             goto LswitchMode;
         }
         repl->SrcBuffer = 0;
@@ -941,7 +937,7 @@ void Repl_Fiber(void)
     ui_interface_t uiInterface = uiContext->UiInterface;
     struct ui_state_t* uiState = uiContext->UiState;
 
-    // Presemantic_(repl);
+    Presemantic_(repl);
 
     while (Repl_Loop(repl, uiContext) != false)
     {
