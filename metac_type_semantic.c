@@ -520,6 +520,22 @@ void MetaCSemantic_ComputeEnumValues(metac_semantic_state_t* self,
     return ;
 }
 
+static bool TypeIsInteger(metac_type_index_t typeIdx)
+{
+    bool result = false;
+
+    uint32_t typeIdxIndex = TYPE_INDEX_INDEX(typeIdx);
+
+    if (TYPE_INDEX_KIND(typeIdx) == type_index_basic)
+    {
+        result = ((typeIdxIndex >= type_bool) & (typeIdxIndex <= type_size_t)) |
+                 ((typeIdxIndex >= type_unsigned_char) & (typeIdxIndex <= type_unsigned_long)) |
+                 (typeIdxIndex == type_long_long | typeIdxIndex == type_unsigned_long_long);
+    }
+
+    return result;
+}
+
 metac_type_index_t MetaCSemantic_TypeSemantic(metac_semantic_state_t* self,
                                               decl_type_t* type)
 {

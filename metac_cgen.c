@@ -32,7 +32,7 @@ int GenerateFunctionCode(metac_codegen_function_t* cgfunction, void* c)
             {
                 stmt_return_t* return_ = cast(stmt_return_t*) stmt;
                 metac_expression_t* exp = return_->Expression;
-                BCValue retval = BCGen_interface.genTemporary(c, BCType_i32);
+                BCValue retval = BCGen_interface.GenTemporary(c, BCType_i32);
                 // TODO we don't want to use WalkTree on this
                 // as we want to generate functionbodies indepentnt of vstore and dstore
                 BCGen_interface.Ret(c, &retval);
@@ -40,7 +40,7 @@ int GenerateFunctionCode(metac_codegen_function_t* cgfunction, void* c)
         }
     }
 
-    BCGen_interface.endFunction(c, result);
+    BCGen_interface.EndFunction(c, result);
 /*
     BCGen* gen = cast(BCGen*) c;
     printf("We should follow with some code:\n");

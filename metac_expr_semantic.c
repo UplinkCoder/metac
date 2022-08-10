@@ -25,6 +25,8 @@ void MetaCSemantic_doExprSemantic_Task(task_t* task)
 
 static bool IsAggregateType(metac_type_index_kind_t typeKind)
 {
+    // TODO this could be a constant
+
     switch(typeKind)
     {
         case type_index_struct:
@@ -92,6 +94,36 @@ metac_sema_expression_t* MetaCSemantic_doIndexSemantic_(metac_semantic_state_t* 
     return  result;
 }
 
+metac_sema_expression_t* doCmpExpSemantic(metac_semantic_state_t* self,
+                                          metac_location_t loc,
+                                          metac_expression_kind_t kind,
+                                          metac_sema_expression_t* e1,
+                                          metac_sema_expression_t* e2,
+                                          metac_sema_expression_t* result)
+{
+    const metac_type_index_t tbool
+        = MetaCSemantic_GetTypeIndex(self, type_bool, (decl_type_t*)emptyPointer);
+
+
+    switch(kind)
+    {
+        default: {
+            // InternalError("%s is not a comparison expression", MetaCExpressionKind_toChars(cmpExp->Kind));
+        };
+
+        case exp_lt:
+        case exp_le:
+        case exp_gt:
+        case exp_ge:
+        case exp_neq:
+        case exp_eq: {
+            if (TypeIsInteger(e1->TypeIndex) && TypeIsInteger(e2->TypeIndex))
+                result->TypeIndex = tbool;
+        } break;
+    }
+
+    return result;
+}
 metac_sema_expression_t* MetaCSemantic_doExprSemantic_(metac_semantic_state_t* self,
                                                        metac_expression_t* expr,
                                                        metac_sema_expression_t* result,
@@ -123,6 +155,8 @@ metac_sema_expression_t* MetaCSemantic_doExprSemantic_(metac_semantic_state_t* s
         MetaCSemantic_PopExpr(self, result);
     }
 
+    bool isParameter = false;
+
     switch(expr->Kind)
     {
         case exp_invalid:
@@ -139,11 +173,14 @@ metac_sema_expression_t* MetaCSemantic_doExprSemantic_(metac_semantic_state_t* s
             metac_expression_t* fn = expr->E1;
             exp_argument_t* argList = (METAC_NODE(expr->E2) != emptyNode ?
                 expr->E2->ArgumentList : (exp_argument_t*)emptyNode);
+            STACK_ARENA_ARRAY(metac_sema_expression_t*, arguments, 64, &self->TempAlloc);
+
             uint32_t nArgs = 0;
             while(argList && (cast(metac_node_t) argList) != emptyNode)
             {
                 nArgs++;
-                argList = argList->Next;
+                ARENA_ARRAY_ADD(arguments,
+                    MetaCSemantic_doExprSemantic(self, argList->Expression, 0));
             }
             printf("function call with: %u arguments\n", nArgs);
         } break;
@@ -160,7 +197,6 @@ metac_sema_expression_t* MetaCSemantic_doExprSemantic_(metac_semantic_state_t* s
 
             if (IsAggregateType(typeIndexKind))
             {
-
                 metac_type_aggregate_t* agg = 0;
                 switch(typeIndexKind)
                 {
@@ -259,12 +295,13 @@ metac_sema_expression_t* MetaCSemantic_doExprSemantic_(metac_semantic_state_t* s
         case exp_assign:
             result->TypeIndex = result->E1->TypeIndex;
         break;
-        case exp_eq:
-        case exp_neq:
         case exp_lt:
         case exp_le:
         case exp_gt:
         case exp_ge:
+        case exp_neq:
+        case exp_eq:
+            // doCmpExpSemantic()
             //TODO assert that E1 and E2 are comperable
         case exp_andand:
         case exp_oror:
@@ -292,7 +329,6 @@ metac_sema_expression_t* MetaCSemantic_doExprSemantic_(metac_semantic_state_t* s
                 (*resultElem) = MetaCSemantic_doExprSemantic(self, e, 0);
             }
             STACK_ARENA_ARRAY(metac_type_index_t, typeIndicies, 128, &self->TempAlloc);
-
 
             for(uint32_t i = 0; i < tupleExpressionCount; i++)
             {
@@ -446,6 +482,7 @@ metac_sema_expression_t* MetaCSemantic_doExprSemantic_(metac_semantic_state_t* s
             result->Kind = exp_signed_integer;
             result->ValueU64 = size;
         } break;
+
         case exp_identifier:
         {
             metac_node_t node =
@@ -466,6 +503,7 @@ metac_sema_expression_t* MetaCSemantic_doExprSemantic_(metac_semantic_state_t* s
                 }
                 else if (node->Kind == node_decl_parameter)
                 {
+                    isParameter = true;
                     goto Lvar;
                 }
                 else if (node->Kind == node_decl_variable)

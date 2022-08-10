@@ -663,8 +663,8 @@ const char* BinExpTypeToChars(metac_binary_expression_kind_t t)
         case exp_spaceship : return "<=>";
     }
 
-    printf(MetaCExpressionKind_toChars(t));
-//    assert(0);
+    //printf("Not a binary operator: %s\n", MetaCExpressionKind_toChars(t));
+    assert(0);
     return 0;
 }
 

@@ -91,6 +91,8 @@ void MetaCSemantic_Init(metac_semantic_state_t* self, metac_parser_t* parser,
     //const metac_semantic_state_t _init = {};
     // *self = _init;
 
+    self->nLocals = 0;
+
     Allocator_Init(&self->Allocator, 0, 0);
     Allocator_Init(&self->TempAlloc, 0, AllocFlags_Temporary);
 
@@ -761,6 +763,7 @@ sema_decl_function_t* MetaCSemantic_doFunctionSemantic(metac_semantic_state_t* s
         {
             f->Parameters[i].VarInitExpression =
                 MetaCSemantic_doExprSemantic(self, paramVar->VarInitExpression, 0);
+            assert(f->Parameters[i].Storage.Kind == storage_parameter);
         }
         else
         {
@@ -828,8 +831,12 @@ sema_decl_function_t* MetaCSemantic_doFunctionSemantic(metac_semantic_state_t* s
         i++)
     {
         decl_variable_t* var = cast(decl_variable_t*)(f->Parameters +i);
-        params[i].Storage.v = STORAGE_V(storage_stack, frameOffset);
+       // (XXX) here we tried to force the __cdecl calling convention
+       // this is commented out for now
+//        params[i].Storage.v = STORAGE_V(storage_stack, frameOffset);
         frameOffset += Align(MetaCSemantic_GetTypeSize(self, params[i].TypeIndex), 4);
+        // We will reserve stack space though as we had pushed it on the stack
+        // as we will need that space when we yield
 
         scope_insert_error_t result =
             MetaCScope_RegisterIdentifier(f->Scope, params[i].VarIdentifier,
@@ -924,8 +931,11 @@ metac_sema_declaration_t* MetaCSemantic_declSemantic(metac_semantic_state_t* sel
             {
                 METAC_NODE(var->VarInitExpression) = emptyNode;
             }
-            //TODO RegisterIdentifier
+            assert(v->StorageClass != storageclass_static);
+            //TODO make sure nLocals is reset at the end of a function
+            //     also this doesn't deal with static properly
             var->VarIdentifier = v->VarIdentifier;
+            var->Storage.v = STORAGE_V(storage_local, self->nLocals);
 
             MetaCSemantic_RegisterInScope(self, var->VarIdentifier, METAC_NODE(var));
         } break;

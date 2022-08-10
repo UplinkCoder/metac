@@ -128,6 +128,8 @@ typedef struct metac_semantic_state_t
 
     metac_semantic_waitlist_t Waiters;
 
+    AT(per_function) uint32_t nLocals;
+
     // has state such as the current stack offset and the like
     // to layout variables
     AT(transient) metac_sema_decl_state_t* CurrentDeclarationState;

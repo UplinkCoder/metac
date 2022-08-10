@@ -121,7 +121,7 @@ int main(int argc, const char* argv[])
 
     metac_bytecode_ctx_t ctx;
     MetaCCodegen_Init(&ctx, 0);
-    MetaCCodegen_Begin(&ctx, &LPP.Parser.IdentifierTable);
+    MetaCCodegen_Begin(&ctx, &LPP.Parser.IdentifierTable, &Sema);
 
     metac_bytecode_function_t fCode =
         MetaCCodegen_GenerateFunction(&ctx, semaFunc);

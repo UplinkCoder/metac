@@ -266,6 +266,7 @@ sema_decl_variable_t* AllocFunctionParameters(metac_semantic_state_t* self,
         {
             (result + i)->Kind = decl_parameter;
             (result + i)->Serial = INC(_nodeCounter);
+            (result + i)->Storage.v = STORAGE_V(storage_parameter, i);
         }
 
     }

@@ -17,15 +17,18 @@ typedef enum metac_storage_kind_t
 {
     storage_unknown = 0,
 
-    storage_stack,
-    storage_register,
+    storage_stack,               // 1
+    storage_register,            // 2
 
-    storage_thread_local,
-    storage_task_local,
+    storage_thread_local,        // 3
+    storage_task_local,          // 4
 
-    storage_static,
-    storage_static_thread_local,
-    storage_static_task_local,
+    storage_static,              // 5
+    storage_static_thread_local, // 6
+    storage_static_task_local,   // 7
+
+    storage_parameter,           // 8
+    storage_local,               // 9
 
 
     storage_invalid = 0xE,
@@ -33,10 +36,12 @@ typedef enum metac_storage_kind_t
 
 typedef struct metac_storage_location_t
 {
-    uint32_t v;
-    union {
-        uint32_t Offset : 28;
-        metac_storage_kind_t Kind : 4;
+    union{
+        uint32_t v;
+        struct {
+            uint32_t Offset : 28;
+            metac_storage_kind_t Kind : 4;
+        };
     };
 } metac_storage_location_t;
 

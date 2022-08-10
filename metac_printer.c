@@ -1326,13 +1326,13 @@ static inline void PrintSemaExpression(metac_printer_t* self,
     else if (semaExp->Kind == exp_tuple)
     {
         PrintChar(self, '{');
-        metac_sema_expression_t* tupleElement =
+        metac_sema_expression_t** tupleElement =
             semaExp->TupleExpressions;
         for(uint32_t i = 0;
             i < semaExp->TupleExpressionCount;
             i++)
         {
-            PrintSemaExpression(self, sema,  tupleElement + i);
+            PrintSemaExpression(self, sema,  tupleElement[i]);
             if (i != (semaExp->TupleExpressionCount - 1))
             {
                 PrintChar(self, ',');

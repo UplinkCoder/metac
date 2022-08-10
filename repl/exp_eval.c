@@ -169,8 +169,8 @@ void WalkTree(void* c, BCValue* result,
         return ;
     }
 
-    BCValue lhsT = bc->genTemporary(c, BCType_i32);
-    BCValue rhsT = bc->genTemporary(c, BCType_i32);
+    BCValue lhsT = bc->GenTemporary(c, BCType_i32);
+    BCValue rhsT = bc->GenTemporary(c, BCType_i32);
     BCValue *lhs = &lhsT;
     BCValue *rhs = &rhsT;
 
@@ -358,7 +358,6 @@ void WalkTree(void* c, BCValue* result,
             bc->Set(c, result, lhs);
             BCValue one = imm32(1);
             bc->Sub3(c, lhs, lhs, &one);
-            
         } break;
         case exp_post_increment:
         {
@@ -402,10 +401,10 @@ void WalkTree(void* c, BCValue* result,
 */
     }
     if (rhs->vType == BCValueType_Temporary)
-        bc->destroyTemporary(c, rhs);
+        bc->DestroyTemporary(c, rhs);
 
     if (lhs->vType == BCValueType_Temporary)
-        bc->destroyTemporary(c, lhs);
+        bc->DestroyTemporary(c, lhs);
 }
 
 metac_sema_expression_t evalWithVariables(metac_sema_expression_t* e,
@@ -418,21 +417,21 @@ metac_sema_expression_t evalWithVariables(metac_sema_expression_t* e,
 
     bc->Initialize(c, 0); // zero extra arguments
     {
-        fIdx = bc->beginFunction(c, 0, "eval_func");
-        BCValue result = bc->genLocal(c, (BCType){BCTypeEnum_i64}, "result");
+        fIdx = bc->BeginFunction(c, 0, "eval_func");
+        BCValue result = bc->GenLocal(c, (BCType){BCTypeEnum_i64}, "result");
 
         // walk the tree;
         WalkTree(c, &result, e, vstore);
 
         bc->Ret(c, &result);
 
-        void * func = bc->endFunction(c, fIdx);
+        void * func = bc->EndFunction(c, fIdx);
     }
     bc->Finalize(c);
 
     // BCGen_printFunction(c);
 
-    BCValue res = bc->run(c, fIdx, 0, 0);
+    BCValue res = bc->Run(c, fIdx, 0, 0);
 
     metac_sema_expression_t result;
 
