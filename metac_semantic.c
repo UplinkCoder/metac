@@ -935,7 +935,7 @@ metac_sema_declaration_t* MetaCSemantic_declSemantic(metac_semantic_state_t* sel
             //TODO make sure nLocals is reset at the end of a function
             //     also this doesn't deal with static properly
             var->VarIdentifier = v->VarIdentifier;
-            var->Storage.v = STORAGE_V(storage_local, self->nLocals);
+            var->Storage.v = STORAGE_V(storage_local, self->nLocals++);
 
             MetaCSemantic_RegisterInScope(self, var->VarIdentifier, METAC_NODE(var));
         } break;

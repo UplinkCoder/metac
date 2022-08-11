@@ -16,7 +16,7 @@ void MetaCCodegen_doStatement(metac_bytecode_ctx_t* ctx,
 
 BCType MetaCCodegen_GetBCType(metac_bytecode_ctx_t* ctx, metac_type_index_t type)
 {
-    BCType result = {};
+    BCType result = {0};
 
     if (type.Kind == type_index_enum)
         result = (BCType){BCTypeEnum_i32};
@@ -269,7 +269,7 @@ typedef enum metac_value_type_t
 {
     _Rvalue,
     _Cond,
-    _LValue,
+    _Lvalue,
     _Discard
 } metac_value_type_t;
 
@@ -378,7 +378,7 @@ static void MetaCCodegen_doExpression(metac_bytecode_ctx_t* ctx,
 
     if (op == exp_assign)
     {
-        MetaCCodegen_doExpression(ctx, exp->E1, result, _LValue);
+        MetaCCodegen_doExpression(ctx, exp->E1, result, _Lvalue);
         MetaCCodegen_doExpression(ctx, exp->E2, &rhs, _Rvalue);
     }
     else if (IsUnaryExp(op))
@@ -390,15 +390,17 @@ static void MetaCCodegen_doExpression(metac_bytecode_ctx_t* ctx,
         }
         else
         {
+            bool opIsPostIncDec =
+                (op == exp_post_decrement || op == exp_post_increment);
             lhs = bc->GenTemporary(c, expType);
-            MetaCCodegen_doExpression(ctx, exp->E2, &lhs, _Rvalue);
+            MetaCCodegen_doExpression(ctx, exp->E1, &lhs, (opIsPostIncDec ? _Lvalue : _Rvalue));
         }
     }
     else if (IsBinaryExp(op))
     {
         if (!doBinAss)
             lhs = bc->GenTemporary(c, expType);
-        MetaCCodegen_doExpression(ctx, exp->E1, (doBinAss ? result : &lhs), (doBinAss ? _LValue: _Rvalue));
+        MetaCCodegen_doExpression(ctx, exp->E1, (doBinAss ? result : &lhs), (doBinAss ? _Lvalue: _Rvalue));
         if (doBinAss)
             lhs = *result;
 
@@ -599,7 +601,7 @@ Lret: {}
 static metac_bytecode_switch_t* MetaCCodegen_PushSwitch(metac_bytecode_ctx_t* ctx,
                                                         BCValue exp)
 {
-    metac_bytecode_switch_t swtch = {};
+    metac_bytecode_switch_t swtch = {0};
     swtch.Exp = exp;
     METAC_NODE(swtch.DefaultBody) = emptyNode;
     ARENA_ARRAY_INIT(metac_bytecode_casejmp_t, swtch.PrevCaseJumps, &ctx->Allocator);
@@ -666,7 +668,7 @@ static inline void MetaCCodegen_doCaseStmt(metac_bytecode_ctx_t* ctx,
     }
     BCValue* switchExp = &swtch->Exp;
     BCValue caseExpr;
-    MetaCCodegen_doExpression(ctx, caseExp, &caseExpr, _LValue);
+    MetaCCodegen_doExpression(ctx, caseExp, &caseExpr, _Lvalue);
     bc->Eq3(c, 0, switchExp, &caseExpr);
 
     bool hasBody =
@@ -751,7 +753,7 @@ void MetaCCodegen_doLocalVar(metac_bytecode_ctx_t* ctx,
     BCValue local = bc->GenLocal(ctx->c, localType, localName);
     ARENA_ARRAY_ADD(ctx->Locals, local);
     VariableStore_AddVariable(&ctx->Vstore, localVar, &ctx->Locals[(ctx->LocalsCount) - 1]);
-    if (localVar->VarInitExpression)
+    if (METAC_NODE(localVar->VarInitExpression) != emptyNode)
     {
         BCValue initVal;
         MetaCCodegen_doExpression(ctx, localVar->VarInitExpression, &initVal, _Rvalue);
@@ -813,7 +815,7 @@ void MetaCCodegen_doStatement(metac_bytecode_ctx_t* ctx,
         case stmt_return:
         {
             sema_stmt_return_t* returnStmt = cast(sema_stmt_return_t*) stmt;
-            BCValue retVal;
+            BCValue retVal = {0};
             MetaCCodegen_doExpression(ctx, returnStmt->ReturnExp, &retVal, _Rvalue);
             bc->Ret(c, &retVal);
         } break;
@@ -821,15 +823,15 @@ void MetaCCodegen_doStatement(metac_bytecode_ctx_t* ctx,
         case stmt_exp:
         {
             sema_stmt_exp_t* expStmt = cast(sema_stmt_exp_t*) stmt;
-            BCValue dontCare;
-            MetaCCodegen_doExpression(ctx, expStmt->Expression, &dontCare, _Rvalue);
+            BCValue dontCare = {0};
+            MetaCCodegen_doExpression(ctx, expStmt->Expression, &dontCare, _Discard);
         } break;
 
         case stmt_if:
         {
             sema_stmt_if_t* ifStmt = cast(sema_stmt_if_t*) stmt;
 
-            BCValue cond;
+            BCValue cond = {0};
             MetaCCodegen_doExpression(ctx, ifStmt->IfCond, &cond, _Cond);
             CndJmpBegin cj = bc->BeginCndJmp(c, &cond, false);
             {
@@ -857,7 +859,7 @@ void MetaCCodegen_doStatement(metac_bytecode_ctx_t* ctx,
             MetaCCodegen_doStatement(ctx, whileStatement->WhileBody);
 
             BCLabel evalCond = bc->GenLabel(c);
-            BCValue cond;
+            BCValue cond = {0};
             MetaCCodegen_doExpression(ctx, whileStatement->WhileExp, &cond, _Cond);
             CndJmpBegin condExpJmp = bc->BeginCndJmp(c, &cond, true);
             bc->EndCndJmp(c, &condExpJmp, beginLoop);
@@ -867,7 +869,7 @@ void MetaCCodegen_doStatement(metac_bytecode_ctx_t* ctx,
         {
             sema_stmt_while_t* whileStatement = cast(sema_stmt_while_t*) stmt;
             BCLabel evalCond = bc->GenLabel(c);
-            BCValue cond;
+            BCValue cond = {0};
             MetaCCodegen_doExpression(ctx, whileStatement->WhileExp, &cond, _Cond);
 
             CndJmpBegin condExpJmp = bc->BeginCndJmp(c, &cond, false);
@@ -900,7 +902,7 @@ void MetaCCodegen_doStatement(metac_bytecode_ctx_t* ctx,
 
             if (METAC_NODE(forStatement->ForCond) != emptyNode)
             {
-                BCValue cond;
+                BCValue cond = {0};
                 MetaCCodegen_doExpression(ctx, forStatement->ForCond, &cond, _Cond);
                 cndJmpToCondEval = bc->BeginCndJmp(c, &cond, false);
             }
@@ -912,6 +914,11 @@ void MetaCCodegen_doStatement(metac_bytecode_ctx_t* ctx,
             {
                 bc->EndCndJmp(c, &cndJmpToCondEval, bc->GenLabel(c));
             }
+        } break;
+
+        // (?) Maybe we want to actually output the comment in a Comment directive?
+        case stmt_comment:
+        {
         } break;
 
         default:

@@ -16,6 +16,8 @@ typedef BCValue (*GenTemporary_t) (void* ctx, BCType bct);
 typedef void (*DestroyTemporary_t) (void* ctx, BCValue* tmp);
 
 typedef BCValue (*GenLocal_t) (void* ctx, BCType bct, const char* name);
+typedef void (*DestroyLocal_t) (void* ctx, BCValue* local);
+
 typedef BCValue (*GenParameter_t) (void* ctx, BCType bct, const char* name);
 typedef void (*EmitFlag_t) (void* ctx, BCValue* lhs);
 
@@ -113,7 +115,10 @@ typedef struct BackendInterface
     void (*const DestroyTemporary) (void* ctx, BCValue* tmp);
 
     BCValue (*const GenLocal) (void* ctx, BCType bct, const char* name);
+    void (*const DestroyLocal) (void* ctx, BCValue* local);
+
     BCValue (*const GenParameter) (void* ctx, BCType bct, const char* name);
+
     void (*const EmitFlag) (void* ctx, BCValue* lhs);
 
     void (*const Alloc) (void* ctx, BCValue *heapPtr, const BCValue* size);

@@ -2252,6 +2252,28 @@ void BCGen_destroyTemporary(BCGen* self, BCValue* tmp)
     }
 }
 
+void BCGen_destroyLocal(BCGen* self, BCValue* local)
+{
+    assert(BCValue_isStackValueOrParameter(local));//, "tmporary has to be stack-value");
+    uint32_t sz;
+
+    if (BCType_isBasicBCType(local->type))
+    {
+        sz = align4(BCTypeEnum_basicTypeSize(local->type.type));
+    }
+    else
+    {
+        sz = 4;
+    }
+
+    if (self->sp - sz == local->stackAddr.addr)
+    {
+        // this is the last thing we pushed on
+        // free the stack space immediately.
+        self->sp -= sz;
+    }
+}
+
 static inline void BCGen_Initialize(BCGen* self, uint32_t n_args, ...)
 {
     self->callCount = 0;
@@ -3174,6 +3196,7 @@ const BackendInterface BCGen_interface = {
     .GenTemporary = (GenTemporary_t) BCGen_genTemporary,
     .DestroyTemporary = (DestroyTemporary_t) BCGen_destroyTemporary,
     .GenLocal = (GenLocal_t) BCGen_genLocal,
+    .DestroyLocal = (DestroyLocal_t) BCGen_destroyLocal,
     .GenParameter = (GenParameter_t) BCGen_genParameter,
     .EmitFlag = (EmitFlag_t) BCGen_emitFlag,
     .Alloc = (Alloc_t) BCGen_Alloc,

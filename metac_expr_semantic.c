@@ -183,6 +183,7 @@ metac_sema_expression_t* MetaCSemantic_doExprSemantic_(metac_semantic_state_t* s
                     MetaCSemantic_doExprSemantic(self, argList->Expression, 0));
             }
             printf("function call with: %u arguments\n", nArgs);
+            STACK_ARENA_ARRAY_TO_HEAP(arguments, &self->Allocator);
         } break;
 
         case exp_arrow:
