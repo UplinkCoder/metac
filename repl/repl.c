@@ -263,13 +263,13 @@ void Presemantic_(repl_state_t* self)
             }
         }
 
+        metac_sema_declaration_t** changeP = &compilerStruct;
         MetaCSemantic_Handoff(&tmpSema,
-                              (metac_sema_declaration_t**)&compilerStruct,
+                             (metac_sema_declaration_t**)changeP,
                               &self->SemanticState);
-        printf("performed handoff to :%p\n", self->SemanticState.CompilerInterface);
 
+        self->SemanticState.CompilerInterface = *changeP;
         g_compilerInterface = self->SemanticState.CompilerInterface;
-        self->CompilerInterface = g_compilerInterface;
 
         // FreeSema
         MetaCParser_Free(&tmpParser);

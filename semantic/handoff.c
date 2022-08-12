@@ -176,6 +176,10 @@ static inline int HandoffWalker(metac_node_t node, void* ctx)
 
     switch(node->Kind)
     {
+        default: {
+            printf("%s\n", MetaCNodeKind_toChars(node->Kind));
+        } break;
+
         case node_decl_type_union:
         case node_decl_type_struct:
         {
@@ -189,9 +193,9 @@ static inline int HandoffWalker(metac_node_t node, void* ctx)
                                                     struct_);
             assert(typeIndex.v != 0 && typeIndex.v != -1);
             HandoffType(dstState, srcState, &typeIndex);
-
             context->result =
                 (metac_node_t)StructPtr(dstState, TYPE_INDEX_INDEX(typeIndex));
+
             return 1;
         }
         case node_decl_type_functiontype:
@@ -210,6 +214,7 @@ static inline int HandoffWalker(metac_node_t node, void* ctx)
 
             context->result =
                 (metac_node_t)FunctiontypePtr(dstState, TYPE_INDEX_INDEX(typeIndex));
+            //return 1;
         } break;
         case node_decl_field:
         {
@@ -224,7 +229,6 @@ static inline int HandoffWalker(metac_node_t node, void* ctx)
 void MetaCSemantic_Handoff(metac_semantic_state_t* self, metac_sema_declaration_t** declP,
                            metac_semantic_state_t* newOwner)
 {
-    printf("Handoff\n");
     metac_sema_declaration_t* decl = *declP;
 
     handoff_walker_context_t handoff_context = {
@@ -232,9 +236,6 @@ void MetaCSemantic_Handoff(metac_semantic_state_t* self, metac_sema_declaration_
         self, newOwner, decl, 0
     };
 
-
-
-    //TODO
     MetaCNode_TreeWalk_Real(decl, HandoffWalker, &handoff_context);
 
     *declP = (metac_sema_declaration_t*)handoff_context.result;

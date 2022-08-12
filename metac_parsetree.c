@@ -27,7 +27,10 @@ int MetaCNode_TreeWalk_Real(metac_node_t node, walker_function_t walker_fn, void
 
     switch(node->Kind)
     {
-        default: assert(0);
+        default: {
+            printf("%s\n", MetaCNodeKind_toChars(node->Kind));
+            assert(!"nodeKind not expected to be here\n");
+        } break;
 
         //default 0:
         case node_decl_type_tuple:
