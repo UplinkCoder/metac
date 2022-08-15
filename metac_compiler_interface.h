@@ -1,12 +1,6 @@
 typedef unsigned int uint32_t;
 typedef void* type;
 
-enum node_type
-{
-    some_type,
-    antr_type,
-};
-
 typedef struct metac_compiler_t
 {
     uint32_t StartTimeStamp;

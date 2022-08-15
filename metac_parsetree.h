@@ -87,7 +87,11 @@ typedef struct metac_expression_t
         };
 
         // case exp_argument:
-        exp_argument_t* ArgumentList;
+        struct
+        {
+            struct metac_expression_t* Expression;
+            struct exp_argument_t* Next;
+        };
         // case identifier_exp :
         struct {
             uint32_t IdentifierKey;
@@ -125,7 +129,7 @@ typedef struct metac_expression_t
     (DSTP)->LocationIdx = (SRCP)->LocationIdx; \
 } while (0);
 
-_Static_assert((sizeof(metac_expression_t) - sizeof(metac_expression_header_t)) <= METAC_MAX_EXP_BODY_SIZE, "Dumb");
+//_Static_assert((sizeof(metac_expression_t) - sizeof(metac_expression_header_t)) <= METAC_MAX_EXP_BODY_SIZE, "Dumb");
 #define STATEMENT_HEADER \
     metac_statement_kind_t Kind; \
     uint32_t LocationIdx; \

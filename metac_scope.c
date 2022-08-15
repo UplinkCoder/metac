@@ -12,7 +12,7 @@ void MetaCScopeTable_InitN(metac_scope_table_t* self, uint32_t nMembers, metac_a
 {
     // we need to avoid the table being 100% full
     // so allocate 25% more than needed.
-    uint32_t extraMembers = (nMembers / 4);
+    uint32_t extraMembers = (nMembers > 16) ? 8 : (nMembers >> 2);
     self->SlotCount_Log2 = LOG2(nMembers + extraMembers);
     const uint32_t maxSlots = (1 << self->SlotCount_Log2);
     self->Arena = AllocateArena(alloc, maxSlots * sizeof(metac_scope_table_slot_t));

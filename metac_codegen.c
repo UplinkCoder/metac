@@ -338,6 +338,7 @@ static void MetaCCodegen_AccessVariable(metac_bytecode_ctx_t* ctx,
         } break;
     }
 }
+
 static void MetaCCodegen_doExpression(metac_bytecode_ctx_t* ctx,
                                       metac_sema_expression_t* exp,
                                       BCValue* result,

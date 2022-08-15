@@ -77,18 +77,28 @@ static inline int TranslateIdentifiers(metac_node_t node, void* ctx)
     const metac_identifier_table_t* SrcTable = context->SrcTable;
     metac_identifier_table_t* DstTable = context->DstTable;
 
+    // printf("Visiting: %s\n", MetaCNodeKind_toChars(node->Kind));
     switch(node->Kind)
     {
         case decl_variable:
         {
-            decl_variable_t* variable = (decl_variable_t*) node;
-            TranslateIdentifier(DstTable, SrcTable, &variable->VarIdentifier);
+            decl_variable_t* var = (decl_variable_t*) node;
+            if (var->VarIdentifier.v && var->VarIdentifier.v != empty_identifier.v)
+                TranslateIdentifier(DstTable, SrcTable, &var->VarIdentifier);
         } break;
         case decl_type:
         {
             decl_type_t* type = (decl_type_t*) node;
             if (type->TypeIdentifier.v && type->TypeIdentifier.v != empty_identifier.v)
                 TranslateIdentifier(DstTable, SrcTable, &type->TypeIdentifier);
+        } break;
+        case decl_type_typedef:
+        {
+            decl_type_typedef_t* typedef_ = (decl_type_typedef_t*) node;
+            if (typedef_->Identifier.v != empty_identifier.v)
+            {
+                TranslateIdentifier(DstTable, SrcTable, &typedef_->Identifier);
+            }
         } break;
         case decl_type_struct:
         {
@@ -184,6 +194,7 @@ void Presemantic_(repl_state_t* self)
 
     if (fCompilterInterface.FileContent0)
     {
+
         metac_lexer_t tmpLexer;
         metac_parser_t tmpParser;
 
@@ -200,20 +211,27 @@ void Presemantic_(repl_state_t* self)
         }
         MetaCLexer_Free(&tmpLexer);
 
-        metac_semantic_state_t tmpSema;
-        MetaCSemantic_Init(&tmpSema, &tmpParser, 0);
-        MetaCSemantic_PushNewScope(&tmpSema, scope_owner_module, 0);
-
         presemantic_context_t presemanticContext = {
             sizeof(presemantic_context_t),
             crc32c_nozero(~0, "Presemantic", sizeof("Presemantic") - 1),
-            &tmpSema,
+            &self->SemanticState
+        };
+
+        identifier_translation_context_t transIdCtx =
+        {
+            crc32c(~0, "TranslateIdentifiers", sizeof("TranslateIdentifiers") - 1),
+            &tmpParser.IdentifierTable,
+            &self->LPP.Parser.IdentifierTable
         };
 
         for(int i = 0;
             i < decls.Length;
             i++)
         {
+
+
+            MetaCNode_TreeWalk_Real(METAC_NODE(decls.Ptr[i]), TranslateIdentifiers, &transIdCtx);
+
             MetaCNode_TreeWalk_Real(cast(metac_node_t)decls.Ptr[i], Presemantic, &presemanticContext);
         }
 
@@ -250,25 +268,20 @@ void Presemantic_(repl_state_t* self)
                 {
                     // struct_->Identifier = printIdentifier;
                 }
-               MSGF("found struct : '%s'\n",
-                   IdentifierPtrToCharPtr(&tmpParser.IdentifierTable, printIdentifier));
+                MSGF("found struct : '%s'\n",
+                    IdentifierPtrToCharPtr(&tmpParser.IdentifierTable, printIdentifier));
 
-                compilerStruct = MetaCSemantic_doDeclSemantic(&tmpSema, struct_);
+                 compilerStruct = MetaCSemantic_doDeclSemantic(&self->SemanticState, struct_);
                 metac_printer_t printer;
                 MetaCPrinter_Init(&printer,
-                    tmpSema.ParserIdentifierTable, tmpSema.ParserStringTable);
+                    self->SemanticState.ParserIdentifierTable, self->SemanticState.ParserStringTable);
                 printf("struct: %s\n", MetaCPrinter_PrintNode(&printer, struct_, 0));
                 printf("compilerStruct: %s\n",
-                    MetaCPrinter_PrintSemaNode(&printer, &tmpSema, cast(metac_node_t)compilerStruct));
+                    MetaCPrinter_PrintSemaNode(&printer, &self->SemanticState, cast(metac_node_t)compilerStruct));
             }
         }
 
-        metac_sema_declaration_t** changeP = &compilerStruct;
-        MetaCSemantic_Handoff(&tmpSema,
-                             (metac_sema_declaration_t**)changeP,
-                              &self->SemanticState);
-
-        self->SemanticState.CompilerInterface = *changeP;
+        self->SemanticState.CompilerInterface = compilerStruct;
         g_compilerInterface = self->SemanticState.CompilerInterface;
 
         // FreeSema

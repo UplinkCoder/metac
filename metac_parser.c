@@ -16,10 +16,10 @@
 #include "3rd_party/tracy/TracyC.h"
 
 struct metac_declaration_t;
-const void* _emptyPointer = (const void*)0x1;
 
-#ifndef emptyPointer
-#  define emptyPointer ((void*)_emptyPointer)
+#ifndef _emptyPointer
+#  define _emptyPointer (void*)0x1
+#  define emptyNode (metac_node_t) _emptyPointer
 #endif
 
 // void _newMemRealloc(void** memP, uint32_t* capacity, const uint32_t elementSize);
@@ -866,6 +866,8 @@ static inline bool IsTypeToken(metac_token_enum_t tokenType)
             || tokenType == tok_kw_unsigned
             || tokenType == tok_kw_signed
             || tokenType == tok_star
+            || tokenType == tok_lBracket
+            || tokenType == tok_rBracket
             || tokenType == tok_kw_struct
             || tokenType == tok_kw_enum
             || tokenType == tok_kw_union
@@ -943,6 +945,7 @@ static bool CouldBeCast(metac_parser_t* self, metac_token_enum_t tok)
     // because if it isn't then we are certainly not as cast
     metac_token_t* peek;
     bool seenStar = false;
+    bool seenLBracket = false;
     int rParenPos = 0;
     for(int peekCount = 2;
         (peek = MetaCParser_PeekToken(self, peekCount)), peek;
@@ -959,6 +962,16 @@ static bool CouldBeCast(metac_parser_t* self, metac_token_enum_t tok)
         if (peek->TokenType == tok_star)
         {
             seenStar = true;
+            if (peekCount == 2)
+                return false;
+        }
+        else if (peek->TokenType == tok_rBracket)
+        {
+            break;
+        }
+        else if (peek->TokenType == tok_lBracket)
+        {
+            seenLBracket = true;
             if (peekCount == 2)
                 return false;
         }
@@ -1348,6 +1361,7 @@ static inline metac_expression_t* ParseUnaryDotExpression(metac_parser_t* self)
 
     metac_token_t* peek;
     peek = MetaCParser_PeekToken(self, 1);
+/*
     if (peek && peek->TokenType == tok_identifier)
     {
         switch(peek->IdentifierKey)
@@ -1384,7 +1398,7 @@ static inline metac_expression_t* ParseUnaryDotExpression(metac_parser_t* self)
             } break;
         }
     }
-
+*/
     if (!result)
     {
         result = AllocNewExpression(exp_unary_dot);
@@ -2088,6 +2102,12 @@ LnextToken:
     return typeModifiers;
 }
 
+#define CRC32C_COLON 0xf683cd27
+#define CRC32C_SLASH_SLASH 0xe8c2d328
+#define CRC32C_BRACKETS 0x89b24289
+#define CRC32C_SEMICOLON 0x4e84e24
+#define CRC32C_PARENSTARPAREN 0xdb5bdc12
+
 decl_type_t* MetaCParser_ParseTypeDeclaration(metac_parser_t* self, metac_declaration_t* parent, metac_declaration_t* prev)
 {
     decl_type_t* result = 0;
@@ -2337,21 +2357,55 @@ decl_type_t* MetaCParser_ParseTypeDeclaration(metac_parser_t* self, metac_declar
         (currentToken ? currentToken->TokenType : tok_invalid);
 
     bool nextIsConst = false;
+    // while (auto subset = constrain(tokenType,
+    //                   {tok_star, tok_kw_const, tok_lBrace, tok_full_slice} 0) != 0)
     while(tokenType == tok_star
-       || tokenType == tok_kw_const)
+       || tokenType == tok_kw_const
+       || tokenType == tok_lBracket
+       || tokenType == tok_full_slice)
     {
-        if (tokenType == tok_kw_const)
-        {
-            MetaCParser_Match(self, tok_kw_const);
-            nextIsConst = true;
-        }
-        MetaCParser_Match(self, tok_star);
         decl_type_t* elementType = result;
-        decl_type_ptr_t* ptr = AllocNewDeclaration(decl_type_ptr, &result);
-        if (nextIsConst)
-            U32(ptr->TypeModifiers) |= typemod_const;
-        ptr->ElementType = elementType;
-        ptr->Hash = hash = CRC32C_VALUE(CRC32C_S("*"), hash);
+
+        switch(tokenType)
+        {
+            case tok_kw_const:
+                MetaCParser_Match(self, tok_kw_const);
+                nextIsConst = true;
+                continue;
+            case tok_star: {
+                MetaCParser_Match(self, tok_star);
+                decl_type_ptr_t* ptr = AllocNewDeclaration(decl_type_ptr, &result);
+                ptr->ElementType = elementType;
+                ptr->Hash = hash = CRC32C_VALUE(CRC32C_STAR, hash);
+                goto LnextToken;
+            }
+            case tok_lBracket:
+            case tok_full_slice: {
+                MetaCParser_Match(self, tokenType);
+                decl_type_array_t* array = AllocNewDeclaration(decl_type_array, &result);
+                array->ElementType = elementType;
+                array->Hash = hash = CRC32C_VALUE(CRC32C_BRACKETS, hash);
+                if (tokenType == tok_lBracket)
+                {
+                    array->Dim = MetaCParser_ParseExpression(self, expr_flags_none, 0);
+                    MetaCParser_Match(self, tok_rBracket);
+                }
+                else
+                {
+                    METAC_NODE(array->Dim) = emptyNode;
+                }
+                goto LnextToken;
+            }
+             {
+                MetaCParser_Match(self, tok_full_slice);
+
+            }
+
+            LnextToken:
+                if (nextIsConst)
+                    U32(result->TypeModifiers) |= typemod_const;
+
+        }
         currentToken = MetaCParser_PeekToken(self, 1);
         tokenType =
             (currentToken ? currentToken->TokenType : tok_invalid);
@@ -2502,11 +2556,6 @@ decl_function_t* ParseFunctionDeclaration(metac_parser_t* self, decl_type_t* typ
 
     return funcDecl;
 }
-#define CRC32C_COLON 0xf683cd27
-#define CRC32C_SLASH_SLASH 0xe8c2d328
-#define CRC32C_BRACKETS 0x89b24289
-#define CRC32C_SEMICOLON 0x4e84e24
-#define CRC32C_PARENSTARPAREN 0xdb5bdc12
 
 uint32_t HashDecl(metac_declaration_t* decl)
 {
@@ -2930,7 +2979,7 @@ metac_statement_t* MetaCParser_ParseStatement(metac_parser_t* self,
     metac_token_t* currentToken = MetaCParser_PeekToken(self, 1);
     metac_token_enum_t tokenType =
         (currentToken ? currentToken->TokenType : tok_invalid);
-    metac_location_t loc = currentToken ? LocationFromToken(self, currentToken) : 
+    metac_location_t loc = currentToken ? LocationFromToken(self, currentToken) :
                                           (metac_location_t){};
     metac_token_t* peek2;
     uint32_t hash = 0;

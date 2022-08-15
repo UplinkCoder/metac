@@ -243,7 +243,8 @@ static inline void PrintType(metac_printer_t* self, decl_type_t* type)
             // PrintTypeName(self, )
             PrintType(self, arrayType->ElementType);
             PrintChar(self, '[');
-            PrintExpression(self, arrayType->Dim);
+            if (METAC_NODE(arrayType->Dim) != emptyNode)
+                PrintExpression(self, arrayType->Dim);
             PrintChar(self, ']');
         } break;
 
@@ -328,7 +329,14 @@ static inline void PrintType(metac_printer_t* self, decl_type_t* type)
         case decl_type_struct :
         {
             decl_type_struct_t* structType = (decl_type_struct_t*) type;
-            PrintIdentifier(self, structType->Identifier);
+            if (structType->Identifier.v != empty_identifier.v)
+            {
+                PrintIdentifier(self, structType->Identifier);
+            }
+            else
+            {
+                PrintKeyword(self, tok_kw_struct);
+            }
         }
         break;
         case decl_type_functiontype:
@@ -936,8 +944,14 @@ static inline void PrintExpression(metac_printer_t* self, metac_expression_t* ex
     else if (exp->Kind == exp_call)
     {
         PrintExpression(self, exp->E1);
-
-        PrintExpression(self, exp->E2);
+        if (METAC_NODE(exp->E2) != emptyPointer)
+        {
+            PrintExpression(self, exp->E2);
+        }
+        else
+        {
+            PrintString(self, "()", 2);
+        }
     }
     else if (exp->Kind == exp_template_instance)
     {
@@ -1157,10 +1171,22 @@ static inline void PrintSemaType(metac_printer_t* self,
             metac_identifier_ptr_t nullIdPtr = {};
             PrintSemaFunctionType(self, sema, fnType, nullIdPtr);
         } break;
-
+        case type_index_array:
+        {
+            uint32_t arrayTypeIdx = TYPE_INDEX_INDEX(typeIndex);
+            metac_type_array_t* arrayType = ArrayTypePtr(sema, arrayTypeIdx);
+            PrintSemaType(self, sema, arrayType->ElementType);
+            PrintChar(self, '[');
+            if (arrayType->Dim != -1)
+            {
+                PrintI64(self, arrayType->Dim);
+            }
+            PrintChar(self, ']');
+        } break;
         default: assert(0);
     }
 }
+
 static inline void PrintSemaVariable(metac_printer_t* self,
                                      metac_semantic_state_t* sema,
                                      sema_decl_variable_t* variable)
@@ -1258,9 +1284,11 @@ static inline void PrintSemaDeclaration(metac_printer_t* self,
         } break;
         case decl_field :
         {
-            //decl_field_t* field = (decl_field_t*) decl;
+            metac_type_aggregate_field_t* field =
+                cast(metac_type_aggregate_field_t*) semaDecl;
+            PrintIdentifier(self, field->Identifier);
             //PrintVariable(self, field->Field);
-            assert(0);
+            // assert(0);
         } break;
         case decl_variable:
         {

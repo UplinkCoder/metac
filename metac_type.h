@@ -79,10 +79,12 @@ typedef struct metac_type_aggregate_field_t
     metac_type_header_t Header;
 
     metac_type_index_t Type;
-    uint32_t Offset;
+    uint16_t Index;
+    uint16_t Offset;
 
     metac_identifier_ptr_t Identifier;
-    uint32_t AggregateIndex;
+    /// the aggregate this field is a part of
+    metac_type_index_t AggregateType;
 } metac_type_aggregate_field_t;
 
 typedef struct metac_type_aggregate_t

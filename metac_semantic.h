@@ -136,6 +136,8 @@ typedef struct metac_semantic_state_t
 
     AT(transient) uint32_t TemporaryScopeDepth;
 
+
+
     AT(TaskLocal) AT(transient) metac_scope_t* CurrentScope;
 
     AT(TaskLocal) AT(transient) metac_semantic_lru_t LRU;
@@ -146,6 +148,7 @@ typedef struct metac_semantic_state_t
     FOREACH_SEMA_STATE_ARRAY(NULL, DECLARE_ARRAY)
 
     // FOREACH_SEMA_STATE_ARRAY(NULL, DECLARE_ARENA_STATE_ARRAY)
+    AT(TaskLocal) AT(transient) metac_scope_t* MountParent;
 
     AT(transient) metac_sema_expression_t* ExpressionStack;
     AT(transient) uint32_t ExpressionStackSize;
@@ -289,6 +292,11 @@ metac_type_tuple_t* TupleTypePtr(metac_semantic_state_t* self, uint32_t index);
 metac_scope_t* MetaCScope_PushNewScope(metac_semantic_state_t* sema,
                                        metac_scope_t* parent,
                                        metac_scope_owner_t owner);
+
+metac_scope_t* MetaCSemantic_MountScope(metac_semantic_state_t* self,
+                                        metac_scope_t* scope_);
+metac_scope_t* MetaCSemantic_UnmountScope(metac_semantic_state_t* self);
+
 
 scope_insert_error_t MetaCSemantic_RegisterInScope(metac_semantic_state_t* self,
                                                    metac_identifier_ptr_t idPtr,

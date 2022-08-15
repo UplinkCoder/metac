@@ -15,6 +15,13 @@
       (*(uint32_t*)(&VAR))
 #endif
 
+#ifndef _emptyPointer
+#  define _emptyPointer (void*)0x1
+#endif
+
+#ifndef emptyNode
+#  define emptyNode (metac_node_t) _emptyPointer
+#endif
 
 metac_type_index_t MetaCSemantic_GetPtrTypeOf(metac_semantic_state_t* self,
                                               metac_type_index_t elementTypeIndex)
@@ -221,30 +228,27 @@ metac_type_index_t MetaCSemantic_CommonSubtype(metac_semantic_state_t* self,
 
 uint32_t FieldHash(metac_type_aggregate_field_t* field)
 {
-#if NDEBUG
-    if (field->Header.Hash)
-        return field->Header.Hash;
-#endif
     uint32_t hash = ~0;
     hash = CRC32C_VALUE(hash, field->Type);
     hash = CRC32C_VALUE(hash, field->Offset);
-    assert(!field->Header.Hash || field->Header.Hash == hash);
+//    assert(!field->Header.Hash || field->Header.Hash == hash);
+//   TODO this assert should be here and it should pass
     return hash;
 }
 
 uint32_t AggregateHash(metac_type_aggregate_t* agg)
 {
+#ifdef NDEBUG
     if (agg->Header.Hash)
         return agg->Header.Hash;
-
+#endif
     uint32_t hash = ~0;
     for(int i = 0; i < agg->FieldCount; i++)
     {
-        metac_type_aggregate_field_t* field = agg->Fields +i;
-        if (!field->Header.Hash)
-        {
-            field->Header.Hash = FieldHash(field);
-        }
+        metac_type_aggregate_field_t* field = agg->Fields + i;
+        // ideally we would want to make sure that field->Header.Hash is 0
+        // if it's not set to a vaild value so we can cache it
+        field->Header.Hash = FieldHash(field);
         hash = CRC32C_VALUE(hash, field->Header.Hash);
     }
 
@@ -412,23 +416,81 @@ uint32_t MetaCSemantic_GetTypeSize(metac_semantic_state_t* self,
     return result;
 }
 
-metac_type_aggregate_t* MetaCSemantic_PersistTemporaryAggregate(metac_semantic_state_t* self,
-                                                                metac_type_aggregate_t* tmpAgg)
+/// this is where we also populate the scope
+metac_type_aggregate_t* MetaCSemantic_PersistTemporaryAggregateAndPopulateScope(metac_semantic_state_t* self,
+                                                                                metac_type_aggregate_t* tmpAgg)
 {
     // memcpy(semaAgg, tmpAgg, sizeof(metac_type_aggregate_t));
+    uint32_t nFields = tmpAgg->FieldCount;
+    uint32_t nSlots = nFields + ((nFields < 16) ? 4 : (nFields >> 2));
 
-    metac_type_index_t typeIndex =
-        MetaCTypeTable_AddStructType(&self->StructTypeTable, tmpAgg);
-    metac_type_aggregate_t* semaAgg = StructPtr(self, TYPE_INDEX_INDEX(typeIndex));
-    metac_type_aggregate_field_t* semaFields = cast(metac_type_aggregate_field_t*)
-            calloc(sizeof(metac_type_aggregate_field_t), tmpAgg->FieldCount);
-        //AllocAggregateFields(self, semaAgg, tmpAgg->Header.Kind, tmpAgg->FieldCount);
+    const uint32_t scopeTableSize =
+        ALIGN16(NEXTPOW2(nSlots) * sizeof(metac_scope_table_slot_t))
+        + ALIGN16(sizeof(metac_scope_t));
+
+    const uint32_t aggregateMemorySize =
+        ALIGN16(nFields * sizeof(metac_type_aggregate_field_t))
+        + scopeTableSize;
+
+    tagged_arena_t* aggregateArena = AllocateArena(&self->Allocator, aggregateMemorySize);
+    metac_type_aggregate_field_t* aggFields = cast(metac_type_aggregate_field_t*)
+        aggregateArena->Memory;
+
+    metac_scope_t* scope_ = cast(metac_scope_t*) (aggFields + nFields);
+    memset(scope_, 0, scopeTableSize);
+    metac_scope_table_slot_t* slots = (metac_scope_table_slot_t*) (scope_ + 1);
+
+    metac_type_index_t typeIndex;
+    metac_type_aggregate_t* semaAgg;
+
+    if (tmpAgg->Header.Kind == decl_type_struct)
+    {
+        typeIndex = MetaCTypeTable_AddStructType(&self->StructTypeTable, tmpAgg);
+        semaAgg = StructPtr(self, TYPE_INDEX_INDEX(typeIndex));
+        scope_->Owner.v = SCOPE_OWNER_V(scope_owner_struct, StructIndex(self, semaAgg));
+    } else if (tmpAgg->Header.Kind == decl_type_union)
+    {
+        typeIndex = MetaCTypeTable_AddUnionType(&self->UnionTypeTable, tmpAgg);
+        semaAgg = UnionPtr(self, TYPE_INDEX_INDEX(typeIndex));
+        scope_->Owner.v = SCOPE_OWNER_V(scope_owner_union, UnionIndex(self, semaAgg));
+    }
+    else
+    {
+        assert(!"aggregate type not supported or it's not an aggregate type");
+    }
+
+
+    scope_->ScopeTable.Slots = slots;
+    scope_->ScopeTable.SlotCount_Log2 = LOG2(nSlots);
+    scope_->Parent = self->CurrentScope;
+
+    MetaCSemantic_MountScope(self, scope_);
+    metac_printer_t printer;
+    MetaCPrinter_Init(&printer,
+        self->ParserIdentifierTable, self->ParserStringTable
+    );
+
+    semaAgg->Scope = scope_;
+    for(uint32_t i = 0; i < nFields; i++)
+    {
+        aggFields[i] = tmpAgg->Fields[i];
+        MetaCPrinter_PrintSemaNode(&printer, self, &aggFields[i]);
+
+        scope_insert_error_t inserted =
+            MetaCSemantic_RegisterInScope(self, aggFields[i].Identifier, cast(metac_node_t)&aggFields[i]);
+        if (inserted != success)
+        {
+            SemanticError(0, "%s could not be inserted",
+                IdentifierPtrToCharPtr(self->ParserIdentifierTable, aggFields[i].Identifier));
+        }
+    }
+
+    MetaCSemantic_UnmountScope(self);
 
     //TODO FIXME this should use a deep walk through the fields
     //MetaCDeclaration_Walk(tmpAgg,)
-    memcpy(semaFields, tmpAgg->Fields,
-        sizeof(metac_type_aggregate_field_t) * tmpAgg->FieldCount);
-    semaAgg->Fields = semaFields;
+
+    semaAgg->Fields = aggFields;
 
     return semaAgg;
 }
@@ -557,17 +619,28 @@ metac_type_index_t MetaCSemantic_TypeSemantic(metac_semantic_state_t* self,
             cast(decl_type_array_t*)type;
         metac_type_index_t elementType =
             MetaCSemantic_doTypeSemantic(self, arrayType->ElementType);
-        metac_sema_expression_t* dim =
-            MetaCSemantic_doExprSemantic(self, arrayType->Dim, 0);
-        if (dim->Kind != exp_signed_integer)
+        // it could be an array win inferred dimensions in which case
+        // arrayType->Dim is the empty pointer
+
+        metac_sema_expression_t* dim = (METAC_NODE(arrayType->Dim) == emptyNode ?
+            cast(metac_sema_expression_t*)emptyNode :
+            MetaCSemantic_doExprSemantic(self, arrayType->Dim, 0)
+        );
+
+        if (METAC_NODE(dim) != emptyNode)
         {
-            printf("Array dimension should eval to integer but it is: %s\n",
-                MetaCExpressionKind_toChars(dim->Kind));
+            if (dim->Kind != exp_signed_integer)
+            {
+                fprintf(stderr, "Array dimension should eval to integer but it is: %s\n",
+                    MetaCExpressionKind_toChars(dim->Kind));
+            }
         }
+        uint32_t dimValue = (
+            METAC_NODE(dim) != emptyNode ?
+                (uint32_t)dim->ValueU64 : -1);
+
         result =
-            MetaCSemantic_GetArrayTypeOf(self,
-                                        elementType,
-                                        (uint32_t)dim->ValueU64);
+            MetaCSemantic_GetArrayTypeOf(self, elementType, dimValue);
     }
     else if (type->Kind == decl_type_typedef)
     {
@@ -677,17 +750,12 @@ metac_type_index_t MetaCSemantic_TypeSemantic(metac_semantic_state_t* self,
         tmpSemaAgg->Identifier = agg->Identifier;
         tmpSemaAgg->Fields = tmpFields;
         tmpSemaAgg->FieldCount = agg->FieldCount;
-        metac_scope_t tmpScopeMem = { scope_flag_temporary };
-        MetaCScopeTable_Init(&tmpScopeMem.ScopeTable, &self->TempAlloc);
-
-        // XXX temporary scope might want to know thier parents
-        tmpSemaAgg->Scope = MetaCSemantic_PushTemporaryScope(self, &tmpScopeMem);
 
         switch(typeKind)
         {
             case type_struct:
             {
-                MetaCSemantic_ComputeStructLayoutPopulateScope(self, agg, tmpSemaAgg);
+                MetaCSemantic_ComputeStructLayout(self, agg, tmpSemaAgg);
 
                 uint32_t hash = AggregateHash(tmpSemaAgg);
                 tmpSemaAgg->Header.Hash = hash;
@@ -698,9 +766,9 @@ metac_type_index_t MetaCSemantic_TypeSemantic(metac_semantic_state_t* self,
                 {
                     metac_type_aggregate_t* semaAgg;
                     semaAgg =
-                        MetaCSemantic_PersistTemporaryAggregate(self, tmpSemaAgg);
+                        MetaCSemantic_PersistTemporaryAggregateAndPopulateScope(self, tmpSemaAgg);
 
-                    result.v = TYPE_INDEX_V(type_index_struct, semaAgg - self->StructTypeTable.Slots);
+                    result.v = TYPE_INDEX_V(type_index_struct, StructIndex(self, semaAgg));
                 }
                 // MetaCSemantic_RegisterInScopeStructNamespace()
             } break;
@@ -719,9 +787,6 @@ metac_type_index_t MetaCSemantic_TypeSemantic(metac_semantic_state_t* self,
             default: assert(0);
 
         }
-        FreeArena(tmpSemaAgg->Scope->ScopeTable.Arena);
-        ARENA_ARRAY_FREE(tmpFields);
-        MetaCSemantic_PopTemporaryScope(self);
     }
     else if (IsPointerType(type->Kind))
     {
@@ -958,7 +1023,9 @@ metac_type_index_t MetaCSemantic_GetArrayTypeOf(metac_semantic_state_t* state,
 {
     uint32_t hash = EntangleInts(TYPE_INDEX_INDEX(elementTypeIndex), dimension);
     metac_type_array_t key = {
-                {decl_type_array, 0, hash}, elementTypeIndex, dimension};
+        {decl_type_array, 0, hash, 0},
+        elementTypeIndex, dimension
+    };
 
     metac_type_index_t result =
         MetaCTypeTable_GetOrEmptyArrayType(&state->ArrayTypeTable, &key);
@@ -969,6 +1036,13 @@ metac_type_index_t MetaCSemantic_GetArrayTypeOf(metac_semantic_state_t* state,
             MetaCTypeTable_AddArrayType(&state->ArrayTypeTable, &key);
     }
 
+    if (1)
+    {
+        metac_type_array_t* array = ArrayTypePtr(state, TYPE_INDEX_INDEX(result));
+        assert(array->Dim == dimension);
+        assert(array->ElementType.v == elementTypeIndex.v);
+    }
+
     return result;
 }
 
@@ -977,16 +1051,15 @@ bool ComputeStructLayout(metac_semantic_state_t* self, decl_type_t* type)
     return false;
 }
 
-bool MetaCSemantic_ComputeStructLayoutPopulateScope(metac_semantic_state_t* self,
-                                                    decl_type_struct_t* agg,
-                                                    metac_type_aggregate_t* semaAgg)
+bool MetaCSemantic_ComputeStructLayout(metac_semantic_state_t* self,
+                                       decl_type_struct_t* agg,
+                                       metac_type_aggregate_t* semaAgg)
 {
     bool result = true;
 
     assert(semaAgg->Fields && semaAgg->Fields != emptyPointer);
 
     uint32_t currentFieldOffset = 0;
-    uint32_t alignment = 1;
 
     metac_type_aggregate_field_t* onePastLast =
         semaAgg->Fields + semaAgg->FieldCount;
@@ -997,14 +1070,15 @@ bool MetaCSemantic_ComputeStructLayoutPopulateScope(metac_semantic_state_t* self
         semaField < onePastLast;
         semaField++)
     {
-        semaField->Identifier = declField->Field->VarIdentifier;
+        semaField->Identifier  = declField->Field->VarIdentifier;
+        semaField->Header.Kind = decl_field;
 
         semaField->Type =
             MetaCSemantic_doTypeSemantic(self, declField->Field->VarType);
 #ifndef NO_FIBERS
         if (!semaField->Type.v)
         {
-            printf("FieldType couldn't be resolved\n yielding fiber\n");
+            printf("FieldType couldn't be resolved ... yielding fiber\n");
             aco_t* me = (aco_t*)CurrentFiber();
             if (me != 0)
             {
@@ -1050,9 +1124,6 @@ bool MetaCSemantic_ComputeStructLayoutPopulateScope(metac_semantic_state_t* self
             assert(((currentFieldOffset + alignedSize) % requestedAligment) == 0);
         }
         semaField->Offset = currentFieldOffset;
-        MetaCScope_RegisterIdentifier(semaAgg->Scope,
-                                      semaField->Identifier,
-                                      (metac_node_t)semaField);
         currentFieldOffset += alignedSize;
     }
 

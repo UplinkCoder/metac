@@ -94,7 +94,8 @@ typedef struct metac_sema_expression_t
         // case exp_dot, exp_arrow:
         struct {
             struct metac_sema_expression_t* AggExp;
-            uint32_t AggOffset;
+            uint32_t AggMemberIndex;
+            struct metac_sema_expression_t* DotE2;
         };
         // case exp_type
         struct {
@@ -112,6 +113,10 @@ typedef struct metac_sema_expression_t
         // case variable_exp:
         struct {
             struct sema_decl_variable_t* Variable;
+        };
+        // case field_exp:
+        struct {
+            struct metac_aggregate_field_t* Field;
         };
         // case identifier_exp :
         struct {

@@ -62,13 +62,13 @@ typedef enum scope_insert_error_t
 #undef DEFINE_MEMBERS
 
 
-#define scope_owner_INDEX(PARENT_INDEX) \
+#define SCOPE_OWNER_INDEX(PARENT_INDEX) \
     ((PARENT_INDEX).v & 0xfffffff)
 
-#define scope_owner_KIND(PARENT_INDEX) \
+#define SCOPE_OWNER_KIND(PARENT_INDEX) \
     ((metac_sema_parent_kind_t)((PARENT_INDEX).v >> 28))
 
-#define scope_owner_V(KIND, INDEX) \
+#define SCOPE_OWNER_V(KIND, INDEX) \
     ((uint32_t)(((KIND) << 28) | (INDEX)))
 
 typedef struct metac_scope_ptr_t

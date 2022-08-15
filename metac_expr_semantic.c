@@ -124,6 +124,61 @@ metac_sema_expression_t* doCmpExpSemantic(metac_semantic_state_t* self,
 
     return result;
 }
+/// this function doesn't really resolve anything as of now
+/// as there is no function overloading. However in case I add function overloading
+/// which I most certainly well I want to have an entry point.
+static inline
+metac_sema_expression_t* ResloveFuncCall(metac_semantic_state_t* self,
+                     metac_expression_t* fn,
+                     metac_sema_expression_t* arguments, uint32_t nArgs)
+{
+    metac_expression_kind_t kind = fn->Kind;
+    metac_sema_expression_t* result = MetaCSemantic_doExprSemantic(self, fn, 0);
+    return result;
+}
+
+static inline
+void MetaCSemantic_doCallSemantic(metac_semantic_state_t* self,
+                    metac_expression_t* call,
+                    metac_sema_expression_t** resultP)
+{
+    metac_expression_t* fn = call->E1;
+    metac_sema_expression_t* result = *resultP;
+
+    exp_argument_t* argList = (METAC_NODE(call->E2) != emptyNode ?
+        (exp_argument_t*)call->E2 : (exp_argument_t*)emptyNode);
+    STACK_ARENA_ARRAY(metac_sema_expression_t*, arguments, 64, &self->TempAlloc);
+
+    uint32_t nArgs = 0;
+    while(METAC_NODE(argList) != emptyNode)
+    {
+        nArgs++;
+        ARENA_ARRAY_ADD(arguments,
+            MetaCSemantic_doExprSemantic(self, argList->Expression, 0));
+        argList = argList->Next;
+    }
+
+    metac_sema_expression_t* func =
+        ResloveFuncCall(self, fn, arguments, nArgs);
+
+    printf("function call with: %u arguments\n", nArgs);
+
+    STACK_ARENA_ARRAY_TO_HEAP(arguments, &self->Allocator);
+    if (nArgs == 0)
+    {
+        METAC_NODE(result->ArgumentList) = emptyNode;
+    }
+    else
+    {
+        result->ArgumentList = AllocNewSemaExpression(self, call->E2);
+        result->ArgumentList->Arguments = arguments;
+        result->ArgumentList->ArgumentCount = nArgs;
+    }
+
+
+    //STACK_ARENA_ARRAY_FREE(arguments);
+}
+
 metac_sema_expression_t* MetaCSemantic_doExprSemantic_(metac_semantic_state_t* self,
                                                        metac_expression_t* expr,
                                                        metac_sema_expression_t* result,
@@ -168,22 +223,38 @@ metac_sema_expression_t* MetaCSemantic_doExprSemantic_(metac_semantic_state_t* s
         }
 
 
+        case exp_unary_dot:
+        {
+            if (expr->E1->Kind == exp_identifier)
+            {
+                switch(expr->E1->IdentifierKey)
+                {
+                    case compiler_key:
+                    {
+                        sema_decl_variable_t fakeDotStruct = {};
+                        fakeDotStruct.Kind = decl_variable;
+                        uint32_t compilerStructIndex = StructIndex(self, self->CompilerInterface);
+                        fakeDotStruct.TypeIndex.v = TYPE_INDEX_V(type_index_struct, compilerStructIndex);
+                        fakeDotStruct.VarIdentifier = expr->E1->IdentifierPtr;
+                        fakeDotStruct.Storage.v = STORAGE_V(storage_static, 1);
+
+                        result->Kind = exp_variable;
+                        result->Variable = &fakeDotStruct;
+                        //result->TypeIndex = MetaCSemantic_doTypeSemantic(self, result->Variable);
+                        result->TypeIndex = result->Variable->TypeIndex;
+                        hash = 2560;
+                    } break;
+                }
+            }
+            else
+            {
+                assert(0);
+            }
+        } break;
+
         case exp_call:
         {
-            metac_expression_t* fn = expr->E1;
-            exp_argument_t* argList = (METAC_NODE(expr->E2) != emptyNode ?
-                expr->E2->ArgumentList : (exp_argument_t*)emptyNode);
-            STACK_ARENA_ARRAY(metac_sema_expression_t*, arguments, 64, &self->TempAlloc);
-
-            uint32_t nArgs = 0;
-            while(argList && (cast(metac_node_t) argList) != emptyNode)
-            {
-                nArgs++;
-                ARENA_ARRAY_ADD(arguments,
-                    MetaCSemantic_doExprSemantic(self, argList->Expression, 0));
-            }
-            printf("function call with: %u arguments\n", nArgs);
-            STACK_ARENA_ARRAY_TO_HEAP(arguments, &self->Allocator);
+            MetaCSemantic_doCallSemantic(self, expr, &result);
         } break;
 
         case exp_arrow:
@@ -203,6 +274,7 @@ metac_sema_expression_t* MetaCSemantic_doExprSemantic_(metac_semantic_state_t* s
                 {
                 case type_index_struct:
                     agg = StructPtr(self, typeIndexIndex);
+                    assert(agg->Scope->Owner.Kind == scope_owner_struct);
                 break;
                 case type_index_union:
                     agg = UnionPtr(self, typeIndexIndex);
@@ -211,42 +283,55 @@ metac_sema_expression_t* MetaCSemantic_doExprSemantic_(metac_semantic_state_t* s
                     assert(0);
                 }
                 assert(agg != 0);
+                assert(agg->Scope != 0);
 
-                assert(expr->E2->Kind == exp_identifier);
+                MetaCSemantic_MountScope(self, agg->Scope);
 
-#if 0
-// TODO enable scope search! which means we store a compacted scope table on persistance of the tmp scope
-                uint32_t idPtrHash = crc32c(~0,
-                                            &expr->E2->IdentifierPtr,
-                                            sizeof(expr->E2->IdentifierPtr));
-                metac_node_t node =
-                    MetaCScope_LookupIdentifier(agg->Scope,
-                                                idPtrHash,
-                                                expr->E2->IdentifierPtr);
-
-                if (node == emptyNode)
+                metac_identifier_ptr_t idPtr = {0};
+                switch(expr->E2->Kind)
                 {
-                    break;
-                }
-#else
-                result->AggExp =
-                    MetaCSemantic_doExprSemantic(self, expr->E1, 0);
-
-                metac_type_aggregate_field_t* fields = agg->Fields;
-                for(uint32_t i = 0;
-                    i < agg->FieldCount;
-                    i++)
-                {
-                    metac_type_aggregate_field_t field = fields[i];
-                    if (field.Identifier.v == expr->E2->IdentifierPtr.v)
+                    case exp_identifier:
                     {
-                        //printf("Found field: %s\n",
-                        //    IdentifierPtrToCharPtr(self->ParserIdentifierTable, field.Identifier));
-                        result->TypeIndex = field.Type;
-                        result->AggOffset = field.Offset;
+                        idPtr = expr->E2->IdentifierPtr;
+                    } break;
+                    case exp_call:
+                    {
+                        idPtr = expr->E2->E1->IdentifierPtr;
+                    } break;
+                    default : {
+                        printf("Unexpected expression kind in . or -> expression: %s\n",
+                            MetaCExpressionKind_toChars(expr->E2->Kind));
+                        assert(!"Don't know how to deal with this y of x.y expression");
                     }
                 }
-#endif
+
+                assert(expr->E2->Kind == exp_identifier || expr->E2->Kind == exp_call);
+                result->AggExp = result->E1;
+
+                if (expr->E2->Kind == exp_call)
+                {
+                    metac_sema_expression_t _callExp = {0};
+                    metac_sema_expression_t* callExp = &_callExp;
+
+                    MetaCSemantic_doCallSemantic(self, expr->E2, &callExp);
+                    result->DotE2 = callExp;
+                    result->TypeIndex = result->DotE2->TypeIndex;
+                }
+                else if (expr->E2->Kind == exp_identifier)
+                {
+                    result->DotE2 = MetaCSemantic_doExprSemantic(self, expr->E2, 0);
+                    printf("result->DotE2.Kind: %s\n",
+                        MetaCNodeKind_toChars(result->DotE2->Kind));
+                    result->TypeIndex = result->DotE2->TypeIndex;
+                }
+
+                MetaCSemantic_UnmountScope(self);
+
+                hash = 0xfefefefe;
+            }
+            else
+            {
+                assert(!"lhs of . or -> doesn't seem to be an aggregate");
             }
         } break;
 
@@ -382,7 +467,7 @@ metac_sema_expression_t* MetaCSemantic_doExprSemantic_(metac_semantic_state_t* s
             metac_expression_t* call = expr->E1;
             metac_expression_t* fn = call->E1;
             exp_argument_t* args = (METAC_NODE(call->E2) != emptyNode ?
-                call->E2->ArgumentList : (exp_argument_t*)emptyNode);
+                (exp_argument_t*)call->E2 : (exp_argument_t*)emptyNode);
 #if 0
             if (!g_compilerInterface)
             {
@@ -486,11 +571,12 @@ metac_sema_expression_t* MetaCSemantic_doExprSemantic_(metac_semantic_state_t* s
 
         case exp_identifier:
         {
+            printf("Looking up: %s\n",
+                IdentifierPtrToCharPtr(self->ParserIdentifierTable, result->IdentifierPtr));
+
             metac_node_t node =
                 MetaCSemantic_LookupIdentifier(self,
                                                result->IdentifierPtr);
-//            printf("Looking up: %s\n",
-//                IdentifierPtrToCharPtr(self->ParserIdentifierTable, result->IdentifierPtr));
             if (node == emptyPointer)
             {
                 fprintf(stderr, "Identifier lookup failed\n");
@@ -498,7 +584,7 @@ metac_sema_expression_t* MetaCSemantic_doExprSemantic_(metac_semantic_state_t* s
             }
             else
             {
-                if (node->Kind == (metac_node_kind_t)exp_identifier)
+               if (node->Kind == (metac_node_kind_t)exp_identifier)
                 {
                     fprintf(stderr, "we should not be retured an identifier\n");
                 }
@@ -516,6 +602,15 @@ metac_sema_expression_t* MetaCSemantic_doExprSemantic_(metac_semantic_state_t* s
                     result->TypeIndex = v->TypeIndex;
                     hash = v->Hash;
                 }
+                else if (node->Kind == node_decl_field)
+                {
+                    metac_type_aggregate_field_t* field =
+                        cast(metac_type_aggregate_field_t*) node;
+                    result->Kind = exp_field;
+                    result->Field = field;
+                    result->TypeIndex = field->Type;
+                    hash = field->Header.Hash;
+                }
                 else if (node->Kind == node_decl_enum_member)
                 {
                     metac_enum_member_t* enumMember = cast(metac_enum_member_t*)node;
@@ -530,6 +625,12 @@ metac_sema_expression_t* MetaCSemantic_doExprSemantic_(metac_semantic_state_t* s
                         TYPE_INDEX_V(type_index_struct, StructIndex(self, cast(metac_type_aggregate_t*)node));
                     result->TypeIndex.v = TYPE_INDEX_V(type_index_basic, type_type);
                 }
+                else if (node->Kind == node_decl_type_typedef)
+                {
+                    result->Kind = exp_type;
+                    result->TypeExp.v =
+                        TYPE_INDEX_V(type_index_typedef, TypedefIndex(self, cast(metac_type_aggregate_t*)node));
+                }
                 else
                 {
                     printf("[%s:%u] NodeType unexpected: %s\n", __FILE__, __LINE__, MetaCNodeKind_toChars(node->Kind));
@@ -543,7 +644,7 @@ metac_sema_expression_t* MetaCSemantic_doExprSemantic_(metac_semantic_state_t* s
             MetaCSemantic_PushExpr(self, result);
             result->E1 = MetaCSemantic_doExprSemantic(self, expr->E1, 0);
             MetaCSemantic_PopExpr(self, result);
-            assert(result->E1->TypeIndex.v != 0 && result->E1->TypeIndex.v != ERROR_TYPE_INDEX_V);
+            assert(result->E1->TypeIndex.v != 0);
             if (!MetaCSemantic_CanHaveAddress(self, expr->E1))
             {
                 result->TypeIndex.v = ERROR_TYPE_INDEX_V;
@@ -560,7 +661,7 @@ metac_sema_expression_t* MetaCSemantic_doExprSemantic_(metac_semantic_state_t* s
         break;
     }
 
-//    assert(hash != 0);
+    //assert(hash != 0);
     result->Hash = hash;
 
     return result;

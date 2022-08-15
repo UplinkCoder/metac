@@ -92,6 +92,7 @@ void MetaCSemantic_Init(metac_semantic_state_t* self, metac_parser_t* parser,
     // *self = _init;
 
     self->nLocals = 0;
+    self->MountParent = 0;
 
     Allocator_Init(&self->Allocator, 0, 0);
     Allocator_Init(&self->TempAlloc, 0, AllocFlags_Temporary);
@@ -187,7 +188,7 @@ metac_scope_owner_t ScopeParent(metac_semantic_state_t* sema,
         scopeParentIndex = UnionIndex(sema, (metac_type_aggregate_t*)parentNode);
     break;
     }
-    scopeParent.v = scope_owner_V(parentKind, scopeParentIndex);
+    scopeParent.v = SCOPE_OWNER_V(parentKind, scopeParentIndex);
 
     return scopeParent;
 }
@@ -270,6 +271,36 @@ metac_scope_t* MetaCSemantic_PushNewScope(metac_semantic_state_t* self,
                                                  scopeParent);
     return self->CurrentScope;
 }
+
+metac_scope_t* MetaCSemantic_MountScope(metac_semantic_state_t* self,
+                                        metac_scope_t* scope_)
+{
+    assert(!self->MountParent);
+    self->MountParent = scope_->Parent;
+    assert(!(scope_->ScopeFlags & scope_flag_mounted));
+    scope_->ScopeFlags |= scope_flag_mounted;
+    scope_->Parent = self->CurrentScope;
+
+    self->CurrentScope = scope_;
+
+    return self->CurrentScope;
+}
+
+metac_scope_t* MetaCSemantic_UnmountScope(metac_semantic_state_t* self)
+{
+    assert(self->MountParent);
+    assert(self->CurrentScope->ScopeFlags & scope_flag_mounted);
+
+    self->CurrentScope->ScopeFlags &= ~scope_flag_mounted;
+    metac_scope_t* parent = self->CurrentScope->Parent;
+    self->CurrentScope->Parent = self->MountParent;
+
+    self->MountParent = 0;
+    self->CurrentScope = parent;
+
+    return self->CurrentScope;
+}
+
 
 sema_stmt_switch_t* MetaCSemantic_doSwitchSemantic(metac_semantic_state_t* self,
                                                   stmt_switch_t* switchStatement)
@@ -407,7 +438,7 @@ metac_sema_statement_t* MetaCSemantic_doStatementSemantic_(metac_semantic_state_
             if (METAC_NODE(stmt->Next) != emptyNode && stmt->Next->Kind != stmt_decl)
             {
                 metac_scope_owner_t owner = {
-                    scope_owner_V(scope_owner_statement, StatementIndex(self, semaDeclStatement))
+                    SCOPE_OWNER_V(scope_owner_statement, StatementIndex(self, semaDeclStatement))
                 };
                 metac_scope_t* declScope =
                     MetaCScope_PushNewScope(self, self->CurrentScope, owner);
@@ -496,7 +527,7 @@ metac_sema_statement_t* MetaCSemantic_doStatementSemantic_(metac_semantic_state_
             sema_stmt_block_t* semaBlockStatement =
                 AllocNewSemaBlockStatement(self, 0, statementCount, cast(void**)&result);
 
-            metac_scope_owner_t parent = {scope_owner_V(scope_owner_statement,
+            metac_scope_owner_t parent = {SCOPE_OWNER_V(scope_owner_statement,
                                            BlockStatementIndex(self, semaBlockStatement))};
 
             MetaCSemantic_PushNewScope(self,
@@ -682,6 +713,7 @@ scope_insert_error_t MetaCSemantic_RegisterInScope(metac_semantic_state_t* self,
                                                    metac_identifier_ptr_t idPtr,
                                                    metac_node_t node)
 {
+    const char* idChars = IdentifierPtrToCharPtr(self->ParserIdentifierTable, idPtr);
     scope_insert_error_t result = no_scope;
     uint32_t idPtrHash = crc32c_nozero(~0, &idPtr.v, sizeof(idPtr.v));
     // first search for keys that might clash
@@ -786,7 +818,7 @@ sema_decl_function_t* MetaCSemantic_doFunctionSemantic(metac_semantic_state_t* s
         return f;
     }
 
-    metac_scope_owner_t Parent = {scope_owner_V(scope_owner_function, FunctionIndex(self, f))};
+    metac_scope_owner_t Parent = {SCOPE_OWNER_V(scope_owner_function, FunctionIndex(self, f))};
 
     f->Scope = MetaCSemantic_PushNewScope(self, scope_owner_function, (metac_node_t)f);
     // now we compute the position on the stack and Register them in the scope.
@@ -1073,16 +1105,17 @@ metac_node_t MetaCSemantic_LRU_LookupIdentifier(metac_semantic_state_t* self,
     return result;
 }
 
+
 /// Returns _emptyNode to signifiy it could not be found
 /// a valid node otherwise
-metac_node_t MetaCSemantic_LookupIdentifier(metac_semantic_state_t* self,
-                                            metac_identifier_ptr_t identifierPtr)
+metac_node_t MetaCSemantic_LookupIdentifierInScope(metac_scope_t* scope_,
+                                                   metac_identifier_ptr_t identifierPtr)
 {
 
     metac_node_t result = emptyNode;
     uint32_t idPtrHash = crc32c_nozero(~0, &identifierPtr.v, sizeof(identifierPtr.v));
+    metac_scope_t *currentScope = scope_;
 
-    metac_scope_t *currentScope = self->CurrentScope;
     {
         while(currentScope)
         {
@@ -1100,6 +1133,35 @@ metac_node_t MetaCSemantic_LookupIdentifier(metac_semantic_state_t* self,
     return result;
 }
 
+/// Returns _emptyNode to signifiy it could not be found
+/// a valid node otherwise
+metac_node_t MetaCSemantic_LookupIdentifier(metac_semantic_state_t* self,
+                                            metac_identifier_ptr_t identifierPtr)
+{
+
+    metac_node_t result = emptyNode;
+    uint32_t idPtrHash = crc32c_nozero(~0, &identifierPtr.v, sizeof(identifierPtr.v));
+    printf("Looking up: %s\n",
+        IdentifierPtrToCharPtr(self->ParserIdentifierTable, identifierPtr));
+    metac_scope_t *currentScope = self->CurrentScope;
+    {
+        while(currentScope)
+        {
+          metac_node_t lookupResult =
+                MetaCScope_LookupIdentifier(currentScope, idPtrHash, identifierPtr);
+            if (lookupResult)
+            {
+                result = lookupResult;
+                break;
+            }
+            assert(currentScope != currentScope->Parent);
+            currentScope = currentScope->Parent;
+        }
+    }
+
+    return result;
+}
+
 static inline void TypeToCharsP(metac_semantic_state_t* self,
                                 metac_printer_t* printer,
                                 metac_type_index_t typeIndex)
@@ -1108,10 +1170,44 @@ static inline void TypeToCharsP(metac_semantic_state_t* self,
 
     switch (TYPE_INDEX_KIND(typeIndex))
     {
+        case type_index_struct:
+        {
+            metac_type_aggregate_t* aggregateType =
+                StructPtr(self, TYPE_INDEX_INDEX(typeIndex));
+            if (aggregateType->Identifier.v != 0)
+            {
+                PrintIdentifier(printer, aggregateType->Identifier);
+            }
+            else
+            {
+                PrintString(printer, "struct", sizeof("struct") - 1);
+                PrintSpace(printer);
+                PrintChar(printer, '{');
+
+                const metac_type_aggregate_field_t* fields =
+                    aggregateType->Fields;
+                const uint32_t fieldCount = aggregateType->FieldCount;
+                {
+                    uint32_t i;
+                    for(i = 0; i < fieldCount; i++)
+                    {
+                        PrintSemaType(printer, self, fields[i].Type);
+                        PrintSpace(printer);
+                        PrintIdentifier(printer, fields[i].Identifier);
+                        PrintChar(printer, ';');
+                        if (i < fieldCount - 1)
+                        {
+                            PrintSpace(printer);
+                        }
+                    }
+                }
+                PrintChar(printer, '}');
+            }
+        } break;
         case type_index_array:
         {
             metac_type_array_t* arrayType =
-                (self->ArrayTypeTable.Slots + TYPE_INDEX_INDEX(typeIndex));
+                ArrayTypePtr(self, TYPE_INDEX_INDEX(typeIndex));
             TypeToCharsP(self, printer, arrayType->ElementType);
             MetacPrinter_PrintStringLiteral(printer, "[");
             MetacPrinter_PrintI64(printer, (int64_t)arrayType->Dim);
@@ -1125,14 +1221,15 @@ static inline void TypeToCharsP(metac_semantic_state_t* self,
         case type_index_ptr:
         {
             metac_type_ptr_t* ptrType =
-                (self->PtrTypeTable.Slots + TYPE_INDEX_INDEX(typeIndex));
+                PtrTypeIndex(self, TYPE_INDEX_INDEX(typeIndex));
             TypeToCharsP(self, printer, ptrType->ElementType);
             MetacPrinter_PrintStringLiteral(printer, "*");
         } break;
         case type_index_tuple:
         {
             metac_type_tuple_t* tupleType =
-                (self->TupleTypeTable.Slots + TYPE_INDEX_INDEX(typeIndex));
+               TupleTypePtr(self, TYPE_INDEX_INDEX(typeIndex));
+
             MetacPrinter_PrintStringLiteral(printer, "{");
             const uint32_t typeCount = tupleType->typeCount;
             for(uint32_t i = 0;
@@ -1146,6 +1243,13 @@ static inline void TypeToCharsP(metac_semantic_state_t* self,
                 }
             }
             MetacPrinter_PrintStringLiteral(printer, "}");
+        } break;
+        case type_index_functiontype:
+        {
+            sema_decl_type_functiontype_t* ft =
+                FunctiontypePtr(self, TYPE_INDEX_INDEX(typeIndex));
+            metac_identifier_ptr_t nullId = {0};
+            PrintSemaFunctionType(printer, self, ft, nullId);
         } break;
     }
 }

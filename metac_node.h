@@ -137,6 +137,7 @@
     M(exp_template_instance) \
     \
     M(exp_variable) \
+    M(exp_field) \
     \
     M(exp_addr_or_and) \
     M(exp_ptr_or_mul) \

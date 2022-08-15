@@ -17,6 +17,7 @@ void main()
     printf("sizeof(metac_location_t): %d\n", (int) sizeof(metac_location_t));
     printf("sizeof(sema_decl_function_t): %d\n", (int) sizeof(sema_decl_function_t));
     printf("sizeof(sema_stmt_for_t): %d\n", (int) sizeof(sema_stmt_for_t));
+    printf("sizeof(metac_type_aggregate_field_t): %d\n", (int) sizeof(metac_type_aggregate_field_t));
 
 #if defined(IDENTIFIER_TABLE)
     printf("sizeof(metac_identifier_table_t): %d\n", (int) sizeof(metac_identifier_table_t));
