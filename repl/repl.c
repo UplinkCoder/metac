@@ -14,6 +14,7 @@
 #include "../semantic/handoff.c"
 #include "../int_to_str.c"
 #include <stdio.h>
+#include "../metac_codegen.h"
 // #include "exp_eval.c"
 #include "../metac_type_table.h"
 #include "repl.h"
@@ -288,6 +289,49 @@ void Presemantic_(repl_state_t* self)
         MetaCParser_Free(&tmpParser);
     }
 }
+extern const BackendInterface* bc;
+
+metac_sema_expression_t
+EvaluateExpression(metac_semantic_state_t* sema,
+                   metac_sema_expression_t* e)
+{
+    metac_alloc_t interpAlloc;
+    Allocator_Init(&interpAlloc, &sema->TempAlloc, 0);
+
+    metac_bytecode_ctx_t ctx;
+    MetaCCodegen_Init(&ctx, 0);
+    MetaCCodegen_Begin(&ctx, sema->ParserIdentifierTable, sema);
+
+    metac_bytecode_function_t fCode =
+        MetaCCodegen_GenerateFunctionFromExp(&ctx, e);
+
+    MetaCCodegen_End(&ctx);
+
+
+
+    uint32_t resultInt =
+        MetaCCodegen_RunFunction(&ctx, fCode, &interpAlloc, "", 0);
+
+    metac_sema_expression_t result;
+    // BCGen_printFunction(c);
+
+    if (e->TypeIndex.v == TYPE_INDEX_V(type_index_basic, type_type))
+    {
+        result.Kind = exp_type;
+        result.TypeIndex.v = TYPE_INDEX_V(type_index_basic, type_type);
+        result.TypeExp.v = resultInt;
+    }
+    else
+    {
+        result.Kind = exp_signed_integer;
+        result.ValueI64 = resultInt;
+    }
+
+    //Allocator_Release(&interpAlloc);
+
+    return result;
+}
+
 
 void Repl_SwtichMode(repl_state_t* self)
 {
@@ -664,7 +708,7 @@ LswitchMode:
                 if (!result)
                     goto LnextLine;
 
-                metac_sema_expression_t eval_exp;// = evalWithVariables(result, &repl->vstore);
+                metac_sema_expression_t eval_exp = EvaluateExpression(&repl->SemanticState, result);
                 result = &eval_exp;
 
                 const char* result_str;

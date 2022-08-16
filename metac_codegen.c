@@ -89,7 +89,7 @@ BCType MetaCCodegen_GetBCType(metac_bytecode_ctx_t* ctx, metac_type_index_t type
 extern const BackendInterface BCGen_interface;
 const BackendInterface* bc;
 
-int MetaCCodegen_RunFunction(metac_bytecode_ctx_t* self,
+long MetaCCodegen_RunFunction(metac_bytecode_ctx_t* self,
                              metac_bytecode_function_t f,
                              metac_alloc_t* interpAlloc,
                              const char* fargs, ...)
@@ -100,7 +100,7 @@ int MetaCCodegen_RunFunction(metac_bytecode_ctx_t* self,
 
     const char* farg = fargs;
     uint32_t nArgs = 0;
-    for(char c = *farg++;c; c = *farg++)
+    if (fargs) for(char c = *farg++;c; c = *farg++)
     {
         switch(c)
         {
@@ -185,6 +185,32 @@ void MetaCCodegen_Begin(metac_bytecode_ctx_t* self, metac_identifier_table_t* id
     ARENA_ARRAY_INIT(metac_bytecode_switch_t, self->SwitchStack, &self->Allocator);
 }
 
+metac_bytecode_function_t MetaCCodegen_GenerateFunctionFromExp(metac_bytecode_ctx_t* ctx,
+                                                               metac_sema_expression_t* expr)
+{
+    void* c = ctx->c;
+    BCValue resultVal = {};
+
+    metac_bytecode_function_t func;
+
+    func.FunctionIndex =
+        bc->BeginFunction(c, 0, "dummy_eval_func");
+
+    MetaCCodegen_doExpression(ctx, expr, &resultVal, 0);
+
+    bc->Ret(c, &resultVal);
+
+    bc->EndFunction(c, func.FunctionIndex);
+#ifdef PRINT_BYTECODE
+    if (bc == &BCGen_interface)
+    {
+        BCGen_PrintCode(c, 0, 32);
+    }
+#endif
+
+    return func;
+}
+
 metac_bytecode_function_t MetaCCodegen_GenerateFunction(metac_bytecode_ctx_t* ctx,
                                                         sema_decl_function_t* function)
 {
@@ -265,16 +291,9 @@ metac_bytecode_function_t MetaCCodegen_GenerateFunction(metac_bytecode_ctx_t* ct
         BCGen_PrintCode(c, 0, 600);
     }
 #endif
-    return result;
+        return result;
 }
 
-typedef enum metac_value_type_t
-{
-    _Rvalue,
-    _Cond,
-    _Lvalue,
-    _Discard
-} metac_value_type_t;
 
 static bool IsUnaryExp(metac_expression_kind_t kind)
 {
@@ -582,6 +601,15 @@ static void MetaCCodegen_doExpression(metac_bytecode_ctx_t* ctx,
             BCValue one = imm32(1);
             (op == exp_post_increment ? bc->Sub3(c, &lhs, &lhs, &one)
                                       : bc->Add3(c, &lhs, &lhs, &one));
+        } break;
+
+        case exp_increment:
+        case exp_decrement:
+        {
+            BCValue one = imm32(1);
+            (op == exp_increment ? bc->Sub3(c, &lhs, &lhs, &one)
+                                 : bc->Add3(c, &lhs, &lhs, &one));
+            bc->Set(c, result, &lhs);
         } break;
 
         case exp_call:

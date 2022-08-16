@@ -82,6 +82,10 @@ typedef struct metac_bytecode_ctx_t
 typedef struct metac_function_bytecode_t metac_function_bytecode_t;
 void MetaCCodegen_Init(metac_bytecode_ctx_t* self, metac_alloc_t* parentAlloc);
 
+metac_bytecode_function_t MetaCCodegen_GenerateFunctionFromExp(metac_bytecode_ctx_t* ctx,
+                                                               metac_sema_expression_t* expr);
+
+
 void MetaCCodegen_Begin(metac_bytecode_ctx_t* self, metac_identifier_table_t* idTable, metac_semantic_state_t* sema);
 void MetaCCodegen_End(metac_bytecode_ctx_t* self);
 
@@ -90,5 +94,24 @@ metac_bytecode_function_t MetaCCodegen_GenerateFunction(metac_bytecode_ctx_t* ct
                                                         sema_decl_function_t* function);
 uint32_t MetaCCodegen_GetTypeABISize(metac_bytecode_ctx_t* ctx, metac_type_index_t type);
 BCType MetaCCodegen_GetBCType(metac_bytecode_ctx_t* ctx, metac_type_index_t type);
+
+typedef enum metac_value_type_t
+{
+    _Rvalue,
+    _Cond,
+    _Lvalue,
+    _Discard
+} metac_value_type_t;
+
+
+static void MetaCCodegen_doExpression(metac_bytecode_ctx_t* ctx,
+                                      metac_sema_expression_t* exp,
+                                      BCValue* result,
+                                      metac_value_type_t lValue);
+
+long MetaCCodegen_RunFunction(metac_bytecode_ctx_t* self,
+                             metac_bytecode_function_t f,
+                             metac_alloc_t* interpAlloc,
+                             const char* fargs, ...);
 
 #endif
