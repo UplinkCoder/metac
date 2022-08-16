@@ -40,6 +40,7 @@ if [ -d $DST ]; then
        metac_lpp.c metac_lpp.h \
        metac_compiler_interface.h \
        metac_codegen.h metac_codegen.c \
+       metac_vstore.h metac_vstore.c \
        metac.fpg TODO \
        $DST
 
