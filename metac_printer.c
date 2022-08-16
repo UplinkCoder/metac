@@ -1259,7 +1259,7 @@ static inline void PrintSemaDeclaration(metac_printer_t* self,
                 sema_decl_variable_t synVar = {};
                 synVar.TypeIndex = (f + memberIndex)->Type;
                 synVar.VarIdentifier = (f + memberIndex)->Identifier;
-                METAC_NODE(synVar.VarInitExpression) = emptyPointer;
+                METAC_NODE(synVar.VarInitExpression) = emptyNode;
                 PrintSemaVariable(self, sema, &synVar);
                 PrintChar(self, ';');
                 PrintNewline(self);
@@ -1426,13 +1426,14 @@ static inline void PrintSemaExpression(metac_printer_t* self,
         PrintChar(self, '(');
         sema_exp_argument_list_t* argList =
             semaExp->E2->ArgumentList;
-        const metac_sema_expression_t* onePastLastArg =
-            argList->Arguments + argList->ArgumentCount;
-        for(metac_sema_expression_t* arg = argList->Arguments;
+        const metac_sema_expression_t** onePastLastArg =
+            cast(const metac_sema_expression_t**)
+            &argList->Arguments[argList->ArgumentCount];
+        for(metac_sema_expression_t** arg = argList->Arguments;
             arg < onePastLastArg;
             arg++)
         {
-            PrintSemaExpression(self, sema,  arg);
+            PrintSemaExpression(self, sema,  *arg);
             if (arg != (onePastLastArg - 1))
                 PrintString(self, ", ", 2);
         }

@@ -44,16 +44,16 @@ bool Expression_IsEqual_(const metac_sema_expression_t* a,
                 {
                     const uint32_t ArgumentCount =
                         a->ArgumentList->ArgumentCount;
-                    const metac_sema_expression_t* ExpsA
+                    metac_sema_expression_t** ExpsA
                             = a->ArgumentList->Arguments;
-                    const metac_sema_expression_t* ExpsB
+                    metac_sema_expression_t** ExpsB
                             = b->ArgumentList->Arguments;
 
                     for(uint32_t i = 0;
                         i < ArgumentCount;
                         i++)
                     {
-                        result &= Expression_IsEqual(ExpsA + i, ExpsB + i);
+                        result &= Expression_IsEqual(ExpsA[i], ExpsB[i]);
                     }
                 }
                 else
@@ -278,7 +278,7 @@ metac_scope_t* MetaCSemantic_MountScope(metac_semantic_state_t* self,
     assert(!self->MountParent);
     self->MountParent = scope_->Parent;
     assert(!(scope_->ScopeFlags & scope_flag_mounted));
-    scope_->ScopeFlags |= scope_flag_mounted;
+    U32(scope_->ScopeFlags) |= scope_flag_mounted;
     scope_->Parent = self->CurrentScope;
 
     self->CurrentScope = scope_;
@@ -291,7 +291,7 @@ metac_scope_t* MetaCSemantic_UnmountScope(metac_semantic_state_t* self)
     assert(self->MountParent);
     assert(self->CurrentScope->ScopeFlags & scope_flag_mounted);
 
-    self->CurrentScope->ScopeFlags &= ~scope_flag_mounted;
+    U32(self->CurrentScope->ScopeFlags) &= ~scope_flag_mounted;
     metac_scope_t* parent = self->CurrentScope->Parent;
     self->CurrentScope->Parent = self->MountParent;
 
@@ -880,6 +880,8 @@ sema_decl_function_t* MetaCSemantic_doFunctionSemantic(metac_semantic_state_t* s
 
     MetaCSemantic_PopScope(self);
 
+    MetaCSemantic_RegisterInScope(self, f->Identifier, METAC_NODE(f));
+
     return f;
 }
 
@@ -1221,7 +1223,7 @@ static inline void TypeToCharsP(metac_semantic_state_t* self,
         case type_index_ptr:
         {
             metac_type_ptr_t* ptrType =
-                PtrTypeIndex(self, TYPE_INDEX_INDEX(typeIndex));
+                PtrTypePtr(self, TYPE_INDEX_INDEX(typeIndex));
             TypeToCharsP(self, printer, ptrType->ElementType);
             MetacPrinter_PrintStringLiteral(printer, "*");
         } break;
@@ -1246,7 +1248,7 @@ static inline void TypeToCharsP(metac_semantic_state_t* self,
         } break;
         case type_index_functiontype:
         {
-            sema_decl_type_functiontype_t* ft =
+            metac_type_functiontype_t* ft =
                 FunctiontypePtr(self, TYPE_INDEX_INDEX(typeIndex));
             metac_identifier_ptr_t nullId = {0};
             PrintSemaFunctionType(printer, self, ft, nullId);

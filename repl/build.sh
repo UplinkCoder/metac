@@ -15,7 +15,7 @@ fi
 
 $CC linenoise_repl.c \
     -DACOSW_EXTERNAL_ASM ../3rd_party/libaco/acosw.S \
-    -I.. -DACCEL=$ACCEL -DNO_FIBERS \
+    -I.. -DACCEL=$ACCEL \
     -g3 -O0 -march=native -mtune=native \
     -lm -lpthread \
     -o repl $@

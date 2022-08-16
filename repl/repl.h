@@ -52,7 +52,7 @@ typedef struct repl_state_t
     int32_t SrcBufferLength;
 
     metac_printer_t printer;
-    variable_store_t vstore;
+    // variable_store_t vstore;
 } repl_state_t;
 
 struct ui_state_t;

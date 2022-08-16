@@ -112,22 +112,22 @@ metac_type_index_t MetaCTypeTable_AddImpl(metac_type_table_t* self,
         (++slotIndex & slotIndexMask) != initialSlotIndex;
     )
     {
-        slotIndex = ((slotIndex - 1) & slotIndexMask);
+        uint32_t slotIndex_ = ((slotIndex - 1) & slotIndexMask);
         metac_type_table_slot_t* slot = (metac_type_table_slot_t*)
-        (((char*)self->Slots) + (slotIndex * keySize));
+        (((char*)self->Slots) + (slotIndex_ * keySize));
 
         if (slot->Hash == 0)
         {
             // we've found the first empty space to put this entry
             memcpy(slot, entry, keySize);
             self->SlotsUsed++;
-            result.v = TYPE_INDEX_V(self->Kind, slotIndex);
+            result.v = TYPE_INDEX_V(self->Kind, slotIndex_);
         }
         else if (slot->Hash == hash)
         {
             // this assert makes sure we don't have duplicates
             assert (!cmpSlot(slot, entry));
-            result.v = TYPE_INDEX_V(self->Kind, slotIndex);
+            result.v = TYPE_INDEX_V(self->Kind, slotIndex_);
 
         } else
         {

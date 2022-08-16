@@ -1,8 +1,11 @@
 #include "metac_alloc.h"
 #include "libinterpret/bc_common.h"
 #include "libinterpret/backend_interface_funcs.h"
-#include "libinterpret/bc_interpreter_backend.h"
+#include "libinterpret/bc_common.c"
+#include "libinterpret/bc_interpreter_backend.c"
 #include "libinterpret/printer_backend.c"
+#include  "metac_vstore.c"
+
 #include "metac_codegen.h"
 
 #include <stdarg.h>

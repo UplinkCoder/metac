@@ -14,7 +14,7 @@
 #include "../semantic/handoff.c"
 #include "../int_to_str.c"
 #include <stdio.h>
-#include "exp_eval.c"
+// #include "exp_eval.c"
 #include "../metac_type_table.h"
 #include "repl.h"
 
@@ -367,12 +367,7 @@ void Repl_Init(repl_state_t* self)
         &LPP->Parser.IdentifierTable,
         &LPP->Parser.StringTable);
 
-    VariableStore_Init(&self->vstore, &LPP->Parser.IdentifierTable);
-
-    _ReadContextCapacity = 32;
-    _ReadContexts = (ReadI32_Ctx*)
-        malloc(sizeof(ReadI32_Ctx) * _ReadContextCapacity);
-    _ReadContextSize = 0;
+    //VariableStore_Init(&self->vstore, &LPP->Parser.IdentifierTable);
 }
 
 #ifndef NO_FIBERS
@@ -404,6 +399,30 @@ void MetaCRepl_ExprSemantic_Task(task_t* task)
     //       MetaCPrinter_PrintExpression(&ctx->Repl->printer, ctx->Exp));
 }
 #endif
+
+metac_identifier_ptr_t IdentifierPtrFromDecl(metac_declaration_t* decl)
+{
+    metac_identifier_ptr_t idPtr = {0};
+
+    switch(decl->Kind)
+    {
+        case decl_function:
+        {
+            decl_function_t* f = cast(decl_function_t*) decl;
+            idPtr = f->Identifier;
+            break;
+        }
+        case decl_variable:
+        {
+            decl_variable_t* v = cast(decl_variable_t*) decl;
+            idPtr = v->VarIdentifier;
+            break;
+        }
+        default : assert(0);
+    }
+
+    return idPtr;
+}
 
 /// returns false if the repl is done running
 bool Repl_Loop(repl_state_t* repl, repl_ui_context_t* context)
@@ -645,7 +664,7 @@ LswitchMode:
                 if (!result)
                     goto LnextLine;
 
-                metac_sema_expression_t eval_exp = evalWithVariables(result, &repl->vstore);
+                metac_sema_expression_t eval_exp;// = evalWithVariables(result, &repl->vstore);
                 result = &eval_exp;
 
                 const char* result_str;
@@ -659,9 +678,7 @@ LswitchMode:
                 }
                 MSGF("%s = %s\n", str, result_str);
                 MetaCPrinter_Reset(&repl->printer);
-                // XXX static and fixed size state like _ReadContext
-                // should go away soon.
-                _ReadContextSize = 0;
+
                 goto LnextLine;
             }
 
@@ -706,6 +723,7 @@ LswitchMode:
 
             case repl_mode_setvars :
             {
+#if 0
                 metac_declaration_t* decl = MetaCLPP_ParseDeclarationFromString(&repl->LPP, repl->Line);
                 if (decl)
                 {
@@ -722,24 +740,6 @@ LswitchMode:
                     const uint32_t length = strlen(idChars);
                     uint32_t idHash = crc32c_nozero(~0, idChars, length);
                     uint32_t idKey = IDENTIFIER_KEY(idHash, length);
-/*
-                    metac_identifier_ptr_t dstoreId
-                        = GetOrAddIdentifier(&dstore.Table, idKey, idChars);
-
-                    if (decl->Kind == decl_function)
-                    {
-                        decl->decl_function.Identifier = dstoreId;
-                        MSGF("Setting dStore ID: %u\n", dstoreId.v);
-                    }
-                    else if (decl->Kind == decl_variable)
-                    {
-                        decl->decl_variable.VarIdentifier = dstoreId;
-
-                        //VariableStore_SetValueI32(&vstore, assignExp->E1, (int32_t)assignExp->E2->ValueI64);
-                    }
-
-                    DeclarationStore_SetDecl(&dstore, dstoreId, decl);
-*/
                     MSGF("Registering %s [v=%u] in scope\n", idChars, idPtr.v);
                     MetaCSemantic_RegisterInScope(&repl->SemanticState, idPtr, METAC_NODE(decl));
                     goto LnextLine;
@@ -765,7 +765,7 @@ LswitchMode:
                             }
                             assert(ae->E2->Kind == exp_signed_integer);
 
-                            VariableStore_SetValueI32(&repl->vstore, ae->E1, (int32_t)ae->E2->ValueI64);
+                            // VariableStore_SetValueI32(&repl->vstore, ae->E1, (int32_t)ae->E2->ValueI64);
                         }
                         else
                         {
@@ -779,6 +779,7 @@ LswitchMode:
                         ERROR("Input did not parse as either an assign-expression or declaration\n");
                     }
                 }
+#endif
             } break;
 
             case repl_mode_stmt :

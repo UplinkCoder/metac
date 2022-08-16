@@ -162,6 +162,8 @@ metac_sema_expression_t* AllocNewSemaExpression(metac_semantic_state_t* self, me
         uint32_t allocPos = POST_ADD(self->Expressions_size, tupleExpCount);
         metac_sema_expression_t* elements =
             self->Expressions + allocPos;
+        metac_sema_expression_t** elemArray =
+            Allocator_Calloc(&self->Allocator, metac_sema_expression_t*, tupleExpCount);
         exp_tuple_t* expList = expr->TupleExpressionList;
 
         metac_expression_t* elemExpr;
@@ -172,8 +174,7 @@ metac_sema_expression_t* AllocNewSemaExpression(metac_semantic_state_t* self, me
             elemExpr = expList->Expression;
             metac_sema_expression_t* semaElem = elements + i;
             semaElem->Serial = INC(_nodeCounter);
-
-            (*(metac_expression_header_t*) semaElem) = (*(metac_expression_header_t*) elemExpr);
+            METAC_COPY_HEADER(elemExpr, semaElem);
 
             memcpy(
                 ((char*)semaElem) + sizeof(metac_sema_expression_header_t),
@@ -181,10 +182,10 @@ metac_sema_expression_t* AllocNewSemaExpression(metac_semantic_state_t* self, me
                 sizeof(metac_expression_t) - sizeof(metac_expression_header_t)
             );
 
+            elemArray[i] = semaElem;
             expList = expList->Next;
-
         }
-        result->TupleExpressions = elements;
+        result->TupleExpressions = elemArray;
         result->TupleExpressionCount = tupleExpCount;
     }
     else

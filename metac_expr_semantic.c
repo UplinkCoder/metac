@@ -130,7 +130,7 @@ metac_sema_expression_t* doCmpExpSemantic(metac_semantic_state_t* self,
 static inline
 metac_sema_expression_t* ResloveFuncCall(metac_semantic_state_t* self,
                      metac_expression_t* fn,
-                     metac_sema_expression_t* arguments, uint32_t nArgs)
+                     metac_sema_expression_t** arguments, uint32_t nArgs)
 {
     metac_expression_kind_t kind = fn->Kind;
     metac_sema_expression_t* result = MetaCSemantic_doExprSemantic(self, fn, 0);
@@ -160,21 +160,31 @@ void MetaCSemantic_doCallSemantic(metac_semantic_state_t* self,
 
     metac_sema_expression_t* func =
         ResloveFuncCall(self, fn, arguments, nArgs);
+    result->Call.Function = func;
 
     printf("function call with: %u arguments\n", nArgs);
 
     STACK_ARENA_ARRAY_TO_HEAP(arguments, &self->Allocator);
+
+    metac_expression_t dummy;
+    dummy.LocationIdx = call->LocationIdx;
+    dummy.Kind = exp_variable;
+
+    metac_type_functiontype_t* funcType = FunctiontypePtr(self, TYPE_INDEX_INDEX(func->TypeIndex));
+
     if (nArgs == 0)
     {
-        METAC_NODE(result->ArgumentList) = emptyNode;
+        METAC_NODE(result->Call.Arguments) = emptyNode;
+
     }
     else
     {
-        result->ArgumentList = AllocNewSemaExpression(self, call->E2);
-        result->ArgumentList->Arguments = arguments;
-        result->ArgumentList->ArgumentCount = nArgs;
+        result->Call.Arguments = arguments;
     }
+    result->Call.ArgumentCount = nArgs;
 
+
+    result->TypeIndex = funcType->ReturnType;
 
     //STACK_ARENA_ARRAY_FREE(arguments);
 }
@@ -310,7 +320,12 @@ metac_sema_expression_t* MetaCSemantic_doExprSemantic_(metac_semantic_state_t* s
 
                 if (expr->E2->Kind == exp_call)
                 {
-                    metac_sema_expression_t _callExp = {0};
+                    // the issue with calling through a member function pointer
+                    // is that we have to synthesize the call
+                    // such that dot->E1 = struct dot->E2 becomes
+                    // call->E1 = dot
+
+                    metac_sema_expression_t _callExp = {};
                     metac_sema_expression_t* callExp = &_callExp;
 
                     MetaCSemantic_doCallSemantic(self, expr->E2, &callExp);
@@ -320,8 +335,8 @@ metac_sema_expression_t* MetaCSemantic_doExprSemantic_(metac_semantic_state_t* s
                 else if (expr->E2->Kind == exp_identifier)
                 {
                     result->DotE2 = MetaCSemantic_doExprSemantic(self, expr->E2, 0);
-                    printf("result->DotE2.Kind: %s\n",
-                        MetaCNodeKind_toChars(result->DotE2->Kind));
+                    //printf("result->DotE2.Kind: %s\n",
+                    //    MetaCNodeKind_toChars(result->DotE2->Kind));
                     result->TypeIndex = result->DotE2->TypeIndex;
                 }
 
@@ -571,8 +586,9 @@ metac_sema_expression_t* MetaCSemantic_doExprSemantic_(metac_semantic_state_t* s
 
         case exp_identifier:
         {
-            printf("Looking up: %s\n",
-                IdentifierPtrToCharPtr(self->ParserIdentifierTable, result->IdentifierPtr));
+
+            //printf("Looking up: %s\n",
+            //    IdentifierPtrToCharPtr(self->ParserIdentifierTable, result->IdentifierPtr));
 
             metac_node_t node =
                 MetaCSemantic_LookupIdentifier(self,
@@ -629,7 +645,14 @@ metac_sema_expression_t* MetaCSemantic_doExprSemantic_(metac_semantic_state_t* s
                 {
                     result->Kind = exp_type;
                     result->TypeExp.v =
-                        TYPE_INDEX_V(type_index_typedef, TypedefIndex(self, cast(metac_type_aggregate_t*)node));
+                        TYPE_INDEX_V(type_index_typedef, TypedefIndex(self, cast(metac_type_typedef_t*)node));
+                }
+                else if (node->Kind == node_decl_function)
+                {
+                    sema_decl_function_t* func = cast(sema_decl_function_t*) node;
+                    result->Kind = exp_function;
+                    result->Function = func;
+                    result->TypeIndex = func->TypeIndex;
                 }
                 else
                 {

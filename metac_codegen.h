@@ -4,7 +4,7 @@
 #include "compat.h"
 #include "metac_alloc.h"
 #include "metac_sematree.h"
-#include "repl/exp_eval.h"
+#include "metac_vstore.h"
 
 #ifndef AT
 #  define AT(...)

@@ -474,7 +474,7 @@ metac_type_aggregate_t* MetaCSemantic_PersistTemporaryAggregateAndPopulateScope(
     for(uint32_t i = 0; i < nFields; i++)
     {
         aggFields[i] = tmpAgg->Fields[i];
-        MetaCPrinter_PrintSemaNode(&printer, self, &aggFields[i]);
+        MetaCPrinter_PrintSemaNode(&printer, self, cast(metac_node_t) &aggFields[i]);
 
         scope_insert_error_t inserted =
             MetaCSemantic_RegisterInScope(self, aggFields[i].Identifier, cast(metac_node_t)&aggFields[i]);
@@ -939,7 +939,7 @@ void MetaCSemantic_doTypeSemantic_Task(task_t* task)
 {
     MetaCSemantic_doTypeSemantic_Fiber_t* ctx =
         cast(MetaCSemantic_doTypeSemantic_Fiber_t*) task->Context;
-    metac_semantic_state_t* sema = ctx->Sema;
+     metac_semantic_state_t* sema = ctx->Sema;
     decl_type_t* type = ctx->Type;
 
     ctx->Result = MetaCSemantic_TypeSemantic(sema, type);

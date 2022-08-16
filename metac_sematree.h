@@ -50,7 +50,7 @@ typedef struct metac_storage_location_t
 
 typedef struct sema_exp_argument_list_t
 {
-    struct metac_sema_expression_t* Arguments;
+    struct metac_sema_expression_t** Arguments;
     uint32_t ArgumentCount;
 } sema_exp_argument_list_t;
 
@@ -60,6 +60,13 @@ typedef struct metac_sema_expression_header_t
 } metac_sema_expression_header_t;
 
 #pragma pack(push, 1)
+typedef struct sema_exp_call_t
+{
+    struct metac_sema_expression_t* Function;
+    struct metac_sema_expression_t** Arguments;
+    uint32_t ArgumentCount;
+} sema_exp_call_t;
+
 
 typedef struct metac_sema_expression_t
 {
@@ -110,13 +117,20 @@ typedef struct metac_sema_expression_t
         struct {
             sema_exp_argument_list_t* ArgumentList;
         };
+        // case exp_function:
+        struct {
+            struct sema_decl_function_t* Function;
+        };
+        // case exp_call:
+        struct sema_exp_call_t Call;
+
         // case variable_exp:
         struct {
             struct sema_decl_variable_t* Variable;
         };
         // case field_exp:
         struct {
-            struct metac_aggregate_field_t* Field;
+            struct metac_type_aggregate_field_t* Field;
         };
         // case identifier_exp :
         struct {
@@ -143,8 +157,10 @@ typedef struct metac_sema_expression_t
     };
 } metac_sema_expression_t;
 
+#ifndef _MSC_VER
 _Static_assert(sizeof(metac_sema_expression_t) - sizeof(metac_sema_expression_header_t) <= METAC_MAX_EXP_BODY_SIZE,
     "METAC_MAX_EXP_BODY_SIZE is less than the actual expression body size");
+#endif
 
 #define SEMA_STATEMENT_HEADER \
     metac_statement_kind_t Kind; \

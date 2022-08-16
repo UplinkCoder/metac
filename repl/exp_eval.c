@@ -384,8 +384,12 @@ void WalkTree(void* c, BCValue* result,
 
         case exp_call:
         {
-            assert(e->E1->Kind == exp_identifier);
-            metac_identifier_ptr_t idPtr = e->E1->IdentifierPtr;
+            sema_exp_call_t* call = &e->Call;
+
+            printf("call->Function->Kind: %s\n", MetaCExpressionKind_toChars(e->E1->Kind));
+            assert(call->Function->Kind == exp_function);
+            sema_decl_function_t* func = call->Function->Function;
+            metac_identifier_ptr_t idPtr = func->Identifier;
             assert(0); // Not supported for the time being
         } break;
     }
@@ -459,28 +463,4 @@ void VariableStore_Init(variable_store_t* self, metac_identifier_table_t* extern
     self->ExternalTable = externalTable;
 
     IdentifierTable_Init(&self->Table, IDENTIFIER_LENGTH_SHIFT, 9);
-}
-
-metac_identifier_ptr_t IdentifierPtrFromDecl(metac_declaration_t* decl)
-{
-    metac_identifier_ptr_t idPtr = {0};
-
-    switch(decl->Kind)
-    {
-        case decl_function:
-        {
-            decl_function_t* f = cast(decl_function_t*) decl;
-            idPtr = f->Identifier;
-            break;
-        }
-        case decl_variable:
-        {
-            decl_variable_t* v = cast(decl_variable_t*) decl;
-            idPtr = v->VarIdentifier;
-            break;
-        }
-        default : assert(0);
-    }
-
-    return idPtr;
 }

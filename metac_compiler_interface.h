@@ -3,11 +3,15 @@ typedef void* type;
 
 typedef struct metac_compiler_t
 {
+    void* semanticState;
+
     uint32_t StartTimeStamp;
     uint32_t (*CurrentTimeStamp) ();
     uint32_t (*BuiltinCount) ();
 
     const char* (*PrintType) (type T);
+
+    const char** (*FieldNames) (type T);
 
     const char* (*BuiltinName) (uint32_t builtinNumber);
     const char* (*help) ();

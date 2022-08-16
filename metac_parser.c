@@ -2974,13 +2974,14 @@ metac_statement_t* MetaCParser_ParseStatement(metac_parser_t* self,
                                               metac_statement_t* parent,
                                               metac_statement_t* prev)
 {
+    static const metac_location_t nullLocation = {0};
     metac_statement_t* result = 0;
 
     metac_token_t* currentToken = MetaCParser_PeekToken(self, 1);
     metac_token_enum_t tokenType =
         (currentToken ? currentToken->TokenType : tok_invalid);
     metac_location_t loc = currentToken ? LocationFromToken(self, currentToken) :
-                                          (metac_location_t){};
+                                          nullLocation;
     metac_token_t* peek2;
     uint32_t hash = 0;
 
