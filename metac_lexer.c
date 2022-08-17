@@ -243,6 +243,10 @@ static inline metac_token_enum_t MetaCLexFixedLengthToken(const char _chrs[3])
 //            return tok_cat_ass;
         }
 
+#ifdef LEX_KEYWORDS_IN_SWTICH
+#  include "generated/metac_keyword_switch.inl"
+#endif
+
     case '\n':
         return tok_newline;
 
@@ -499,11 +503,20 @@ metac_lexer_state_t MetaCLexerStateFromBuffer(uint32_t sourceId,
     return result;
 }
 
+#if 0
+#   define UPPER_CHAR(C) \
+        ((C) & ~32)
+
+#   define IsIdentifierChar(C) \
+        (((UPPER_CHAR(C) >= 'A') & (UPPER_CHAR(C) <= 'Z')) | c == '_')
+
+#else
 static inline bool IsIdentifierChar(char c)
 {
     const char upper_c = (c & ~32);
     return (((upper_c >= 'A') & (upper_c <= 'Z')) | (c == '_'));
 }
+#endif
 
 static inline bool IsNumericChar(char c)
 {

@@ -64,13 +64,6 @@ typedef struct chunk_ptr_t
     }
 } chunk_ptr_t;
 */
-#pragma pack(push, 2)
-typedef struct node_ptr_t
-{
-    uint32_t          Ptr;
-    metac_node_kind_t Kind : 7;
-} ndoe_ptr_t;
-#pragma pack(pop)
 
 noinline void _newMemRealloc(void** memP, uint32_t* capacityP, const uint32_t elementSize)
 {

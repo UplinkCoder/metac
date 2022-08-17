@@ -84,14 +84,21 @@ int main(int argc, const char* argv[])
             readResult.FileContent0, readResult.FileLength
         );
 
+        {
+            long ns = timer_end(t);
+            float us = ns / 1000.0f;
+            printf("lexing %u bytes took %f us -- %f bytes/ns\n", readResult.FileLength, us, cast(float)readResult.FileLength / ns);
+        }
+#if 0
         metac_parser_t parser;
         MetaCParser_InitFromLexer(&parser, &lexer);
-
-        long ns = timer_end(t);
-        float us = ns / 1000.0f;
-        printf("parsing %u bytes took %f us -- %f bytes/us", readResult.FileLength, us, ns / cast(float)readResult.FileLength);
-
         ParseFile(&parser, arg, 0);
+
+        {
+            long ns = timer_end(t);
+            float us = ns / 1000.0f;
+            printf("parsing and lexing %u bytes took %f us -- %f bytes/ns\n", readResult.FileLength, us, cast(float)readResult.FileLength / ns);
+        }
 
         metac_identifier_table_slot_t firstEntry = {0};
 
@@ -126,6 +133,8 @@ int main(int argc, const char* argv[])
         sprintf(formatBuffer, "%s.strings", arg);
         WriteTable(&lexer.StringTable, formatBuffer, 12, 0);
 #endif
+#endif
+
 #endif
     }
 

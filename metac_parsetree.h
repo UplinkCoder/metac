@@ -317,19 +317,19 @@ typedef enum metac_type_modifiers
 {
     typemod_none,
 
-    typemod_const = (1 << 0),
+    typemod_const    = (1 << 0),
     typemod_unsigned = (1 << 1),
-    typemod_signed = (1 << 2),
+    typemod_signed   = (1 << 2),
 
 } metac_type_modifiers;
 
 typedef enum metac_storageclasses_t
 {
-    storageclass_static = (1 << 1),
-    storageclass_inline = (1 << 2),
-    storageclass_extern = (1 << 3),
+    storageclass_static   = (1 << 1),
+    storageclass_inline   = (1 << 2),
+    storageclass_extern   = (1 << 3),
     storageclass_volatile = (1 << 4),
-    storageclass_thread = (1 << 5),
+    storageclass_thread   = (1 << 5),
 } metac_storageclasses_t;
 
 #define TYPE_HEADER \

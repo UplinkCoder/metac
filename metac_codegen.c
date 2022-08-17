@@ -79,6 +79,9 @@ BCType MetaCCodegen_GetBCType(metac_bytecode_ctx_t* ctx, metac_type_index_t type
             case type_unsigned_long_long:
                 result = (BCType){BCTypeEnum_u64};
             break;
+            case type_type:
+                result = (BCType){BCTypeEnum_u32};
+            break;
             default : assert(0);
         }
     }

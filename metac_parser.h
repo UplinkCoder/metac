@@ -89,6 +89,8 @@ typedef struct metac_parser_t
     metac_identifier_ptr_t SpecialNamePtr_Defined;
 } metac_parser_t;
 
+bool IsExpressionNode(metac_node_kind_t Kind);
+
 extern metac_parser_t g_lineParser;
 bool IsBinaryAssignExp(metac_expression_kind_t exp_kind);
 bool IsBinaryExp(metac_expression_kind_t exp_kind);
