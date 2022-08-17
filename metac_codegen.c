@@ -131,6 +131,7 @@ long MetaCCodegen_RunFunction(metac_bytecode_ctx_t* self,
     BCValue result = bc->Run(self->c, f.FunctionIndex, args, nArgs);
     return result.imm32.imm32;
 }
+
 void MetaCCodegen_End(metac_bytecode_ctx_t* self)
 {
     bc->Finalize(self->c);
@@ -201,6 +202,13 @@ metac_bytecode_function_t MetaCCodegen_GenerateFunctionFromExp(metac_bytecode_ct
     bc->Ret(c, &resultVal);
 
     bc->EndFunction(c, func.FunctionIndex);
+
+    if (bc == &Printer_interface)
+    {
+        Printer* printer = (Printer*)ctx->c;
+        printf("%s\n\n", printer->BufferStart);
+    }
+
 #ifdef PRINT_BYTECODE
     if (bc == &BCGen_interface)
     {
@@ -614,9 +622,21 @@ static void MetaCCodegen_doExpression(metac_bytecode_ctx_t* ctx,
 
         case exp_call:
         {
-            assert(exp->E1->Kind == exp_identifier);
-            metac_identifier_ptr_t idPtr = exp->E1->IdentifierPtr;
-            assert(0); // Not supported for the time being
+            sema_exp_call_t call = exp->Call;
+            BCValue fn = bc->GenTemporary(c, MetaCCodegen_GetBCType(ctx, exp->TypeIndex));
+
+            assert(call.Function->Kind == exp_function);
+            assert(call.Function->Function);
+            STACK_ARENA_ARRAY(BCValue, args, 16, &ctx->Allocator);
+            const static BCValue nullValue = {};
+
+            for(uint32_t i = 0; i < call.ArgumentCount; i++)
+            {
+                ARENA_ARRAY_ADD(args, nullValue);
+                BCValue* argP = &args[i];
+                MetaCCodegen_doExpression(ctx, call.Arguments[i], argP, _Rvalue);
+            }
+            bc->Call(c, result, &fn, args, call.ArgumentCount);
         } break;
     }
 

@@ -2248,6 +2248,7 @@ decl_type_t* MetaCParser_ParseTypeDeclaration(metac_parser_t* self, metac_declar
                     field->Next = (decl_field_t*)_emptyPointer;
                     metac_declaration_t *decl =
                         (metac_declaration_t*)MetaCParser_ParseDeclaration(self, (metac_declaration_t*)struct_);
+                    MetaCParser_Match(self, tok_semicolon);
                     assert(decl->Hash != 0);
                     hash = CRC32C_VALUE(hash, decl->Hash);
 
@@ -2802,6 +2803,8 @@ metac_declaration_t* MetaCParser_ParseDeclaration(metac_parser_t* self, metac_de
 
         // typedefs are exactly like variables
         decl_variable_t* var = (decl_variable_t*)MetaCParser_ParseDeclaration(self, (metac_declaration_t*) typdef);
+        MetaCParser_Match(self, tok_semicolon);
+
         typdef->Type = var->VarType;
         typdef->Identifier = var->VarIdentifier;
         assert(typdef->Type->Hash != 0);
@@ -2924,10 +2927,6 @@ metac_declaration_t* MetaCParser_ParseDeclaration(metac_parser_t* self, metac_de
         ParseErrorF(loc, "A declaration is expected to start with a type CurrentToken %s\n", MetaCTokenEnum_toChars(tokenType));
     }
 LendDecl:
-    // eat a semicolon if there is one this is more a repl kindof thing
-    if (MetaCParser_PeekMatch(self, tok_semicolon, 1))
-        MetaCParser_Match(self, tok_semicolon);
-
     return result;
 }
 
@@ -3081,6 +3080,7 @@ metac_statement_t* MetaCParser_ParseStatement(metac_parser_t* self,
              && IsDeclarationFirstToken(peek2->TokenType))
             {
                 for_->ForInit = (metac_node_t)MetaCParser_ParseDeclaration(self, 0);
+                MetaCParser_Match(self, tok_semicolon);
             }
             else
             {
@@ -3276,16 +3276,31 @@ metac_statement_t* MetaCParser_ParseStatement(metac_parser_t* self,
     else if (IsDeclarationFirstToken(tokenType))
     {
         metac_token_t* peek2 = MetaCParser_PeekToken(self, 2);
-        metac_token_t* peek3 = MetaCParser_PeekToken(self, 3);
         if (peek2 && IsDeclarationToken(peek2->TokenType)
             /*&& peek3 && peek3->TokenType != tok_assign*/)
         {
+            //TODO saving the parser and stuff is dangerous as the lookahead
+            //     and therefore lookbehind is limited.
+            // FIXME find a better way to disambiguate.
+            metac_parser_t savedParser = *self;
+
             metac_declaration_t* decl = MetaCParser_ParseDeclaration(self, 0);
             stmt_decl_t* declStmt = AllocNewStatement(stmt_decl, &result);
             assert(decl && decl->Hash);
             declStmt->Declaration = decl;
             //result = MetaCParser_ParseDeclarationStatement(self, parent);
             declStmt->Hash = decl->Hash;
+            metac_token_t* afterDecl = MetaCParser_PeekToken(self, 1);
+            if (afterDecl && (afterDecl->TokenType != tok_semicolon &&
+                              afterDecl->TokenType != tok_lBrace))
+            {
+                *self = savedParser;
+                goto LparseAsExpression;
+            }
+            else
+            {
+                MetaCParser_Match(self, afterDecl->TokenType);
+            }
         }
     }
 
@@ -3296,6 +3311,7 @@ metac_statement_t* MetaCParser_ParseStatement(metac_parser_t* self,
 
     // if we didn't parse as a declaration try an expression as the last resort
     if (!result || result == emptyPointer)
+LparseAsExpression:
     {
         metac_expression_t* exp = MetaCParser_ParseExpression(self, expr_flags_none, 0);
         stmt_exp_t* expStmt = AllocNewStatement(stmt_exp, &result);

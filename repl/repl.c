@@ -289,7 +289,6 @@ void Presemantic_(repl_state_t* self)
         MetaCParser_Free(&tmpParser);
     }
 }
-extern const BackendInterface* bc;
 
 metac_sema_expression_t
 EvaluateExpression(metac_semantic_state_t* sema,
@@ -306,8 +305,6 @@ EvaluateExpression(metac_semantic_state_t* sema,
         MetaCCodegen_GenerateFunctionFromExp(&ctx, e);
 
     MetaCCodegen_End(&ctx);
-
-
 
     uint32_t resultInt =
         MetaCCodegen_RunFunction(&ctx, fCode, &interpAlloc, "", 0);

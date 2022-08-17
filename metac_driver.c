@@ -96,6 +96,10 @@ void ParseFile(metac_parser_t* parser,
     while(parser->CurrentTokenIndex < parser->Lexer->TokenCount)
     {
         declarations[declarationSize++] = MetaCParser_ParseDeclaration(parser, 0);
+        metac_token_t* afterDecl = MetaCParser_PeekToken(parser, 1);
+        if (afterDecl && afterDecl->TokenType == tok_semicolon)
+            MetaCParser_Match(parser, tok_semicolon);
+
         // printf("Parsed %u tokens\n", parser->CurrentTokenIndex);
         metac_token_t* lastToken = MetaCParser_PeekToken(parser, 1);
 #if DRIVER_PRINT_DECLS
@@ -109,6 +113,7 @@ void ParseFile(metac_parser_t* parser,
         if (!lastToken || lastToken->TokenType == tok_eof)
             break;
     }
+
 
     if (result != 0)
     {

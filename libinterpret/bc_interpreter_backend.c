@@ -3077,6 +3077,7 @@ static inline void BCGen_Not(BCGen* self, BCValue *result, const BCValue* val)
 
 static inline void BCGen_Call(BCGen* self, BCValue *result, const BCValue* fn, BCValue* args, uint32_t n_args)
 {
+    assert(BCValue_isStackValueOrParameter(result));
 }
 
 static inline BCLabel BCGen_genLabel(BCGen* self)

@@ -6,8 +6,28 @@
 #include "../metac_driver.c"
 #include "../3rd_party/tracy/TracyC.h"
 
+
 #include <stdlib.h>
 #include <stdio.h>
+
+#if 1
+#include <time.h>
+
+// call this function to start a nanosecond-resolution timer
+struct timespec timer_start() {
+    struct timespec start_time;
+    clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &start_time);
+    return start_time;
+}
+
+// call this function to end a timer, returning nanoseconds elapsed as a long
+long timer_end(struct timespec start_time){
+    struct timespec end_time;
+    clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &end_time);
+    long diffInNanos = (end_time.tv_sec - start_time.tv_sec) * (long)1e9 + (end_time.tv_nsec - start_time.tv_nsec);
+    return diffInNanos;
+}
+#endif
 
 const char** includePaths = 0;
 uint32_t includePathCount = 0;
@@ -58,12 +78,18 @@ int main(int argc, const char* argv[])
 
         read_result_t readResult = ReadFileAndZeroTerminate(arg);
 
+        struct timespec t = timer_start();
+
         LexFile(&lexer, arg,
             readResult.FileContent0, readResult.FileLength
         );
 
         metac_parser_t parser;
         MetaCParser_InitFromLexer(&parser, &lexer);
+
+        long ns = timer_end(t);
+        float us = ns / 1000.0f;
+        printf("parsing %u bytes took %f us -- %f bytes/us", readResult.FileLength, us, ns / cast(float)readResult.FileLength);
 
         ParseFile(&parser, arg, 0);
 
