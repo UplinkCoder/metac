@@ -3,9 +3,10 @@
 void breakme(void) {}
 #include "metac_node.c"
 
-#define emptyNode \
+#ifndef emptyNode
+#  define emptyNode \
     ((metac_node_t) 0x1)
-
+#endif
 
 int MetaCNode_TreeWalk_Real(metac_node_t node, walker_function_t walker_fn, void* ctx)
 {

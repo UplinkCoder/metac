@@ -1,5 +1,5 @@
 /// little eval module to evaluate a simple expression
-
+#if 0
 #include "../compat.h"
 #include "../metac_parser.h"
 #include "exp_eval.h"
@@ -464,3 +464,4 @@ void VariableStore_Init(variable_store_t* self, metac_identifier_table_t* extern
 
     IdentifierTable_Init(&self->Table, IDENTIFIER_LENGTH_SHIFT, 9);
 }
+#endif

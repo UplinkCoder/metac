@@ -1426,9 +1426,9 @@ static inline void PrintSemaExpression(metac_printer_t* self,
         PrintChar(self, '(');
         sema_exp_argument_list_t* argList =
             semaExp->E2->ArgumentList;
-        const metac_sema_expression_t** onePastLastArg =
-            cast(const metac_sema_expression_t**)
-            &argList->Arguments[argList->ArgumentCount];
+        metac_sema_expression_t** onePastLastArg =
+            cast(metac_sema_expression_t**)
+            argList->Arguments + argList->ArgumentCount;
         for(metac_sema_expression_t** arg = argList->Arguments;
             arg < onePastLastArg;
             arg++)

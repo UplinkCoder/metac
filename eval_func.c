@@ -1,6 +1,5 @@
 #define ACCEL ACCEL_TABLE
 #define NO_FIBERS
-#define NO_PREPROCESSOR
 #define PRINT_CODE
 #include "compat.h"
 

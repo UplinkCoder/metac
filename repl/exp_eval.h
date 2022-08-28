@@ -1,3 +1,5 @@
+#if 0
+
 #ifndef _EXP_EVAL_H_
 #define _EXP_EVAL_H_
 
@@ -62,3 +64,4 @@ extern ReadI32_Ctx* _ReadContexts;
 extern uint32_t _ReadContextSize;
 extern uint32_t _ReadContextCapacity;
 #endif // _EXP_EVAL_H_
+#endif // if 0

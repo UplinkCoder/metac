@@ -34,7 +34,7 @@ void LexFile(metac_lexer_t* lexer,
 
         metac_lexer_state_t lexer_state =
             MetaCLexerStateFromBuffer(1, text, length);
-        if (estimated > 96)
+        if (estimated > ARRAY_SIZE(lexer->inlineTokens))
         {
             lexer->Tokens = (metac_token_t*) malloc(estimated * sizeof(metac_token_t));
             lexer->TokenCapacity = estimated;
@@ -46,7 +46,11 @@ void LexFile(metac_lexer_t* lexer,
         {
             lexer->Tokens = lexer->inlineTokens;
             lexer->TokenCapacity =
-                sizeof(lexer->inlineTokens) / sizeof(lexer->Tokens[0]);
+                ARRAY_SIZE(lexer->inlineTokens);
+            lexer->LocationStorage.Locations =
+                lexer->inlineLocations;
+            lexer->LocationStorage.LocationCapacity =
+                ARRAY_SIZE(lexer->inlineTokens);
         }
 
         while(length > 0)
