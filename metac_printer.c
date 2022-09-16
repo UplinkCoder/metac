@@ -1183,7 +1183,11 @@ static inline void PrintSemaType(metac_printer_t* self,
             }
             PrintChar(self, ']');
         } break;
-        default: assert(0);
+        default:
+        {
+            fprintf(stderr, "Invalid type_index_kind: %x\n", TYPE_INDEX_KIND(typeIndex));
+            assert(0);
+        }
     }
 }
 
@@ -1202,7 +1206,7 @@ static inline void PrintSemaVariable(metac_printer_t* self,
         PrintSemaType(self, sema, variable->TypeIndex);
         PrintSpace(self);
         PrintIdentifier(self, variable->VarIdentifier);
-     
+
        if (variable->VarInitExpression != emptyPointer)
         {
             assert(variable->VarInitExpression);

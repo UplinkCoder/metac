@@ -86,7 +86,7 @@ typedef struct ui_interface_t
 
 typedef struct repl_ui_context_t
 {
-    const ui_interface_t UiInterface;
+    ui_interface_t UiInterface;
     struct ui_state_t* UiState;
 } repl_ui_context_t;
 

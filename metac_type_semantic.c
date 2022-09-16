@@ -823,8 +823,10 @@ metac_type_index_t MetaCSemantic_TypeSemantic(metac_semantic_state_t* self,
         }
 
         hash = crc32c_nozero(hash, parameterTypes, sizeof(*parameterTypes) * nParams);
+        metac_type_header_t header = {decl_type_functiontype, 0, hash, 0};
+
         metac_type_functiontype_t key = {
-            {decl_type_functiontype, 0, hash, 0, },
+            header,
             returnType, parameterTypes, nParams
         };
 

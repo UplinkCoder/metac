@@ -158,7 +158,7 @@ typedef struct metac_semantic_state_t
     AT(transient) uint32_t SwitchStackSize;
     AT(transient) uint32_t SwitchStackCapacity;
 
-    ARENA_ARRAY(metac_scope_t*, DeclStatementScope);
+    ARENA_ARRAY(metac_scope_t*, DeclStatementScope)
 
     metac_type_aggregate_t* CompilerInterface;
 } metac_semantic_state_t;

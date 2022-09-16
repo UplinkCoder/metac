@@ -65,9 +65,11 @@ int main(int argc, const char* argv[])
     repl_state_t repl;
     ui_state_t uiState = {0};
 
-    repl_ui_context_t ctx = {
-        LinenoiseUiInterface, cast(void*)&uiState
-    };
+    repl_ui_context_t ctx;
+
+    ctx.UiInterface = LinenoiseUiInterface;
+    ctx.UiState = cast(void*)&uiState;
+
     g_uiContext = &ctx;
 #ifndef NO_FIBERS
     worker_context_t replWorkerContext = {0};

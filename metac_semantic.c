@@ -952,7 +952,7 @@ metac_sema_declaration_t* MetaCSemantic_declSemantic(metac_semantic_state_t* sel
             sema_decl_variable_t* var = AllocNewSemaVariable(self, v, &result);
             /// XXX FIXME we want to assign a variable serial
             /// after we have determined the storage location ideally.
-            /// to keep stuff wokring htough we just assign the decl hash
+            /// to keep stuff wokring though we just assign the decl hash
 
             var->Hash = v->Hash;
             var->TypeIndex = MetaCSemantic_doTypeSemantic(self, v->VarType);

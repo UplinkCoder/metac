@@ -616,10 +616,11 @@ static inline void Printer_EndFunction(Printer* self, uint32_t fnIdx)
 
 static inline BCValue Printer_genTemporary(Printer* self, BCType bct)
 {
-    BCValue result = {
-        .vType = BCValueType_Temporary,
-        .type = bct,
-    };
+    BCValue result = {BCValueType_Temporary};
+    {
+        result.type = bct;
+    }
+
     result.temporaryIndex = ++self->NumberOfTemporaries;
 
     Printer_PutStr(self, "BCValue ");
@@ -639,11 +640,11 @@ PR_OP1(DestroyLocal)
 
 static inline BCValue Printer_genLocal(Printer* self, BCType bct, const char* name)
 {
-    BCValue result = {
-        .vType = BCValueType_Local,
-        .type = bct,
-        .name = name
-    };
+    BCValue result = {BCValueType_Local};
+    {
+        result.type = bct;
+        result.name = name;
+    }
     result.localIndex = ++self->NumberOfLocals;
 
     Printer_PutStr(self, "BCValue ");
@@ -665,10 +666,10 @@ static inline BCValue Printer_genLocal(Printer* self, BCType bct, const char* na
 
 static inline BCValue Printer_GenParameter(Printer* self, BCType bct, const char* name)
 {
-    BCValue result = {
-        .vType = BCValueType_Parameter,
-        .type = bct,
-        .name = name
+    BCValue result = {BCValueType_Parameter};
+    {
+        result.type = bct;
+        result.name = name;
     };
 
     result.parameterIndex = ++self->NumberOfParameters;

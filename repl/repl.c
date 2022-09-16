@@ -272,7 +272,7 @@ void Presemantic_(repl_state_t* self)
                 MSGF("found struct : '%s'\n",
                     IdentifierPtrToCharPtr(&tmpParser.IdentifierTable, printIdentifier));
 
-                 compilerStruct = MetaCSemantic_doDeclSemantic(&self->SemanticState, struct_);
+                compilerStruct = MetaCSemantic_doDeclSemantic(&self->SemanticState, struct_);
                 metac_printer_t printer;
                 MetaCPrinter_Init(&printer,
                     self->SemanticState.ParserIdentifierTable, self->SemanticState.ParserStringTable);
