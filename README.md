@@ -7,6 +7,10 @@ You can use a project written in C99 and you should be able to compile it with t
 
 It improves on C by providing more extensive meta programming capabilites than C.
 
+## Note
+
+This project is not currently finished and some items below descriped below might not be functional.
+
 During compilation you can have functions run and those functions can access the compiler via an API. (The same API is also exposed when using MetaC as a library, rather than a standalone compiler)
 
 # Compiler-API
