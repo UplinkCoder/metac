@@ -16,7 +16,7 @@ During compilation you can have functions run and those functions can access the
 # Startup 
 Upon startup metac will try to read a file named `metac_compiler_interface.h` and search for struct definitions in there.
 Currently it's expected that only one struct is defined.
-It will then put an instance of that struct into the `.` namespace/scope which is accessable as `.compiler`
+It will then put an instance of that struct into the `.` namespace/scope which is accessible as `.compiler`
 Right now the `.compiler` does not get populated with current compiler-state information, but this is supposed to change.
 
 # Compiler-API
