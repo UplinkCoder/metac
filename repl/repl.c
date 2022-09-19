@@ -35,7 +35,7 @@ void HelpMessage(ui_interface_t uiInterface, struct ui_state_t* uiState)
        "      :es for expression semantic mode\n"
        "      :d for declaration mode\n"
        "      :ds for declaration semantic mode\n"
-       "      :v for varible mode (set vars for eval)\n"
+//       "      :v for varible mode (set vars for eval)\n"
        "      :s for statement mode\n"
        "      :ss for statement semantic mode\n"
        "      :t for token mode\n"
@@ -572,10 +572,11 @@ LswitchMode:
                     repl->ParseMode = repl_mode_ds;
                     goto LswitchMode;
                 }
-
+/*
             case 'v' :
                 repl->ParseMode = repl_mode_setvars;
                 goto LswitchMode;
+*/
             case 'e' :
                 switch(repl->Line[2])
                 {
