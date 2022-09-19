@@ -13,6 +13,12 @@ This project is not currently finished and some items below descriped below migh
 
 During compilation you can have functions run and those functions can access the compiler via an API. (The same API is also exposed when using MetaC as a library, rather than a standalone compiler)
 
+# Startup 
+Upon startup metac will try to read a file named `metac_compiler_interface.h` and search for struct definitions in there.
+Currently it's expected that only one struct is defined.
+It will then put an instance of that struct into the `.` namespace/scope which is accessable as `.compiler`
+Right now the `.compiler` does not get populated with current compiler-state information, but this is supposed to change.
+
 # Compiler-API
 
 Within the langauge you access a struct of type metac_compiler_t by using the special name `.compiler`.
