@@ -1,4 +1,5 @@
 #include "metac_type_semantic.h"
+#include "metac_expr_semantic.h"
 #include "metac_alloc.h"
 
 #ifndef NO_FIBERS
@@ -345,6 +346,11 @@ uint32_t MetaCSemantic_GetTypeAlignment(metac_semantic_state_t* self,
     return result;
 }
 
+static metac_type_index_t* NextTypeTupleElem(metac_type_index_t* typeIndexP)
+{
+    return typeIndexP + 1;
+}
+
 /// Returns size in byte or INVALID_SIZE on error
 uint32_t MetaCSemantic_GetTypeSize(metac_semantic_state_t* self,
                                    metac_type_index_t typeIndex)
@@ -356,7 +362,7 @@ uint32_t MetaCSemantic_GetTypeSize(metac_semantic_state_t* self,
         uint32_t idx = TYPE_INDEX_INDEX(typeIndex);
         if (idx == type_type)
         {
-            return 0;
+            return sizeof(metac_type_index_t);
         }
         if ((idx >= type_unsigned_char)
          && (idx <= type_unsigned_long))
@@ -408,6 +414,14 @@ uint32_t MetaCSemantic_GetTypeSize(metac_semantic_state_t* self,
                                                                     elementTypeIndex));
         result = alignedSize * arrayType->Dim;
     }
+    else if (TYPE_INDEX_KIND(typeIndex) == type_index_tuple)
+    {
+        metac_type_tuple_t* tuple = TupleTypePtr(self, TYPE_INDEX_INDEX(typeIndex));
+        uint32_t sz = ComputeStructSize(self, tuple->typeIndicies, tuple->typeCount, NextTypeTupleElem);
+        // we now create a struct temporarily so we can use the same
+        // logic we use to determine the size of structs
+        result = sz;
+    }
     else
     {
         assert(0);
@@ -415,6 +429,7 @@ uint32_t MetaCSemantic_GetTypeSize(metac_semantic_state_t* self,
 
     return result;
 }
+
 
 /// this is where we also populate the scope
 metac_type_aggregate_t* MetaCSemantic_PersistTemporaryAggregateAndPopulateScope(metac_semantic_state_t* self,
@@ -666,6 +681,14 @@ metac_type_index_t MetaCSemantic_TypeSemantic(metac_semantic_state_t* self,
 
         scope_insert_error_t scopeInsertError =
             MetaCSemantic_RegisterInScope(self, typedef_->Identifier, (metac_node_t)semaTypedef);
+    }
+    else if (type->Kind == decl_type_typeof)
+    {
+        decl_type_typeof_t* type_typeof = cast(decl_type_typeof_t*) type;
+        void* dummy;
+        metac_sema_expression_t* se =
+            MetaCSemantic_doExprSemantic(self, type_typeof->Exp, &dummy);
+        result = se->TypeIndex;
     }
     else if (type->Kind == decl_type_enum)
     {
@@ -1047,16 +1070,47 @@ metac_type_index_t MetaCSemantic_GetArrayTypeOf(metac_semantic_state_t* state,
 
     return result;
 }
-
-bool ComputeStructLayout(metac_semantic_state_t* self, decl_type_t* type)
+/// Given a list of types compute how a struct would be layed out
+/// if it had a fields comprised of those types in the same order
+uint32_t ComputeStructSize(metac_semantic_state_t* self, metac_type_index_t* typeBegin,
+    uint32_t nTypes, metac_type_index_t * (*Next) (metac_type_index_t*))
 {
-    return false;
+    uint32_t currentFieldOffset = 0;
+    uint32_t maxAlignment = 0;
+
+    {
+        metac_type_index_t* typ = typeBegin;
+        metac_type_index_t* nextType = Next(typeBegin);
+        uint32_t i;
+
+        for(i = 0; i < nTypes; i++)
+        {
+            uint32_t alignedSize = MetaCSemantic_GetTypeSize(self, *typ);
+            assert(alignedSize != INVALID_SIZE);
+            if (i < nTypes - 1)
+            {
+                uint32_t requestedAligment =
+                    MetaCSemantic_GetTypeAlignment(self, *nextType);
+                assert(requestedAligment != -1);
+                if (requestedAligment > maxAlignment)
+                    maxAlignment = requestedAligment;
+                alignedSize = Align(alignedSize, requestedAligment);
+                assert(((currentFieldOffset + alignedSize) % requestedAligment) == 0);
+            }
+            currentFieldOffset += alignedSize;
+        }
+        typ = Next(typ);
+        nextType = Next(nextType);
+    }
+
+    return Align(currentFieldOffset, maxAlignment);
 }
 
 bool MetaCSemantic_ComputeStructLayout(metac_semantic_state_t* self,
                                        decl_type_struct_t* agg,
                                        metac_type_aggregate_t* semaAgg)
 {
+    // XXX make this use the compute structSize above
     bool result = true;
 
     assert(semaAgg->Fields && semaAgg->Fields != emptyPointer);

@@ -885,6 +885,17 @@ sema_decl_function_t* MetaCSemantic_doFunctionSemantic(metac_semantic_state_t* s
     return f;
 }
 
+const static metac_type_t basicTypes[] = {
+
+};
+
+metac_type_t TypeBasicPtr(metac_type_index_t basicTypeIdx)
+{
+    assert(basicTypeIdx.Kind == type_index_basic);
+    metac_type_t result = {0};
+    return result;
+}
+
 metac_node_t NodeFromTypeIndex(metac_semantic_state_t* sema,
                                metac_type_index_t typeIndex)
 {
@@ -899,6 +910,8 @@ metac_node_t NodeFromTypeIndex(metac_semantic_state_t* sema,
             return cast (metac_node_t) TypedefPtr(sema, index);
         case type_index_enum:
             return cast(metac_node_t) EnumTypePtr(sema, index);
+        case type_index_basic:
+            return cast(metac_node_t) TypeBasicPtr(typeIndex);
     }
 
     return 0;
@@ -972,7 +985,12 @@ metac_sema_declaration_t* MetaCSemantic_declSemantic(metac_semantic_state_t* sel
             var->Storage.v = STORAGE_V(storage_local, self->nLocals++);
 
             MetaCSemantic_RegisterInScope(self, var->VarIdentifier, METAC_NODE(var));
+            printf("Introducing variable: %s\n",
+                IdentifierPtrToCharPtr(self->ParserIdentifierTable, v->VarIdentifier));
         } break;
+        case decl_type_typeof:
+            printf("typeof declaration seen\n");
+            goto LdoTypeSemantic;
         case decl_type_enum:
             (cast(decl_type_t*)decl)->TypeKind = type_enum;
             declId = ((decl_type_enum_t*) decl)->Identifier;
@@ -1004,6 +1022,13 @@ metac_sema_declaration_t* MetaCSemantic_declSemantic(metac_semantic_state_t* sel
                 metac_node_t node =
                     NodeFromTypeIndex(self, type_index);
                 MetaCSemantic_RegisterInScope(self, declId, node);
+                result = cast(metac_sema_declaration_t*)node;
+            }
+            // special case for typeof
+            else if (decl->Kind == decl_type_typeof)
+            {
+                metac_node_t node =
+                    NodeFromTypeIndex(self, type_index);
                 result = cast(metac_sema_declaration_t*)node;
             }
         } break;
@@ -1063,7 +1088,9 @@ metac_sema_declaration_t* MetaCSemantic_doDeclSemantic_(metac_semantic_state_t* 
         declTask.Continuation = currentTask;
         TaskQueue_Push(q, &declTask);
         currentTask->TaskFlags |= Task_Waiting;
+
         YIELD(waiting_for_declSemantic);
+
         printf("We are back\n");
         result = CtxValuePtr->Result;
 #else

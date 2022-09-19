@@ -1,6 +1,9 @@
 #ifndef NO_FIBERS
 
+#ifndef _METAC_EXPR_SEMANTIC_H_
+#define _METAC_EXPR_SEMANTIC_H_
 #include "metac_task.h"
+
 typedef struct MetaCSemantic_doExprSemantic_task_context_t
 {
     metac_semantic_state_t* Sema;
@@ -10,7 +13,7 @@ typedef struct MetaCSemantic_doExprSemantic_task_context_t
 
 void MetaCSemantic_doExprSemantic_Task(task_t* task);
 #endif
-
+#endif // _METAC_EXPR_SEMANTIC_H_
 #define MetaCSemantic_doExprSemantic(SELF, NODE, RESULT) \
     MetaCSemantic_doExprSemantic_(SELF, ((metac_expression_t*)(NODE)), RESULT, \
                                   __FILE__, __LINE__)

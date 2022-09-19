@@ -200,6 +200,8 @@ metac_bytecode_function_t MetaCCodegen_GenerateFunctionFromExp(metac_bytecode_ct
     func.FunctionIndex =
         bc->BeginFunction(c, 0, "dummy_eval_func");
 
+    // we need to introduce all resolvable variables from the outer context here.
+
     MetaCCodegen_doExpression(ctx, expr, &resultVal, 0);
 
     bc->Ret(c, &resultVal);
@@ -407,7 +409,6 @@ static void MetaCCodegen_doExpression(metac_bytecode_ctx_t* ctx,
 
     BCValue lhs;
     BCValue rhs;
-
 
 
     if (op == exp_assign)
@@ -631,7 +632,7 @@ static void MetaCCodegen_doExpression(metac_bytecode_ctx_t* ctx,
             assert(call.Function->Kind == exp_function);
             assert(call.Function->Function);
             STACK_ARENA_ARRAY(BCValue, args, 16, &ctx->Allocator);
-            const static BCValue nullValue = {};
+            const static BCValue nullValue = {BCValueType_Unknown};
 
             for(uint32_t i = 0; i < call.ArgumentCount; i++)
             {
@@ -696,7 +697,6 @@ static void MetaCCodegen_doBlockStmt(metac_bytecode_ctx_t* ctx,
                                      sema_stmt_block_t* stmt)
 {
     assert(stmt->Kind == stmt_block);
-    uint32_t variableCount = ctx->VariablesCount;
     for(uint32_t i = 0; i < stmt->StatementCount; i++)
     {
         MetaCCodegen_doStatement(ctx, stmt->Body[i]);
@@ -913,7 +913,7 @@ void MetaCCodegen_doStatement(metac_bytecode_ctx_t* ctx,
 
             MetaCCodegen_doStatement(ctx, whileStatement->WhileBody);
 
-            BCLabel evalCond = bc->GenLabel(c);
+            // BCLabel evalCond = bc->GenLabel(c);
             BCValue cond = {0};
             MetaCCodegen_doExpression(ctx, whileStatement->WhileExp, &cond, _Cond);
             CndJmpBegin condExpJmp = bc->BeginCndJmp(c, &cond, true);

@@ -420,6 +420,7 @@ metac_sema_expression_t* MetaCSemantic_doExprSemantic_(metac_semantic_state_t* s
                 expr->TupleExpressionCount;
 
             result->TupleExpressionCount = tupleExpressionCount;
+            //result->TupleExpressions = AllocNewSemaExpression(self, expr);
             for(uint32_t i = 0;
                 i < expr->TupleExpressionCount;
                 i++)
@@ -592,11 +593,11 @@ metac_sema_expression_t* MetaCSemantic_doExprSemantic_(metac_semantic_state_t* s
 
             metac_node_t node =
                 MetaCSemantic_LookupIdentifier(self,
-                                               result->IdentifierPtr);
+                                               expr->IdentifierPtr);
             if (node == emptyPointer)
             {
                 fprintf(stderr, "Identifier lookup failed\n");
-                hash = result->IdentifierPtr.v;
+                hash = expr->IdentifierPtr.v;
             }
             else
             {

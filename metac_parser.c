@@ -871,6 +871,7 @@ static inline bool IsTypeToken(metac_token_enum_t tokenType)
             || tokenType == tok_kw_struct
             || tokenType == tok_kw_enum
             || tokenType == tok_kw_union
+            || tokenType == tok_kw_typeof
             || tokenType == tok_identifier );
 
     return result;
@@ -2348,7 +2349,21 @@ decl_type_t* MetaCParser_ParseTypeDeclaration(metac_parser_t* self, metac_declar
             }
             break;
         }
+        else if (tokenType == tok_kw_typeof)
+        {
+            // MetaCParser_Match(self, tok_kw_typeof);
+            bool hasParens = false;
+
+            MetaCParser_Match(self, tok_lParen);
+            metac_expression_t* typeof_exp = MetaCParser_ParseExpression(self, 0, 0);
+            MetaCParser_Match(self, tok_rParen);
+
+            decl_type_typeof_t * decl = AllocNewDeclaration(decl_type_typeof, &result);
+            decl->Exp = typeof_exp;
+            break;
+        }
     }
+
 
     assert(hash != 0);
     result->Hash = hash;

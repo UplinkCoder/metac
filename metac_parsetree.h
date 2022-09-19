@@ -528,6 +528,18 @@ typedef struct decl_type_typedef_t
     metac_identifier_ptr_t Identifier;
 } decl_type_typedef_t;
 
+
+typedef struct decl_type_typeof_t
+{
+    DECLARATION_HEADER
+
+    TYPE_HEADER
+
+    struct metac_expression_t* Exp;
+
+    metac_identifier_ptr_t Identifier;
+} decl_type_typeof_t;
+
 typedef struct decl_type_tuple_t
 {
     DECLARATION_HEADER

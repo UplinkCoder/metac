@@ -124,6 +124,13 @@ typedef struct metac_type_enum_t
     uint32_t MemberCount;
 } metac_type_enum_t;
 
+typedef struct metac_type_basic_t
+{
+    metac_type_header_t Header;
+
+    metac_type_index_t Type;
+} metac_type_basic_t;
+
 typedef struct metac_type_array_t
 {
     metac_type_header_t Header;

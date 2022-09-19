@@ -24,6 +24,9 @@ metac_type_index_t MetaCSemantic_GetArrayTypeOf(metac_semantic_state_t* state,
 metac_type_index_t MetaCSemantic_GetPtrTypeOf(metac_semantic_state_t* self,
                                               metac_type_index_t elementTypeIndex);
 
+uint32_t ComputeStructSize(metac_semantic_state_t* self, metac_type_index_t* typeBegin,
+    uint32_t nTypes, metac_type_index_t * (*Next) (metac_type_index_t*));
+
 bool MetaCSemantic_ComputeStructLayout(metac_semantic_state_t* self,
                                        decl_type_struct_t* agg,
                                        metac_type_aggregate_t* semaAgg);
