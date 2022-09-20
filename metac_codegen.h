@@ -57,6 +57,14 @@ typedef struct metac_bytecode_ctx_t
     ARENA_ARRAY(metac_bytecode_function_t, Functions)
     ARENA_ARRAY(BCValue, Globals)
 
+    ARENA_ARRAY(BCStructType, StructTypes)
+    ARENA_ARRAY(BCEnumType, EnumTypes)
+    ARENA_ARRAY(BCPointerType, PtrTypes)
+    ARENA_ARRAY(BCArrayType, ArrayTypes)
+
+    tagged_arena_t GlobalMemory;
+    uint32_t GlobalMemoryOffset;
+
     AT(transient) AT(per_function) ARENA_ARRAY(BCValue, Locals)
     AT(transient) AT(per_function) ARENA_ARRAY(BCValue, Parameters)
 
@@ -86,9 +94,9 @@ metac_bytecode_function_t MetaCCodegen_GenerateFunctionFromExp(metac_bytecode_ct
 void MetaCCodegen_Begin(metac_bytecode_ctx_t* self, metac_identifier_table_t* idTable, metac_semantic_state_t* sema);
 void MetaCCodegen_End(metac_bytecode_ctx_t* self);
 
-
 metac_bytecode_function_t MetaCCodegen_GenerateFunction(metac_bytecode_ctx_t* ctx,
                                                         sema_decl_function_t* function);
+
 uint32_t MetaCCodegen_GetTypeABISize(metac_bytecode_ctx_t* ctx, metac_type_index_t type);
 BCType MetaCCodegen_GetBCType(metac_bytecode_ctx_t* ctx, metac_type_index_t type);
 

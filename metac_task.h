@@ -84,6 +84,7 @@ typedef enum task_flags_t
 
     Task_Continuation_JumpToLabel = (1 << 4),
     Task_Continuation_Task        = (1 << 5),
+    Task_Continuation_Func        = (1 << 6),
 } task_flags_t;
 
 #pragma pack(push, 1)
@@ -117,6 +118,7 @@ typedef struct task_t
             void* ResultPtr;
             aco_t* Caller;
         };
+        void (*ContinuationFunc)(void* ctx);
     };
     union {
         uint8_t _inlineContext[INLINE_TASK_CTX_SZ];

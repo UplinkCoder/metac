@@ -126,7 +126,7 @@ metac_sema_expression_t* doCmpExpSemantic(metac_semantic_state_t* self,
 }
 /// this function doesn't really resolve anything as of now
 /// as there is no function overloading. However in case I add function overloading
-/// which I most certainly well I want to have an entry point.
+/// which I most certainly will; I want to have an entry point.
 static inline
 metac_sema_expression_t* ResloveFuncCall(metac_semantic_state_t* self,
                      metac_expression_t* fn,
@@ -368,7 +368,8 @@ metac_sema_expression_t* MetaCSemantic_doExprSemantic_(metac_semantic_state_t* s
             result->E1 = E1;
         } break;
 
-#define CASE(M) case M:
+#define CASE(M) \
+    case M:
 
         FOREACH_BIN_ARITH_EXP(CASE)
         case exp_ternary:
@@ -528,11 +529,11 @@ metac_sema_expression_t* MetaCSemantic_doExprSemantic_(metac_semantic_state_t* s
         case exp_type:
         {
             hash = type_key;
-            metac_type_index_t type
+            metac_type_index_t typeIdx
                 = MetaCSemantic_doTypeSemantic(self, expr->TypeExp);
-            result->TypeExp = type;
+            result->TypeExp = typeIdx;
             result->TypeIndex.v = TYPE_INDEX_V(type_index_basic, type_type);
-            hash = CRC32C_VALUE(hash, type);
+            hash = CRC32C_VALUE(hash, typeIdx);
         } break;
         case exp_typeof:
         {
@@ -561,14 +562,14 @@ metac_sema_expression_t* MetaCSemantic_doExprSemantic_(metac_semantic_state_t* s
             metac_sema_expression_t* e1 =
                 MetaCSemantic_doExprSemantic(self, expr->E1, 0);
 
-            metac_type_index_t type = e1->TypeIndex;
+            metac_type_index_t typeIdx = e1->TypeIndex;
             // usually we assume the type of which we want
             // to get the size is the type of the expression
             if (e1->Kind == exp_type)
             {
                 // Execpt if it's a exp_type expression
                 // which is something that resolves to a type such as the identifier int
-                type = e1->TypeExp;
+                typeIdx = e1->TypeExp;
                 hash = CRC32C_VALUE(hash, e1->TypeExp);
             } else if (e1->TypeIndex.v == TYPE_INDEX_V(type_index_basic, type_type))
             {
@@ -578,7 +579,7 @@ metac_sema_expression_t* MetaCSemantic_doExprSemantic_(metac_semantic_state_t* s
             }
 
             if (e1->TypeIndex.v != 0 && e1->TypeIndex.v != -1)
-                size = MetaCSemantic_GetTypeSize(self, type);
+                size = MetaCSemantic_GetTypeSize(self, typeIdx);
 
             result->TypeIndex.v = TYPE_INDEX_V(type_index_basic, type_size_t);
             result->Kind = exp_signed_integer;

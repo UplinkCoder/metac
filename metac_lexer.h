@@ -8,7 +8,7 @@
 #define MEMBER_INFIX(P, S) P ## Table # S
 #define ACCELERATOR "Table"
 #define ACCEL_SUFFIX Table
-#define ACCEL_INIT(A, B, C, D) IdentifierTable_Init(&((A).B ## Table), C, D)
+#define ACCEL_INIT(A, B, ...) IdentifierTable_Init(&((A).B ## Table), __VA_ARGS__)
 
 //#  define MEMBER_INIT(X) IdentifierTreeInit(## X ## ->IdentifierTree)
 
@@ -277,56 +277,6 @@ typedef struct metac_token_buffer_t
 
 uint32_t MetaCTokenLength(metac_token_t token);
 
-/*
-meta_var[2] c_array_helpers(meta_var ptr)
-{
-    meta_var size = (meta_var) {
-        .name = concat(ptr.name, "_size");
-        .type = uint32_t;
-    };
-
-    meta_var capacity = {
-        .name = concat(ptr.name, "_capacity");
-        .type = uint32_t;
-    };
-
-    return [size, capacity];
-}
-*/
-/*
-eject array_helpers_and_methods(meta_var ptr)
-{
-    meta_var[2] size_capa = c_array_helpers(ptr);
-    eject size_capa[1];
-    eject size_capa[2];
-    eject array_methods(ptr, size_capa[1], size_capa[2]);
-}
-
-
-eject array_methods(meta_var ptr, meta_var size, meta_var capacity)
-{
-    assert(size.name.length == ptr.name.length + "_size".length);
-    assert(capacity.name.length == ptr.name.length + "_capacity".length);
-    assert(size.name[0 .. ptr.length] == ptr.name);
-    assert(capacity.name[0 .. ptr.length] == ptr.name);
-
-    assert(ptr.isMember())
-    ptr.AddMethod("length",
-        AddAnonymousFunction(i32, [],
-            [ Return(size) ]
-        );
-    );
-    auto catAssignMethod = ptr.AddMethod(void, "~=", [ptr.type.ElementType().ConstOf()]);
-    catAssignMethod.SetBody([
-        (fragment){
-            assert ( $size < $capacity );
-            *($ptr + $size) = $(catAssignMethod.args[0]);
-         }
-    ])
-
-    );
-}
-*/
 
 typedef struct metac_location_t
 {

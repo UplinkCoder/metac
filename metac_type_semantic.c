@@ -685,7 +685,7 @@ metac_type_index_t MetaCSemantic_TypeSemantic(metac_semantic_state_t* self,
     else if (type->Kind == decl_type_typeof)
     {
         decl_type_typeof_t* type_typeof = cast(decl_type_typeof_t*) type;
-        void* dummy;
+        metac_sema_expression_t dummy;
         metac_sema_expression_t* se =
             MetaCSemantic_doExprSemantic(self, type_typeof->Exp, &dummy);
         result = se->TypeIndex;
@@ -850,7 +850,10 @@ metac_type_index_t MetaCSemantic_TypeSemantic(metac_semantic_state_t* self,
 
         metac_type_functiontype_t key = {
             header,
-            returnType, parameterTypes, nParams
+            returnType,
+            parameterTypes,
+            nParams,
+            0
         };
 
         result = MetaCTypeTable_GetOrEmptyFunctionType(&self->FunctionTypeTable, &key);

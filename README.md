@@ -19,8 +19,8 @@ Right now the `.compiler` does not get populated with current compiler-state inf
 
 # Compiler-API
 
-Within the langauge you access a struct of type metac_compiler_t by using the special name `.compiler`.
-Which exposes functions that you can call.
+Within the langauge you can access a struct of type metac_compiler_t by using the special name `.compiler`.
+Which exposes the functions that you can call.
 
 During compilation you can have functions run and those functions can access the compiler via the API.
 Which allows you to use powerful meta-programming techniques

@@ -561,6 +561,8 @@ static inline const uint32_t adjustmentMask(BCTypeEnum t)
         mask = 0xFF;
     else if (typeSize == 2)
         mask = 0xFFFF;
+    else if (typeSize == 4)
+        mask = 0xFFFFFFFF;
 
     return mask;
 }
@@ -863,7 +865,9 @@ template ensureIsBCGen(BCGenT)
 }
 */
 /// commonType enum used for implicit conversion
-#define ARRAY_SIZE(A) (sizeof(A) / sizeof(A[0]))
+#ifndef ARRAY_SIZE
+#  define ARRAY_SIZE(A) (sizeof(A) / sizeof(A[0]))
+#endif
 
 BCTypeEnum BCTypeEnum_commonTypeEnum(BCTypeEnum lhs, BCTypeEnum rhs)
 {

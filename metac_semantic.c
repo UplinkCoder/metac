@@ -6,7 +6,10 @@
 #include "bsf.h"
 #include <stdlib.h>
 #include "crc32c.h"
-#define AT(...)
+
+#ifndef AT
+#  define AT(...)
+#endif
 
 #include "metac_simd.h"
 
@@ -107,6 +110,8 @@ void MetaCSemantic_Init(metac_semantic_state_t* self, metac_parser_t* parser,
     FOREACH_SEMA_STATE_ARRAY(self, INIT_ARRAY)
 
     ARENA_ARRAY_INIT(metac_scope_t*, self->DeclStatementScope, &self->Allocator);
+
+    ARENA_ARRAY_INIT(metac_declaration_t*, self->Globals, &self->Allocator);
 
     self->TemporaryScopeDepth = 0;
 
@@ -247,7 +252,7 @@ metac_scope_t* MetaCSemantic_PushMountedScope_(metac_semantic_state_t* self,
 
     return tmpScope;
 }
- *
+
 #define MetaCSemantic_PopMountedScope(SELF) \
     MetaCSemantic_PopMountedScope_(SELF, __LINE__, __FILE__)
 void MetaCSemantic_PopMountedScope_(metac_semantic_state_t* self,
@@ -303,7 +308,7 @@ metac_scope_t* MetaCSemantic_UnmountScope(metac_semantic_state_t* self)
 
 
 sema_stmt_switch_t* MetaCSemantic_doSwitchSemantic(metac_semantic_state_t* self,
-                                                  stmt_switch_t* switchStatement)
+                                                   stmt_switch_t* switchStatement)
 {
     sema_stmt_switch_t* semaSwitchStatement;
 
@@ -360,6 +365,24 @@ sema_stmt_casebody_t* MetaCSemantic_doCaseBodySemantic(metac_semantic_state_t* s
     ARENA_ARRAY_FREE(caseBodyStatements);
     return  result;
 
+}
+
+metac_type_index_t MetaCSemantic_GetType(metac_semantic_state_t* self, metac_node_t node)
+{
+    metac_type_index_t typeIdx = {0};
+
+    switch(node->Kind)
+    {
+        case decl_variable:
+        {
+            sema_decl_variable_t* var = cast(sema_decl_variable_t*) node;
+            typeIdx = var->TypeIndex;
+        } break;
+
+        default: assert(0);
+    }
+
+    return typeIdx;
 }
 
 metac_sema_statement_t* MetaCSemantic_doStatementSemantic_(metac_semantic_state_t* self,
@@ -732,9 +755,11 @@ scope_insert_error_t MetaCSemantic_RegisterInScope(metac_semantic_state_t* self,
     if (self->CurrentScope != 0)
         result = MetaCScope_RegisterIdentifier(self->CurrentScope, idPtr, node);
 #ifndef NO_FIBERS
-#if 0
-    EmitSignal(MetaCScope_RegisterIdentifier, idPtr);
-#endif
+    /* At some point we want to emit a wake-up signal to waiters
+       rather than doing an explicit loop here.
+       it could look like
+       EmitSignal(MetaCScope_RegisterIdentifier, idPtr);
+     */
     //RLOCK(&self->Waiters.WaiterLock);
     for(uint32_t i = 0; i < self->Waiters.WaiterCount; i++)
     {
@@ -941,7 +966,7 @@ const char* doDeclSemantic_PrintFunction(task_t* task)
     return buffer;
 }
 #endif
-
+#include <valgrind/memcheck.h>
 metac_sema_declaration_t* MetaCSemantic_declSemantic(metac_semantic_state_t* self,
                                                      metac_declaration_t* decl)
 {
@@ -959,6 +984,10 @@ metac_sema_declaration_t* MetaCSemantic_declSemantic(metac_semantic_state_t* sel
         } break;
         case decl_parameter:
             assert(0);
+        case decl_comment:
+        {
+            result = decl;
+        } break;
         case decl_variable:
         {
             decl_variable_t* v = cast(decl_variable_t*) decl;
@@ -982,11 +1011,25 @@ metac_sema_declaration_t* MetaCSemantic_declSemantic(metac_semantic_state_t* sel
             //TODO make sure nLocals is reset at the end of a function
             //     also this doesn't deal with static properly
             var->VarIdentifier = v->VarIdentifier;
-            var->Storage.v = STORAGE_V(storage_local, self->nLocals++);
+            if (v->StorageClass == storage_local)
+            {
+                var->Storage.v = STORAGE_V(storage_local, self->nLocals++);
+            }
+            else if (v->StorageClass == storage_global)
+            {
+                VALGRIND_MAKE_MEM_DEFINED(&self->GlobalsCount, 4);
+                var->Storage.v = STORAGE_V(storage_global, self->GlobalsCount);
+                // TODO maybe we have to mark the global as having been inserted.
+                ARENA_ARRAY_ADD(self->Globals, var);
+                VALGRIND_MAKE_MEM_NOACCESS(&self->GlobalsCount, 4);
+
+            }
 
             MetaCSemantic_RegisterInScope(self, var->VarIdentifier, METAC_NODE(var));
-            printf("Introducing variable: %s\n",
-                IdentifierPtrToCharPtr(self->ParserIdentifierTable, v->VarIdentifier));
+/*
+            Info("Introducing variable: %s\n",
+                  IdentifierPtrToCharPtr(self->ParserIdentifierTable, v->VarIdentifier));
+*/
         } break;
         case decl_type_typeof:
             printf("typeof declaration seen\n");
@@ -1073,7 +1116,7 @@ metac_sema_declaration_t* MetaCSemantic_doDeclSemantic_(metac_semantic_state_t* 
         task_t* currentTask = CurrentTask();
         if (currentTask->TaskFunction == MetaCSemantic_doDeclSemantic_Task)
         {
-            TracyMessage("pay attenetion now");
+            TracyMessage("pay attention now");
         }
         declTask.TaskFunction = MetaCSemantic_doDeclSemantic_Task;
                 declTask.Origin.File = callFile;
@@ -1170,8 +1213,8 @@ metac_node_t MetaCSemantic_LookupIdentifier(metac_semantic_state_t* self,
 
     metac_node_t result = emptyNode;
     uint32_t idPtrHash = crc32c_nozero(~0, &identifierPtr.v, sizeof(identifierPtr.v));
-    printf("Looking up: %s\n",
-        IdentifierPtrToCharPtr(self->ParserIdentifierTable, identifierPtr));
+    //printf("Looking up: %s\n",
+    //    IdentifierPtrToCharPtr(self->ParserIdentifierTable, identifierPtr));
     metac_scope_t *currentScope = self->CurrentScope;
     {
         while(currentScope)

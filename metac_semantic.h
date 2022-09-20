@@ -136,8 +136,6 @@ typedef struct metac_semantic_state_t
 
     AT(transient) uint32_t TemporaryScopeDepth;
 
-
-
     AT(TaskLocal) AT(transient) metac_scope_t* CurrentScope;
 
     AT(TaskLocal) AT(transient) metac_semantic_lru_t LRU;
@@ -147,7 +145,6 @@ typedef struct metac_semantic_state_t
 
     FOREACH_SEMA_STATE_ARRAY(NULL, DECLARE_ARRAY)
 
-    // FOREACH_SEMA_STATE_ARRAY(NULL, DECLARE_ARENA_STATE_ARRAY)
     AT(TaskLocal) AT(transient) metac_scope_t* MountParent;
 
     AT(transient) metac_sema_expression_t* ExpressionStack;
@@ -161,6 +158,8 @@ typedef struct metac_semantic_state_t
     ARENA_ARRAY(metac_scope_t*, DeclStatementScope)
 
     metac_type_aggregate_t* CompilerInterface;
+    
+    ARENA_ARRAY(metac_sema_declaration_t*, Globals)
 } metac_semantic_state_t;
 
 #include "metac_type_semantic.h"

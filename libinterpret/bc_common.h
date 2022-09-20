@@ -1,5 +1,6 @@
 #ifndef _BC_COMMON_H_
 #define _BC_COMMON_H_ 1
+
 #ifndef _MSC_VER
 #  include <stdint.h>
 #  include <stdbool.h>
@@ -456,6 +457,50 @@ typedef struct BCParameter
     const char* name;
 } BCParameter;
 
+typedef struct BCStructField
+{
+    const char* name;
+    BCType type;
+    uint32_t offset;
+    uint32_t size;
+} BCStructField;
+
+typedef struct BCStructType
+{
+    BCStructField* fields;
+    const char* name;
+
+    uint16_t nFields;
+    uint16_t alignOf;
+    uint32_t sizeOf;
+
+    BCType type;
+} BCStructType;
+
+typedef struct BCEnumMember {
+    const char* name;
+    BCValue value;
+} BCEnumMember;
+
+typedef struct BCEnumType
+{
+    BCEnumMember* members;
+    const char* name;
+
+    uint16_t nMembers;
+    BCTypeEnum baseType;
+} BCEnumType;
+
+typedef struct BCPointerType
+{
+    BCType elementType;
+} BCPointerType;
+
+typedef struct BCArrayType
+{
+    BCType elementType;
+    uint32_t arraySize;
+} BCArrayType;
 
 #define imm32(VALUE) imm32_((VALUE), false)
 

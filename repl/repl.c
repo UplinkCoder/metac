@@ -301,6 +301,12 @@ EvaluateExpression(metac_semantic_state_t* sema,
 
     metac_bytecode_ctx_t ctx;
     MetaCCodegen_Init(&ctx, 0);
+
+    for(uint32_t i = 0; i < sema->GlobalsCount; i++)
+    {
+        MetaCCodegen_doGlobal(&ctx, sema->Globals[i], i);
+    }
+
     MetaCCodegen_Begin(&ctx, sema->ParserIdentifierTable, sema);
 
     metac_bytecode_function_t fCode =
@@ -465,6 +471,12 @@ metac_identifier_ptr_t IdentifierPtrFromDecl(metac_declaration_t* decl)
     }
 
     return idPtr;
+
+}
+
+static void Repl_doDeclSemantic_cont(MetaCSemantic_doDeclSemantic_task_context_t* ctx)
+{
+    ARENA_ARRAY_ADD(ctx->Sema->Globals, ctx->Result);
 }
 
 /// returns false if the repl is done running
@@ -572,6 +584,16 @@ LswitchMode:
                     repl->ParseMode = repl_mode_ds;
                     goto LswitchMode;
                 }
+            case 'g' :
+                if (!strcmp("olbals", repl->Line + 2))
+                {
+                    for(uint32_t i = 0; i < repl->SemanticState.GlobalsCount; i++)
+                    {
+                        metac_declaration_t* global = repl->SemanticState.Globals[i];
+                        printf ("Global %s = %d\n", "xxx", 12);
+                    }
+                }
+                goto LnextLine;
 /*
             case 'v' :
                 repl->ParseMode = repl_mode_setvars;
@@ -879,6 +901,8 @@ LswitchMode:
                     MSGF("decl = %s\n", MetaCPrinter_PrintDeclaration(&repl->printer, decl));
                 else
                     MSG("Couldn't parse Declaration\n");
+                decl->StorageClass = storage_global;
+
 #ifndef NO_FIBERS
                 MetaCSemantic_doDeclSemantic_task_context_t ctx =
                 {
@@ -886,10 +910,13 @@ LswitchMode:
                 };
                 MetaCSemantic_doDeclSemantic_task_context_t* ctxPtr =
                     &ctx;
+
                 task_t DeclSemaTask = {0};
                 DeclSemaTask.TaskFunction = MetaCSemantic_doDeclSemantic_Task;
                 DeclSemaTask.Context = ctxPtr;
                 DeclSemaTask.ContextSize = sizeof(ctx);
+                DeclSemaTask.TaskFlags |= Task_Continuation_Func;
+                DeclSemaTask.ContinuationFunc = cast(void (*)(void*)) Repl_doDeclSemantic_cont;
 
                 worker_context_t* replWorker = CurrentWorker();
                 taskqueue_t* q = &replWorker->Queue;
@@ -903,6 +930,10 @@ LswitchMode:
 #else
                 metac_sema_declaration_t* ds =
                     MetaCSemantic_doDeclSemantic(&repl->SemanticState, decl);
+
+                ARENA_ARRAY_ADD(repl->SemanticState.GlobalVariables,
+                    ds
+                );
 #endif
                 goto LnextLine;
             }

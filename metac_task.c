@@ -98,6 +98,10 @@ void FiberDoTask(void)
             continuation->TaskFunction(continuation);
             continuation->TaskFlags |= Task_Complete;
         }
+        else if ((task->TaskFlags & Task_Continuation_Func) == Task_Continuation_Func)
+        {
+            task->ContinuationFunc(task->Context);
+        }
         YIELD(YieldingBackAfterTaskCompletion);
 
         // FiberReport(fiber);

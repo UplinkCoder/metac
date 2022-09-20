@@ -22,65 +22,67 @@ BCType MetaCCodegen_GetBCType(metac_bytecode_ctx_t* ctx, metac_type_index_t type
     BCType result = {0};
 
     if (type.Kind == type_index_enum)
-        result = (BCType){BCTypeEnum_i32};
+        result.type = BCTypeEnum_i32;
 
     if (type.Kind == type_index_basic)
     {
         switch(type.Index)
         {
             case type_void:
-                result = (BCType){BCTypeEnum_Void};
+                result.type = BCTypeEnum_Void;
             break;
             case type_bool:
-                result = (BCType){BCTypeEnum_u32};
+                result.type = BCTypeEnum_u32;
             break;
             case type_char:
-                result = (BCType){BCTypeEnum_i8};
+                result.type = BCTypeEnum_i8;
             break;
             case type_short:
-                result = (BCType){BCTypeEnum_i16};
+                result.type = BCTypeEnum_i16;
             break;
             case type_int:
-                result = (BCType){BCTypeEnum_i32};
+                result.type = BCTypeEnum_i32;
             break;
             case type_long:
-                result = (BCType){BCTypeEnum_i64};
+                result.type = BCTypeEnum_i64;
             break;
             case type_size_t:
-                result = (BCType){BCTypeEnum_u64};
+                // TODO: we will likely want to vary what size_t is
+                result.type = BCTypeEnum_u64;
             break;
 
             case type_float:
-                result = (BCType){BCTypeEnum_f23};
+                result.type = BCTypeEnum_f23;
             break;
             case type_double:
-                result = (BCType){BCTypeEnum_f52};
+                result.type = BCTypeEnum_f52;
             break;
 
             case type_long_long:
-                result = (BCType){BCTypeEnum_i64};
+                result.type = BCTypeEnum_i64;
             break;
             case type_long_double:
-                result = (BCType){BCTypeEnum_f106};
+                result.type = BCTypeEnum_f106;
             break;
 
             case type_unsigned_char:
-                result = (BCType){BCTypeEnum_u8};
+                result.type = BCTypeEnum_u8;
             break;
             case type_unsigned_short:
-                result = (BCType){BCTypeEnum_u16};
+                result.type = BCTypeEnum_u16;
             break;
             case type_unsigned_int:
-                result = (BCType){BCTypeEnum_u32};
+                result.type = BCTypeEnum_u32;
             break;
             case type_unsigned_long:
-                result = (BCType){BCTypeEnum_u64};
+                result.type = BCTypeEnum_u64;
             break;
             case type_unsigned_long_long:
-                result = (BCType){BCTypeEnum_u64};
+                result.type = BCTypeEnum_u64;
             break;
             case type_type:
-                result = (BCType){BCTypeEnum_u32};
+                // maybe type should become a BCTypeEnum_Ptr?
+                result.type = BCTypeEnum_u32;
             break;
             default : assert(0);
         }
@@ -91,6 +93,40 @@ BCType MetaCCodegen_GetBCType(metac_bytecode_ctx_t* ctx, metac_type_index_t type
 
 extern const BackendInterface BCGen_interface;
 const BackendInterface* bc;
+
+uint32_t MetaCCodegen_GetStorageSize(metac_bytecode_ctx_t* ctx, BCType bcType)
+{
+    if (BCType_isBasicBCType(bcType))
+    {
+        return BCTypeEnum_basicTypeSize(bcType.type);
+    }
+}
+
+void MetaCCodegen_doType(metac_bytecode_ctx_t* ctx, metac_type_index_t typeIdx)
+{
+
+}
+
+void MetaCCodegen_doGlobal(metac_bytecode_ctx_t* ctx, metac_sema_declaration_t* decl)
+{
+    BCValue result = {BCValueType_HeapValue};
+    result.heapAddr = (HeapAddr){ctx->GlobalMemoryOffset};
+
+    metac_type_index_t typeIdx = MetaCSemantic_GetType(ctx->Sema, decl);
+    if (typeIdx.Kind != type_index_invalid)
+    {
+        BCType bcType = MetaCCodegen_GetBCType(ctx, typeIdx);
+        uint32_t sz = MetaCCodegen_GetStorageSize(ctx, bcType);
+        printf("Doing da global\n");
+    }
+    else
+    {
+        assert(0);
+    }
+    //ctx->GlobalMemoryOffset += MetaCCodegen_GetTypeABISize(ctx, decl->TypeIndex);
+
+}
+
 
 long MetaCCodegen_RunFunction(metac_bytecode_ctx_t* self,
                              metac_bytecode_function_t f,
@@ -178,7 +214,6 @@ void MetaCCodegen_Init(metac_bytecode_ctx_t* self, metac_alloc_t* parentAlloc)
     // ARENA_ARRAY_INIT(sema_decl_variable_t, self->Locals, &self->Allocator);
     ARENA_ARRAY_INIT(BCValue, self->Globals, &self->Allocator);
 }
-
 
 void MetaCCodegen_Begin(metac_bytecode_ctx_t* self, metac_identifier_table_t* idTable, metac_semantic_state_t* sema)
 {
@@ -346,17 +381,13 @@ static bool IsUnaryExp(metac_expression_kind_t kind)
 
     storage_invalid = 0xE,
 */
-static void MetaCCodegen_AccessVariable(metac_bytecode_ctx_t* ctx,
+// Returns wheter the access was indirected i.e. we need to
+// store the result of the operation to the heap when we are done
+static bool MetaCCodegen_AccessVariable(metac_bytecode_ctx_t* ctx,
                                         sema_decl_variable_t* var,
                                         BCValue* result,
                                         metac_value_type_t lValue)
 {
-    // the the stupid linear search
-
-    if (var->VarFlags & variable_is_parameter)
-    {
-        //result = &ctx->Parameters[var->]
-    }
     switch(var->Storage.Kind)
     {
         default:
@@ -366,10 +397,17 @@ static void MetaCCodegen_AccessVariable(metac_bytecode_ctx_t* ctx,
         {
             assert(ctx->ParametersCount >= var->Storage.Offset);
             (*result) = ctx->Parameters[var->Storage.Offset];
+            return false;
         } break;
         case storage_local:
         {
             (*result) = ctx->Locals[var->Storage.Offset];
+            return false;
+        } break;
+        case storage_global:
+        {
+            (*result) = ctx->Globals[var->Storage.Offset];
+            return true;
         } break;
     }
 }
@@ -582,10 +620,13 @@ static void MetaCCodegen_doExpression(metac_bytecode_ctx_t* ctx,
         case exp_identifier:
         {
             fprintf(stderr, "There have been unresolved identifiers ... this should not happen\n");
-        }
+        } break;
         case exp_variable:
         {
-            MetaCCodegen_AccessVariable(ctx, exp->Variable, result, lValue);
+            if (MetaCCodegen_AccessVariable(ctx, exp->Variable, result, lValue))
+            {
+                // Info("Indirected access");
+            }
         } break;
         case exp_paren:
         {
