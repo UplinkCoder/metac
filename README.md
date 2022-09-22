@@ -9,7 +9,7 @@ It improves on C by providing more extensive meta programming capabilites than C
 
 ## Note
 
-This project is not currently finished and some items below descriped below might not be functional.
+This project is not currently finished and some items below described below might not be functional.
 
 # Startup
 Upon startup metac will try to read a file named `metac_compiler_interface.h` and search for struct definitions in there.
@@ -25,7 +25,37 @@ Which exposes the functions that you can call.
 During compilation you can have functions run and those functions can access the compiler via the API.
 Which allows you to use powerful meta-programming techniques
 
-# Yield Expressions
+# Type Expressions (works partially)
+
+In MetaC types are expressions.
+So in `EE`-mode (Expression Evaluation) you can type `int` and the return value will be `int`
+Or you could write `double` and the type-value `double` will be returned.
+At the time of writing MetaC doesn't do type checking on operations so you can enter expressions such as
+`int - 1` which will result in an integer value (268435467).
+That is because at the time of writing types are represented as a 32bit wide bitfield.
+The type kind in the leftmost (most-significant) bits and an index in the rightmost (least-significant) bits.
+This is also the reason why `sizeof(typeof(void))` is 4; since the runtime representation of a type is 4 bytes big.
+We can force an integer to be interpreted as a type by assigning it to a variable of type `type`.
+```C
+:ds
+type T;
+:ee
+T=int+1,T
+```
+if you execute the code above in the repl the result should be `long` 
+similarly if you execute
+```C
+:ds
+type T;
+:ee
+T=int-1,T
+```
+The result should be `short`.
+
+At the moment this may seem like a quirky toy feature but, it will be one of the corner-stones of metac programming in MetaC.
+
+
+# Yield Expressions (doesn't work yet)
 
 `yield` is a keyword in metac that has the effect of pausing the execution of the function you are currently in and returning a value.
 When you then call that same function again it will not start at the beginning but rather it will continue after the point where you yielded.
@@ -35,7 +65,10 @@ So is any `global` state which is annotated with `@TaskLocal`.
 
 # Building the repl
 
-To build the repl simply `cd repl` and compile the file `linenoise_repl.c`
+First the auto-generated code has to be generated.
+Just execute `./gen_code.sh` in the directory you cloned the repository into.
+Then to build the repl simply `cd repl` and compile the file `linenoise_repl.c`
+An example commandline would look like `gcc -Os linenoise_repl.c -o repl -lpthread -lm`
 I have only tested this on `x86_64` and `aarch64` with `ubuntu 16.04` and `ubuntu 18.04` so anything else might run into unforseen trouble.
 
 If it does fail to compile please open an issue
