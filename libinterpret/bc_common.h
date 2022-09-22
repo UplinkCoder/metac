@@ -171,6 +171,7 @@ typedef struct BCHeapRef
     {
         uint16_t tmpIndex;
         uint16_t localIndex;
+        uint8_t paramIndex;
     };
 
     union
@@ -418,6 +419,8 @@ EXTERN_C bool BCType_isFloat(BCType bct);
 EXTERN_C bool BCType_isBasicBCType(BCType bct);
 
 EXTERN_C bool BCValue_isStackValueOrParameter(const BCValue* val);
+
+EXTERN_C BCValue BCValue_fromHeapref(const BCHeapRef heapRef);
 
 static const int BCHeap_initHeapMax = (1 << 15);
 

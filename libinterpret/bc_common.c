@@ -418,6 +418,46 @@ static inline uint32_t BCValue_toU32(const BCValue* self)
     }
 #endif
 
+EXTERN_C BCValue BCValue_fromHeapref(const BCHeapRef heapRef)
+{
+    BCValue result;
+
+    result.vType = heapRef.vType;
+
+    switch (result.vType)
+    {
+    case BCValueType_StackValue:
+        result.stackAddr = heapRef.stackAddr;
+        result.temporaryIndex = heapRef.tmpIndex;
+        break;
+    case BCValueType_Parameter:
+        result.stackAddr = heapRef.stackAddr;
+        result.parameterIndex = heapRef.paramIndex;
+    break;
+    case BCValueType_Local:
+        result.stackAddr = heapRef.stackAddr;
+        result.temporaryIndex = heapRef.localIndex;
+        result.name = heapRef.name;
+        break;
+
+    case BCValueType_Temporary:
+        result.stackAddr = heapRef.stackAddr;
+        result.temporaryIndex = heapRef.tmpIndex;
+        break;
+
+    case BCValueType_HeapValue:
+        result.vType = BCValueType_Immediate;
+        result.type = BCType_u32;
+        result.imm32.imm32 = heapRef.heapAddr.addr;
+        break;
+
+    default:
+        assert(!"vType unsupported");
+    }
+
+    return result;
+}
+
 EXTERN_C bool BCValue_eq(const BCValue* lhs, const BCValue* rhs)
 {
     BCTypeEnum commonType = BCTypeEnum_commonTypeEnum(lhs->type.type, rhs->type.type);
@@ -642,7 +682,7 @@ string doubleToString(double d)
 }
 */
 
-bool anyOf(BCTypeEnum type, const BCTypeEnum acceptedTypes[], uint32_t n_types)
+bool BCTypeEnum_anyOf(BCTypeEnum type, const BCTypeEnum acceptedTypes[], uint32_t n_types)
 {
     bool result = false;
 
@@ -899,7 +939,8 @@ BCTypeEnum BCTypeEnum_commonTypeEnum(BCTypeEnum lhs, BCTypeEnum rhs)
     {
         commonType = BCTypeEnum_i32;
     }
-    else if (anyOf(lhs, smallIntegerTypes, ARRAY_SIZE(smallIntegerTypes)) || anyOf(rhs, smallIntegerTypes, ARRAY_SIZE(smallIntegerTypes)))
+    else if (BCTypeEnum_anyOf(lhs, smallIntegerTypes, ARRAY_SIZE(smallIntegerTypes))
+        ||   BCTypeEnum_anyOf(rhs, smallIntegerTypes, ARRAY_SIZE(smallIntegerTypes)))
     {
         commonType = BCTypeEnum_i32;
     }

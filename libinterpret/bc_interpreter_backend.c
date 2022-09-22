@@ -750,42 +750,42 @@ void BCGen_PrintCode(BCGen* self, uint32_t start, uint32_t end)
             break;
         case LongInst_HeapLoad8:
             {
-                printf("LongInst_HeapLoad8 R[%d] = HEAP[%d]\n", lhsOffset / 4, rhsOffset);
+                printf("LongInst_HeapLoad8 R[%d] = HEAP[R[%d]]\n", lhsOffset / 4, rhsOffset / 4);
             }
             break;
         case LongInst_HeapStore8:
             {
-                printf("LongInst_HeapStore8 HEAP[%d] = R[%d]\n", lhsOffset, rhsOffset / 4);
+                printf("LongInst_HeapStore8 HEAP[R[%d]] = R[%d]\n", lhsOffset / 4, rhsOffset / 4);
             }
             break;
         case LongInst_HeapLoad16:
             {
-                printf("LongInst_HeapLoad16 R[%d] = HEAP[%d]\n", lhsOffset / 4, rhsOffset);
+                printf("LongInst_HeapLoad16 R[%d] = HEAP[R[%d]]\n", lhsOffset / 4, rhsOffset / 4);
             }
             break;
         case LongInst_HeapStore16:
             {
-                printf("LongInst_HeapStore16 HEAP[%d] = R[%d]\n", lhsOffset, rhsOffset / 4);
+                printf("LongInst_HeapStore16 HEAP[R[%d]] = R[%d]\n", lhsOffset / 4, rhsOffset / 4);
             }
             break;
         case LongInst_HeapLoad32:
             {
-                printf("LongInst_HeapLoad32 R[%d] = HEAP[%d]\n", lhsOffset / 4, rhsOffset);
+                printf("LongInst_HeapLoad32 R[%d] = HEAP[R[%d]]\n", lhsOffset / 4, rhsOffset / 4);
             }
             break;
         case LongInst_HeapStore32:
             {
-                printf("LongInst_HeapStore32 HEAP[%d] = R[%d]\n", lhsOffset, rhsOffset / 4);
+                printf("LongInst_HeapStore32 HEAP[R[%d]] = R[%d]\n", lhsOffset / 4, rhsOffset / 4);
             }
             break;
         case LongInst_HeapLoad64:
             {
-                 printf("LongInst_HeapLoad64 R[%d] = HEAP[%d]\n", lhsOffset / 4, rhsOffset);
+                 printf("LongInst_HeapLoad64 R[%d] = HEAP[R[%d]]\n", lhsOffset / 4, rhsOffset / 4);
             }
             break;
         case LongInst_HeapStore64:
             {
-                printf("LongInst_HeapStore64 HEAP[%d] = R[%d]\n", lhsOffset, rhsOffset / 4);
+                printf("LongInst_HeapStore64 HEAP[R[%d]] = R[%d]\n", lhsOffset / 4, rhsOffset / 4);
             }
             break;
         case LongInst_Ret32:
@@ -2480,7 +2480,7 @@ static inline BCValue BCGen_pushTemporary(BCGen* self, const BCValue* val)
     if (!BCValue_isStackValueOrParameter(val))
     {
         BCValue stackref;
-        stackref.type = BCType_u32;
+
         stackref.vType = BCValueType_StackValue;
         stackref.stackAddr.addr = self->sp;
         stackref.temporaryIndex = ++self->temporaryCount;
@@ -2711,7 +2711,7 @@ static inline void BCGen_Load_Store(BCGen* self, BCValue *to, const BCValue* fro
     {
         pushedFrom |= 1;
         fromV = BCGen_pushTemporary(self, from);
-        to = &fromV;
+        from = &fromV;
     }
 
     if (!BCValue_isStackValueOrParameter(to))
