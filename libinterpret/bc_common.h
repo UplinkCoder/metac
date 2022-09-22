@@ -298,13 +298,6 @@ CONSTEXPR static inline const uint32_t align4(const uint32_t val)
     return ((val + 3) & ~3);
 }
 
-#define storeu32(PTR, V32) \
- ((PTR)[0] = (V32 >> 0)  & 0xFF, \
-  (PTR)[1] = (V32 >> 8)  & 0xFF, \
-  (PTR)[2] = (V32 >> 16) & 0xFF, \
-  (PTR)[3] = (V32 >> 24) & 0xFF)
-
-/*
 static inline void storeu32(uint8_t* ptr, const uint32_t v32)
 {
     ptr[0] = (v32 >> 0)  & 0xFF;
@@ -312,14 +305,8 @@ static inline void storeu32(uint8_t* ptr, const uint32_t v32)
     ptr[2] = (v32 >> 16) & 0xFF;
     ptr[3] = (v32 >> 24) & 0xFF;
 }
-*/
 
-#define loadu32(PTR) \
-   (((PTR)[0] << 0) \
-  | ((PTR)[1] << 8) \
-  | ((PTR)[2] << 16) \
-  | ((PTR)[3] << 24))
-/*
+
 static inline uint32_t loadu32(const uint8_t* ptr)
 {
     uint32_t v32 = (ptr[0] << 0)
@@ -328,7 +315,7 @@ static inline uint32_t loadu32(const uint8_t* ptr)
                  | (ptr[3] << 24);
     return v32;
 }
-*/
+
 
 CONSTEXPR static inline uint32_t align16(const uint32_t val)
 {
