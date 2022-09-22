@@ -910,33 +910,76 @@ sema_decl_function_t* MetaCSemantic_doFunctionSemantic(metac_semantic_state_t* s
     return f;
 }
 
-const static metac_type_t basicTypes[] = {
+const static sema_decl_type_t basicTypes[type_max] = {
+    {node_decl_type, 0, 0, 0, 0, 0, 0, /* type_invalid */},
 
+    {node_decl_type, 0, 0, 0, 0, 0, 0, /* type_struct */},
+    {node_decl_type, 0, 0, 0, 0, 0, 0, /* type_union */},
+    {node_decl_type, 0, 0, 0, 0, 0, 0, /* type_class */},
+    {node_decl_type, 0, 0, 0, 0, 0, 0, /* type_enum */},
+
+    {node_decl_type, 0, 0, 0, 0, 0, 0 /* type_typedef */},
+    {node_decl_type, 0, 0, 0, 0, 0, 0 /* type_functiontype */},
+
+    {node_decl_type, 0, 0, 0, 0, 0, TYPE_INDEX_V(type_index_basic, type_auto)},
+// DO NOT CHANGE THE ORDER FROM HERE
+// XXX: Order needs to be in sync with the type tokens in metac_lexer.h
+    {node_decl_type, 0, 0, 0, 0, 0, TYPE_INDEX_V(type_index_basic, type_void)},
+    {node_decl_type, 0, 0, 0, 0, 0, TYPE_INDEX_V(type_index_basic, type_bool)},
+    {node_decl_type, 0, 0, 0, 0, 0, TYPE_INDEX_V(type_index_basic, type_char)},
+    {node_decl_type, 0, 0, 0, 0, 0, TYPE_INDEX_V(type_index_basic, type_short)},
+    {node_decl_type, 0, 0, 0, 0, 0, TYPE_INDEX_V(type_index_basic, type_int)},
+    {node_decl_type, 0, 0, 0, 0, 0, TYPE_INDEX_V(type_index_basic, type_long)},
+    {node_decl_type, 0, 0, 0, 0, 0, TYPE_INDEX_V(type_index_basic, type_size_t)},
+
+    {node_decl_type, 0, 0, 0, 0, 0, TYPE_INDEX_V(type_index_basic, type_float)},
+    {node_decl_type, 0, 0, 0, 0, 0, TYPE_INDEX_V(type_index_basic, type_double)},
+//TO HERE
+    {node_decl_type, 0, 0, 0, 0, 0, TYPE_INDEX_V(type_index_basic, type_long_long)},
+    {node_decl_type, 0, 0, 0, 0, 0, TYPE_INDEX_V(type_index_basic, type_long_double)},
+// ALSO DON'T CHANGE ANYTHING FROM HERE
+    {node_decl_type, 0, 0, 0, 0, 0, TYPE_INDEX_V(type_index_basic, type_unsigned_char)},
+    {node_decl_type, 0, 0, 0, 0, 0, TYPE_INDEX_V(type_index_basic, type_unsigned_short)},
+    {node_decl_type, 0, 0, 0, 0, 0, TYPE_INDEX_V(type_index_basic, type_unsigned_int)},
+    {node_decl_type, 0, 0, 0, 0, 0, TYPE_INDEX_V(type_index_basic, type_unsigned_long)},
+//TO HERE
+    {node_decl_type, 0, 0, 0, 0, 0, TYPE_INDEX_V(type_index_basic, type_unsigned_long_long)},
+
+    {node_decl_type, 0, 0, 0, 0, 0, TYPE_INDEX_V(type_index_basic, type_type)},
+    {node_decl_type, 0, 0, 0, 0, 0, TYPE_INDEX_V(type_index_basic, type_identifier)},
+
+    {node_decl_type, 0, 0, 0, 0, 0, TYPE_INDEX_V(type_index_basic, type_ptr)},
+    {node_decl_type, 0, 0, 0, 0, 0, TYPE_INDEX_V(type_index_basic, type_array)},
+
+    {node_decl_type, 0, 0, 0, 0, 0, TYPE_INDEX_V(type_index_basic, type_map)},
+
+    {node_decl_type, 0, 0, 0, 0, 0, TYPE_INDEX_V(type_index_basic, type_tuple)},
+
+    {node_decl_type, 0, 0, 0, 0, 0, TYPE_INDEX_V(type_index_basic, type_modifiers)}
 };
 
-metac_type_t TypeBasicPtr(metac_type_index_t basicTypeIdx)
+sema_decl_type_t* TypeBasicPtr(metac_type_index_t basicTypeIdx)
 {
     assert(basicTypeIdx.Kind == type_index_basic);
-    metac_type_t result = {0};
-    return result;
+    return &basicTypes[basicTypeIdx.Index];
 }
 
-metac_node_t NodeFromTypeIndex(metac_semantic_state_t* sema,
+metac_type_t NodeFromTypeIndex(metac_semantic_state_t* sema,
                                metac_type_index_t typeIndex)
 {
     const uint32_t index = TYPE_INDEX_INDEX(typeIndex);
     switch(TYPE_INDEX_KIND(typeIndex))
     {
         case type_index_struct:
-            return cast(metac_node_t) StructPtr(sema, index);
+            return cast(metac_type_t) StructPtr(sema, index);
         case type_index_union:
-            return cast(metac_node_t) UnionPtr(sema, index);
+            return cast(metac_type_t) UnionPtr(sema, index);
         case type_index_typedef:
-            return cast (metac_node_t) TypedefPtr(sema, index);
+            return cast (metac_type_t) TypedefPtr(sema, index);
         case type_index_enum:
-            return cast(metac_node_t) EnumTypePtr(sema, index);
+            return cast(metac_type_t) EnumTypePtr(sema, index);
         case type_index_basic:
-            return cast(metac_node_t) TypeBasicPtr(typeIndex);
+            return cast(metac_type_t) TypeBasicPtr(typeIndex);
     }
 
     return 0;
