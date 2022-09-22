@@ -450,6 +450,7 @@ static void LoadFromHeapRef(void* c, BCValue* hrv, uint32_t abiSize)
 
     {
         BCTypeEnum types[] = {
+            BCTypeEnum_u8, BCTypeEnum_u16, BCTypeEnum_u32,
             BCTypeEnum_i8, BCTypeEnum_i16, BCTypeEnum_i32,
             BCTypeEnum_c8, BCTypeEnum_c16, BCTypeEnum_c32,
             BCTypeEnum_f23
@@ -498,6 +499,7 @@ static void StoreToHeapRef(void* c, BCValue* hrv, uint32_t abiSize)
 
     {
         BCTypeEnum types[] = {
+            BCTypeEnum_u8, BCTypeEnum_u16, BCTypeEnum_u32,
             BCTypeEnum_i8, BCTypeEnum_i16, BCTypeEnum_i32,
             BCTypeEnum_c8, BCTypeEnum_c16, BCTypeEnum_c32,
             BCTypeEnum_f23
@@ -549,13 +551,13 @@ static void MetaCCodegen_doExpression(metac_bytecode_ctx_t* ctx,
         {
             // XXX: this is super dangerous
             // FIXME remove stackref as soon as possible!
-            BCValue tmp;
+            BCValue tmp = {BCValueType_Unknown};
             result = &tmp;
         }
 
         if (op == exp_signed_integer)
         {
-                (*result) = imm32(cast(int32_t)exp->ValueI64);
+            (*result) = imm32(cast(int32_t)exp->ValueI64);
             goto Lret;
         }
 
@@ -574,7 +576,7 @@ static void MetaCCodegen_doExpression(metac_bytecode_ctx_t* ctx,
     }
 
     BCValue lhs;
-    BCValue rhs;
+    BCValue rhs = {BCValueType_Unknown};
 
 
     if (op == exp_assign)
