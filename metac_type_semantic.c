@@ -53,7 +53,11 @@ static inline bool isBasicType(metac_type_kind_t typeKind)
     return false;
 }
 
-
+sema_decl_type_t* MetaCSemantic_GetTypeNode(metac_semantic_state_t* self,
+                                            metac_type_index_t typeIndex)
+{
+    return cast(sema_decl_type_t*) NodeFromTypeIndex(self, typeIndex);
+}
 metac_type_index_t MetaCSemantic_GetTypeIndex(metac_semantic_state_t* state,
                                               metac_type_kind_t typeKind,
                                               decl_type_t* type)

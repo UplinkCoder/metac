@@ -26,12 +26,14 @@ typedef struct metac_printer_t
 
     uint16_t StartColumn;
     bool SupressNewlineAfterDeclaration;
+    bool AsType;
 } metac_printer_t;
 
 
 void MetaCPrinter_Init(metac_printer_t* self,
                        metac_identifier_table_t* identifierTable,
                        metac_identifier_table_t* stringTable);
+void MetaCPRinter_Free(metac_printer_t* self);
 
 void MetaCPrinter_InitSz(metac_printer_t* self,
                          metac_identifier_table_t* identifierTable,

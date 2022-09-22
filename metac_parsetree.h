@@ -310,8 +310,7 @@ typedef struct metac_statement_t
     uint32_t LocationIdx; \
     uint32_t Hash; \
     uint32_t Serial; \
-    metac_storageclasses_t StorageClass; \
-    uint32_t AllocLine;
+    metac_storageclasses_t StorageClass;
 
 typedef enum metac_type_modifiers
 {

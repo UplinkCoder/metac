@@ -474,9 +474,35 @@ metac_identifier_ptr_t IdentifierPtrFromDecl(metac_declaration_t* decl)
 
 }
 
+metac_identifier_ptr_t IdentifierPtrFromSemaDecl(metac_sema_declaration_t* decl)
+{
+    metac_identifier_ptr_t idPtr = {0};
+
+    switch(decl->Kind)
+    {
+        case decl_function:
+        {
+            sema_decl_function_t* f = cast(sema_decl_function_t*) decl;
+            idPtr = f->Identifier;
+            break;
+        }
+        case decl_variable:
+        {
+            sema_decl_variable_t* v = cast(sema_decl_variable_t*) decl;
+            idPtr = v->VarIdentifier;
+            break;
+        }
+        default : assert(0);
+    }
+
+    return idPtr;
+
+}
+
+
 static void Repl_doDeclSemantic_cont(MetaCSemantic_doDeclSemantic_task_context_t* ctx)
 {
-    ARENA_ARRAY_ADD(ctx->Sema->Globals, ctx->Result);
+//    ARENA_ARRAY_ADD(ctx->Sema->Globals, ctx->Result);
 }
 
 /// returns false if the repl is done running
@@ -585,12 +611,49 @@ LswitchMode:
                     goto LswitchMode;
                 }
             case 'g' :
-                if (!strcmp("olbals", repl->Line + 2))
+                if (0 == strcmp("lobals", repl->Line + 2))
                 {
                     for(uint32_t i = 0; i < repl->SemanticState.GlobalsCount; i++)
                     {
-                        metac_declaration_t* global = repl->SemanticState.Globals[i];
-                        printf ("Global %s = %d\n", "xxx", 12);
+                        metac_sema_declaration_t* global = repl->SemanticState.Globals[i];
+                        if (global->Kind == decl_variable)
+                        {
+                            sema_decl_variable_t var = global->sema_decl_variable;
+                            metac_sema_expression_t* value = var.VarInitExpression;
+                            metac_printer_t debugPrinter;
+                            const char* typeString;
+                            const char* valueString = "NULL";
+                            metac_type_t typeNode;
+
+                            MetaCPrinter_Init(&debugPrinter,
+                                repl->SemanticState.ParserIdentifierTable,
+                                repl->SemanticState.ParserStringTable);
+
+                            typeNode = NodeFromTypeIndex(&repl->SemanticState, var.TypeIndex);
+
+                            typeString = MetaCPrinter_PrintSemaNode(
+                                &debugPrinter, &repl->SemanticState, typeNode
+                            );
+
+                            if (METAC_NODE(value) != emptyNode)
+                            {
+                                valueString = MetaCPrinter_PrintSemaNode(
+                                    &debugPrinter,
+                                    &repl->SemanticState,
+                                    value
+                                );
+                            }
+                            {
+                                metac_identifier_ptr_t idPtr =
+                                    IdentifierPtrFromSemaDecl(&var);
+                                const char* nameString =
+                                    IdentifierPtrToCharPtr(repl->SemanticState.ParserIdentifierTable, idPtr);
+                                printf ("Global %s %s = %s\n", typeString, nameString, valueString);
+                                MetaCPrinter_Free(&debugPrinter);
+                            }
+
+                        }
+
                     }
                 }
                 goto LnextLine;

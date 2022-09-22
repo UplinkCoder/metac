@@ -178,7 +178,7 @@ metac_declaration_t* AllocNewDeclaration_(metac_declaration_kind_t kind, uint32_
         memset(&result->Serial + 1, 0, nodeSize - offsetof(metac_declaration_t, Serial));
     }
 
-    result->AllocLine = line;
+    // result->AllocLine = line;
 
     return result;
 }

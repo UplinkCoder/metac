@@ -10,7 +10,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-#if 1
+#if 0
 #include <time.h>
 
 // call this function to start a nanosecond-resolution timer
@@ -77,28 +77,29 @@ int main(int argc, const char* argv[])
         MetaCLexer_Init(&lexer);
 
         read_result_t readResult = ReadFileAndZeroTerminate(arg);
-
+#if 0
         struct timespec t = timer_start();
-
+#endif
         LexFile(&lexer, arg,
             readResult.FileContent0, readResult.FileLength
         );
-
+#if 0
         {
             long ns = timer_end(t);
             float us = ns / 1000.0f;
             printf("lexing %u bytes took %f us -- %f bytes/ns\n", readResult.FileLength, us, cast(float)readResult.FileLength / ns);
         }
-#if 0
+#endif
         metac_parser_t parser;
         MetaCParser_InitFromLexer(&parser, &lexer);
         ParseFile(&parser, arg, 0);
-
+#if 0
         {
             long ns = timer_end(t);
             float us = ns / 1000.0f;
             printf("parsing and lexing %u bytes took %f us -- %f bytes/ns\n", readResult.FileLength, us, cast(float)readResult.FileLength / ns);
         }
+#endif
 
         metac_identifier_table_slot_t firstEntry = {0};
 
@@ -132,7 +133,6 @@ int main(int argc, const char* argv[])
 
         sprintf(formatBuffer, "%s.strings", arg);
         WriteTable(&lexer.StringTable, formatBuffer, 12, 0);
-#endif
 #endif
 
 #endif

@@ -232,6 +232,15 @@ metac_sema_expression_t* MetaCSemantic_doExprSemantic_(metac_semantic_state_t* s
             assert(0);
         }
 
+        case exp_comma:
+        {
+            metac_sema_expression_t* r = result->E2;
+            while(r->Kind == exp_comma)
+            {
+                r = r->E2;
+            }
+            result->TypeIndex = r->TypeIndex;
+        } break;
 
         case exp_unary_dot:
         {

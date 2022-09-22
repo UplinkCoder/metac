@@ -1241,8 +1241,12 @@ static inline void PrintSemaDeclaration(metac_printer_t* self,
             PrintIdentifier(self, semaDecl->sema_decl_type_enum.Name);
         } break;
         case decl_type_typedef:
-        case decl_type:
             assert(0);
+        case decl_type:
+        {
+            sema_decl_type_t* semaType = cast(sema_decl_type_t*) semaDecl;
+            PrintSemaType(self, sema, semaType->typeIndex);
+        } break;
 
         case decl_type_union :
         case decl_type_struct :
@@ -1338,8 +1342,11 @@ static inline void PrintSemaDeclaration(metac_printer_t* self,
             }
         } break;
     }
-    if (!!printSemicolon) PrintToken(self, tok_semicolon);
-    PrintNewline(self);
+    if (!self->AsType)
+    {
+        if (!!printSemicolon) PrintToken(self, tok_semicolon);
+        PrintNewline(self);
+    }
 }
 
 static inline void PrintSemaExpression(metac_printer_t* self,
@@ -1910,10 +1917,21 @@ void MetaCPrinter_InitSz(metac_printer_t* self,
     self->StringMemory = (char*)malloc(self->StringMemoryCapacity);
     self->StringMemorySize = self->StringMemoryCapacity;
     self->SupressNewlineAfterDeclaration = false;
+    self->AsType = false;
     MetaCPrinter_Reset(self);
 
     self->IdentifierTable = identifierTable;
     self->StringTable = stringTable;
+}
+
+void MetaCPrinter_Free(metac_printer_t* self)
+{
+    if (self->StringMemory)
+    {
+        free(self->StringMemory);
+        self->StringMemory = 0;
+        self->StringMemoryCapacity = self->StringMemorySize = 0;
+    }
 }
 
 void MetacPrinter_PrintStringLiteral(metac_printer_t* self, const char* str)

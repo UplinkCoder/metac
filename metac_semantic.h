@@ -262,10 +262,13 @@ metac_type_array_t* AllocNewSemaArrayType(metac_semantic_state_t* self, metac_ty
 void MetaCSemantic_Handoff(metac_semantic_state_t* self, metac_sema_declaration_t** declP,
                            metac_semantic_state_t* newOwner);
 
-#define StatementIndex(SEMA, STMT) StatementIndex_(SEMA, (metac_sema_statement_t*)STMT)
+metac_type_t NodeFromTypeIndex(metac_semantic_state_t* sema,
+                               metac_type_index_t typeIndex);
+
 
 uint32_t FunctionIndex(metac_semantic_state_t* self, sema_decl_function_t* func);
 uint32_t StructIndex(metac_semantic_state_t* self, metac_type_aggregate_t* struct_);
+#define StatementIndex(SEMA, STMT) StatementIndex_(SEMA, (metac_sema_statement_t*)STMT)
 uint32_t StatementIndex_(metac_semantic_state_t* self, metac_sema_statement_t* stmt);
 uint32_t BlockStatementIndex(metac_semantic_state_t* self, sema_stmt_block_t* blockstmt);
 uint32_t UnionIndex(metac_semantic_state_t* self, metac_type_aggregate_t* union_);

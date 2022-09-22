@@ -191,7 +191,7 @@ typedef enum metac_type_kind_t
     type_functiontype,
 
     type_auto,
-// DON'T CHANGE THE ORDER FROM HERE
+// DO NOT CHANGE THE ORDER FROM HERE
 // XXX: Order needs to be in sync with the type tokens in metac_lexer.h
     type_void,
     type_bool,

@@ -85,7 +85,6 @@ Lret:
 #  define emptyNode (metac_node_t) _emptyPointer
 #endif
 
-
 #include "semantic/node_alloc.c"
 
 void MetaCSemantic_Init(metac_semantic_state_t* self, metac_parser_t* parser,
@@ -111,7 +110,7 @@ void MetaCSemantic_Init(metac_semantic_state_t* self, metac_parser_t* parser,
 
     ARENA_ARRAY_INIT(metac_scope_t*, self->DeclStatementScope, &self->Allocator);
 
-    ARENA_ARRAY_INIT(metac_declaration_t*, self->Globals, &self->Allocator);
+    ARENA_ARRAY_INIT(metac_sema_declaration_t*, self->Globals, &self->Allocator);
 
     self->TemporaryScopeDepth = 0;
 
@@ -1009,7 +1008,7 @@ const char* doDeclSemantic_PrintFunction(task_t* task)
     return buffer;
 }
 #endif
-#include <valgrind/memcheck.h>
+
 metac_sema_declaration_t* MetaCSemantic_declSemantic(metac_semantic_state_t* self,
                                                      metac_declaration_t* decl)
 {
@@ -1021,7 +1020,7 @@ metac_sema_declaration_t* MetaCSemantic_declSemantic(metac_semantic_state_t* sel
         case decl_function:
         {
             decl_function_t* f = cast(decl_function_t*) decl;
-            result = (metac_sema_declaration_t*)
+            result = cast(metac_sema_declaration_t*)
                 MetaCSemantic_doFunctionSemantic(self, f);
 
         } break;
@@ -1029,7 +1028,7 @@ metac_sema_declaration_t* MetaCSemantic_declSemantic(metac_semantic_state_t* sel
             assert(0);
         case decl_comment:
         {
-            result = decl;
+            result = cast(metac_sema_declaration_t*)decl;
         } break;
         case decl_variable:
         {
@@ -1060,12 +1059,9 @@ metac_sema_declaration_t* MetaCSemantic_declSemantic(metac_semantic_state_t* sel
             }
             else if (v->StorageClass == storage_global)
             {
-                VALGRIND_MAKE_MEM_DEFINED(&self->GlobalsCount, 4);
                 var->Storage.v = STORAGE_V(storage_global, self->GlobalsCount);
                 // TODO maybe we have to mark the global as having been inserted.
-                ARENA_ARRAY_ADD(self->Globals, var);
-                VALGRIND_MAKE_MEM_NOACCESS(&self->GlobalsCount, 4);
-
+                ARENA_ARRAY_ADD(self->Globals, cast(metac_sema_declaration_t*)var);
             }
 
             MetaCSemantic_RegisterInScope(self, var->VarIdentifier, METAC_NODE(var));
@@ -1391,7 +1387,6 @@ const char* TypeToChars(metac_semantic_state_t* self, metac_type_index_t typeInd
 
 #define offsetof(st, m) \
     ((size_t)((char *)&((st *)0)->m - (char *)0))
-
 
 
 const metac_scope_t* GetAggregateScope(metac_type_aggregate_t* agg)

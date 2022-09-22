@@ -2355,7 +2355,8 @@ decl_type_t* MetaCParser_ParseTypeDeclaration(metac_parser_t* self, metac_declar
             bool hasParens = false;
 
             MetaCParser_Match(self, tok_lParen);
-            metac_expression_t* typeof_exp = MetaCParser_ParseExpression(self, 0, 0);
+            metac_expression_t* typeof_exp =
+                MetaCParser_ParseExpression(self, expr_flags_none, 0);
             MetaCParser_Match(self, tok_rParen);
 
             decl_type_typeof_t * decl = AllocNewDeclaration(decl_type_typeof, &result);

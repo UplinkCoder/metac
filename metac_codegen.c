@@ -107,7 +107,7 @@ void MetaCCodegen_doType(metac_bytecode_ctx_t* ctx, metac_type_index_t typeIdx)
 
 }
 
-void MetaCCodegen_doGlobal(metac_bytecode_ctx_t* ctx, metac_sema_declaration_t* decl)
+void MetaCCodegen_doGlobal(metac_bytecode_ctx_t* ctx, metac_sema_declaration_t* decl, uint32_t idx)
 {
     BCValue result = {BCValueType_HeapValue};
     result.heapAddr = (HeapAddr){ctx->GlobalMemoryOffset};
@@ -117,7 +117,22 @@ void MetaCCodegen_doGlobal(metac_bytecode_ctx_t* ctx, metac_sema_declaration_t* 
     {
         BCType bcType = MetaCCodegen_GetBCType(ctx, typeIdx);
         uint32_t sz = MetaCCodegen_GetStorageSize(ctx, bcType);
-        printf("Doing da global\n");
+        result.type = bcType;
+
+        ARENA_ARRAY_ADD(ctx->Globals, result);
+        if (decl->Kind == decl_variable)
+        {
+            sema_decl_variable_t var = decl->sema_decl_variable;
+            if (METAC_NODE(var.VarInitExpression) != emptyNode)
+            {
+                BCValue initVal;
+                MetaCCodegen_doExpression(ctx, var.VarInitExpression, &initVal, _Rvalue);
+            }
+        }
+        // printf("offset = %d sz = %d\n", ctx->GlobalMemoryOffset, sz);
+        ctx->GlobalMemoryOffset += align4(sz);
+        //printf("Doing da global\n");
+        // if (decl.)
     }
     else
     {
@@ -213,6 +228,7 @@ void MetaCCodegen_Init(metac_bytecode_ctx_t* self, metac_alloc_t* parentAlloc)
 
     // ARENA_ARRAY_INIT(sema_decl_variable_t, self->Locals, &self->Allocator);
     ARENA_ARRAY_INIT(BCValue, self->Globals, &self->Allocator);
+    self->GlobalMemoryOffset = 4;
 }
 
 void MetaCCodegen_Begin(metac_bytecode_ctx_t* self, metac_identifier_table_t* idTable, metac_semantic_state_t* sema)
@@ -252,7 +268,7 @@ metac_bytecode_function_t MetaCCodegen_GenerateFunctionFromExp(metac_bytecode_ct
 #ifdef PRINT_BYTECODE
     if (bc == &BCGen_interface)
     {
-        BCGen_PrintCode(c, 0, 32);
+        BCGen_PrintCode(c, 0, 48);
     }
 #endif
 
@@ -308,7 +324,6 @@ metac_bytecode_function_t MetaCCodegen_GenerateFunction(metac_bytecode_ctx_t* ct
     ctx->ParametersArena = parametersArena;
     ctx->ParametersAlloc = parametersAlloc;
     ctx->ParametersCount = parametersCount;
-
 
     ctx->Breaks = breaks;
     ctx->BreaksArena = breaksArena;
@@ -388,6 +403,7 @@ static bool MetaCCodegen_AccessVariable(metac_bytecode_ctx_t* ctx,
                                         BCValue* result,
                                         metac_value_type_t lValue)
 {
+    void* c = ctx->c;
     switch(var->Storage.Kind)
     {
         default:
@@ -406,11 +422,113 @@ static bool MetaCCodegen_AccessVariable(metac_bytecode_ctx_t* ctx,
         } break;
         case storage_global:
         {
-            (*result) = ctx->Globals[var->Storage.Offset];
+            BCValue globalHeapRef = ctx->Globals[var->Storage.Offset];
+            assert(globalHeapRef.vType == BCValueType_HeapValue);
+            BCValue resTmp = bc->GenTemporary(c, globalHeapRef.type);
+
+            resTmp.heapRef.vType = BCValueType_HeapValue;
+            resTmp.heapRef.heapAddr = globalHeapRef.heapAddr;
+
+            (*result) = resTmp;
             return true;
         } break;
     }
 }
+
+static void LoadFromHeapRef(void* c, BCValue* hrv, uint32_t abiSize)
+{
+    // import std.stdio; writeln("Calling LoadHeapRef from: ", line); //DEBUGLINE
+    {
+        BCTypeEnum types[] = {BCTypeEnum_i64, BCTypeEnum_f52};
+        if(BCTypeEnum_anyOf(hrv->type.type, types, ARRAY_SIZE(types)))
+        {
+            BCValue hr = BCValue_fromHeapref(hrv->heapRef);
+            bc->Load64(c, hrv, &hr);
+            return ;
+        }
+    }
+
+    {
+        BCTypeEnum types[] = {
+            BCTypeEnum_i8, BCTypeEnum_i16, BCTypeEnum_i32,
+            BCTypeEnum_c8, BCTypeEnum_c16, BCTypeEnum_c32,
+            BCTypeEnum_f23
+        };
+        if(BCTypeEnum_anyOf(hrv->type.type, types, ARRAY_SIZE(types)))
+        {
+            BCValue hr = BCValue_fromHeapref(hrv->heapRef);
+            bc->Load32(c, hrv, &hr);
+            return ;
+        }
+    }
+    // since the stuff below are heapValues we may not want to do this ??
+    {
+        BCTypeEnum types[] =
+            { BCTypeEnum_Struct, BCTypeEnum_Slice, BCTypeEnum_Array };
+        if (BCTypeEnum_anyOf(hrv->type.type, types, ARRAY_SIZE(types)))
+        {
+            BCValue sz = imm32(abiSize);
+            BCValue hrv_i32 = *hrv;
+            BCValue hr = BCValue_fromHeapref(hrv->heapRef);
+            hr.type = BCType_i32;
+            hrv_i32.type = BCType_i32;
+
+            bc->MemCpy(c, &hrv_i32, &hr, &sz);
+        }
+        else
+        {
+            assert(!"is not supported in LoadFromHeapRef");
+        }
+    }
+}
+
+
+static void StoreToHeapRef(void* c, BCValue* hrv, uint32_t abiSize)
+{
+    // import std.stdio; writeln("Calling LoadHeapRef from: ", line); //DEBUGLINE
+    {
+        BCTypeEnum types[] = {BCTypeEnum_i64, BCTypeEnum_f52};
+        if(BCTypeEnum_anyOf(hrv->type.type, types, ARRAY_SIZE(types)))
+        {
+            BCValue hr = BCValue_fromHeapref(hrv->heapRef);
+            bc->Store64(c, &hr, hrv);
+            return ;
+        }
+    }
+
+    {
+        BCTypeEnum types[] = {
+            BCTypeEnum_i8, BCTypeEnum_i16, BCTypeEnum_i32,
+            BCTypeEnum_c8, BCTypeEnum_c16, BCTypeEnum_c32,
+            BCTypeEnum_f23
+        };
+        if(BCTypeEnum_anyOf(hrv->type.type, types, ARRAY_SIZE(types)))
+        {
+            BCValue hr = BCValue_fromHeapref(hrv->heapRef);
+            bc->Store32(c, &hr, hrv);
+            return ;
+        }
+    }
+    // since the stuff below are heapValues we may not want to do this ??
+    {
+        BCTypeEnum types[] =
+            { BCTypeEnum_Struct, BCTypeEnum_Slice, BCTypeEnum_Array };
+        if (BCTypeEnum_anyOf(hrv->type.type, types, ARRAY_SIZE(types)))
+        {
+            BCValue hr = BCValue_fromHeapref(hrv->heapRef);
+            hr.type = BCType_i32;
+            BCValue sz = imm32(abiSize);
+            BCValue hrv_i32 = *hrv;
+            hrv_i32.type = BCType_i32;
+            bc->MemCpy(c, &hr, &hrv_i32, &sz);
+        }
+        else
+        {
+            assert(!"is not supported in StoreToHeapRef");
+        }
+    }
+}
+
 
 static void MetaCCodegen_doExpression(metac_bytecode_ctx_t* ctx,
                                       metac_sema_expression_t* exp,
@@ -423,20 +541,30 @@ static void MetaCCodegen_doExpression(metac_bytecode_ctx_t* ctx,
     void* c = ctx->c;
 
     metac_expression_kind_t op = exp->Kind;
-
-    if (op == exp_signed_integer)
-    {
-        (*result) = imm32(cast(int32_t)exp->ValueI64);
-        goto Lret;
-    }
-
     BCType expType = MetaCCodegen_GetBCType(ctx, exp->TypeIndex);
 
-    if (result->vType == BCValueType_Unknown)
+    if (lValue != _Discard)
     {
-        (*result) = bc->GenTemporary(c, expType);
-    }
+        if (!result)
+        {
+            // XXX: this is super dangerous
+            // FIXME remove stackref as soon as possible!
+            BCValue tmp;
+            result = &tmp;
+        }
 
+        if (op == exp_signed_integer)
+        {
+                (*result) = imm32(cast(int32_t)exp->ValueI64);
+            goto Lret;
+        }
+
+
+        if (result->vType == BCValueType_Unknown)
+        {
+            (*result) = bc->GenTemporary(c, expType);
+        }
+    }
 
     bool doBinAss = false;
     if (IsBinaryAssignExp(op))
@@ -509,6 +637,21 @@ static void MetaCCodegen_doExpression(metac_bytecode_ctx_t* ctx,
             MetaCCodegen_doExpression(ctx, enumMember->Value, result, _Rvalue);
         } break;
 
+        case exp_comma:
+        {
+            metac_sema_expression_t* r = exp;
+            while(r->Kind == exp_comma)
+            {
+                if (r->E1->Kind != exp_signed_integer)
+                {
+                    // skip the generation of integers we'll never see
+                    MetaCCodegen_doExpression(ctx, r->E1, 0, lValue);
+                }
+                r = r->E2;
+            }
+            MetaCCodegen_doExpression(ctx, r, result, lValue);
+        } break;
+
         case exp_string:
         {
             // this should not happen, we should have made it into a pointer I think
@@ -525,11 +668,25 @@ static void MetaCCodegen_doExpression(metac_bytecode_ctx_t* ctx,
         } break;
         case exp_assign:
         {
-            assert(exp->E1->Kind == exp_variable);
+            if (exp->E1->Kind != exp_variable)
+            {
+                fprintf(stderr, "left hand side of assignment is not a variable but a %s ..."
+                                " this should not happen; we are past semantic analysis\n", "");
+                assert(0);
+            }
+
 
             //metac_identifier_ptr_t idPtr = e->E1->Variable->VarIdentifier;
             //metac_identifier_ptr_t vStorePtr = GetVStoreID(vstore, e->E1);
-            bc->Set(c, result, &rhs);
+            if (lValue != _Discard)
+            {
+                bc->Set(c, result, &rhs);
+            }
+
+            if (exp->E1->Variable->Storage.Kind == storage_global)
+            {
+                StoreToHeapRef(c, result, MetaCCodegen_GetTypeABISize(ctx, exp->E1->TypeIndex));
+            }
             //bc->Set(c, result, &lhs);
         } break;
 
@@ -625,6 +782,7 @@ static void MetaCCodegen_doExpression(metac_bytecode_ctx_t* ctx,
         {
             if (MetaCCodegen_AccessVariable(ctx, exp->Variable, result, lValue))
             {
+                LoadFromHeapRef(ctx->c, result, MetaCCodegen_GetTypeABISize(ctx, exp->TypeIndex));
                 // Info("Indirected access");
             }
         } break;
