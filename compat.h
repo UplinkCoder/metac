@@ -1,3 +1,6 @@
+#ifndef _COMPAT_H_
+#define _COMPAT_H_
+
 #define cast(T) (T)
 
 #ifndef ARRAY_SIZE
@@ -30,8 +33,6 @@ typedef unsigned int uint32_t;
     typedef signed long int int64_t;
     typedef unsigned long int uint64_t;
 #  endif
-#  define UINT32_MAX (cast(uint32_t)0xffffffff)
-#  define UINT16_MAX (cast(uint16_t)0xffff)
 
 #else
 #  include <stdint.h>
@@ -90,3 +91,4 @@ typedef unsigned char _Bool;
 #  endif
 #endif
 
+#endif
