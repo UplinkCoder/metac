@@ -9,7 +9,8 @@
 #include "metac_codegen.h"
 
 #include <stdarg.h>
-uint32_t MetaCCodegen_GetTypeABISize(metac_bytecode_ctx_t* ctx, metac_type_index_t type)
+uint32_t MetaCCodegen_GetTypeABISize(metac_bytecode_ctx_t* ctx,
+                                     metac_type_index_t type)
 {
     return 0;
 }
@@ -24,6 +25,11 @@ BCType MetaCCodegen_GetBCType(metac_bytecode_ctx_t* ctx, metac_type_index_t type
     if (type.Kind == type_index_enum)
         result.type = BCTypeEnum_i32;
 
+    if (type.Kind == type_index_tuple)
+    {
+        result.type = BCTypeEnum_Tuple;
+        result.typeIndex = type.Index;
+    }
     if (type.Kind == type_index_basic)
     {
         switch(type.Index)
@@ -144,9 +150,10 @@ void MetaCCodegen_doGlobal(metac_bytecode_ctx_t* ctx, metac_sema_declaration_t* 
 
 
 long MetaCCodegen_RunFunction(metac_bytecode_ctx_t* self,
-                             metac_bytecode_function_t f,
-                             metac_alloc_t* interpAlloc,
-                             const char* fargs, ...)
+                              metac_bytecode_function_t f,
+                              metac_alloc_t* interpAlloc,
+                              BCHeap* heap,
+                              const char* fargs, ...)
 {
     va_list l;
     va_start(l, fargs);
@@ -182,7 +189,7 @@ long MetaCCodegen_RunFunction(metac_bytecode_ctx_t* self,
     }
     va_end(l);
 
-    BCValue result = bc->Run(self->c, f.FunctionIndex, args, nArgs);
+    BCValue result = bc->Run(self->c, f.FunctionIndex, args, nArgs, heap);
     return result.imm32.imm32;
 }
 
@@ -482,7 +489,10 @@ static void LoadFromHeapRef(void* c, BCValue* hrv, uint32_t abiSize)
         }
     }
 }
+static void StructMemberInit(void *c, BCValue* result, uint32_t offset, BCValue* initValue, uint32_t memberSz)
+{
 
+}
 
 static void StoreToHeapRef(void* c, BCValue* hrv, uint32_t abiSize)
 {
@@ -599,7 +609,7 @@ static void MetaCCodegen_doExpression(metac_bytecode_ctx_t* ctx,
             MetaCCodegen_doExpression(ctx, exp->E1, &lhs, (opIsPostIncDec ? _Lvalue : _Rvalue));
         }
     }
-    else if (IsBinaryExp(op))
+    else if (IsBinaryExp(op) && op != exp_comma)
     {
         if (!doBinAss)
             lhs = bc->GenTemporary(c, expType);
@@ -694,8 +704,67 @@ static void MetaCCodegen_doExpression(metac_bytecode_ctx_t* ctx,
 
         case exp_tuple:
         {
-            // result = TupleToValue(c, exp);
-            assert(0);
+            if (result)
+            {
+                metac_type_index_t typeIndex = exp->TypeIndex;
+                // (*result) = bc->GenTemporary(c, MetaCCodegen_GetBCType(ctx, typeIndex));
+                // result = TupleToValue(c, exp);
+                STACK_ARENA_ARRAY(metac_type_index_t, types, 32, &ctx->Allocator);
+                STACK_ARENA_ARRAY(uint32_t, offsets, 32, &ctx->Allocator);
+                STACK_ARENA_ARRAY(BCType, bcTypes, 32, &ctx->Allocator);
+                STACK_ARENA_ARRAY(BCValue, bcValues, 32, &ctx->Allocator);
+                uint32_t currentOffset = 0;
+                BCValue sz;
+
+
+                for(uint32_t i = 0; i < exp->TupleExpressionCount; i++)
+                {
+                    metac_sema_expression_t te = *exp->TupleExpressions[i];
+                    metac_type_index_t typeIdx = te.TypeIndex;
+                    BCType bcType = MetaCCodegen_GetBCType(ctx, typeIdx);
+                    BCValue bcValue = {0};
+
+                    MetaCCodegen_doExpression(ctx, exp->TupleExpressions[i], &bcValue, _Rvalue);
+                    ARENA_ARRAY_ADD(types, typeIdx);
+                    ARENA_ARRAY_ADD(offsets, currentOffset);
+                    ARENA_ARRAY_ADD(bcTypes, bcType);
+                    ARENA_ARRAY_ADD(bcValues, bcValue);
+
+                    currentOffset += MetaCCodegen_GetStorageSize(ctx, bcType);
+                }
+                sz = imm32(currentOffset);
+
+                bc->Alloc(c, result, &sz);
+                BCValue address = bc->GenTemporary(c, BCType_i32);
+                bc->Set(c, &address, result);
+                for(uint32_t i = 0; i < exp->TupleExpressionCount; i++)
+                {
+                    metac_sema_expression_t te = *exp->TupleExpressions[i];
+                    uint32_t memberSz = MetaCCodegen_GetStorageSize(ctx, bcTypes[i]);
+
+                    if (te.Kind == exp_signed_integer)
+                    {
+                        BCValue val = imm32(cast(int32_t)te.ValueI64);
+                        bc->Store32(c, &address, &val);
+                    }
+                    else if (te.TypeIndex.v == TYPE_INDEX_V(type_index_basic, type_int))
+                    {
+                        bc->Store32(c, &address, bcValues + i);
+                    }
+                    else
+                    {
+                        StructMemberInit(c, result, offsets[i], bcValues + i, memberSz);
+                    }
+
+                    BCValue addToOffset = imm32(memberSz);
+                    bc->Add3(c, &address, &address, &addToOffset);
+                }
+
+                ARENA_ARRAY_FREE(bcTypes);
+                ARENA_ARRAY_FREE(types);
+                ARENA_ARRAY_FREE(offsets);
+                ARENA_ARRAY_FREE(bcValues);
+            }
         } break;
 
         case exp_type:

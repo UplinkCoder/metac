@@ -89,7 +89,7 @@ typedef void (*F64ToF32_t) (void* ctx, BCValue *result, const BCValue* rhs);
 typedef void (*Memcmp_t) (void* ctx, BCValue *result, const BCValue* lhs, const BCValue* rhs);
 typedef void (*Realloc_t) (void* ctx, BCValue *result, const BCValue* lhs, const BCValue* rhs, const uint32_t size);
 
-typedef BCValue (*run_t) (void* ctx, uint32_t fnIdx, const BCValue* args, uint32_t n_args);
+typedef BCValue (*run_t) (void* ctx, uint32_t fnIdx, const BCValue* args, uint32_t n_args, BCHeap* heap);
 typedef void (*destroy_instance_t) (void* ctx);
 typedef void (*new_instance_t) (void ** result_p);
 typedef uint32_t (*sizeof_instance_t) (void);
@@ -189,7 +189,7 @@ typedef struct BackendInterface
     void (*const Memcmp) (void* ctx, BCValue *result, const BCValue* lhs, const BCValue* rhs);
     void (*const Realloc) (void* ctx, BCValue *result, const BCValue* lhs, const BCValue* rhs, const uint32_t size);
 
-    BCValue (*const Run) (void* ctx, uint32_t fnIdx, const BCValue* args, uint32_t n_args);
+    BCValue (*const Run) (void* ctx, uint32_t fnIdx, const BCValue* args, uint32_t n_args, BCHeap* heap);
 
     void (*const destroy_instance) (void* ctx);
     void (*const new_instance) (void ** result_p);

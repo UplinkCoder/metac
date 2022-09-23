@@ -14,7 +14,7 @@ bool errored = false;
 #endif
 static inline uint32_t EstimateNumberOfTokens(uint32_t length)
 {
-    uint32_t aligned_length = (length + 16) & ~15;
+    uint32_t aligned_length = (length + 15) & ~15;
     float token_estimate = ( aligned_length / 4.3f );
     return (((uint32_t) token_estimate) + 128) & ~127;
 }
@@ -132,6 +132,4 @@ void ParseFile(metac_parser_t* parser,
     }
 }
 
-#ifdef DRIVER_MAIN
-#endif
 #undef ALIGN4

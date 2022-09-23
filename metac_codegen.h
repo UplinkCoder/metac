@@ -116,9 +116,12 @@ static void MetaCCodegen_doExpression(metac_bytecode_ctx_t* ctx,
                                       BCValue* result,
                                       metac_value_type_t lValue);
 
+uint32_t MetaCCodegen_GetStorageSize(metac_bytecode_ctx_t* ctx, BCType bcType);
+
 long MetaCCodegen_RunFunction(metac_bytecode_ctx_t* self,
-                             metac_bytecode_function_t f,
-                             metac_alloc_t* interpAlloc,
-                             const char* fargs, ...);
+                              metac_bytecode_function_t f,
+                              metac_alloc_t* interpAlloc,
+                              BCHeap* heap,
+                              const char* fargs, ...);
 
 #endif

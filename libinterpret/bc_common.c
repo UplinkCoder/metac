@@ -115,6 +115,9 @@ const char*  BCTypeEnum_toChars(const BCTypeEnum* self)
 
     case BCTypeEnum_Slice:
         return "BCTypeEnum_Slice";
+
+    case BCTypeEnum_Tuple:
+        return "BCTypeEnum_Tuple";
     }
 
     assert(0);
@@ -582,6 +585,7 @@ const uint32_t BCTypeEnum_basicTypeSize(const BCTypeEnum bct)
     case BCTypeEnum_Struct:
     case BCTypeEnum_Class:
     case BCTypeEnum_AArray:
+    case BCTypeEnum_Tuple:
         {
             result = 0;
         } break;
@@ -707,7 +711,7 @@ EXTERN_C bool BCType_isBasicBCType(BCType bct)
 {
     return !(bct.type == BCTypeEnum_Struct || bct.type == BCTypeEnum_Array || bct.type == BCTypeEnum_Class
             || bct.type == BCTypeEnum_Slice || bct.type == BCTypeEnum_Undef || bct.type == BCTypeEnum_Ptr
-            || bct.type == BCTypeEnum_AArray);
+            || bct.type == BCTypeEnum_AArray || bct.type == BCTypeEnum_Tuple);
 }
 
 EXTERN_C bool BCValue_isStackValueOrParameter(const BCValue* val)
@@ -766,6 +770,15 @@ EXTERN_C BCValue imm64_(uint64_t value, bool signed_)
     ret.name = 0;
     ret.imm64.imm64 = value;
     return ret;
+}
+
+static inline BCHeap AllocDefaultHeap(void)
+{
+    BCHeap newHeap = {0};
+    newHeap.heapMax = 1 << 14;
+    newHeap.heapData = (uint8_t*)malloc(newHeap.heapMax);
+    newHeap.heapSize = 128;
+    return newHeap;
 }
 
 /*

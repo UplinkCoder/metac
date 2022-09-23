@@ -2800,17 +2800,14 @@ static inline void BCGen_Ret(BCGen* self, const BCValue* val)
         BCGen_destroyTemporary(self, (BCValue*)val);
 }
 
-static inline BCValue BCGen_run(BCGen* self, uint32_t fnIdx, BCValue* args, uint32_t n_args)
+static inline BCValue BCGen_run(BCGen* self, uint32_t fnIdx,
+                                BCValue* args, uint32_t n_args, BCHeap* heap)
 {
     BCValue result;
 
     assert(self->finalized);
 
-    BCHeap newHeap = {0};
-    newHeap.heapMax = 1 << 14;
-    newHeap.heapData = (uint8_t*)malloc(newHeap.heapMax);
-
-    result = BCGen_interpret(self, fnIdx, args, n_args, &newHeap);
+    result = BCGen_interpret(self, fnIdx, args, n_args, heap);
 
     return result;
 }
@@ -2836,9 +2833,6 @@ void BCGen_endJmp(BCGen* self, BCAddr atIp, BCLabel target)
 
 #if 0
 {
-
-
-
     void Prt(BCValue value, bool isString = false)
     {
         if (value.vType == BCValueType_Immediate)

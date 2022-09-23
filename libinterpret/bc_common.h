@@ -108,6 +108,8 @@ typedef enum BCTypeEnum
     BCTypeEnum_Class,
     BCTypeEnum_Ptr,
     BCTypeEnum_Slice,
+
+    BCTypeEnum_Tuple,
 } BCTypeEnum;
 
 EXTERN_C const char* BCTypeEnum_toChars(const BCTypeEnum* self);
@@ -649,6 +651,8 @@ static const BCTypeEnum smallIntegerTypes[] = {BCTypeEnum_u16, BCTypeEnum_u8,
 #define ARRAY_SIZE(A) (sizeof(A) / sizeof(A[0]))
 
 EXTERN_C BCTypeEnum BCTypeEnum_commonTypeEnum(BCTypeEnum lhs, BCTypeEnum rhs);
+static inline BCHeap AllocDefaultHeap();
+
 #undef offsetof
 
 static const BCType BCType_i32 = {BCTypeEnum_i32};

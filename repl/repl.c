@@ -292,9 +292,27 @@ void Presemantic_(repl_state_t* self)
     }
 }
 
+void ConvertTupleElementToExp(metac_semantic_state_t* sema,
+                              metac_sema_expression_t** dstP, metac_type_index_t elemType,
+                              uint32_t offset, BCHeap* heap)
+{
+    metac_expression_t exp = {0};
+    *dstP = AllocNewSemaExpression(sema, &exp);
+    metac_sema_expression_t* dst = *dstP;
+
+    if (elemType.v == TYPE_INDEX_V(type_index_basic, type_int))
+    {
+        int32_t value = *cast(int32_t*)(heap->heapData + offset);
+        dst->Kind = exp_signed_integer;
+        dst->TypeIndex = elemType;
+        dst->ValueI64 = value;
+    }
+}
+
 metac_sema_expression_t
 EvaluateExpression(metac_semantic_state_t* sema,
-                   metac_sema_expression_t* e)
+                   metac_sema_expression_t* e,
+                   BCHeap* heap)
 {
     metac_alloc_t interpAlloc;
     Allocator_Init(&interpAlloc, &sema->TempAlloc, 0);
@@ -315,7 +333,7 @@ EvaluateExpression(metac_semantic_state_t* sema,
     MetaCCodegen_End(&ctx);
 
     uint32_t resultInt =
-        MetaCCodegen_RunFunction(&ctx, fCode, &interpAlloc, "", 0);
+        MetaCCodegen_RunFunction(&ctx, fCode, &interpAlloc, heap, "", 0);
 
     metac_sema_expression_t result;
     // BCGen_printFunction(c);
@@ -325,6 +343,35 @@ EvaluateExpression(metac_semantic_state_t* sema,
         result.Kind = exp_type;
         result.TypeIndex.v = TYPE_INDEX_V(type_index_basic, type_type);
         result.TypeExp.v = resultInt;
+    }
+    else if (TYPE_INDEX_KIND(e->TypeIndex) == type_index_tuple)
+    {
+        metac_type_tuple_t* typeTuple =
+            TupleTypePtr(ctx.Sema, TYPE_INDEX_INDEX(e->TypeIndex));
+
+        const uint32_t count = typeTuple->typeCount;
+
+        uint32_t currrentHeapOffset =  resultInt;
+
+        STACK_ARENA_ARRAY(metac_sema_expression_t*, tupleExps, 32, &sema->TempAlloc)
+
+        ARENA_ARRAY_ENSURE_SIZE(tupleExps, count);
+
+        result.Kind = exp_tuple;
+        result.TypeIndex = e->TypeIndex;
+
+        for(uint32_t i = 0; i < count; i++)
+        {
+            BCType bcType = MetaCCodegen_GetBCType(&ctx, typeTuple->typeIndicies[i]);
+            ConvertTupleElementToExp(sema, tupleExps + i, typeTuple->typeIndicies[i],
+                                     currrentHeapOffset, heap);
+            currrentHeapOffset += MetaCCodegen_GetStorageSize(&ctx, bcType);
+        }
+
+        result.TupleExpressions = tupleExps;
+        result.TupleExpressionCount = count;
+
+        STACK_ARENA_ARRAY_TO_HEAP(tupleExps, &sema->TempAlloc);
     }
     else
     {
@@ -386,6 +433,8 @@ void Repl_Init(repl_state_t* self)
     self->LPP.LexerState.Column = 1;
     self->ParseMode = repl_mode_ee;
     self->CompilerInterface = 0;
+
+    self->Heap = AllocDefaultHeap();
 
     self->SrcBuffer = 0;
     self->FreePtr = 0;
@@ -793,7 +842,7 @@ LswitchMode:
                 if (!result)
                     goto LnextLine;
 
-                metac_sema_expression_t eval_exp = EvaluateExpression(&repl->SemanticState, result);
+                metac_sema_expression_t eval_exp = EvaluateExpression(&repl->SemanticState, result, &repl->Heap);
                 result = &eval_exp;
 
                 const char* result_str;
