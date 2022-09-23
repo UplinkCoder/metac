@@ -2249,12 +2249,15 @@ decl_type_t* MetaCParser_ParseTypeDeclaration(metac_parser_t* self, metac_declar
                     field->Next = (decl_field_t*)_emptyPointer;
                     metac_declaration_t *decl =
                         (metac_declaration_t*)MetaCParser_ParseDeclaration(self, (metac_declaration_t*)struct_);
-                    MetaCParser_Match(self, tok_semicolon);
+
                     assert(decl->Hash != 0);
                     hash = CRC32C_VALUE(hash, decl->Hash);
 
                     if (decl->Kind == decl_comment)
                         continue;
+
+                    // only match the semicolon if we didn't parse a comment
+                    MetaCParser_Match(self, tok_semicolon);
 
                     if (decl->Kind == decl_variable)
                     {
