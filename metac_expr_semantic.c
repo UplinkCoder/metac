@@ -430,7 +430,8 @@ metac_sema_expression_t* MetaCSemantic_doExprSemantic_(metac_semantic_state_t* s
                 expr->TupleExpressionCount;
 
             result->TupleExpressionCount = tupleExpressionCount;
-            //result->TupleExpressions = AllocNewSemaExpression(self, expr);
+            result->TupleExpressions = AllocNewSemaExpression(self, expr);
+
             for(uint32_t i = 0;
                 i < expr->TupleExpressionCount;
                 i++)

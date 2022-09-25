@@ -1150,6 +1150,23 @@ static inline void PrintSemaType(metac_printer_t* self,
                 PrintIdentifier(self, unionName);
             }
         } break;
+        case type_index_tuple:
+        {
+            uint32_t tupleIdx = TYPE_INDEX_INDEX(typeIndex);
+            PrintString(self, "{", sizeof("{") - 1);
+            metac_type_tuple_t* tupleType = TupleTypePtr(sema, tupleIdx);
+            const int32_t typeCount = cast(int32_t)tupleType->typeCount;
+            for(int32_t i = 0; i < typeCount - 1; i++)
+            {
+                PrintSemaType(self, sema, tupleType->typeIndicies[i]);
+                PrintString(self, ", ", sizeof(", ") - 1);
+            }
+            if (typeCount)
+            {
+                PrintSemaType(self, sema, tupleType->typeIndicies[typeCount - 1]);
+            }
+            PrintString(self, "}", 1);
+        } break;
         case type_index_enum:
         {
             uint32_t enumIdx = TYPE_INDEX_INDEX(typeIndex);

@@ -491,7 +491,7 @@ static void LoadFromHeapRef(void* c, BCValue* hrv, uint32_t abiSize)
 }
 static void StructMemberInit(void *c, BCValue* result, uint32_t offset, BCValue* initValue, uint32_t memberSz)
 {
-
+    assert(0);
 }
 
 static void StoreToHeapRef(void* c, BCValue* hrv, uint32_t abiSize)
@@ -748,6 +748,10 @@ static void MetaCCodegen_doExpression(metac_bytecode_ctx_t* ctx,
                         bc->Store32(c, &address, &val);
                     }
                     else if (te.TypeIndex.v == TYPE_INDEX_V(type_index_basic, type_int))
+                    {
+                        bc->Store32(c, &address, bcValues + i);
+                    }
+                    else if (te.TypeIndex.v == TYPE_INDEX_V(type_index_basic, type_type))
                     {
                         bc->Store32(c, &address, bcValues + i);
                     }

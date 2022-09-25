@@ -307,6 +307,13 @@ void ConvertTupleElementToExp(metac_semantic_state_t* sema,
         dst->TypeIndex = elemType;
         dst->ValueI64 = value;
     }
+    else if (elemType.v == TYPE_INDEX_V(type_index_basic, type_type))
+    {
+        metac_type_index_t value = *cast(metac_type_index_t*)(heap->heapData + offset);
+        dst->Kind = exp_type;
+        dst->TypeIndex = elemType;
+        dst->TypeExp = value;
+    }
 }
 
 metac_sema_expression_t

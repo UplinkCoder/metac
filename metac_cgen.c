@@ -4,10 +4,6 @@
 
 extern const BackendInterface BCGen_interface;
 
-//FIXME we never hit this ... why?
-// maybe an issue with the declaration store or maybe with
-// aligning the tables ....
-
 int GenerateFunctionCode(metac_codegen_function_t* cgfunction, void* c)
 {
     decl_function_t* func = cgfunction->decl_func;
