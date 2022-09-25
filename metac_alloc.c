@@ -150,7 +150,7 @@ LsetResult:
 
     if (!arena)
     {
-        // we couldn't find a sufficienlty sized arena to alloc from
+        // we couldn't find a sufficiently sized arena to alloc from
         // let's look in our freelist
         if (arenas != allocator->Freelist)
         {
