@@ -328,10 +328,14 @@ static inline void PrintType(metac_printer_t* self, decl_type_t* type)
             else if (type->TypeKind == type_modifiers)
             {
                 // we already printed the modifiers
+            } else if (type->TypeKind == type_tuple)
+            {
+                goto LprintTuple;
             } else
                 assert(0);
         } break;
         case decl_type_tuple :
+    LprintTuple:
         {
             decl_type_tuple_t* typeTuple = cast(decl_type_tuple_t*) type;
             const int32_t typeCount = cast(int32_t)typeTuple->TypeCount;

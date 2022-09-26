@@ -885,16 +885,16 @@ static void MetaCCodegen_doExpression(metac_bytecode_ctx_t* ctx,
         {
             bc->Set(c, result, &lhs);
             BCValue one = imm32(1);
-            (op == exp_post_increment ? bc->Sub3(c, &lhs, &lhs, &one)
-                                      : bc->Add3(c, &lhs, &lhs, &one));
+            (op == exp_post_increment ? bc->Add3(c, &lhs, &lhs, &one)
+                                      : bc->Sub3(c, &lhs, &lhs, &one));
         } break;
 
         case exp_increment:
         case exp_decrement:
         {
             BCValue one = imm32(1);
-            (op == exp_increment ? bc->Sub3(c, &lhs, &lhs, &one)
-                                 : bc->Add3(c, &lhs, &lhs, &one));
+            (op == exp_increment ? bc->Add3(c, &lhs, &lhs, &one)
+                                 : bc->Sub3(c, &lhs, &lhs, &one));
             bc->Set(c, result, &lhs);
         } break;
 
@@ -908,6 +908,7 @@ static void MetaCCodegen_doExpression(metac_bytecode_ctx_t* ctx,
             STACK_ARENA_ARRAY(BCValue, args, 16, &ctx->Allocator);
             const static BCValue nullValue = {BCValueType_Unknown};
 
+            // printf("argCount: %u\n", call.ArgumentCount);
             for(uint32_t i = 0; i < call.ArgumentCount; i++)
             {
                 ARENA_ARRAY_ADD(args, nullValue);
