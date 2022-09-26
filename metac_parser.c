@@ -4,6 +4,7 @@
 #define TYPE_EXP
 #include "metac_identifier_table.c"
 
+#include "metac_alloc.c"
 #include "metac_lexer.c"
 #include "metac_parser.h"
 #include "metac_lpp.h"
@@ -88,6 +89,8 @@ void MetaCParser_Init(metac_parser_t* self)
     InitSpecialIdentifier(self);
     MetaCPrinter_Init(&self->DebugPrinter,
                       &self->IdentifierTable, &self->StringTable);
+
+    Allocator_Init(&self->Allocator, 0, 0);
 }
 
 void MetaCParser_Free(metac_parser_t* self)
@@ -866,6 +869,7 @@ static inline bool IsTypeToken(metac_token_enum_t tokenType)
             || tokenType == tok_kw_unsigned
             || tokenType == tok_kw_signed
             || tokenType == tok_star
+            || tokenType == tok_lBrace
             || tokenType == tok_lBracket
             || tokenType == tok_rBracket
             || tokenType == tok_kw_struct
@@ -2128,7 +2132,30 @@ decl_type_t* MetaCParser_ParseTypeDeclaration(metac_parser_t* self, metac_declar
 
     while(IsTypeToken(tokenType))
     {
-        if (tokenType == tok_identifier)
+        if (tokenType == tok_lBrace)
+        {
+            // MetaCParser_Match(self, tok_lBrace);
+            STACK_ARENA_ARRAY(decl_type_t*, types, 16, &self->Allocator)
+            decl_type_tuple_t* typeTuple = AllocNewDeclaration(decl_type_tuple, &result);
+            type = (decl_type_t*) typeTuple;
+            typeTuple->TypeKind = type_tuple;
+
+            while(!MetaCParser_PeekMatch(self, tok_rBrace, 1))
+            {
+                ARENA_ARRAY_ADD(types,
+                    MetaCParser_ParseTypeDeclaration(self, type, 0));
+                if (MetaCParser_PeekMatch(self, tok_comma, 1))
+                {
+                    MetaCParser_Match(self, tok_comma);
+                }
+            }
+            MetaCParser_Match(self, tok_rBrace);
+            STACK_ARENA_ARRAY_TO_HEAP(types, &self->Allocator);
+            typeTuple->Types = types;
+            typeTuple->TypeCount = typesCount;
+            break;
+        }
+        else if (tokenType == tok_identifier)
         {
             type->TypeKind = type_identifier;
             type->TypeIdentifier = RegisterIdentifier(self, currentToken);

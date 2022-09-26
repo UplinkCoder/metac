@@ -6,6 +6,7 @@
 #define emptyPointer ((void*)0x1)
 
 #include "compat.h"
+#include "metac_alloc.h"
 #include "metac_lexer.h"
 #include "metac_parsetree.h"
 
@@ -56,6 +57,7 @@ typedef struct metac_parser_t
     metac_preprocessor_t* Preprocessor;
 #endif
     metac_location_t LastLocation;
+    metac_alloc_t Allocator;
 
     stmt_block_t* CurrentBlockStatement;
 

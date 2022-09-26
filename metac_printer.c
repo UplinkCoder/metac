@@ -328,10 +328,26 @@ static inline void PrintType(metac_printer_t* self, decl_type_t* type)
             else if (type->TypeKind == type_modifiers)
             {
                 // we already printed the modifiers
-            }
-            else
+            } else
                 assert(0);
         } break;
+        case decl_type_tuple :
+        {
+            decl_type_tuple_t* typeTuple = cast(decl_type_tuple_t*) type;
+            const int32_t typeCount = cast(int32_t)typeTuple->TypeCount;
+            PrintString(self, "{", 1);
+            for(int32_t i = 0; i < typeCount - 1; i++)
+            {
+                PrintType(self, typeTuple->Types[i]);
+                PrintString(self, ", ", sizeof(", ") - 1);
+            }
+            if (typeCount)
+            {
+                PrintType(self, typeTuple->Types[typeCount - 1]);
+            }
+            PrintString(self, "}", 1);
+        } break;
+
         case decl_type_struct :
         {
             decl_type_struct_t* structType = (decl_type_struct_t*) type;
@@ -1004,6 +1020,26 @@ static inline void PrintExpression(metac_printer_t* self, metac_expression_t* ex
 
             PrintString(self, op, strlen(op));
         }
+
+        if (!IsBinaryExp(exp->E1->Kind))
+            PrintChar(self, '(');
+
+        PrintExpression(self, exp->E1);
+
+        if (!IsBinaryExp(exp->E1->Kind))
+            PrintChar(self, ')');
+    }
+    else if (exp->Kind == exp_increment || exp->Kind == exp_decrement)
+    {
+        const char* op = 0;
+        if (exp->Kind == exp_increment)
+            op = "++";
+        else if (exp->Kind == exp_decrement)
+            op = "--";
+
+        assert(op);
+
+        PrintString(self, op, strlen(op));
 
         if (!IsBinaryExp(exp->E1->Kind))
             PrintChar(self, '(');
