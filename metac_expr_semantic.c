@@ -426,11 +426,15 @@ metac_sema_expression_t* MetaCSemantic_doExprSemantic_(metac_semantic_state_t* s
         case exp_tuple:
         {
             exp_tuple_t* tupleElement = expr->TupleExpressionList;
-            const uint32_t tupleExpressionCount =
-                expr->TupleExpressionCount;
+            const uint32_t tupleExpressionCount = expr->TupleExpressionCount;
+            STACK_ARENA_ARRAY(metac_type_index_t, typeIndicies, 32, &self->TempAlloc)
+            STACK_ARENA_ARRAY(metac_sema_expression_t, tupleElements, 32, &self->TempAlloc)
+            ARENA_ARRAY_ENSURE_SIZE(tupleElements, tupleExpressionCount);
 
-            result->TupleExpressionCount = tupleExpressionCount;
-            result->TupleExpressions = AllocNewSemaExpression(self, expr);
+            // result->TupleExpressionCount = tupleExpressionCount;
+            // result->TupleExpressions = AllocNewSemaExpression(self, expr);
+
+            bool isTypeTuple = true;
 
             for(uint32_t i = 0;
                 i < expr->TupleExpressionCount;
@@ -438,20 +442,33 @@ metac_sema_expression_t* MetaCSemantic_doExprSemantic_(metac_semantic_state_t* s
             {
                 metac_expression_t *e = tupleElement->Expression;
                 tupleElement = tupleElement->Next;
-                metac_sema_expression_t** resultElem = result->TupleExpressions + i;
-                (*resultElem) = MetaCSemantic_doExprSemantic(self, e, 0);
+                metac_sema_expression_t* resultElem = result->TupleExpressions[i];
+                MetaCSemantic_doExprSemantic(self, e, resultElem);
+                ARENA_ARRAY_ADD(typeIndicies, resultElem->TypeIndex);
+                if (resultElem->Kind != exp_type)
+                {
+                    isTypeTuple &= 0;
+                }
             }
-            STACK_ARENA_ARRAY(metac_type_index_t, typeIndicies, 128, &self->TempAlloc);
 
-            for(uint32_t i = 0; i < tupleExpressionCount; i++)
+            if (isTypeTuple)
             {
-                metac_type_index_t typeIndex =
-                    (result->TupleExpressions[i])->TypeIndex;
-                ARENA_ARRAY_ADD(typeIndicies, typeIndex);
+                for(uint32_t i = 0; i < tupleExpressionCount; i++)
+                {
+                    metac_type_index_t typeIndex =
+                        (result->TupleExpressions[i])->TypeExp;
+                    typeIndicies[i] = typeIndex;
+                }
+                metac_expression_t typeExp = *expr;
+                typeExp.Kind = exp_type;
+                result = AllocNewSemaExpression(self, &typeExp);
             }
+
+
+
 #define tuple_key 0x55ee11
 
-           uint32_t hash = crc32c(tuple_key, typeIndicies,
+            uint32_t hash = crc32c(tuple_key, typeIndicies,
                 sizeof(metac_type_index_t) * expr->TupleExpressionCount);
             assert(typeIndiciesCount == tupleExpressionCount);
 
@@ -480,7 +497,15 @@ metac_sema_expression_t* MetaCSemantic_doExprSemantic_(metac_semantic_state_t* s
             }
 
             ARENA_ARRAY_FREE(typeIndicies);
-            result->TypeIndex = tupleIdx;
+            if (isTypeTuple)
+            {
+                result->TypeExp = tupleIdx;
+                result->TypeIndex.v = TYPE_INDEX_V(type_index_basic, type_type);
+            }
+            else
+            {
+                result->TypeIndex = tupleIdx;
+            }
         }
         break;
         case exp_dot_compiler:

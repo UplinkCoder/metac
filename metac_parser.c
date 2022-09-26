@@ -951,6 +951,7 @@ static bool CouldBeCast(metac_parser_t* self, metac_token_enum_t tok)
     metac_token_t* peek;
     bool seenStar = false;
     bool seenLBracket = false;
+    int seenLBrace = 0;
     int rParenPos = 0;
     for(int peekCount = 2;
         (peek = MetaCParser_PeekToken(self, peekCount)), peek;
@@ -959,12 +960,12 @@ static bool CouldBeCast(metac_parser_t* self, metac_token_enum_t tok)
         if (peek->TokenType == tok_lParen)
             return false;
 
-        if (peek->TokenType == tok_rParen)
+        else if (peek->TokenType == tok_rParen)
         {
             rParenPos = peekCount;
             break;
         }
-        if (peek->TokenType == tok_star)
+        else if (peek->TokenType == tok_star)
         {
             seenStar = true;
             if (peekCount == 2)
@@ -973,6 +974,24 @@ static bool CouldBeCast(metac_parser_t* self, metac_token_enum_t tok)
         else if (peek->TokenType == tok_rBracket)
         {
             break;
+        }
+        else if (peek->TokenType == tok_lBrace)
+        {
+            seenLBrace++;
+            continue;
+        }
+        else if (peek->TokenType == tok_rBrace)
+        {
+            seenLBrace--;
+            if (seenLBrace != 0)
+                continue;
+        }
+        else if (peek->TokenType == tok_comma)
+        {
+            if (seenLBrace == 0)
+                return false;
+            else
+                continue;
         }
         else if (peek->TokenType == tok_lBracket)
         {
@@ -984,7 +1003,7 @@ static bool CouldBeCast(metac_parser_t* self, metac_token_enum_t tok)
         {
             return false;
         }
-        if (!IsTypeToken(peek->TokenType))
+        else if (!IsTypeToken(peek->TokenType))
         {
             return false;
         }
@@ -1016,7 +1035,8 @@ typedef enum typescan_flags_t
 #define U32(VAR) \
     (*(uint32_t*)(&VAR))
 
-static inline bool CouldBeType(metac_parser_t* self, metac_token_enum_t tok, parse_expression_flags_t eflags)
+static inline bool CouldBeType(metac_parser_t* self,
+                               metac_token_enum_t tok, parse_expression_flags_t eflags)
 {
     bool result = false;
     metac_token_t* peek = 0;
@@ -1042,7 +1062,16 @@ static inline bool CouldBeType(metac_parser_t* self, metac_token_enum_t tok, par
         // if we then see an identifier after the star
         // the expression cannot be a type literal
         if (tok == tok_star)
+        {
             U32(flags) |= TypeScan_SeenStar;
+        }
+#ifndef PARSE_TYPE_TUPLE_EXP
+        else if (tok == tok_lBrace)
+        {
+            result = false;
+            break;
+        }
+#endif
         else if (((flags & TypeScan_SeenStar) != 0)
               && tok == tok_identifier)
         {
@@ -1103,20 +1132,6 @@ metac_expression_t* MetaCParser_ParsePrimaryExpression(metac_parser_t* self, par
         invalidLocation);
     uint32_t hash = 0;
 
-#ifdef TYPE_EXP
-    if (CouldBeType(self, tokenType, flags))
-    {
-        decl_type_t* type =
-            MetaCParser_ParseTypeDeclaration(self, 0, 0);
-        result = AllocNewExpression(exp_type);
-        result->TypeExp = type;
-        MetaCLocation_Expand(&loc,
-            self->LocationStorage.Locations[result->TypeExp->LocationIdx - 4]);
-        result->Hash = CRC32C_VALUE(type_key, result->TypeExp->Hash);
-    }
-    else
-#endif
-
     if (tokenType == tok_lParen && CouldBeCast(self, tokenType))
     {
         hash = cast_key;
@@ -1145,6 +1160,18 @@ metac_expression_t* MetaCParser_ParsePrimaryExpression(metac_parser_t* self, par
         MetaCLocation_Expand(&loc, self->LocationStorage.Locations[result->CastExp->LocationIdx - 4]);
         result->Hash = hash;
     }
+#ifdef TYPE_EXP
+    else if (CouldBeType(self, tokenType, flags))
+    {
+        decl_type_t* type =
+            MetaCParser_ParseTypeDeclaration(self, 0, 0);
+        result = AllocNewExpression(exp_type);
+        result->TypeExp = type;
+        MetaCLocation_Expand(&loc,
+            self->LocationStorage.Locations[result->TypeExp->LocationIdx - 4]);
+        result->Hash = CRC32C_VALUE(type_key, result->TypeExp->Hash);
+    }
+#endif
     else if (tokenType == tok_uint)
     {
         MetaCParser_Match(self, tok_uint);

@@ -88,7 +88,10 @@ metac_type_index_t MetaCSemantic_GetTypeIndex(metac_semantic_state_t* state,
             }
         }
     }
-
+    else if (typeKind == type_auto)
+    {
+        result.v = TYPE_INDEX_V(type_index_basic, type_auto);
+    }
     return result;
 }
 
@@ -632,6 +635,10 @@ metac_type_index_t MetaCSemantic_TypeSemantic(metac_semantic_state_t* self,
     {
         result = MetaCSemantic_GetTypeIndex(self, type_type, type);
     }
+    else if (typeKind == type_auto)
+    {
+        result = MetaCSemantic_GetTypeIndex(self, type_auto, type);
+    }
     else if (type->Kind == decl_type_array)
     {
         decl_type_array_t* arrayType =
@@ -689,9 +696,9 @@ metac_type_index_t MetaCSemantic_TypeSemantic(metac_semantic_state_t* self,
     else if (type->Kind == decl_type_typeof)
     {
         decl_type_typeof_t* type_typeof = cast(decl_type_typeof_t*) type;
-        metac_sema_expression_t dummy;
+
         metac_sema_expression_t* se =
-            MetaCSemantic_doExprSemantic(self, type_typeof->Exp, &dummy);
+            MetaCSemantic_doExprSemantic(self, type_typeof->Exp, 0);
         result = se->TypeIndex;
     }
     else if (type->Kind == decl_type_enum)
@@ -938,6 +945,10 @@ LtryAgian: {}
             printf("Empty node during lookup\n");
             assert(0);
         }
+    }
+    else if (typeKind == type_tuple)
+    {
+        printf("Tuple type-semantic placeholder\n");
     }
     else
     {
