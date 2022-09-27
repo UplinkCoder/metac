@@ -45,7 +45,7 @@ static inline void HandoffType(metac_semantic_state_t* dstState,
     {
         case type_index_ptr:
         {
-            metac_type_ptr_t tmpSlot = *PtrTypePtr(srcState, TYPE_INDEX_INDEX(idx));
+            metac_type_ptr_t tmpSlot = *PtrTypePtr(cast(metac_semantic_state_t*)srcState, TYPE_INDEX_INDEX(idx));
             metac_type_index_t newElem = tmpSlot.ElementType;
             HandoffType(dstState, srcState, &newElem);
             tmpSlot.ElementType = newElem;
@@ -81,7 +81,7 @@ static inline void HandoffType(metac_semantic_state_t* dstState,
                 i++)
             {
                 metac_type_index_t elmT =
-                    MetaCSemantic_GetElementType(srcState, newParams[i]);
+                    MetaCSemantic_GetElementType(cast(metac_semantic_state_t*)srcState, newParams[i]);
                 HandoffType(dstState, srcState, newParams + i);
             }
             if (tmpSlot.ParameterTypeCount != 0)
@@ -236,7 +236,7 @@ void MetaCSemantic_Handoff(metac_semantic_state_t* self, metac_sema_declaration_
         self, newOwner, decl, 0
     };
 
-    MetaCNode_TreeWalk_Real(decl, HandoffWalker, &handoff_context);
+    MetaCNode_TreeWalk_Real(METAC_NODE(decl), HandoffWalker, &handoff_context);
 
     *declP = (metac_sema_declaration_t*)handoff_context.result;
 }

@@ -1,23 +1,24 @@
 #define ACCEL ACCEL_TABLE
 
-#include "../compat.h"
+#include "../os/compat.h"
 #ifndef NO_FIBERS
-#  include "../metac_task.c"
+#  include "../os/metac_task.c"
 #endif
-#include "../metac_parser_obj.c"
-#include "../metac_semantic_obj.c"
-#include "../metac_driver.c"
-#include "../metac_lpp.c"
-#include "../metac_compiler_interface.h"
-#include "../bsr.h"
-#include "../crc32c.h"
+
+#include "../parser/metac_parser_obj.c"
+#include "../semantic/metac_semantic_obj.c"
+#include "../driver/metac_driver.c"
+#include "../driver/metac_lpp.c"
+#include "../compiler_intrinsics/metac_compiler_interface.h"
+#include "../os/bsr.h"
+#include "../hash/crc32c.h"
 #include "../semantic/handoff.c"
-#include "../int_to_str.c"
-#include <stdio.h>
-#include "../metac_codegen.h"
-// #include "exp_eval.c"
-#include "../metac_type_table.h"
+#include "../utils/int_to_str.c"
+#include "../codegen/metac_codegen.h"
+#include "../semantic/metac_type_table.h"
 #include "repl.h"
+
+#include <stdio.h>
 
 const char* MetaCTokenEnum_toChars(metac_token_enum_t tok);
 
@@ -191,7 +192,10 @@ void Presemantic_(repl_state_t* self)
         ReadFileAndZeroTerminate("metac_compiler_interface.h");
     if (!fCompilterInterface.FileContent0)
         fCompilterInterface =
-        ReadFileAndZeroTerminate("../metac_compiler_interface.h");
+        ReadFileAndZeroTerminate("compiler_intrinsics/metac_compiler_interface.h");
+    if (!fCompilterInterface.FileContent0)
+        fCompilterInterface =
+        ReadFileAndZeroTerminate("../compiler_intrinsics/metac_compiler_interface.h");
 
     if (fCompilterInterface.FileContent0)
     {
@@ -272,11 +276,12 @@ void Presemantic_(repl_state_t* self)
                 MSGF("found struct : '%s'\n",
                     IdentifierPtrToCharPtr(&tmpParser.IdentifierTable, printIdentifier));
 
-                compilerStruct = MetaCSemantic_doDeclSemantic(&self->SemanticState, struct_);
+                compilerStruct = (metac_type_aggregate_t*)
+                    MetaCSemantic_doDeclSemantic(&self->SemanticState, struct_);
                 metac_printer_t printer;
                 MetaCPrinter_Init(&printer,
                     self->SemanticState.ParserIdentifierTable, self->SemanticState.ParserStringTable);
-                printf("struct: %s\n", MetaCPrinter_PrintNode(&printer, struct_, 0));
+                printf("struct: %s\n", MetaCPrinter_PrintNode(&printer, METAC_NODE(struct_), 0));
 /*
                 printf("compilerStruct: %s\n",
                     MetaCPrinter_PrintSemaNode(&printer, &self->SemanticState, cast(metac_node_t)compilerStruct));
@@ -688,7 +693,7 @@ LswitchMode:
                             typeNode = NodeFromTypeIndex(&repl->SemanticState, var.TypeIndex);
 
                             typeString = MetaCPrinter_PrintSemaNode(
-                                &debugPrinter, &repl->SemanticState, typeNode
+                                &debugPrinter, &repl->SemanticState, METAC_NODE(typeNode)
                             );
 
                             if (METAC_NODE(value) != emptyNode)
@@ -696,12 +701,12 @@ LswitchMode:
                                 valueString = MetaCPrinter_PrintSemaNode(
                                     &debugPrinter,
                                     &repl->SemanticState,
-                                    value
+                                    METAC_NODE(value)
                                 );
                             }
                             {
                                 metac_identifier_ptr_t idPtr =
-                                    IdentifierPtrFromSemaDecl(&var);
+                                    IdentifierPtrFromSemaDecl(cast(metac_sema_declaration_t*)&var);
                                 const char* nameString =
                                     IdentifierPtrToCharPtr(repl->SemanticState.ParserIdentifierTable, idPtr);
                                 printf ("Global %s %s = %s\n", typeString, nameString, valueString);
@@ -992,7 +997,7 @@ LswitchMode:
                     metac_sema_statement_t* semaStmt =
                         MetaCSemantic_doStatementSemantic(&repl->SemanticState, stmt);
                     MSGF("stmt = %s\n",
-                        MetaCPrinter_PrintSemaNode(&repl->printer, &repl->SemanticState, semaStmt));
+                        MetaCPrinter_PrintSemaNode(&repl->printer, &repl->SemanticState, METAC_NODE(semaStmt)));
                 }
                 else
                 {

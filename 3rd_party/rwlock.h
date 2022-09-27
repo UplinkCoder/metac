@@ -3,8 +3,8 @@
 // Written by Bruce Carneal
 // Ported to C by Stefan Koch
 
-#include "../metac_atomic.h"
-#include "../compat.h"
+#include "../os/metac_atomic.h"
+#include "../os/compat.h"
 #include <assert.h>
 
 

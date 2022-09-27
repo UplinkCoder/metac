@@ -4,7 +4,7 @@
 #define LINENOISE_UI
 
 #include "repl.c"
-#include "../metac_codegen.c"
+#include "../codegen/metac_codegen.c"
 #include "../3rd_party/linenoise/linenoise.c"
 //#include "../3rd_party/debugbreak/debugbreak.h"
 

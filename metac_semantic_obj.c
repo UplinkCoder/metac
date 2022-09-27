@@ -1,6 +1,0 @@
-#include "metac_sematree.h"
-#include "os.c"
-#include "metac_type_table.c"
-#include "metac_scope.c"
-#include "metac_target_info.c"
-#include "metac_semantic.c"

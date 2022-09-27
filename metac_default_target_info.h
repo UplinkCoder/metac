@@ -1,7 +1,7 @@
 #ifndef _METAC_DEFAULT_TARGET_INFO_H_
 #define _METAC_DEFAULT_TARGET_INFO_H_
 
-#include "compat.h"
+#include "os/compat.h"
 #include "metac_target_info.h"
 
 #if defined(_MSC_VER)

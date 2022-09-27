@@ -2,7 +2,7 @@
 #define _BACKEnd_INTERFACE_FUNCS_H_
 
 #include <stdarg.h>
-#include "../compat.h"
+#include "../os/compat.h"
 #include "bc_common.h"
 
 typedef void (*Initialize_t) (void* ctx, uint32_t n_args, ...);

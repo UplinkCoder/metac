@@ -1,4 +1,4 @@
-#include "../compat.h"
+#include "../os/compat.h"
 #include "../metac_lexer.c"
 #include <stdio.h>
 

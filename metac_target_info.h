@@ -1,12 +1,11 @@
 #ifndef _METAC_TARGET_INFO_H_
 #define _METAC_TARGET_INFO_H_
-#include "metac_type.h"
-#include <assert.h>
+#include "parser/metac_parsetree.h"
 
 typedef enum basic_type_kind_t
 {
 // DoNT CHANGE THE ORDER FROM HERE
-// XXX: Order needs to be in sync with the metac_type_kind_t order in metac_type.h
+// XXX: Order needs to be in sync with the metac_type_kind_t order in parser/metac_parsetree.h
     basic_bool = type_bool,
     basic_char,
     basic_short,
@@ -42,7 +41,7 @@ typedef struct metac_target_info_t
     const uint8_t AlignmentDouble;
     const uint8_t AlignmentLongLong;
     const uint8_t AlignmentLongDouble;
-    
+
     const uint8_t PtrSize;
     const uint8_t AlignmentChar;
 } metac_target_info_t;
