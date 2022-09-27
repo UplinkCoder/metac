@@ -54,8 +54,8 @@ typedef struct identifier_translation_context_t
 } identifier_translation_context_t;
 
 static inline void TranslateIdentifier(metac_identifier_table_t* dstTable,
-                         const metac_identifier_table_t* srcTable,
-                         metac_identifier_ptr_t* idPtrP)
+                                       const metac_identifier_table_t* srcTable,
+                                       metac_identifier_ptr_t* idPtrP)
 {
     assert(idPtrP->v);
     const char* idChars =

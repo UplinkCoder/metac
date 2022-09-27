@@ -3,13 +3,15 @@
 #include "compat.h"
 
 #include "metac_identifier_table.h"
-#define IDENTIFIER_TABLE
+
+//#define IDENTIFIER_TABLE
 #define MEMBER_SUFFIX(X) X ## Table
+/*
 #define MEMBER_INFIX(P, S) P ## Table # S
 #define ACCELERATOR "Table"
 #define ACCEL_SUFFIX Table
 #define ACCEL_INIT(A, B, ...) IdentifierTable_Init(&((A).B ## Table), __VA_ARGS__)
-
+*/
 //#  define MEMBER_INIT(X) IdentifierTreeInit(## X ## ->IdentifierTree)
 
 
@@ -169,7 +171,7 @@ typedef struct metac_lexer_state_t
     M(tok_semicolon) \
     M(tok_colon) \
     M(tok_dollar) \
-    M(tok_cat) \
+    M(tok_tilde) \
     \
     FOREACH_BINARY_TOKEN(M) \
     \

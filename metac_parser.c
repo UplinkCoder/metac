@@ -935,7 +935,7 @@ static inline bool IsPunctuationToken(metac_token_enum_t tok)
         ||  tok == tok_dotdot
         ||  tok == tok_comma
         ||  tok == tok_semicolon
-        ||  tok == tok_cat
+        ||  tok == tok_tilde
         ||  tok == tok_rParen);
 }
 
@@ -1590,9 +1590,9 @@ metac_expression_t* MetaCParser_ParseUnaryExpression(metac_parser_t* self, parse
 			cast(parse_expression_flags_t)(expr_flags_unary | (eflags & expr_flags_pp)), 0);
         result->Hash = CRC32C_VALUE(CRC32C_BANG, result->E1->Hash);
     }
-    else if (tokenType == tok_cat)
+    else if (tokenType == tok_tilde)
     {
-        MetaCParser_Match(self, tok_cat);
+        MetaCParser_Match(self, tok_tilde);
         result = AllocNewExpression(exp_compl);
         result->E1 = MetaCParser_ParseExpression(self,
 			cast(parse_expression_flags_t)(expr_flags_unary | (eflags & expr_flags_pp)), 0);

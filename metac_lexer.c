@@ -238,7 +238,7 @@ static inline metac_token_enum_t MetaCLexFixedLengthToken(const char _chrs[3])
         switch (_chrs[1])
         {
         default:
-            return tok_cat;
+            return tok_tilde;
 //        case '=':
 //            return tok_cat_ass;
         }
@@ -309,7 +309,7 @@ static uint32_t MetaCStaticTokenLength(metac_token_enum_t token)
         case tok_xor         : return 1;
         case tok_or          : return 1;
         case tok_and         : return 1;
-        case tok_cat         : return 1;
+        case tok_tilde       : return 1;
         case tok_assign      : return 1;
         case tok_lt          : return 1;
         case tok_gt          : return 1;
@@ -458,8 +458,8 @@ void MetaCLexer_Init(metac_lexer_t* self)
     self->LocationStorage.LocationSize = 0;
     self->LocationStorage.Locations = self->inlineLocations;
 
-    ACCEL_INIT(*self, Identifier, IDENTIFIER_LENGTH_SHIFT, 13);
-    ACCEL_INIT(*self, String, STRING_LENGTH_SHIFT, 13);
+    IdentifierTable_Init(&self->IdentifierTable, IDENTIFIER_LENGTH_SHIFT, 13);
+    IdentifierTable_Init(&self->StringTable, STRING_LENGTH_SHIFT, 13);
 }
 
 void MetaCLexer_Free(metac_lexer_t* self)
