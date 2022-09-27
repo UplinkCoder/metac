@@ -95,21 +95,12 @@ typedef struct metac_expression_t
         // case identifier_exp :
         struct {
             uint32_t IdentifierKey;
-#ifdef ACCEL
             metac_identifier_ptr_t IdentifierPtr;
-#else
-            const char* Identifier;
-#endif
         };
         // case exp_string :
         struct {
             uint32_t StringKey;
-
-#ifdef ACCEL
             metac_identifier_ptr_t StringPtr;
-#else
-            const char* String;
-#endif
         };
         // case exp_char:
         struct {
