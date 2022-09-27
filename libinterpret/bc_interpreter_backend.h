@@ -111,7 +111,9 @@ typedef enum LongInst
     LongInst_FSub32,
     LongInst_FDiv32,
     LongInst_FMul32,
+#ifdef WITH_FMOD
     LongInst_FMod32,
+#endif
 #define FIRST_F32_CMP LongInst_FEq32
     LongInst_FEq32,
     LongInst_FNeq32,
@@ -131,7 +133,9 @@ typedef enum LongInst
     LongInst_FSub64,
     LongInst_FDiv64,
     LongInst_FMul64,
+#ifdef WITH_FMOD
     LongInst_FMod64,
+#endif
 #define FIRST_F64_CMP LongInst_FEq64
     LongInst_FEq64,
     LongInst_FNeq64,

@@ -118,6 +118,9 @@ const char*  BCTypeEnum_toChars(const BCTypeEnum* self)
 
     case BCTypeEnum_Tuple:
         return "BCTypeEnum_Tuple";
+
+    case BCTypeEnum_Enum:
+        return "BCTypeEnum_Enum";
     }
 
     assert(0);

@@ -16,7 +16,7 @@
         return result;
 	}
 #elif defined(__TINYC__)
-#  include "3rd_party/bsr.c"
+#  include "../3rd_party/bsr.c"
 #else
 #  define BSR(X) \
     (__builtin_clz(X) ^ 31)

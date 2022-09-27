@@ -27,11 +27,6 @@ BCType MetaCCodegen_GetBCType(metac_bytecode_ctx_t* ctx, metac_type_index_t type
     if (type.Kind == type_index_enum)
         result.type = BCTypeEnum_i32;
 
-    if (type.Kind == type_index_tuple)
-    {
-        result.type = BCTypeEnum_Tuple;
-        result.typeIndex = type.Index;
-    }
     if (type.Kind == type_index_basic)
     {
         switch(type.Index)
@@ -93,6 +88,14 @@ BCType MetaCCodegen_GetBCType(metac_bytecode_ctx_t* ctx, metac_type_index_t type
                 result.type = BCTypeEnum_u32;
             break;
             default : assert(0);
+        }
+    }
+    else
+    {
+        if (type.Kind == type_index_tuple)
+        {
+            result.type = BCTypeEnum_Tuple;
+            result.typeIndex = type.Index;
         }
     }
 
@@ -249,11 +252,17 @@ void MetaCCodegen_Begin(metac_bytecode_ctx_t* self, metac_identifier_table_t* id
     ARENA_ARRAY_INIT(metac_bytecode_switch_t, self->SwitchStack, &self->Allocator);
 }
 
+static BCValue MetaCCodegen_doFunction(metac_bytecode_ctx_t* ctx,
+                                       sema_decl_function_t* fn)
+{
+    metac_bytecode_function_t f = MetaCCodegen_GenerateFunction(ctx, fn);
+    return imm32(f.FunctionIndex);
+}
 metac_bytecode_function_t MetaCCodegen_GenerateFunctionFromExp(metac_bytecode_ctx_t* ctx,
                                                                metac_sema_expression_t* expr)
 {
     void* c = ctx->c;
-    BCValue resultVal = {};
+    BCValue resultVal = {BCValueType_Unknown};
 
     metac_bytecode_function_t func;
 
@@ -322,6 +331,7 @@ metac_bytecode_function_t MetaCCodegen_GenerateFunction(metac_bytecode_ctx_t* ct
 
         frameSize += paramSize;
     }
+
     assert(parametersCount == functionParameterCount);
 
     ctx->Locals = locals;
@@ -645,6 +655,11 @@ static void MetaCCodegen_doExpression(metac_bytecode_ctx_t* ctx,
             assert(0);
         } break;
 
+        case exp_function:
+        {
+            *result = MetaCCodegen_doFunction(ctx, exp->Function);
+        } break;
+
         case decl_enum_member:
         {
             metac_enum_member_t* enumMember = cast(metac_enum_member_t*) exp;
@@ -903,10 +918,13 @@ static void MetaCCodegen_doExpression(metac_bytecode_ctx_t* ctx,
         case exp_call:
         {
             sema_exp_call_t call = exp->Call;
-            BCValue fn = bc->GenTemporary(c, MetaCCodegen_GetBCType(ctx, exp->TypeIndex));
+            BCValue resultVal = bc->GenTemporary(c, MetaCCodegen_GetBCType(ctx, exp->TypeIndex));
 
             assert(call.Function->Kind == exp_function);
             assert(call.Function->Function);
+            BCValue fn = {BCValueType_Unknown};
+            MetaCCodegen_doExpression(ctx, call.Function, &fn, _Rvalue);
+
             STACK_ARENA_ARRAY(BCValue, args, 16, &ctx->Allocator);
             const static BCValue nullValue = {BCValueType_Unknown};
 
@@ -917,7 +935,8 @@ static void MetaCCodegen_doExpression(metac_bytecode_ctx_t* ctx,
                 BCValue* argP = &args[i];
                 MetaCCodegen_doExpression(ctx, call.Arguments[i], argP, _Rvalue);
             }
-            bc->Call(c, result, &fn, args, call.ArgumentCount);
+            bc->Call(c, &resultVal, &fn, args, call.ArgumentCount);
+            *result = resultVal;
         } break;
     }
 

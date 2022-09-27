@@ -4,14 +4,6 @@
 
 #include "metac_identifier_table.h"
 
-#define MEMBER_SUFFIX(X) X ## Table
-
-#define IDENTIFIER_PTR(TABLE, TOKEN) \
-    IdentifierPtrToCharPtr(TABLE, (TOKEN).IdentifierPtr)
-
-#define STRING_PTR(ACCEL_, PTR) \
-    IdentifierPtrToCharPtr(MEMBER_SUFFIX(ACCEL_), (PTR))
-
 typedef uint32_t block_idx_t;
 typedef uint16_t crc32c_lower16_t;
 

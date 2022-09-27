@@ -1,4 +1,4 @@
-#include "../compat.h"
+#include "../os/compat.h"
 #ifndef _BSR_C_
 #define _BSR_C_
 // modified CLZ2 taken from https://embeddedgurus.com/state-space/2014/09/fast-deterministic-and-portable-counting-leading-zeros/

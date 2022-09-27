@@ -11,6 +11,7 @@
 #include <stdio.h>
 
 #include "../os/metac_atomic.h"
+#include "../os/bsr.h"
 
 #include "../3rd_party/tracy/TracyC.h"
 
@@ -206,7 +207,6 @@ int32_t MetaCIdentifierTable_HasKey(metac_identifier_table_t* table,
     return result;
 }
 
-#include "../os/bsr.h"
 #define slot_t metac_identifier_table_slot_t
 
 void InsertSlot(slot_t* slots, slot_t slot, const uint32_t slotIndexMask)

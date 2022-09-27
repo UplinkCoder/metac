@@ -551,11 +551,13 @@ void BCGen_PrintCode(BCGen* self, uint32_t start, uint32_t end)
                 printf("LongInst_FDiv32 R[%d] /= R[%d]\n", lhsOffset / 4, rhsOffset / 4);
             }
             break;
+#ifdef WITH_FMOD
         case LongInst_FMod32:
             {
                 printf("LongInst_FMod32 R[%d] %%= R[%d]\n", lhsOffset / 4, rhsOffset / 4);
             }
             break;
+#endif
         case LongInst_FEq64 :
             {
                 printf("LongInst_FEq64 R[%d] == R[%d]\n", lhsOffset / 4, rhsOffset / 4);
@@ -621,11 +623,13 @@ void BCGen_PrintCode(BCGen* self, uint32_t start, uint32_t end)
                 printf("LongInst_FDiv64 R[%d] /= R[%d]\n", lhsOffset / 4, rhsOffset / 4);
             }
             break;
+#ifdef WITH_FMOD
         case LongInst_FMod64:
             {
                 printf("LongInst_FMod64 R[%d] %%= R[%d]\n", lhsOffset / 4, rhsOffset / 4);
             }
             break;
+#endif
         case LongInst_Assert:
             {
                 printf("LongInst_Assert(R[%d])\n", opRefOffset / 4);
@@ -1432,12 +1436,14 @@ BCValue BCGen_interpret(BCGen* self, uint32_t fnIdx, BCValue* args, uint32_t n_a
                 *lhsRef = *(uint32_t*)&flhs;
             }
             break;
+#ifdef WITH_FMOD
         case LongInst_FMod32:
             {
                 flhs = fmodf(flhs, frhs);
                 *lhsRef = *(uint32_t*)&flhs;
             }
             break;
+#endif
         case LongInst_FEq64 :
             {
                cond = (dlhs == drhs);
@@ -1514,6 +1520,7 @@ BCValue BCGen_interpret(BCGen* self, uint32_t fnIdx, BCValue* args, uint32_t n_a
                 *(cast(uint64_t*)lhsRef) = *cast(uint64_t*)&dlhs;
             }
             break;
+#ifdef WITH_FMOD
         case LongInst_FMod64:
             {
                 dlhs = fmod(dlhs, drhs);
@@ -1521,6 +1528,7 @@ BCValue BCGen_interpret(BCGen* self, uint32_t fnIdx, BCValue* args, uint32_t n_a
                 *(cast(uint64_t*)lhsRef) = *cast(uint64_t*)&dlhs;
             }
             break;
+#endif
 #pragma GCC diagnostic pop
 
         case LongInst_Assert:

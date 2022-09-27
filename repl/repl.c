@@ -14,7 +14,7 @@
 #include "../hash/crc32c.h"
 #include "../semantic/handoff.c"
 #include "../utils/int_to_str.c"
-#include "../codegen/metac_codegen.h"
+#include "../codegen/metac_codegen.c"
 #include "../semantic/metac_type_table.h"
 #include "repl.h"
 
@@ -560,11 +560,12 @@ metac_identifier_ptr_t IdentifierPtrFromSemaDecl(metac_sema_declaration_t* decl)
 
 }
 
-
+#ifndef NO_FIBERS
 static void Repl_doDeclSemantic_cont(MetaCSemantic_doDeclSemantic_task_context_t* ctx)
 {
 //    ARENA_ARRAY_ADD(ctx->Sema->Globals, ctx->Result);
 }
+#endif
 
 /// returns false if the repl is done running
 bool Repl_Loop(repl_state_t* repl, repl_ui_context_t* context)
@@ -1054,10 +1055,6 @@ LswitchMode:
 #else
                 metac_sema_declaration_t* ds =
                     MetaCSemantic_doDeclSemantic(&repl->SemanticState, decl);
-
-                ARENA_ARRAY_ADD(repl->SemanticState.GlobalVariables,
-                    ds
-                );
 #endif
                 goto LnextLine;
             }

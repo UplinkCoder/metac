@@ -9,7 +9,7 @@
         return result;
 	}
 #elif defined(__TINYC__)
-#  include "3rd_party/bsf.c"
+#  include "../3rd_party/bsf.c"
 #else
 #  define BSF(X) \
     (__builtin_ctz(X))

@@ -10,7 +10,6 @@
 #include "../hash/crc32c.h"
 #include "../printer/metac_printer.h"
 
-
 #ifndef AT
 #  define AT(...)
 #endif

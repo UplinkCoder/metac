@@ -125,12 +125,12 @@ metac_identifier_ptr_t RegisterIdentifier(metac_parser_t* self,
 {
     const char* identifierString =
         IdentifierPtrToCharPtr(
-            MEMBER_SUFFIX(&self->Lexer->Identifier),
+            &self->Lexer->IdentifierTable,
             token->IdentifierPtr
         );
 
     uint32_t identifierKey = token->IdentifierKey;
-    return GetOrAddIdentifier(MEMBER_SUFFIX(&self->Identifier),
+    return GetOrAddIdentifier(&self->IdentifierTable,
                               identifierKey, identifierString);
 }
 
@@ -139,11 +139,11 @@ metac_identifier_ptr_t RegisterString(metac_parser_t* self,
 {
     const char* string =
         IdentifierPtrToCharPtr(
-            MEMBER_SUFFIX(&self->Lexer->String),
+            &self->Lexer->StringTable,
             token->StringPtr
         );
         uint32_t stringKey = token->StringKey;
-        return GetOrAddIdentifier(MEMBER_SUFFIX(&self->String),
+        return GetOrAddIdentifier(&self->StringTable,
                                   stringKey, string);
 }
 /*

@@ -73,7 +73,7 @@ typedef enum BCTypeEnum
     BCTypeEnum_c16,
     BCTypeEnum_c32,
 
-    /// signed by default
+    /// signed by integer
     BCTypeEnum_i8,
     /// DITTO
     BCTypeEnum_i16,
@@ -102,14 +102,15 @@ typedef enum BCTypeEnum
     BCTypeEnum_VoidCallback, // {void (*f)(void*), void*}
 
     //  everything below here is not used by the bc layer.
+    BCTypeEnum_Enum,
     BCTypeEnum_Array,
-    BCTypeEnum_AArray,
     BCTypeEnum_Struct,
-    BCTypeEnum_Class,
     BCTypeEnum_Ptr,
-    BCTypeEnum_Slice,
 
     BCTypeEnum_Tuple,
+    BCTypeEnum_Class,
+    BCTypeEnum_Slice,
+    BCTypeEnum_AArray,
 } BCTypeEnum;
 
 EXTERN_C const char* BCTypeEnum_toChars(const BCTypeEnum* self);

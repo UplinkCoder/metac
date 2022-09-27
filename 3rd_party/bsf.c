@@ -1,5 +1,5 @@
 // taken from gcc testsuite
-#include "../compat.h"
+#include "../os/compat.h"
 uint32_t BSF (uint32_t x)
 {
   static int table[32] =
