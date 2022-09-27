@@ -73,6 +73,8 @@ I have only tested this on `x86_64` and `aarch64` with `ubuntu 16.04` and `ubunt
 
 If it does fail to compile please open an issue
 
+- NOTE: when you supply the defines `PRINT_BYTECODE=1` and `PRINT_CODE=1` the repl will print the first 24 instructions when evaluating expressions.
+
 ## Repl modes
 
 The repl is mostly a development and debugging tool for me
@@ -100,7 +102,7 @@ DS> int x[16];
 DS> int x2[16];
 DS> :ee
 EE> sizeof(x)
-EE> sizeof(a)
+EE> sizeof(x2)
 ```
 will result in
 the output
