@@ -2,6 +2,10 @@
 #define _METAC_FILE_H_
 #include "../os/compat.h"
 
+#ifndef UINT16_MAX
+#  define UINT16_MAX 0xffff
+#endif
+
 #include "../parser/metac_identifier_table.h"
 
 typedef union metac_filehandle_t

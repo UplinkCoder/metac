@@ -20,6 +20,10 @@ metac_identifier_table_t g_filenames = {0};
 metac_alloc_t*           g_allocators = 0;
 uint32_t                 g_allocatorCount = 0;
 
+#ifdef NDEBUG
+static const metac_identifier_ptr_t s_null_filename = {0};
+#endif
+
 inline metac_identifier_ptr_t Add_Filename(const char* file)
 {
     if (g_filenames.Slots == 0)

@@ -2853,9 +2853,9 @@ metac_declaration_t* MetaCParser_ParseDeclaration(metac_parser_t* self, metac_de
         return result;
     }
 
-    metac_storageclasses_t stc2 = ParseStorageClasses(self);
+    metac_storageclasses_t stc2_ = ParseStorageClasses(self);
     // check for duplicates
-    U32(stc) |= U32(stc2);
+    U32(stc) |= U32(stc2_);
 
     if (IsTypeToken(tokenType))
     {
@@ -2890,7 +2890,7 @@ metac_declaration_t* MetaCParser_ParseDeclaration(metac_parser_t* self, metac_de
         goto LendDecl;
     }
 
-    U32(stc2) |= ParseStorageClasses(self);
+    U32(stc2_) |= ParseStorageClasses(self);
 
     if (type)
     {

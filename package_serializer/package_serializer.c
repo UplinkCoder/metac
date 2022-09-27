@@ -1,9 +1,9 @@
-#include "../compat.h"
+#include "../os/compat.h"
 #include "../utils/read_file.c"
-#include "../crc32c.h"
-#include "../metac_parser_obj.c"
-#include "../metac_semantic_obj.c"
-#include "../metac_driver.c"
+#include "../hash/crc32c.h"
+#include "../parser/metac_parser_obj.c"
+#include "../semantic/metac_semantic_obj.c"
+#include "../driver/metac_driver.c"
 #include "../3rd_party/tracy/TracyC.h"
 
 

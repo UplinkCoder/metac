@@ -614,7 +614,7 @@ static bool TypeIsInteger(metac_type_index_t typeIdx)
     {
         result = ((typeIdxIndex >= type_bool) & (typeIdxIndex <= type_size_t)) |
                  ((typeIdxIndex >= type_unsigned_char) & (typeIdxIndex <= type_unsigned_long)) |
-                 (typeIdxIndex == type_long_long | typeIdxIndex == type_unsigned_long_long);
+                 ((typeIdxIndex == type_long_long) | (typeIdxIndex == type_unsigned_long_long));
     }
 
     return result;

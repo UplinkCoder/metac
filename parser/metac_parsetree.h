@@ -315,6 +315,7 @@ typedef enum metac_type_modifiers
 
 typedef enum metac_storageclasses_t
 {
+    storageclass_none     = 0,
     storageclass_static   = (1 << 1),
     storageclass_inline   = (1 << 2),
     storageclass_extern   = (1 << 3),

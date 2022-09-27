@@ -5,7 +5,7 @@
 #  include <stdint.h>
 #  include <stdbool.h>
 #else
-#  include "../compat.h"
+#  include "../os/compat.h"
 #endif
 #include <assert.h>
 #include <stdlib.h>

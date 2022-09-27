@@ -57,7 +57,7 @@ typedef struct metac_alloc_t
 #endif
 
 #ifdef NDEBUG
-#  define ADD_FILENAME(FILE) {0}
+#  define ADD_FILENAME(FILE) s_null_filename
 #else
 #  define ADD_FILENAME(FILE) \
     Add_Filename(FILE)
