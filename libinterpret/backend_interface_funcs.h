@@ -100,6 +100,15 @@ typedef void (*ReadI32_cb_t)(uint32_t value, void* userCtx);
 
 typedef void (*ValueCallback_cb_t)(BCValue* value, void* userCtx);
 
+typedef struct TypeInfoInterface
+{
+    BCStructType* (*const QueryStruct) (uint32_t structIndex);
+    BCEnumType* (*const QueryEnum) (uint32_t enumIndex);
+    BCArrayType* (*const QueryArrayType) (uint32_t arrayTypeIndex);
+    BCPointerType* (*const QueryPointerType) (uint32_t pointerTypeIndex);
+    BCFunctionType* (*const QueryFunctionType) (uint32_t functionTypeIndex);
+} TypeInfoInterface;
+
 typedef struct BackendInterface
 {
     const char* name;
@@ -197,6 +206,8 @@ typedef struct BackendInterface
     void (*const init_instance) (void* ctx);
 
     void (*const ReadI32) (void* ctx, const BCValue* val, const ReadI32_cb_t readCb, void* userCtx);
+
+    void (*const allocate_host_memory) (void* ctx, uint32_t size, void* func);
 } BackendInterface;
 
 #endif

@@ -495,6 +495,13 @@ typedef struct BCArrayType
     uint32_t arraySize;
 } BCArrayType;
 
+typedef struct BCFunctionType
+{
+    BCType returnType;
+    BCType* parameterTypes;
+    uint32_t nParameterTypes;
+} BCFunctionType;
+
 #define imm32(VALUE) imm32_((VALUE), false)
 
 EXTERN_C BCValue imm32_(uint32_t value, bool signed_);
