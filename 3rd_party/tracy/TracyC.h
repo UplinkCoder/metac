@@ -2,7 +2,7 @@
 #define __TRACYC_HPP__
 
 #ifdef _MSC_VER
-#  include "compat.h"
+#  include "../os/compat.h"
 #else
 #  include <stdint.h>
 #endif
