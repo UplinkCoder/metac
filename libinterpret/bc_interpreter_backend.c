@@ -3299,7 +3299,8 @@ const BackendInterface BCGen_interface = {
     .init_instance = (init_instance_t) BCGen_init_instance,
 
     .ReadI32 = (ReadI32_t) BCGen_ReadI32,
-    .set_alloc_memory = (set_alloc_memory_t) BCGen_set_alloc_memory
+    .set_alloc_memory = (set_alloc_memory_t) BCGen_set_alloc_memory,
+    .set_get_typeinfo = (set_get_typeinfo_t) 0,
 };
 
 #endif

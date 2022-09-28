@@ -470,6 +470,17 @@ typedef struct BCStructType
     BCType type;
 } BCStructType;
 
+typedef struct BCTupleType
+{
+    BCStructField* fields;
+
+    uint16_t nFields;
+    uint16_t alignOf;
+    uint32_t sizeOf;
+
+    BCType type;
+} BCTupleType;
+
 typedef struct BCEnumMember {
     const char* name;
     BCValue value;
@@ -501,6 +512,31 @@ typedef struct BCFunctionType
     BCType* parameterTypes;
     uint32_t nParameterTypes;
 } BCFunctionType;
+
+typedef enum BCTypeInfoKind
+{
+    BCTypeInfofKind_Invalid,
+    BCTypeInfofKind_Enum,
+    BCTypeInfofKind_Ptr,
+    BCTypeInfofKind_Array,
+    BCTypeInfofKind_Struct,
+    BCTypeInfofKind_Function,
+    BCTypeInfofKind_Tuple,
+} BCTypeInfoKind;
+
+typedef struct BCTypeInfo
+{
+    BCTypeEnum kind;
+    union
+    {
+        struct BCEnumType enumType;
+        struct BCStructType structType;
+        struct BCFunctionType functionType;
+        struct BCTupleType tupleType;
+        struct BCArrayType arrayType;
+        struct BCPointerType pointerType;
+    };
+} BCTypeInfo;
 
 #define imm32(VALUE) imm32_((VALUE), false)
 

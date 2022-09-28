@@ -105,7 +105,6 @@ BCType MetaCCodegen_GetBCType(metac_bytecode_ctx_t* ctx, metac_type_index_t type
 
 extern const BackendInterface BCGen_interface;
 const BackendInterface* bc;
-const TypeInfoInterface typeInfoProvider;
 
 uint32_t MetaCCodegen_GetStorageSize(metac_bytecode_ctx_t* ctx, BCType bcType)
 {
@@ -202,6 +201,7 @@ long MetaCCodegen_RunFunction(metac_bytecode_ctx_t* self,
 
 void MetaCCodegen_End(metac_bytecode_ctx_t* self)
 {
+    
     bc->Finalize(self->c);
 
     if (bc == &Printer_interface)
@@ -245,7 +245,14 @@ void MetaCCodegen_Init(metac_bytecode_ctx_t* self, metac_alloc_t* parentAlloc)
     tagged_arena_t* arena =
         AllocateArena(&self->Allocator, bc->sizeof_instance());
     self->c = arena->Memory;
-    bc->set_alloc_memory(self->c, cast(alloc_fn_t)MetaCCodegen_AllocMemory, (void*)self);
+    if (bc->set_alloc_memory)
+    {
+        bc->set_alloc_memory(self->c, cast(alloc_fn_t)MetaCCodegen_AllocMemory, (void*)self);
+    }
+    if (bc->set_get_typeinfo)
+    {
+
+    }
     bc->init_instance(self->c);
 
 #else

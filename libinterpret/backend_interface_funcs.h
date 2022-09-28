@@ -1,5 +1,5 @@
-#ifndef _BACKEnd_INTERFACE_FUNCS_H_
-#define _BACKEnd_INTERFACE_FUNCS_H_
+#ifndef _BACKEND_INTERFACE_FUNCS_H_
+#define _BACKEND_INTERFACE_FUNCS_H_
 
 #include <stdarg.h>
 #include "../os/compat.h"
@@ -102,18 +102,10 @@ typedef void (*ValueCallback_cb_t)(BCValue* value, void* userCtx);
 
 #define FREE_SIZE 4294967294U
 typedef void* (*alloc_fn_t) (void* ctx, uint32_t size, void* func);
+typedef BCTypeInfo* (*get_typeinfo_fn_t) (void* ctx, BCType* type);
 
 typedef void (*set_alloc_memory_t) (void* ctx, alloc_fn_t alloc_fn, void* userCtx);
-
-typedef struct TypeInfoInterface
-{
-    BCStructType* (*const QueryStruct) (void* ctx, uint32_t structIndex);
-    BCEnumType* (*const QueryEnum) (void* ctx, uint32_t enumIndex);
-    BCArrayType* (*const QueryArrayType) (void* ctx, uint32_t arrayTypeIndex);
-    BCPointerType* (*const QueryPointerType) (void* ctx, uint32_t pointerTypeIndex);
-    BCFunctionType* (*const QueryFunctionType) (void* ctx, uint32_t functionTypeIndex);
-} TypeInfoInterface;
-
+typedef void (*const set_get_typeinfo_t) (void* ctx, get_typeinfo_fn_t get_typeinfo_fn, void* userCtx);
 
 typedef struct BackendInterface
 {
@@ -214,6 +206,7 @@ typedef struct BackendInterface
     void (*const ReadI32) (void* ctx, const BCValue* val, const ReadI32_cb_t readCb, void* userCtx);
 
     void (*const set_alloc_memory) (void* ctx, alloc_fn_t alloc_fn, void* userCtx);
+    void (*const set_get_typeinfo) (void* ctx, get_typeinfo_fn_t get_typeinfo_fn, void* userCtx);
 } BackendInterface;
 
 #endif
