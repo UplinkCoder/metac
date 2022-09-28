@@ -9,6 +9,7 @@
 #include  "metac_vstore.c"
 
 #include "metac_codegen.h"
+#include "../os/metac_alloc.h"
 
 #include <stdarg.h>
 uint32_t MetaCCodegen_GetTypeABISize(metac_bytecode_ctx_t* ctx,
@@ -104,6 +105,7 @@ BCType MetaCCodegen_GetBCType(metac_bytecode_ctx_t* ctx, metac_type_index_t type
 
 extern const BackendInterface BCGen_interface;
 const BackendInterface* bc;
+const TypeInfoInterface typeInfoProvider;
 
 uint32_t MetaCCodegen_GetStorageSize(metac_bytecode_ctx_t* ctx, BCType bcType)
 {
@@ -209,6 +211,20 @@ void MetaCCodegen_End(metac_bytecode_ctx_t* self)
     }
 
 }
+void* MetaCCodegen_AllocMemory(metac_bytecode_ctx_t* self, uint32_t size, sema_decl_function_t* func)
+{
+    tagged_arena_t* arena = 0;
+    if (size == FREE_SIZE)
+    {
+        /*arena = MetaCCodegen_FindArena(self, cast(void*)func)*/
+    }
+    else
+    {
+        // printf("Allocating for %s \n", (func ? "function" : "startup"));
+        arena = Allocate_(&self->Allocator, size, __FILE__, __LINE__, false);
+        return arena->Memory;
+    }
+}
 
 void MetaCCodegen_Init(metac_bytecode_ctx_t* self, metac_alloc_t* parentAlloc)
 {
@@ -229,7 +245,9 @@ void MetaCCodegen_Init(metac_bytecode_ctx_t* self, metac_alloc_t* parentAlloc)
     tagged_arena_t* arena =
         AllocateArena(&self->Allocator, bc->sizeof_instance());
     self->c = arena->Memory;
+    bc->set_alloc_memory(self->c, cast(alloc_fn_t)MetaCCodegen_AllocMemory, (void*)self);
     bc->init_instance(self->c);
+
 #else
     bc->new_instance(&self->c);
     Printer* printer = (Printer*) self->c;
@@ -241,6 +259,11 @@ void MetaCCodegen_Init(metac_bytecode_ctx_t* self, metac_alloc_t* parentAlloc)
     // ARENA_ARRAY_INIT(sema_decl_variable_t, self->Locals, &self->Allocator);
     ARENA_ARRAY_INIT(BCValue, self->Globals, &self->Allocator);
     self->GlobalMemoryOffset = 4;
+}
+
+void MetaCCodegen_Free(metac_bytecode_ctx_t* self)
+{
+    bc->destroy_instance(self->c);
 }
 
 void MetaCCodegen_Begin(metac_bytecode_ctx_t* self, metac_identifier_table_t* idTable, metac_semantic_state_t* sema)

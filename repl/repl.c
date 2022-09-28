@@ -347,6 +347,8 @@ EvaluateExpression(metac_semantic_state_t* sema,
     uint32_t resultInt =
         MetaCCodegen_RunFunction(&ctx, fCode, &interpAlloc, heap, "", 0);
 
+    MetaCCodegen_Free(&ctx);
+
     metac_sema_expression_t result;
     // BCGen_printFunction(c);
 

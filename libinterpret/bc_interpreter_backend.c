@@ -14,7 +14,9 @@
 #include "backend_interface_funcs.h"
 #include "bc_interpreter_backend.h"
 
+#ifndef cast
 #define cast(T) (T)
+#endif
 
 #ifndef NDEBUG
 #  define DEBUG(...) __VA_ARGS__
@@ -54,14 +56,40 @@ static const int max_call_depth = 2000;
 
 #define INITIAL_LOCALS_CAPACITY 2048
 #define INITIAL_CALLS_CAPACITY 2048
+static inline void* alloc_with_malloc(void* ctx, uint32_t size, void* fn)
+{
+    void* result = 0;
+
+    if (size != FREE_SIZE)
+    {
+        result = malloc(size);
+    }
+    else
+    {
+        free(fn);
+    }
+    return result;
+}
+
+static inline void BCGen_set_alloc_memory(BCGen* self, alloc_fn_t alloc_fn, void* userCtx)
+{
+    self->allocFn = alloc_fn;
+    self->allocCtx = userCtx;
+}
 
 static inline void BCGen_Init(BCGen* self)
 {
+    if (!self->allocFn)
+    {
+        self->allocFn = alloc_with_malloc;
+    }
+
     self->byteCodeArrayExtra = 0;
     self->byteCodeCount = 0;
     self->byteCodeExtraCapacity = 0;
 
-    self->locals = (BCLocal*) malloc(sizeof(BCLocal) * INITIAL_LOCALS_CAPACITY);
+    self->locals = (BCLocal*) self->allocFn(self->allocCtx,
+        sizeof(BCLocal) * INITIAL_LOCALS_CAPACITY, 0);
     self->localCount = 0;
     self->localCapacity = INITIAL_LOCALS_CAPACITY;
 
@@ -74,15 +102,18 @@ static inline void BCGen_Init(BCGen* self)
     self->insideFunction = 0;
     self->functionIdx = 0;
 
-    self->calls = (RetainedCall*) malloc(sizeof(RetainedCall) * INITIAL_CALLS_CAPACITY);
+    self->calls = (RetainedCall*) self->allocFn(self->allocCtx,
+        sizeof(RetainedCall) * INITIAL_CALLS_CAPACITY, 0);
     self->callCount = 0;
     self->callCapacity = INITIAL_CALLS_CAPACITY;
 
-    self->functions = (BCFunction*)malloc(sizeof(BCFunction) * INITIAL_LOCALS_CAPACITY);
+    self->functions = (BCFunction*)self->allocFn(self->allocCtx,
+        sizeof(BCFunction) * INITIAL_LOCALS_CAPACITY, 0);
     self->functionCount = 0;
     self->functionCapacity = INITIAL_LOCALS_CAPACITY;
 
-    self->contexts = (ReadI32_ctx_t*) malloc(sizeof(ReadI32_ctx_t) * 64);
+    self->contexts = (ReadI32_ctx_t*) self->allocFn(self->allocCtx,
+        sizeof(ReadI32_ctx_t) * 64, 0);
     self->contextCount = 0;
     self->contextCapacity = 64;
 
@@ -91,9 +122,10 @@ static inline void BCGen_Init(BCGen* self)
 
 static inline void BCGen_Fini(BCGen* self)
 {
-    free(self->locals);
-    free(self->calls);
-    free(self->functions);
+    self->allocFn(self->allocCtx, FREE_SIZE, self->locals);
+    self->allocFn(self->allocCtx, FREE_SIZE, self->calls);
+    self->allocFn(self->allocCtx, FREE_SIZE, self->functions);
+    self->allocFn(self->allocCtx, FREE_SIZE, self->contexts);
 }
 
 typedef enum CtxM {
@@ -146,10 +178,9 @@ uint32_t BCGen_sizeof_instance(void)
     return sizeof(BCGen);
 }
 
-void BCGen_destroy_instance(BCGen* p)
+void BCGen_destroy_instance(BCGen* instance)
 {
-    BCGen_Fini(p);
-    free(p);
+    BCGen_Fini(instance);
 }
 
 typedef struct Catch
@@ -3268,6 +3299,7 @@ const BackendInterface BCGen_interface = {
     .init_instance = (init_instance_t) BCGen_init_instance,
 
     .ReadI32 = (ReadI32_t) BCGen_ReadI32,
+    .set_alloc_memory = (set_alloc_memory_t) BCGen_set_alloc_memory
 };
 
 #endif

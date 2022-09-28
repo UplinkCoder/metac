@@ -100,14 +100,20 @@ typedef void (*ReadI32_cb_t)(uint32_t value, void* userCtx);
 
 typedef void (*ValueCallback_cb_t)(BCValue* value, void* userCtx);
 
+#define FREE_SIZE 4294967294U
+typedef void* (*alloc_fn_t) (void* ctx, uint32_t size, void* func);
+
+typedef void (*set_alloc_memory_t) (void* ctx, alloc_fn_t alloc_fn, void* userCtx);
+
 typedef struct TypeInfoInterface
 {
-    BCStructType* (*const QueryStruct) (uint32_t structIndex);
-    BCEnumType* (*const QueryEnum) (uint32_t enumIndex);
-    BCArrayType* (*const QueryArrayType) (uint32_t arrayTypeIndex);
-    BCPointerType* (*const QueryPointerType) (uint32_t pointerTypeIndex);
-    BCFunctionType* (*const QueryFunctionType) (uint32_t functionTypeIndex);
+    BCStructType* (*const QueryStruct) (void* ctx, uint32_t structIndex);
+    BCEnumType* (*const QueryEnum) (void* ctx, uint32_t enumIndex);
+    BCArrayType* (*const QueryArrayType) (void* ctx, uint32_t arrayTypeIndex);
+    BCPointerType* (*const QueryPointerType) (void* ctx, uint32_t pointerTypeIndex);
+    BCFunctionType* (*const QueryFunctionType) (void* ctx, uint32_t functionTypeIndex);
 } TypeInfoInterface;
+
 
 typedef struct BackendInterface
 {
@@ -207,7 +213,7 @@ typedef struct BackendInterface
 
     void (*const ReadI32) (void* ctx, const BCValue* val, const ReadI32_cb_t readCb, void* userCtx);
 
-    void (*const allocate_host_memory) (void* ctx, uint32_t size, void* func);
+    void (*const set_alloc_memory) (void* ctx, alloc_fn_t alloc_fn, void* userCtx);
 } BackendInterface;
 
 #endif

@@ -249,6 +249,9 @@ typedef struct BCGen
     uint32_t contextCount;
     uint32_t contextCapacity;
 
+    alloc_fn_t allocFn;
+    void* allocCtx;
+
     bool finalized;
     uint32_t byteCodeArray[1024];
 } BCGen;
