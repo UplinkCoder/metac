@@ -90,10 +90,11 @@ typedef void (*Memcmp_t) (void* ctx, BCValue *result, const BCValue* lhs, const 
 typedef void (*Realloc_t) (void* ctx, BCValue *result, const BCValue* lhs, const BCValue* rhs, const uint32_t size);
 
 typedef BCValue (*run_t) (void* ctx, uint32_t fnIdx, const BCValue* args, uint32_t n_args, BCHeap* heap);
-typedef void (*destroy_instance_t) (void* ctx);
-typedef void (*new_instance_t) (void ** result_p);
+
 typedef uint32_t (*sizeof_instance_t) (void);
-typedef void (*init_instance_t) (void * result_p);
+typedef void (*clear_instance_t) (void* instance);
+typedef void (*init_instance_t) (void * instance);
+typedef void (*fini_instance_t) (void* instance);
 
 typedef void (*ReadI32_t) (void* ctx, const BCValue* val, const ReadI32_cb_t readCb, void* userCtx);
 typedef void (*ReadI32_cb_t)(uint32_t value, void* userCtx);
@@ -105,7 +106,7 @@ typedef void* (*alloc_fn_t) (void* ctx, uint32_t size, void* func);
 typedef BCTypeInfo* (*get_typeinfo_fn_t) (void* ctx, BCType* type);
 
 typedef void (*set_alloc_memory_t) (void* ctx, alloc_fn_t alloc_fn, void* userCtx);
-typedef void (*const set_get_typeinfo_t) (void* ctx, get_typeinfo_fn_t get_typeinfo_fn, void* userCtx);
+typedef void (*set_get_typeinfo_t) (void* ctx, get_typeinfo_fn_t get_typeinfo_fn, void* userCtx);
 
 typedef struct BackendInterface
 {
@@ -197,13 +198,13 @@ typedef struct BackendInterface
     void (*const Realloc) (void* ctx, BCValue *result, const BCValue* lhs, const BCValue* rhs, const uint32_t size);
 
     BCValue (*const Run) (void* ctx, uint32_t fnIdx, const BCValue* args, uint32_t n_args, BCHeap* heap);
-
-    void (*const destroy_instance) (void* ctx);
-    void (*const new_instance) (void ** result_p);
-    uint32_t (*const sizeof_instance) (void);
-    void (*const init_instance) (void* ctx);
-
     void (*const ReadI32) (void* ctx, const BCValue* val, const ReadI32_cb_t readCb, void* userCtx);
+
+
+    uint32_t (*const sizeof_instance) (void);
+    void (*const clear_instance) (void* ctx);
+    void (*const init_instance) (void* ctx);
+    void (*const fini_instance) (void* ctx);
 
     void (*const set_alloc_memory) (void* ctx, alloc_fn_t alloc_fn, void* userCtx);
     void (*const set_get_typeinfo) (void* ctx, get_typeinfo_fn_t get_typeinfo_fn, void* userCtx);

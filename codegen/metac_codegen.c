@@ -102,7 +102,7 @@ BCType MetaCCodegen_GetBCType(metac_bytecode_ctx_t* ctx, metac_type_index_t type
 
     return  result;
 }
-
+extern const BackendInterface Lightning_interface;
 extern const BackendInterface BCGen_interface;
 const BackendInterface* bc;
 
@@ -115,6 +115,11 @@ uint32_t MetaCCodegen_GetStorageSize(metac_bytecode_ctx_t* ctx, BCType bcType)
 }
 
 void MetaCCodegen_doType(metac_bytecode_ctx_t* ctx, metac_type_index_t typeIdx)
+{
+
+}
+
+BCTypeInfo* MetaCCodegen_GetTypeInfo(metac_bytecode_ctx_t* ctx, BCType* bcType)
 {
 
 }
@@ -201,7 +206,7 @@ long MetaCCodegen_RunFunction(metac_bytecode_ctx_t* self,
 
 void MetaCCodegen_End(metac_bytecode_ctx_t* self)
 {
-    
+
     bc->Finalize(self->c);
 
     if (bc == &Printer_interface)
@@ -247,11 +252,11 @@ void MetaCCodegen_Init(metac_bytecode_ctx_t* self, metac_alloc_t* parentAlloc)
     self->c = arena->Memory;
     if (bc->set_alloc_memory)
     {
-        bc->set_alloc_memory(self->c, cast(alloc_fn_t)MetaCCodegen_AllocMemory, (void*)self);
+        bc->set_alloc_memory(self->c, cast(alloc_fn_t)MetaCCodegen_AllocMemory, cast(void*)self);
     }
     if (bc->set_get_typeinfo)
     {
-
+        bc->set_get_typeinfo(self->c, cast(get_typeinfo_fn_t)MetaCCodegen_GetTypeInfo, cast(void*)self);
     }
     bc->init_instance(self->c);
 
@@ -270,7 +275,7 @@ void MetaCCodegen_Init(metac_bytecode_ctx_t* self, metac_alloc_t* parentAlloc)
 
 void MetaCCodegen_Free(metac_bytecode_ctx_t* self)
 {
-    bc->destroy_instance(self->c);
+    bc->fini_instance(self->c);
 }
 
 void MetaCCodegen_Begin(metac_bytecode_ctx_t* self, metac_identifier_table_t* idTable, metac_semantic_state_t* sema)
@@ -609,7 +614,7 @@ static void MetaCCodegen_doExpression(metac_bytecode_ctx_t* ctx,
 
         if (op == exp_signed_integer)
         {
-            (*result) = imm32(cast(int32_t)exp->ValueI64);
+            (*result) = imm32_(cast(int32_t)exp->ValueI64, true);
             goto Lret;
         }
 
@@ -653,11 +658,17 @@ static void MetaCCodegen_doExpression(metac_bytecode_ctx_t* ctx,
     }
     else if (IsBinaryExp(op) && op != exp_comma)
     {
-        if (!doBinAss)
+        if (!doBinAss && exp->E1->Kind != exp_signed_integer)
+        {
             lhs = bc->GenTemporary(c, expType);
+        }
+
         MetaCCodegen_doExpression(ctx, exp->E1, (doBinAss ? result : &lhs), (doBinAss ? _Lvalue: _Rvalue));
+
         if (doBinAss)
+        {
             lhs = *result;
+        }
 
         if (exp->E2->Kind == exp_signed_integer
            && (exp->E2->ValueI64 >= INT32_MIN && exp->E2->ValueI64 <= INT32_MAX))

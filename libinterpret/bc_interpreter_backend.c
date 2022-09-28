@@ -56,20 +56,6 @@ static const int max_call_depth = 2000;
 
 #define INITIAL_LOCALS_CAPACITY 2048
 #define INITIAL_CALLS_CAPACITY 2048
-static inline void* alloc_with_malloc(void* ctx, uint32_t size, void* fn)
-{
-    void* result = 0;
-
-    if (size != FREE_SIZE)
-    {
-        result = malloc(size);
-    }
-    else
-    {
-        free(fn);
-    }
-    return result;
-}
 
 static inline void BCGen_set_alloc_memory(BCGen* self, alloc_fn_t alloc_fn, void* userCtx)
 {
@@ -168,6 +154,10 @@ void BCGen_new_instance(BCGen** pResult)
     return ;
 }
 
+void BCGen_clear_instance(BCGen* instance)
+{
+    *instance = (BCGen){0};
+}
 void BCGen_init_instance(BCGen* instance)
 {
     BCGen_Init(instance);
@@ -178,7 +168,7 @@ uint32_t BCGen_sizeof_instance(void)
     return sizeof(BCGen);
 }
 
-void BCGen_destroy_instance(BCGen* instance)
+void BCGen_fini_instance(BCGen* instance)
 {
     BCGen_Fini(instance);
 }
@@ -3293,12 +3283,13 @@ const BackendInterface BCGen_interface = {
     .Memcmp = (Memcmp_t) BCGen_Memcmp,
     .Realloc = (Realloc_t) BCGen_Realloc,
     .Run = (run_t) BCGen_run,
-    .destroy_instance = (destroy_instance_t) BCGen_destroy_instance,
-    .new_instance = (new_instance_t) BCGen_new_instance,
-    .sizeof_instance = BCGen_sizeof_instance,
-    .init_instance = (init_instance_t) BCGen_init_instance,
-
     .ReadI32 = (ReadI32_t) BCGen_ReadI32,
+
+    .sizeof_instance = BCGen_sizeof_instance,
+    .clear_instance = (clear_instance_t) BCGen_clear_instance,
+    .init_instance = (init_instance_t) BCGen_init_instance,
+    .fini_instance = (fini_instance_t) BCGen_fini_instance,
+
     .set_alloc_memory = (set_alloc_memory_t) BCGen_set_alloc_memory,
     .set_get_typeinfo = (set_get_typeinfo_t) 0,
 };

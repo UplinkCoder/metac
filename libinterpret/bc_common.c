@@ -784,6 +784,21 @@ static inline BCHeap AllocDefaultHeap(void)
     return newHeap;
 }
 
+static inline void* alloc_with_malloc(void* ctx, uint32_t size, void* fn)
+{
+    void* result = 0;
+
+    if (size != FREE_SIZE)
+    {
+        result = malloc(size);
+    }
+    else
+    {
+        free(fn);
+    }
+    return result;
+}
+
 /*
 template BCGenFunction(T, alias fn)
 {

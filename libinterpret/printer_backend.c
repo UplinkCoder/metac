@@ -33,6 +33,11 @@ typedef struct Printer
     uint32_t NumberOfParameters;
     uint32_t LastLabel;
     char* functionName;
+
+    alloc_fn_t allocMemory;
+    get_typeinfo_fn_t getTypeInfo;
+    void* allocCtx;
+    void* getTypeInfoCtx;
 } Printer;
 
 void static inline Printer_EnsureCapacity(Printer* self, uint32_t capacity)
@@ -893,14 +898,29 @@ PR_OP2(F64ToF32)
 PR_OP3(Memcmp)
 PR_OP3(Realloc)
 
+static inline void Printer_ReadI32(Printer* self, const BCValue* val, const ReadI32_cb_t readCb, void* userCtx)
+{
+    self->vIp += 2;
+
+    Printer_PutStr(self, "ReadI32(");
+    Printer_PrintBCValue(self, val);
+    Printer_PutStr(self, ", ");
+    Printer_PutHex(self, (intptr_t) readCb);
+    Printer_PutStr(self, ", ");
+    Printer_PutHex(self, (intptr_t) userCtx);
+    Printer_PutStr(self, ");");
+    Printer_PutNewlineIndent(self);
+}
+
 static inline BCValue Printer_run(Printer* self, uint32_t fnIdx, const BCValue* args, uint32_t n_args)
 {
     return (BCValue) {BCValueType_Unknown};
 }
 
-static inline void Printer_destroy_instance(Printer* self)
+static inline void Printer_fini_instance(Printer* instance)
 {
-    free(self);
+    instance->allocMemory(instance, FREE_SIZE, cast(void*) instance->BufferStart);
+    instance->allocMemory(instance, FREE_SIZE, cast(void*) instance->ErrorInfos);
 }
 
 static inline uint32_t Printer_sizeof_instance(void)
@@ -908,36 +928,39 @@ static inline uint32_t Printer_sizeof_instance(void)
     return sizeof(Printer);
 }
 
-static inline void Printer_init_instance(Printer* intstance)
+static inline void Printer_clear_instance(Printer* instance)
 {
-    (*intstance) = (Printer){};
-    const uint32_t initialSize = 8192 * 8;
-
-    intstance->BufferStart = intstance->Buffer = (char*)malloc(initialSize);
-    intstance->BufferCapacity = initialSize;
-    intstance->ErrorInfoCount = 0;
-    intstance->ErrorInfoCapacity = 1024;
-    intstance->ErrorInfos = (ErrorInfo*) malloc(sizeof(ErrorInfo) * 1024);
+    instance->allocMemory = 0;
 }
 
-static inline void Printer_new_instance(Printer** resultP)
+static inline void Printer_init_instance(Printer* instance)
 {
-    Printer* result =  cast(Printer*)malloc(sizeof(Printer));
-
+    if (!instance->allocMemory)
+    {
+        instance->allocMemory = alloc_with_malloc;
+    }
     const uint32_t initialSize = 8192 * 8;
 
-    result->BufferStart = result->Buffer = (char*)malloc(initialSize);
-    result->BufferCapacity = initialSize;
-    result->ErrorInfoCount = 0;
-    result->ErrorInfoCapacity = 1024;
-    result->ErrorInfos = (ErrorInfo*) malloc(sizeof(ErrorInfo) * 1024);
-    result->NumberOfParameters = 0;
-    result->NumberOfFunctions = 0;
-    result->vIp = 0;
-
-    *resultP = result;
+    instance->BufferStart = instance->Buffer = cast(char*)
+        instance->allocMemory(instance->allocCtx, initialSize, 0);
+    instance->BufferCapacity = initialSize;
+    instance->ErrorInfoCount = 0;
+    instance->ErrorInfoCapacity = 1024;
+    instance->ErrorInfos = cast (ErrorInfo*)
+        instance->allocMemory(instance->allocCtx, sizeof(ErrorInfo) * 1024, 0);
 }
 
+static inline void Printer_set_alloc_memory(Printer* printer, alloc_fn_t allocFn, void* allocCtx)
+{
+    printer->allocMemory = allocFn;
+    printer->allocCtx = allocCtx;
+}
+
+static inline void Printer_set_get_typeinfo(Printer* printer, get_typeinfo_fn_t getTypeinfoFn, void* typeinfoCtx)
+{
+    printer->getTypeInfo = getTypeinfoFn;
+    printer->getTypeInfoCtx = typeinfoCtx;
+}
 
 #ifdef __cplusplus
 extern "C"
@@ -1018,8 +1041,13 @@ const BackendInterface Printer_interface = {
     .Memcmp = (Memcmp_t) Printer_Memcmp,
     .Realloc = (Realloc_t) Printer_Realloc,
     .Run = (run_t) Printer_run,
-    .destroy_instance = (destroy_instance_t) Printer_destroy_instance,
-    .new_instance = (new_instance_t) Printer_new_instance,
+    .ReadI32 = (ReadI32_t) Printer_ReadI32,
+
     .sizeof_instance = (sizeof_instance_t) Printer_sizeof_instance,
+    .clear_instance = (clear_instance_t) Printer_clear_instance,
     .init_instance = (init_instance_t) Printer_init_instance,
+    .fini_instance = (fini_instance_t) Printer_fini_instance,
+
+    .set_alloc_memory = (set_alloc_memory_t) Printer_set_alloc_memory,
+    .set_get_typeinfo = (set_get_typeinfo_t) Printer_set_get_typeinfo,
 };
