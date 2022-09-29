@@ -909,6 +909,14 @@ static void MetaCCodegen_doExpression(metac_bytecode_ctx_t* ctx,
         {
             bc->Xor3(c, result, &lhs, &rhs);
         } break;
+        case exp_lsh:
+        {
+            bc->Lsh3(c, result, &lhs, &rhs);
+        } break;
+        case exp_rsh:
+        {
+            bc->Rsh3(c, result, &lhs, &rhs);
+        } break;
         case exp_identifier:
         {
             fprintf(stderr, "There have been unresolved identifiers ... this should not happen\n");
