@@ -73,7 +73,7 @@ typedef enum BCTypeEnum
     BCTypeEnum_c16,
     BCTypeEnum_c32,
 
-    /// signed by integer
+    /// signed integer
     BCTypeEnum_i8,
     /// DITTO
     BCTypeEnum_i16,
@@ -326,6 +326,7 @@ CONSTEXPR static inline uint32_t align16(const uint32_t val)
 }
 
 EXTERN_C const uint32_t BCTypeEnum_basicTypeSize(const BCTypeEnum bct);
+void* alloc_with_malloc(void* ctx, uint32_t size, void* fn);
 /*
 static inline const uint32_t fastLog10(const uint32_t val)
 {
@@ -695,7 +696,7 @@ static const BCTypeEnum smallIntegerTypes[] = {BCTypeEnum_u16, BCTypeEnum_u8,
 #define ARRAY_SIZE(A) (sizeof(A) / sizeof(A[0]))
 
 EXTERN_C BCTypeEnum BCTypeEnum_commonTypeEnum(BCTypeEnum lhs, BCTypeEnum rhs);
-static inline BCHeap AllocDefaultHeap();
+static inline void AllocDefaultHeap(BCHeap* newHeap);
 
 #undef offsetof
 

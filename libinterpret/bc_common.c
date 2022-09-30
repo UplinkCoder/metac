@@ -721,7 +721,8 @@ EXTERN_C bool BCValue_isStackValueOrParameter(const BCValue* val)
 {
     return (val->vType == BCValueType_StackValue
          || val->vType == BCValueType_Parameter
-         || val->vType == BCValueType_Local);
+         || val->vType == BCValueType_Local
+         || val->vType == BCValueType_Temporary);
 }
 
 /*
@@ -775,16 +776,18 @@ EXTERN_C BCValue imm64_(uint64_t value, bool signed_)
     return ret;
 }
 
-static inline BCHeap AllocDefaultHeap(void)
+static inline void AllocDefaultHeap(BCHeap* newHeap)
 {
-    BCHeap newHeap = {0};
-    newHeap.heapMax = 1 << 14;
-    newHeap.heapData = (uint8_t*)malloc(newHeap.heapMax);
-    newHeap.heapSize = 128;
-    return newHeap;
+    newHeap->heapMax = 1 << 14;
+    newHeap->heapData = (uint8_t*)malloc(newHeap->heapMax);
+    for(uint32_t i = 0; i < 255; i++)
+    {
+        newHeap->heapData[i] = (i & 0xff);
+    }
+    newHeap->heapSize = 128;
 }
 
-static inline void* alloc_with_malloc(void* ctx, uint32_t size, void* fn)
+void* alloc_with_malloc(void* ctx, uint32_t size, void* fn)
 {
     void* result = 0;
 

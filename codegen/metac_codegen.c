@@ -234,6 +234,7 @@ void* MetaCCodegen_AllocMemory(metac_bytecode_ctx_t* self, uint32_t size, sema_d
 void MetaCCodegen_Init(metac_bytecode_ctx_t* self, metac_alloc_t* parentAlloc)
 {
     //TODO take BC as a parameter
+    // bc = &Lightning_interface;
     if (bc == 0)
     {
 #if BC_PRINTER
@@ -561,6 +562,7 @@ static void StoreToHeapRef(void* c, BCValue* hrv, uint32_t abiSize)
             BCTypeEnum_c8, BCTypeEnum_c16, BCTypeEnum_c32,
             BCTypeEnum_f23
         };
+
         if(BCTypeEnum_anyOf(hrv->type.type, types, ARRAY_SIZE(types)))
         {
             BCValue hr = BCValue_fromHeapref(hrv->heapRef);
@@ -595,7 +597,7 @@ static void MetaCCodegen_doExpression(metac_bytecode_ctx_t* ctx,
                                       metac_value_type_t lValue)
 {
     metac_printer_t printer;
-    MetaCPrinter_Init(&printer, ctx->IdentifierTable, 0);
+    MetaCPrinter_Init(&printer, ctx->Sema->ParserIdentifierTable, ctx->Sema->ParserStringTable);
 
     void* c = ctx->c;
 
@@ -632,7 +634,7 @@ static void MetaCCodegen_doExpression(metac_bytecode_ctx_t* ctx,
         op -= (exp_add_ass - exp_add);
     }
 
-    BCValue lhs;
+    BCValue lhs = {BCValueType_Unknown};
     BCValue rhs = {BCValueType_Unknown};
 
 

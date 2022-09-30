@@ -448,7 +448,7 @@ void Repl_Init(repl_state_t* self)
     self->ParseMode = repl_mode_ee;
     self->CompilerInterface = 0;
 
-    self->Heap = AllocDefaultHeap();
+    AllocDefaultHeap(&self->Heap);
 
     self->SrcBuffer = 0;
     self->FreePtr = 0;
@@ -758,8 +758,22 @@ LswitchMode:
 
             case 'h' :
             {
-                HelpMessage(uiInterface, uiState);
-                goto LnextLine;
+                if (0 == strcmp("eap", repl->Line + 2))
+                {
+                    uint8_t* h = repl->Heap.heapData;
+                    for(uint32_t i = 0; i < repl->Heap.heapSize; i += 8)
+                    {
+                        printf("%p: %.2x %.2x %.2x %.2x %.2x %.2x %.2x %.2x\n", h + i,
+                            h[i + 0], h[i + 1], h[i + 2], h[i + 3],
+                            h[i + 4], h[i + 5], h[i + 6], h[i + 7]);
+                    }
+                    goto LnextLine;
+                }
+                else
+                {
+                    HelpMessage(uiInterface, uiState);
+                    goto LnextLine;
+                }
             } break;
             default :
                 MSGF("Command :%c unknown type :h for help\n", *(repl->Line + 1));
