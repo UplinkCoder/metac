@@ -761,11 +761,19 @@ LswitchMode:
                 if (0 == strcmp("eap", repl->Line + 2))
                 {
                     uint8_t* h = repl->Heap.heapData;
-                    for(uint32_t i = 0; i < repl->Heap.heapSize; i += 8)
+                    char line[14 + (16 * 3)];
+                    for(uint32_t i = 0; i < repl->Heap.heapSize;)
                     {
-                        printf("%p: %.2x %.2x %.2x %.2x %.2x %.2x %.2x %.2x\n", h + i,
-                            h[i + 0], h[i + 1], h[i + 2], h[i + 3],
-                            h[i + 4], h[i + 5], h[i + 6], h[i + 7]);
+                        int p = 0;
+                        p += sprintf(line + p, "%p:", h + i);
+                        for(uint32_t j = 0; j < 4; j++)
+                        {
+                            p += sprintf(line + p, " %.2x %.2x %.2x %.2x",
+                                h[i + 0], h[i + 1], h[i + 2], h[i + 3]);
+                            i += 4;
+                        }
+                        puts(line);
+
                     }
                     goto LnextLine;
                 }
