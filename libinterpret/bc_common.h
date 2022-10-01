@@ -257,8 +257,10 @@ typedef struct BCValue
     STRUCT_NAME(const BCHeapRef heapRef);
 #endif
 } STRUCT_NAME;
-#define BCVALUE_INIT (BCValue){ BCValueType_Unknown }
-EXTERN_C void BCValue_Init(BCValue* self);
+extern BCValue BCValue_Init;
+
+#define BCVALUE_INIT BCValue_Init;
+
 EXTERN_C bool BCValue_eq(const BCValue* lhs, const BCValue* rhs);
 
 #undef STRUCT_NAME

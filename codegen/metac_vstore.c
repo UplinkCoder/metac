@@ -43,7 +43,7 @@ metac_identifier_ptr_t GetVStoreID(variable_store_t* vstore,
 static inline BCValue* GetValueFromVariableStore(variable_store_t* vstore,
                                                  metac_identifier_ptr_t vstoreId)
 {
-    for(int i = 0;
+    for(uint32_t i = 0;
         i < vstore->VariableSize;
         i++)
     {
@@ -68,8 +68,8 @@ void VariableStore_AddVariable(variable_store_t* vstore,
     BCValue* v = GetValueFromVariableStore(vstore, vstoreId);
     assert(!v);
     assert(vstore->VariableCapacity > vstore->VariableSize);
-
-    vstore->Variables[vstore->VariableSize++] = (variable_t) { vstoreId, value };
+    variable_t var = { vstoreId, value };
+    vstore->Variables[vstore->VariableSize++] = var;
 }
 
 void VariableStore_RemoveVariable(variable_store_t* vstore, void* value)
@@ -102,7 +102,8 @@ void VariableStore_SetValueI32(variable_store_t* vstore,
     if (!v)
     {
         v = (BCValue*)malloc(sizeof(BCValue));
-        vstore->Variables[vstore->VariableSize++] = (variable_t){ vstoreId, v };
+        variable_t var = { vstoreId, v };
+        vstore->Variables[vstore->VariableSize++] = var;
     }
     *v = imm32(value);
 }

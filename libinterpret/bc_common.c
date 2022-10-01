@@ -1,8 +1,11 @@
 #ifndef _BC_COMMON_C_
 #define _BC_COMMON_C_
 
-#include <stdint.h>
-#include <stdbool.h>
+#ifndef _WIN32
+#  include <stdint.h>
+#  include <stdbool.h>
+#endif
+
 #include <assert.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -22,6 +25,7 @@
     ((size_t)((char *)&((st *)0)->m - (char *)0))
 
 #define CONSTEXPR
+BCValue BCValue_Init = { BCValueType_Unknown };
 
 const char*  BCTypeEnum_toChars(const BCTypeEnum* self)
 {
@@ -516,11 +520,6 @@ EXTERN_C bool BCValue_eq(const BCValue* lhs, const BCValue* rhs)
     return false;
 }
 
-EXTERN_C void BCValue_Init(BCValue* self)
-{
-    self->couldBeVoid = false;
-}
-
 #undef STRUCT_NAME
 
 const uint32_t BCTypeEnum_basicTypeSize(const BCTypeEnum bct)
@@ -693,7 +692,7 @@ bool BCTypeEnum_anyOf(BCTypeEnum type, const BCTypeEnum acceptedTypes[], uint32_
 {
     bool result = false;
 
-    for(int i = 0; i < n_types; i++)
+    for(uint32_t i = 0; i < n_types; i++)
     {
         if (type == acceptedTypes[i])
         {

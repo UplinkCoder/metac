@@ -6,6 +6,11 @@
 #include "../libinterpret/bc_interpreter_backend.c"
 #include "../libinterpret/printer_backend.c"
 
+#ifdef _WIN32
+#  define INT32_MAX 0x7fffffff
+#  define INT32_MIN (~INT32_MAX)
+#endif
+
 #include  "metac_vstore.c"
 
 #include "metac_codegen.h"
@@ -23,7 +28,7 @@ void MetaCCodegen_doStatement(metac_bytecode_ctx_t* ctx,
 
 BCType MetaCCodegen_GetBCType(metac_bytecode_ctx_t* ctx, metac_type_index_t type)
 {
-    BCType result = {0};
+    BCType result = {BCTypeEnum_Undef};
 
     if (type.Kind == type_index_enum)
         result.type = BCTypeEnum_i32;
@@ -121,13 +126,13 @@ void MetaCCodegen_doType(metac_bytecode_ctx_t* ctx, metac_type_index_t typeIdx)
 
 BCTypeInfo* MetaCCodegen_GetTypeInfo(metac_bytecode_ctx_t* ctx, BCType* bcType)
 {
-
+    return 0;
 }
 
 void MetaCCodegen_doGlobal(metac_bytecode_ctx_t* ctx, metac_sema_declaration_t* decl, uint32_t idx)
 {
     BCValue result = {BCValueType_HeapValue};
-    result.heapAddr = (HeapAddr){ctx->GlobalMemoryOffset};
+    result.heapAddr.addr = ctx->GlobalMemoryOffset;
 
     metac_type_index_t typeIdx = MetaCSemantic_GetType(ctx->Sema, METAC_NODE(decl));
     if (typeIdx.Kind != type_index_invalid)
@@ -214,7 +219,6 @@ void MetaCCodegen_End(metac_bytecode_ctx_t* self)
         Printer* printer = (Printer*)self->c;
         printf("%s\n\n", printer->BufferStart);
     }
-
 }
 void* MetaCCodegen_AllocMemory(metac_bytecode_ctx_t* self, uint32_t size, sema_decl_function_t* func)
 {
@@ -233,6 +237,9 @@ void* MetaCCodegen_AllocMemory(metac_bytecode_ctx_t* self, uint32_t size, sema_d
 
 void MetaCCodegen_Init(metac_bytecode_ctx_t* self, metac_alloc_t* parentAlloc)
 {
+    //TODO we might want a cheaper initialisation?
+    static const metac_bytecode_ctx_t initValue = {0};
+    (*self) = initValue;
     //TODO take BC as a parameter
     // bc = &Lightning_interface;
     if (bc == 0)
@@ -244,7 +251,6 @@ void MetaCCodegen_Init(metac_bytecode_ctx_t* self, metac_alloc_t* parentAlloc)
 #endif
     }
 
-    (*self) = (metac_bytecode_ctx_t) {};
     Allocator_Init(&self->Allocator, parentAlloc, 0);
 
 #ifndef BC_PRINTER
@@ -260,7 +266,6 @@ void MetaCCodegen_Init(metac_bytecode_ctx_t* self, metac_alloc_t* parentAlloc)
         bc->set_get_typeinfo(self->c, cast(get_typeinfo_fn_t)MetaCCodegen_GetTypeInfo, cast(void*)self);
     }
     bc->init_instance(self->c);
-
 #else
     bc->new_instance(&self->c);
     Printer* printer = (Printer*) self->c;
@@ -307,7 +312,7 @@ metac_bytecode_function_t MetaCCodegen_GenerateFunctionFromExp(metac_bytecode_ct
 
     // we need to introduce all resolvable variables from the outer context here.
 
-    MetaCCodegen_doExpression(ctx, expr, &resultVal, 0);
+    MetaCCodegen_doExpression(ctx, expr, &resultVal, _Rvalue);
 
     bc->Ret(c, &resultVal);
 
@@ -631,7 +636,7 @@ static void MetaCCodegen_doExpression(metac_bytecode_ctx_t* ctx,
     if (IsBinaryAssignExp(op))
     {
         doBinAss = true;
-        op -= (exp_add_ass - exp_add);
+        U32(op) -= (exp_add_ass - exp_add);
     }
 
     BCValue lhs = {BCValueType_Unknown};
@@ -782,7 +787,7 @@ static void MetaCCodegen_doExpression(metac_bytecode_ctx_t* ctx,
                     metac_sema_expression_t te = *exp->TupleExpressions[i];
                     metac_type_index_t typeIdx = te.TypeIndex;
                     BCType bcType = MetaCCodegen_GetBCType(ctx, typeIdx);
-                    BCValue bcValue = {0};
+                    BCValue bcValue = {BCValueType_Unknown};
 
                     MetaCCodegen_doExpression(ctx, exp->TupleExpressions[i], &bcValue, _Rvalue);
                     ARENA_ARRAY_ADD(types, typeIdx);
@@ -997,14 +1002,13 @@ static void MetaCCodegen_doExpression(metac_bytecode_ctx_t* ctx,
     if (lhs.vType == BCValueType_Temporary)
         bc->DestroyTemporary(c, &lhs);
 Lret: {}
-
 }
 
 
 static metac_bytecode_switch_t* MetaCCodegen_PushSwitch(metac_bytecode_ctx_t* ctx,
                                                         BCValue exp)
 {
-    metac_bytecode_switch_t swtch = {0};
+    metac_bytecode_switch_t swtch = {BCValueType_Unknown};
     swtch.Exp = exp;
     METAC_NODE(swtch.DefaultBody) = emptyNode;
     ARENA_ARRAY_INIT(metac_bytecode_casejmp_t, swtch.PrevCaseJumps, &ctx->Allocator);
@@ -1217,7 +1221,7 @@ void MetaCCodegen_doStatement(metac_bytecode_ctx_t* ctx,
         case stmt_return:
         {
             sema_stmt_return_t* returnStmt = cast(sema_stmt_return_t*) stmt;
-            BCValue retVal = {0};
+            BCValue retVal = {BCValueType_Unknown};
             MetaCCodegen_doExpression(ctx, returnStmt->ReturnExp, &retVal, _Rvalue);
             bc->Ret(c, &retVal);
         } break;
@@ -1225,7 +1229,7 @@ void MetaCCodegen_doStatement(metac_bytecode_ctx_t* ctx,
         case stmt_exp:
         {
             sema_stmt_exp_t* expStmt = cast(sema_stmt_exp_t*) stmt;
-            BCValue dontCare = {0};
+            BCValue dontCare = {BCValueType_Unknown};
             MetaCCodegen_doExpression(ctx, expStmt->Expression, &dontCare, _Discard);
         } break;
 
@@ -1233,7 +1237,7 @@ void MetaCCodegen_doStatement(metac_bytecode_ctx_t* ctx,
         {
             sema_stmt_if_t* ifStmt = cast(sema_stmt_if_t*) stmt;
 
-            BCValue cond = {0};
+            BCValue cond = {BCValueType_Unknown};
             MetaCCodegen_doExpression(ctx, ifStmt->IfCond, &cond, _Cond);
             CndJmpBegin cj = bc->BeginCndJmp(c, &cond, false);
             {
@@ -1261,7 +1265,7 @@ void MetaCCodegen_doStatement(metac_bytecode_ctx_t* ctx,
             MetaCCodegen_doStatement(ctx, whileStatement->WhileBody);
 
             // BCLabel evalCond = bc->GenLabel(c);
-            BCValue cond = {0};
+            BCValue cond = {BCValueType_Unknown};
             MetaCCodegen_doExpression(ctx, whileStatement->WhileExp, &cond, _Cond);
             CndJmpBegin condExpJmp = bc->BeginCndJmp(c, &cond, true);
             bc->EndCndJmp(c, &condExpJmp, beginLoop);
@@ -1271,7 +1275,7 @@ void MetaCCodegen_doStatement(metac_bytecode_ctx_t* ctx,
         {
             sema_stmt_while_t* whileStatement = cast(sema_stmt_while_t*) stmt;
             BCLabel evalCond = bc->GenLabel(c);
-            BCValue cond = {0};
+            BCValue cond = {BCValueType_Unknown};
             MetaCCodegen_doExpression(ctx, whileStatement->WhileExp, &cond, _Cond);
 
             CndJmpBegin condExpJmp = bc->BeginCndJmp(c, &cond, false);
@@ -1304,7 +1308,7 @@ void MetaCCodegen_doStatement(metac_bytecode_ctx_t* ctx,
 
             if (METAC_NODE(forStatement->ForCond) != emptyNode)
             {
-                BCValue cond = {0};
+                BCValue cond = {BCValueType_Unknown};
                 MetaCCodegen_doExpression(ctx, forStatement->ForCond, &cond, _Cond);
                 cndJmpToCondEval = bc->BeginCndJmp(c, &cond, false);
             }
