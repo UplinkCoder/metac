@@ -431,7 +431,7 @@ static bool IsUnaryExp(metac_expression_kind_t kind)
         case exp_post_increment:
         case exp_paren:
         case exp_cast:
-        case exp_ptr:
+        case exp_deref:
         case exp_addr:
         case exp_sizeof:
         case exp_typeof:

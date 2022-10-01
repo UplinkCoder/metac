@@ -117,7 +117,7 @@
     M(exp_outer) \
     M(exp_unary_dot) \
     M(exp_addr) \
-    M(exp_ptr) \
+    M(exp_deref) \
     M(exp_not) \
     M(exp_compl) \
     M(exp_umin) \
@@ -142,7 +142,7 @@
     M(exp_function) \
     \
     M(exp_addr_or_and) \
-    M(exp_ptr_or_mul) \
+    M(exp_deref_or_mul) \
     \
     M(exp_dot_compiler) \
     M(exp_dot_context) \

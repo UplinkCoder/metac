@@ -1007,7 +1007,7 @@ static inline void PrintExpression(metac_printer_t* self, metac_expression_t* ex
         PrintExpression(self, exp->E1);
         PrintToken(self, tok_rParen);
     }
-    else if (exp->Kind == exp_addr || exp->Kind == exp_ptr
+    else if (exp->Kind == exp_addr || exp->Kind == exp_deref
           || exp->Kind == exp_not  || exp->Kind == exp_compl
           || exp->Kind == exp_umin)
     {
@@ -1015,7 +1015,7 @@ static inline void PrintExpression(metac_printer_t* self, metac_expression_t* ex
             const char* op = 0;
             if (exp->Kind == exp_addr)
                 op = "&";
-            else if (exp->Kind == exp_ptr)
+            else if (exp->Kind == exp_deref)
                 op = "*";
             else if (exp->Kind == exp_not)
                 op = "!";
@@ -1529,7 +1529,7 @@ static inline void PrintSemaExpression(metac_printer_t* self,
         PrintSemaExpression(self, sema,  semaExp->E1);
         PrintToken(self, tok_rParen);
     }
-    else if (semaExp->Kind == exp_addr || semaExp->Kind == exp_ptr
+    else if (semaExp->Kind == exp_addr || semaExp->Kind == exp_deref
           || semaExp->Kind == exp_not  || semaExp->Kind == exp_compl
           || semaExp->Kind == exp_umin)
     {
@@ -1537,7 +1537,7 @@ static inline void PrintSemaExpression(metac_printer_t* self,
             const char* op = 0;
             if (semaExp->Kind == exp_addr)
                 op = "&";
-            else if (semaExp->Kind == exp_ptr)
+            else if (semaExp->Kind == exp_deref)
                 op = "*";
             else if (semaExp->Kind == exp_not)
                 op = "!";

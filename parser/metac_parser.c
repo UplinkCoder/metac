@@ -729,7 +729,7 @@ metac_expression_kind_t ExpTypeFromTokenType(metac_token_enum_t tokenType)
     }
     else if (tokenType == tok_star)
     {
-        return exp_ptr_or_mul;
+        return exp_deref_or_mul;
     }
     else if (tokenType == tok_identifier)
     {
@@ -831,7 +831,7 @@ static inline uint32_t OpToPrecedence(metac_expression_kind_t exp)
     {
         return 14;
     }
-    else if (exp == exp_ptr || exp == exp_arrow || exp == exp_dot || exp == exp_addr
+    else if (exp == exp_deref || exp == exp_arrow || exp == exp_dot || exp == exp_addr
           || exp == exp_increment || exp == exp_decrement)
     {
         return 15;
@@ -1050,16 +1050,16 @@ static inline bool CouldBeType(metac_parser_t* self,
     {
         U32(flags) |= TypeScan_FirstWasIdentifier;
     }
-
-    if (tok == tok_star)
+    else if (tok == tok_star)
     {
-        result = false;
+        return false;
     }
-    else while (IsTypeToken(tok))
+
+    while (IsTypeToken(tok))
     {
         result |= true;
         // if we see a * set the seen_star flag
-        // if we then see an identifier after the star
+        // if we then see an identifier or a number after the star
         // the expression cannot be a type literal
         if (tok == tok_star)
         {
@@ -1072,8 +1072,9 @@ static inline bool CouldBeType(metac_parser_t* self,
             break;
         }
 #endif
-        else if (((flags & TypeScan_SeenStar) != 0)
-              && tok == tok_identifier)
+        if (((flags & TypeScan_SeenStar) != 0)
+              && (   tok == tok_identifier
+                  |  tok == tok_uint))
         {
             result = false;
             break;
@@ -1082,9 +1083,9 @@ static inline bool CouldBeType(metac_parser_t* self,
         tok = (peek ? peek->TokenType : tok_eof);
     }
     // if we just had a single identifier don't
-    // treat it as a type
-    if ((flags & TypeScan_FirstWasIdentifier) != 0
-      && peekN <= 3)
+    // treat it as a type as we can resolve single identifiers just fine
+    // and they don't impact parsing
+    if ((flags & TypeScan_FirstWasIdentifier) != 0)
     {
         result = false;
     }
@@ -1513,7 +1514,10 @@ metac_expression_t* MetaCParser_ParseUnaryExpression(metac_parser_t* self, parse
             wasParen = true;
             MetaCParser_Match(self, tok_lParen);
         }
-        result->E1 = MetaCParser_ParseExpression(self, cast(parse_expression_flags_t)(eflags & expr_flags_pp), 0);
+        parse_expression_flags_t flags = cast(parse_expression_flags_t)
+            ((eflags & expr_flags_pp) | expr_flags_sizeof);
+
+        result->E1 = MetaCParser_ParseExpression(self, flags, 0);
         if (wasParen)
         {
             MetaCParser_Match(self, tok_rParen);
@@ -1576,8 +1580,8 @@ metac_expression_t* MetaCParser_ParseUnaryExpression(metac_parser_t* self, parse
     else if (tokenType == tok_star)
     {
         MetaCParser_Match(self, tok_star);
-        result = AllocNewExpression(exp_ptr);
-        //PushOperator(exp_ptr);
+        result = AllocNewExpression(exp_deref);
+        //PushOperator(exp_deref);
         result->E1 = MetaCParser_ParseExpression(self, cast(parse_expression_flags_t)(expr_flags_unary | (eflags & expr_flags_pp)), 0);
         result->Hash = CRC32C_VALUE(CRC32C_STAR, result->E1->Hash);
         //PushOperand(result);
@@ -3614,6 +3618,9 @@ void TestParseExprssion(void)
 
     expr = MetaCLPP_ParseExpressionFromString(&LPP, "((x + ((((a + b))))) + d)");
     assert(!strcmp(MetaCPrinter_PrintExpression(&printer, expr), "((x + ((((a + b))))) + d)"));
+
+    expr = MetaCLPP_ParseExpressionFromString(&LPP, "x + y * 6737203");
+    assert(!strcmp(MetaCPrinter_PrintExpression(&printer, expr), "(x + (y * 6737203))"));
 }
 
 void TestParseDeclaration(void)
