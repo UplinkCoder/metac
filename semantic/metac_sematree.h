@@ -32,6 +32,7 @@ typedef enum metac_storage_kind_t
 
     storage_global,              // A
 
+    storage_external,            // B
 
     storage_invalid = 0xE,
 } metac_storage_kind_t;

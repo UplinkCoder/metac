@@ -129,7 +129,7 @@ typedef struct BackendInterface
     BCValue (*const GenParameter) (void* ctx, BCType bct, const char* name);
 
     void (*const EmitFlag) (void* ctx, BCValue* lhs);
-
+    
     BCValue (*const MapExternal) (void* ctx, void* memory, uint32_t sz);
 
     void (*const Alloc) (void* ctx, BCValue *heapPtr, const BCValue* size);

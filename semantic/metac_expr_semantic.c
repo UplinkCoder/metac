@@ -520,13 +520,13 @@ metac_sema_expression_t* MetaCSemantic_doExprSemantic_(metac_semantic_state_t* s
             metac_expression_t* fn = call->E1;
             exp_argument_t* args = (METAC_NODE(call->E2) != emptyNode ?
                 (exp_argument_t*)call->E2 : (exp_argument_t*)emptyNode);
-#if 0
-            if (!g_compilerInterface)
+
+            if (!self->CompilerInterface)
             {
                 report_error("There's no compiler interface loaded\n");
                 return 0;
             }
-
+#if 0
             // printf("Type(fn) %s\n", MetaCExpressionKind_toChars(fn->Kind));
 
             int callIdx = -1;

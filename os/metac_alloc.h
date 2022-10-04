@@ -126,7 +126,7 @@ typedef struct metac_alloc_t
         FreeArena(&(NAME##Arena)); \
 } while(0)
 
-#define Allocator_Init(ALLOC, PARENT, FLAGS) \
+#define Allocator_Init(ALLOC, PARENT, ...) \
     Allocator_Init_((ALLOC), (PARENT), __FILE__, __LINE__)
 void Allocator_Init_(metac_alloc_t* allocator, metac_alloc_t* parent,
                      const char* file, uint32_t line);

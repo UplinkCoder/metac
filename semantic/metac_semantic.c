@@ -889,7 +889,7 @@ sema_decl_function_t* MetaCSemantic_doFunctionSemantic(metac_semantic_state_t* s
         i < func->ParameterCount;
         i++)
     {
-        decl_variable_t* var = cast(decl_variable_t*)(f->Parameters +i);
+        decl_variable_t* var = cast(decl_variable_t*)(f->Parameters + i);
        // (XXX) here we tried to force the __cdecl calling convention
        // this is commented out for now
 //        params[i].Storage.v = STORAGE_V(storage_stack, frameOffset);
@@ -1187,8 +1187,8 @@ metac_sema_declaration_t* MetaCSemantic_doDeclSemantic_(metac_semantic_state_t* 
 
 /// retruns an emptyNode in case it couldn't be found in the cache
 metac_node_t MetaCSemantic_LRU_LookupIdentifier(metac_semantic_state_t* self,
-                                                 uint32_t idPtrHash,
-                                                 metac_identifier_ptr_t idPtr)
+                                                uint32_t idPtrHash,
+                                                metac_identifier_ptr_t idPtr)
 {
     uint32_t mask = 0;
     int16x8_t hashes = Load16(&self->LRU.LRUContentHashes);

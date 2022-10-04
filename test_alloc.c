@@ -1,7 +1,7 @@
-#include "crc32c.c"
-#include "metac_identifier_table.c"
-#include "os.c"
-#include "metac_alloc.c"
+#include "../hash/crc32c.c"
+#include "../parser/metac_identifier_table.c"
+#include "../os/os.c"
+#include "../os/metac_alloc.c"
 
 int main(int argc, const char* argv[])
 {

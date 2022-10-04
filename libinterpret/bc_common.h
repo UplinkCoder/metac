@@ -272,23 +272,35 @@ typedef struct CndJmpBegin
     bool ifTrue;
 } CndJmpBegin;
 
+// heap address 00 - 10
+// external address 10
+// stack address 11
+
+
+#define AddrMask  ((1 << 31) | \
+                   (1 << 30))
+
 #define stackAddrMask  ((1 << 31) | \
-                        (1 << 30) | \
-                        (1 << 29) | \
-                        (1 << 28) | \
-                        (1 << 27) | \
-                        (1 << 26))
+                        (1 << 30))
+
+#define externalAddrMask (1 << 31)
 
 static inline bool isStackAddress(uint32_t unrealPointer)
 {
-    // a stack address has the upper 6 bits set
-    return (unrealPointer & stackAddrMask) == stackAddrMask;
+    // a stack address has the upper 1 bits set
+    return (unrealPointer & AddrMask) == stackAddrMask;
+}
+
+static inline bool isExternalAddress(uint32_t unrealPointer)
+{
+    // an external address has
+    return (unrealPointer & AddrMask) == externalAddrMask;
 }
 
 static inline bool isHeapAddress(uint32_t unrealPointer)
 {
-    // a heap address does not have the upper 6 bits set
-    return (unrealPointer & stackAddrMask) != stackAddrMask;
+    // a heap address does not have the upper 1 bits set
+    return (unrealPointer & stackAddrMask) == 0;
 }
 
 static inline uint32_t toStackOffset(uint32_t unrealPointer)

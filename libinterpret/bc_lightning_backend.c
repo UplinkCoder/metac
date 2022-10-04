@@ -459,8 +459,15 @@ static inline void Lightning_Set(Lightning* self, BCValue *lhs, const BCValue* r
     {
         LoadRegValue(self, r1Index, rhs);
     }
+
     StoreRegValue(self, lhs, r1Index);
 }
+
+static inline void Lightning_CmpOp3(Lightning* self, BCValue *result, const BCValue* lhs, const BCValue* rhs, char op)
+{
+    assert(0);
+}
+
 
 static inline void Lightning_Ult3(Lightning* self, BCValue *result, const BCValue* lhs, const BCValue* rhs)
 {
@@ -541,12 +548,40 @@ static inline void Lightning_LogicOp3(Lightning* self, BCValue *result, const BC
             {
                 default: assert(0);
                 case HASH_COM:
-                    jit_comr(JIT_R0, JIT_R0, rhs->imm32.imm32);
+                    jit_comr(JIT_R0, rhs->imm32.imm32);
                 break;
             }
         }
-
+    }
 }
+
+static inline void Lightning_MathOp2(Lightning* self, BCValue *result,const BCValue* rhs, char op)
+{
+    if (BCType_IsInt32(result->type.type) && BCType_IsInt32(rhs->type.type))
+    {
+        if (rhs->vType == BCValueType_Immediate)
+        {
+            jit_movi(JIT_R0, rhs->imm32.imm32);
+        }
+        else
+        {
+            LoadRegValue(self, r0Index, rhs);
+        }
+
+        switch(op)
+        {
+            case HASH_COM:
+            {
+                jit_comr(JIT_R0, JIT_R0);
+            } break;
+        }
+
+        StoreRegValue(self, result, r0Index);
+    }
+    else
+        assert(0);
+}
+
 
 static inline void Lightning_MathOp3(Lightning* self, BCValue *result, const BCValue* lhs, const BCValue* rhs, char op)
 {
@@ -707,7 +742,7 @@ static inline void Lightning_Umod3(Lightning* self, BCValue *result, const BCVal
 
 static inline void Lightning_Not(Lightning* self, BCValue *result, const BCValue* val)
 {
-    Lightning_MathOp3(self, result, lhs, rhs, HASH_COM);
+    Lightning_MathOp2(self, result, val, HASH_COM);
 }
 
 static inline void Lightning_LoadFramePointer(Lightning* self, BCValue *result, const int32_t offset)

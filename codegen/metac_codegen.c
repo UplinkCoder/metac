@@ -17,6 +17,15 @@
 #include "../os/metac_alloc.h"
 
 #include <stdarg.h>
+extern metac_compiler_t compiler;
+
+metac_compiler_t compiler;
+
+const char* compiler_help(void)
+{
+    return "Hello I am Mr. compiler. I cannot help you ...";
+}
+
 uint32_t MetaCCodegen_GetTypeABISize(metac_bytecode_ctx_t* ctx,
                                      metac_type_index_t type)
 {
@@ -469,6 +478,17 @@ static bool MetaCCodegen_AccessVariable(metac_bytecode_ctx_t* ctx,
         default:
             assert(0);
 
+        case storage_external:
+        {
+            BCType extType = {BCTypeEnum_Ptr};
+            
+            bc->GenTemporary(c, extType);
+            void* memory;
+            int sz = 0;
+            bc->MapExternal(c, memory, 0);
+            assert(!"External access ins't currently implemented");
+            return true;
+        } break;
         case storage_parameter:
         {
             assert(ctx->ParametersCount >= var->Storage.Offset);
@@ -595,7 +615,13 @@ static void StoreToHeapRef(void* c, BCValue* hrv, uint32_t abiSize)
     }
 }
 
+static void doArithExp(metac_bytecode_ctx_t* ctx,
+                       metac_sema_expression_t* result,
+                       metac_sema_expression_t* lhs,
+                       metac_sema_expression_t* rhs)
+{
 
+}
 static void MetaCCodegen_doExpression(metac_bytecode_ctx_t* ctx,
                                       metac_sema_expression_t* exp,
                                       BCValue* result,
@@ -977,7 +1003,8 @@ static void MetaCCodegen_doExpression(metac_bytecode_ctx_t* ctx,
         case exp_call:
         {
             sema_exp_call_t call = exp->Call;
-            BCValue resultVal = bc->GenTemporary(c, MetaCCodegen_GetBCType(ctx, exp->TypeIndex));
+            BCValue resultVal =
+                bc->GenTemporary(c, MetaCCodegen_GetBCType(ctx, exp->TypeIndex));
 
             assert(call.Function->Kind == exp_function);
             assert(call.Function->Function);
@@ -997,6 +1024,15 @@ static void MetaCCodegen_doExpression(metac_bytecode_ctx_t* ctx,
             bc->Call(c, &resultVal, &fn, args, call.ArgumentCount);
             *result = resultVal;
         } break;
+    }
+
+    // binary assignment that use heap-ref values need that mirrored back
+    if (doBinAss)
+    {
+        if (exp->E1->Variable->Storage.Kind == storage_global)
+        {
+            StoreToHeapRef(c, result, MetaCCodegen_GetTypeABISize(ctx, exp->E1->TypeIndex));
+        }
     }
 
     if (rhs.vType == BCValueType_Temporary)
