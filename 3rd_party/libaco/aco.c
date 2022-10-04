@@ -159,8 +159,8 @@ void aco_runtime_test(void){
 #if defined(HAS_TLS)
 // aco's Global Thread Local Storage variable `co`
 __thread aco_t* aco_gtls_co_;
-#elif HAS_THREADS
-tss_key aco_tss_key_co;
+#elif defined(HAS_THREADS)
+tss_t aco_tss_key_co;
 #else
 aco_t* aco_g_co;
 #endif

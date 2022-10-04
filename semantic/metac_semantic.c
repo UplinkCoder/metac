@@ -770,7 +770,7 @@ scope_insert_error_t MetaCSemantic_RegisterInScope(metac_semantic_state_t* self,
          && waiter->NodeHash == CRC32C_VALUE(~0, idPtr))
         {
             task_t* waitingTask = cast(task_t*)waiter->Continuation->arg;
-            assert(waitingTask->TaskFlags == Task_Waiting);
+            // assert(waitingTask->TaskFlags == Task_Waiting);
             printf("Found matching waiter\n");
             waitingTask->TaskFlags &= (~Task_Waiting);
             waitingTask->TaskFlags |= Task_Resumable;

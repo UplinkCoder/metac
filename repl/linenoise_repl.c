@@ -38,6 +38,40 @@ void Linenoise_Message(ui_state_t* state, const char* fmt, ...)
     va_end (args);
 }
 
+void Linenoise_Info(ui_state_t* state, const char* fmt, ...)
+{
+    printf("Info: ");
+    va_list args;
+    va_start (args, fmt);
+    vprintf (fmt, args);
+    va_end (args);
+}
+
+static inline
+completion_list_t Complete(repl_state_t* repl, const char* input, uint32_t inputLength);
+
+static completion_cb_t s_completionCb;
+static linenoiseCompletions s_linenoiseCompletions;
+static repl_state_t* s_repl;
+
+void linenoiseCompletionCallbackFn(const char *input, linenoiseCompletions * resultP)
+{
+    completion_list_t list = s_completionCb(s_repl, input, strlen(input));
+    linenoiseCompletions result;
+    result.len = list.CompletionsLength;
+    result.cvec = list.Completions;
+    (*resultP) = result;
+}
+
+
+const char* Linenoise_SetCompletionCallback(struct ui_state_t* state,
+                                            completion_cb_t completionCb)
+{
+    s_completionCb =  completionCb;
+    linenoiseSetCompletionCallback(linenoiseCompletionCallbackFn);
+}
+
+
 repl_mode_t Linenoise_QueryMode(ui_state_t* uiState)
 {
 
@@ -47,7 +81,9 @@ const struct ui_interface_t LinenoiseUiInterface =
 {
     Linenoise_GetInputLine,
     Linenoise_Message,
-    Linenoise_QueryMode
+    Linenoise_QueryMode,
+    Linenoise_Info,
+    Linenoise_SetCompletionCallback
 } ;
 
 int main(int argc, const char* argv[])
@@ -72,7 +108,7 @@ int main(int argc, const char* argv[])
     g_uiContext = &ctx;
 #ifndef NO_FIBERS
     worker_context_t replWorkerContext = {0};
-    threadContext = &replWorkerContext;
+    THREAD_CONTEXT_SET(&replWorkerContext);
     RunWorkerThread(&replWorkerContext, Repl_Fiber, 0);
 #else
     ReplStart(&ctx);

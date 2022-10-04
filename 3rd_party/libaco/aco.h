@@ -220,8 +220,8 @@ extern aco_t* aco_create(
 #if defined(HAS_TLS)
 // aco's Global Thread Local Storage variable `co`
 extern __thread aco_t* aco_gtls_co_;
-#elif HAS_THREADS
-extern tss_key aco_tss_key_co;
+#elif defined(HAS_THREADS)
+extern tss_t aco_tss_key_co;
 #else
 extern aco_t* aco_g_co;
 #endif
@@ -235,9 +235,9 @@ extern void aco_resume(aco_t* resume_co);
 #if defined(HAS_TLS)
 #  define GET_CO() (aco_gtls_co_)
 #  define SET_CO(CO) (aco_gtls_co_ = (CO))
-#elif HAS_THREADS
+#elif defined(HAS_THREADS)
 #  define GET_CO() ((aco_t*) tss_get(aco_tss_key_co))
-#  define SET_CO(CO) ((tss_set(aco_tss_key_co, ((void*)(CO))) == thrd_success) ? (CO) :>
+#  define SET_CO(CO) (tss_set(aco_tss_key_co, (CO)))
 #else
 #  define GET_CO() (aco_g_co)
 #  define SET_CO(CO) (aco_g_co = (CO))

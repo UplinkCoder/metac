@@ -1175,7 +1175,12 @@ void Repl_Fiber(void)
     struct ui_state_t* uiState = uiContext->UiState;
 
     Presemantic_(repl);
-
+/*
+    if (uiInterface.SetCompletionCallback)
+    {
+        uiInterface.SetCompletionCallback(uiState, ReplComplete);
+    }
+*/
     while (Repl_Loop(repl, uiContext) != false)
     {
 #ifndef NO_FIBERS

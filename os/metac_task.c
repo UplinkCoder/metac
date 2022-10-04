@@ -8,10 +8,8 @@
 // the watcher shoud allocate the worker contexts since it is responsible for distribution
 // and monitoring of the work
 
-#if defined(_MSC_VER) || defined(__STDC_NO_THREADS__)
+#if defined(_MSC_VER) || defined(__STDC_NO_THREADS__) || defined(__TINYC__)
 #  include "../3rd_party/tinycthread/tinycthread.c"
-#else
-#  include <threads.h>
 #endif
 
 #ifndef KILOBYTE
@@ -21,11 +19,16 @@
 
 static bool watcherIntialized = 0;
 
-_Thread_local worker_context_t* threadContext = 0;
+#if defined(HAS_TLS)
+_Thread_local worker_context_t* threadContext;
+_Thread_local void *_CurrentFiber;
+#elif defined(HAS_THREADS)
+tss_t threadContextKey;
+tss_t currentFiberKey;
+#endif
 
 taskqueue_t gQueue;
 
-_Thread_local void *_CurrentFiber;
 
 void* CurrentFiber(void)
 {
@@ -37,9 +40,20 @@ task_t* CurrentTask()
     return (task_t*)((aco_t*)CurrentFiber())->arg;
 }
 
+
+#if defined(HAS_TLS)
+#define THREAD_CONTEXT threadContext
+#define THREAD_CONTEXT_SET(WORKER) threadContext = WORKER
+#elif defined(HAS_THREADS)
+#define THREAD_CONTEXT ((worker_context_t*) tss_get(threadContextKey))
+#define THREAD_CONTEXT_SET(WORKER) tss_set(threadContextKey, WORKER)
+#else
+#error "You got to have threads man!"
+#endif
+
 worker_context_t* CurrentWorker()
 {
-    return threadContext;
+    return THREAD_CONTEXT;
 }
 
 void Taskqueue_Init(taskqueue_t* queue)
@@ -192,9 +206,8 @@ void WatcherFunc(void)
 void RunWorkerThread(worker_context_t* worker, void (*specialFunc)(),  void* specialFuncCtx)
 {
     aco_thread_init(0);
-
-    assert(threadContext == 0 || threadContext == worker);
-    threadContext = worker;
+    assert(THREAD_CONTEXT == 0 || THREAD_CONTEXT == worker);
+    THREAD_CONTEXT_SET(worker);
 
     aco_t* threadFiber =
         aco_create(0, 0, 0, 0, worker);
@@ -549,7 +562,7 @@ bool TaskQueue_Pull(taskqueue_t* self, task_t* taskP)
 bool AddTaskToQueue(task_t* task)
 {
     bool result = false;
-
+    worker_context_t* threadContext = THREAD_CONTEXT;
     taskqueue_t* preferredQ =
         threadContext ? &threadContext->Queue : &gQueue;
     if (TaskQueue_TasksInQueueFront_(preferredQ) < QUEUE_CUTOFF)

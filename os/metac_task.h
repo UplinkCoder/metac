@@ -7,7 +7,7 @@
 
 #include "compat.h"
 
-#if defined(_MSC_VER) || defined(__STDC_NO_THREADS__)
+#if defined(_MSC_VER) || defined(__STDC_NO_THREADS__) || defined(__TINYC__)
 #  include "../3rd_party/tinycthread/tinycthread.h"
 #else
 #  include <threads.h>
@@ -56,7 +56,7 @@ typedef struct taskcontext_t
 // typedef void (*task_fn_t)(struct task_t*);
 
 #define CALL_TASK_FN(FN, CTX_STRUCT_PTR) do { \
-    uint8_t* ctxMem = cast(uint8_t*)alloca(sizeof(taskcontext_t) + sizeof(*(CTX_STRUCT_PTR))); \
+    uint8_t ctxMem[sizeof(taskcontext_t) + sizeof(*(CTX_STRUCT_PTR))]; \
     taskcontext_t* taskCtx = cast(taskcontext_t*) ctxMem; \
     uint8_t* ctxPtr = ctxMem + sizeof(taskcontext_t); \
     \
