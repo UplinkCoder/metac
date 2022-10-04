@@ -208,6 +208,7 @@ typedef struct BCInterpreter {
     uint32_t lastLine;
 
     BCValue cRetval;
+    uint8_t* externals[16];
 
     int64_t stack[LOCAL_STACK_SIZE];
     ReturnAddr returnAddrs[MAX_CALL_DEPTH];
@@ -2662,6 +2663,12 @@ Lreturn:
         BCGen_destroyTemporary(self, cast(BCValue*)lhsP);
 }
 
+static inline BCValue BCGen_MapExternal (BCGen* self,
+                                         void* memory, uint32_t sz)
+{
+    assert(0);
+}
+
 static inline void BCGen_emitFlag(BCGen* self, BCValue* lhs)
 {
     assert(BCValue_isStackValueOrParameter(lhs));
@@ -3222,6 +3229,7 @@ const BackendInterface BCGen_interface = {
     /*.DestroyLocal =*/ (DestroyLocal_t) BCGen_destroyLocal,
     /*.GenParameter =*/ (GenParameter_t) BCGen_genParameter,
     /*.EmitFlag =*/ (EmitFlag_t) BCGen_emitFlag,
+    /*.MapExternal =*/ (MapExternal_t) BCGen_MapExternal,
     /*.Alloc =*/ (Alloc_t) BCGen_Alloc,
     /*.Assert =*/ (Assert_t) BCGen_Assert,
     /*.MemCpy =*/ (MemCpy_t) BCGen_MemCpy,

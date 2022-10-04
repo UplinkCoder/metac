@@ -368,6 +368,12 @@ static inline BCValue Lightning_GenParameter(Lightning* self, BCType bct, const 
     return p;
 }
 
+static inline BCValue Lightning_MapExternal (Lightning* self,
+                                             void* memory, uint32_t sz)
+{
+    assert(0);
+}
+
 static inline void Lightning_EmitFlag(Lightning* self, BCValue* lhs)
 {
     assert(0);
@@ -1016,6 +1022,7 @@ const BackendInterface Lightning_interface = {
     /*.DestroyLocal = */(DestroyLocal_t) Lightning_DestroyLocal,
     /*.GenParameter = */(GenParameter_t) Lightning_GenParameter,
     /*.EmitFlag = */(EmitFlag_t) Lightning_EmitFlag,
+    /*.MapExternal = */(MapExternal_t) Lightning_MapExternal,
     /*.Alloc = */(Alloc_t) Lightning_Alloc,
     /*.Assert = */(Assert_t) Lightning_Assert,
     /*.MemCpy = */(MemCpy_t) Lightning_MemCpy,

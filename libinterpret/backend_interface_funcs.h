@@ -21,6 +21,7 @@ typedef void (*DestroyLocal_t) (void* ctx, BCValue* local);
 typedef BCValue (*GenParameter_t) (void* ctx, BCType bct, const char* name);
 typedef void (*EmitFlag_t) (void* ctx, BCValue* lhs);
 
+typedef BCValue (*MapExternal_t) (void* ctx, void* memory, uint32_t sz);
 typedef void (*Alloc_t) (void* ctx, BCValue *heapPtr, const BCValue* size);
 typedef void (*Assert_t) (void* ctx, const BCValue* value, const BCValue* err);
 typedef void (*MemCpy_t) (void* ctx, const BCValue* dst, const BCValue* src, const BCValue* size);
@@ -128,6 +129,8 @@ typedef struct BackendInterface
     BCValue (*const GenParameter) (void* ctx, BCType bct, const char* name);
 
     void (*const EmitFlag) (void* ctx, BCValue* lhs);
+
+    BCValue (*const MapExternal) (void* ctx, void* memory, uint32_t sz);
 
     void (*const Alloc) (void* ctx, BCValue *heapPtr, const BCValue* size);
     void (*const Assert) (void* ctx, const BCValue* value, const BCValue* err);

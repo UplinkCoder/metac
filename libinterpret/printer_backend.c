@@ -698,6 +698,12 @@ static inline BCValue Printer_GenParameter(Printer* self, BCType bct, const char
     return result;
 }
 
+static inline BCValue Printer_MapExternal (Printer* self,
+                                           void* memory, uint32_t sz)
+{
+    assert(0);
+}
+
 PR_OP1(emitFlag)
 
 PR_OP2(Alloc)
@@ -981,6 +987,7 @@ const BackendInterface Printer_interface = {
     /*.DestroyLocal =*/ (DestroyLocal_t) Printer_DestroyLocal,
     /*.GenParameter =*/ (GenParameter_t) Printer_GenParameter,
     /*.EmitFlag =*/ (EmitFlag_t) Printer_emitFlag,
+    /*.MapExternal =*/ (MapExternal_t) Printer_MapExternal,
     /*.Alloc =*/ (Alloc_t) Printer_Alloc,
     /*.Assert =*/ (Assert_t) Printer_Assert,
     /*.MemCpy =*/ (MemCpy_t) Printer_MemCpy,
