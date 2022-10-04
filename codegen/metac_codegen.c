@@ -670,11 +670,14 @@ static void MetaCCodegen_doExpression(metac_bytecode_ctx_t* ctx,
             lhs = bc->GenTemporary(c, expType);
         }
 
-        MetaCCodegen_doExpression(ctx, exp->E1, (doBinAss ? result : &lhs), (doBinAss ? _Lvalue: _Rvalue));
-
         if (doBinAss)
         {
+            MetaCCodegen_doExpression(ctx, exp->E1, result, _Lvalue);
             lhs = *result;
+        }
+        else
+        {
+            MetaCCodegen_doExpression(ctx, exp->E1, &lhs, _Rvalue);
         }
 
         if (exp->E2->Kind == exp_signed_integer
@@ -722,7 +725,7 @@ static void MetaCCodegen_doExpression(metac_bytecode_ctx_t* ctx,
                 if (r->E1->Kind != exp_signed_integer)
                 {
                     // skip the generation of integers we'll never see
-                    MetaCCodegen_doExpression(ctx, r->E1, 0, lValue);
+                    MetaCCodegen_doExpression(ctx, r->E1, 0, _Discard);
                 }
                 r = r->E2;
             }
