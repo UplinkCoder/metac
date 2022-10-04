@@ -1,15 +1,14 @@
 #define ACCEL ACCEL_TABLE
 #define NO_FIBERS
 #define PRINT_CODE
-#include "../compat.h"
 
-#include "../metac_driver.c"
+#include "../os/compat.h"
+#include "../driver/metac_driver.c"
 #include "../utils/read_file.c"
-#include "../metac_parser_obj.c"
-#include "../metac_semantic_obj.c"
-#include "../metac_lpp.c"
-#include "../repl/exp_eval.c"
-#include "../metac_codegen.c"
+#include "../parser/metac_parser_obj.c"
+#include "../semantic/metac_semantic_obj.c"
+#include "../driver/metac_lpp.c"
+#include "../codegen/metac_codegen.c"
 
 
 #ifndef POSIX

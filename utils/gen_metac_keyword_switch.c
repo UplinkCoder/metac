@@ -1,4 +1,4 @@
-#include "../compat.h"
+#include "../os/compat.h"
 #include "../hash/crc32c.c"
 #include "../parser/metac_lexer.h"
 #include "../parser/metac_identifier_table.h"
