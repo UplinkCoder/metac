@@ -17,9 +17,12 @@
 #include "../os/metac_alloc.h"
 
 #include <stdarg.h>
+
+#ifdef METAC_COMPILER_INTERFACE
 extern metac_compiler_t compiler;
 
 metac_compiler_t compiler;
+#endif
 
 const char* compiler_help(void)
 {
@@ -481,7 +484,7 @@ static bool MetaCCodegen_AccessVariable(metac_bytecode_ctx_t* ctx,
         case storage_external:
         {
             BCType extType = {BCTypeEnum_Ptr};
-            
+
             bc->GenTemporary(c, extType);
             void* memory;
             int sz = 0;

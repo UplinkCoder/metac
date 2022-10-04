@@ -743,7 +743,6 @@ metac_expression_kind_t ExpTypeFromTokenType(metac_token_enum_t tokenType)
 
 }
 
-
 static inline bool IsPostfixOperator(metac_token_enum_t t)
 {
     return (t == tok_plusplus || t == tok_minusminus);
@@ -1918,7 +1917,10 @@ metac_preprocessor_directive_t MetaCParser_ParsePreproc(metac_parser_t* self,
                 {
                     directive = pp_endif;
                 } goto Lmatch;
-
+                case undef_key:
+                {
+                    directive = pp_undef;
+                } goto Lmatch;
                 default:
                     printf("couldn't match directive\n");
                 break;

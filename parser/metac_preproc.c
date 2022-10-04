@@ -96,15 +96,15 @@ metac_expression_t* MetaCPreProcessor_ResolveDefineToExp(metac_preprocessor_t* s
 {
     assert(definePtr.v >= 4);
     metac_expression_t* result = 0;
-/*
+
     metac_parser_t defineParser;
     MetaCParser_Init(&defineParser);
     defineParser.Preprocessor = self;
-    metac_preprocessor_define_t def = self->DefineTable.DefineMemory[definePtr.v - 4];
+    metac_preprocessor_define_t* define = &self->DefineTable.DefineMemory[definePtr.v - 4];
     DEF_STACK_ARRAY(metac_token_t, tokens, 32);
 #define va_args_key 0xbc18fc
 
-    if (parameters.Count != define->ParameterCount ||
+    if ((parameters.Count != define->ParameterCount) &&
         ((define->ParameterCount >= parameters.Count) && !define->IsVariadic))
     {
         printf("Macro takes %u arguments but %u are given\n",
@@ -150,10 +150,29 @@ metac_expression_t* MetaCPreProcessor_ResolveDefineToExp(metac_preprocessor_t* s
         else
             ADD_STACK_ARRAY(tokens, tok);
     }
-    printf("expanded to %u tokens\n", tokens.Count);
+
+    STACK_ARENA_ARRAY(metac_location_t, tokenLocationStorage, 32, 0)
+    metac_location_t_array tokenLocationArray;
+    tokenLocationArray.Locations = tokenLocationStorage;
+    tokenLocationArray.LocationCapacity = 32;
+    tokenLocationArray.LocationSize = tokens.Count;
+
 //    self->Lexer->IdentifierTable = self->IdentifierTable;
+    metac_lexer_t DefineLexer = {0};
+    metac_lexer_state_t LexerState = {0};
+    DefineLexer.IdentifierTable = self->IdentifierTable;
+    DefineLexer.StringTable = self->StringTable;
+    DefineLexer.TokenCount = tokens.Count;
+    DefineLexer.TokenCapacity = tokens.Count;
+    DefineLexer.Tokens = tokens.Ptr;
+    DefineLexer.LocationStorage = tokenLocationArray;
+
+    printf("expanded to %u tokens\n", tokens.Count);
+
+    MetaCParser_InitFromLexer(&defineParser, &DefineLexer);
+
+    result = MetaCParser_ParseExpression(&defineParser, expr_flags_none, 0);
 Lret:
-*/
     return result;
 }
 
@@ -613,7 +632,7 @@ MetaCPreProcessor_ParseDefine(metac_preprocessor_t *self, metac_parser_t* parser
 
 
 metac_preprocessor_define_ptr_t MetaCPreProcessor_GetDefine(metac_preprocessor_t* self,
-                                                   uint32_t identifierKey, const char* identifier)
+                                                            uint32_t identifierKey, const char* identifier)
 {
     metac_preprocessor_define_ptr_t result = {0};
 
