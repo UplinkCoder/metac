@@ -913,15 +913,14 @@ sema_decl_function_t* MetaCSemantic_doFunctionSemantic(metac_semantic_state_t* s
 }
 
 const static sema_decl_type_t basicTypes[type_max] = {
-    {decl_type, 0, 0, 0, storageclass_volatile, 0, 0, /* type_invalid */},
+    {decl_type, 0, 0, 0, storageclass_volatile, 0, TYPE_INDEX_V(type_index_invalid, 0)},
 
-    {decl_type, 0, 0, 0, storageclass_none, 0, 0, /* type_struct */},
-    {decl_type, 0, 0, 0, storageclass_none, 0, 0, /* type_union */},
-    {decl_type, 0, 0, 0, storageclass_none, 0, 0, /* type_class */},
-    {decl_type, 0, 0, 0, storageclass_none, 0, 0, /* type_enum */},
-
-    {decl_type, 0, 0, 0, storageclass_none, 0, 0 /* type_typedef */},
-    {decl_type, 0, 0, 0, storageclass_none, 0, 0 /* type_functiontype */},
+    {decl_type, 0, 0, 0, storageclass_none, 0, TYPE_INDEX_V(type_index_basic, type_struct)},
+    {decl_type, 0, 0, 0, storageclass_none, 0, TYPE_INDEX_V(type_index_basic, type_union)},
+    {decl_type, 0, 0, 0, storageclass_none, 0, TYPE_INDEX_V(type_index_basic, type_class)},
+    {decl_type, 0, 0, 0, storageclass_none, 0, TYPE_INDEX_V(type_index_basic, type_enum)},
+    {decl_type, 0, 0, 0, storageclass_none, 0, TYPE_INDEX_V(type_index_basic, type_typedef)},
+    {decl_type, 0, 0, 0, storageclass_none, 0, TYPE_INDEX_V(type_index_basic, type_functiontype)},
 
     {decl_type, 0, 0, 0, storageclass_none, 0, TYPE_INDEX_V(type_index_basic, type_auto)},
 // DO NOT CHANGE THE ORDER FROM HERE
