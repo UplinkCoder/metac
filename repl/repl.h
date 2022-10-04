@@ -71,6 +71,8 @@ typedef struct completion_cache_entry_t
     metac_node_kind_t Kind;
 } completion_cache_entry_t;
 
+typedef (*completion_cb_t) (repl_state_t* repl, const char *input, uint32_t inputLength, void* userP);
+
 typedef struct ui_interface_t
 {
     /// Returns a string of length $(*length) when a input line is
@@ -84,7 +86,8 @@ typedef struct ui_interface_t
     /// [Optional] Extra information that'll go to a diffrent area if possible
     void (*Info) (struct ui_state_t* state, const char* fmt, ...);
     /// [Optional] Returns a string of length $(*length) with partial input data for completion
-    const char* (*GetPartialInput)(struct ui_state_t* state, uint32_t* length);
+    const char* (*SetCompletionCallback) (struct ui_state_t* state,
+                                          completion_cb_t completionCb, void* userP);
     /// [Optional] Updates local completion cache this is useful for webinterfaces and the like
     /// where a call to the server for completion suggestions might want to be avoided
     uint32_t (*UpdateLocalCompletionCache)(struct ui_state_t* state,

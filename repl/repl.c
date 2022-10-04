@@ -281,7 +281,7 @@ void Presemantic_(repl_state_t* self)
                 metac_printer_t printer;
                 MetaCPrinter_Init(&printer,
                     self->SemanticState.ParserIdentifierTable, self->SemanticState.ParserStringTable);
-                printf("struct: %s\n", MetaCPrinter_PrintNode(&printer, METAC_NODE(struct_), 0));
+                MSGF("struct: %s\n", MetaCPrinter_PrintNode(&printer, METAC_NODE(struct_), 0));
 /*
                 printf("compilerStruct: %s\n",
                     MetaCPrinter_PrintSemaNode(&printer, &self->SemanticState, cast(metac_node_t)compilerStruct));
@@ -365,7 +365,7 @@ EvaluateExpression(metac_semantic_state_t* sema,
 
         const uint32_t count = typeTuple->typeCount;
 
-        uint32_t currrentHeapOffset =  resultInt;
+        uint32_t currrentHeapOffset = resultInt;
 
         STACK_ARENA_ARRAY(metac_sema_expression_t*, tupleExps, 32, &sema->TempAlloc)
 
@@ -664,7 +664,11 @@ LswitchMode:
                 repl->ParseMode = repl_mode_token;
                 goto LswitchMode;
             case 'd' :
-                switch (repl->Line[2])
+                if (0 == strcmp("ate", repl->Line + 2))
+                {
+                    MSG("Build on " __DATE__ "\n");
+                }
+                else switch (repl->Line[2])
                 {
                 default:
                     repl->ParseMode = repl_mode_decl;
@@ -712,12 +716,11 @@ LswitchMode:
                                     IdentifierPtrFromSemaDecl(cast(metac_sema_declaration_t*)&var);
                                 const char* nameString =
                                     IdentifierPtrToCharPtr(repl->SemanticState.ParserIdentifierTable, idPtr);
-                                printf ("Global %s %s = %s\n", typeString, nameString, valueString);
+                                MSGF ("Global %s %s = %s\n", typeString, nameString, valueString);
                                 MetaCPrinter_Free(&debugPrinter);
                             }
 
                         }
-
                     }
                 }
                 goto LnextLine;

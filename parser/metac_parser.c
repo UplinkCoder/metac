@@ -2809,6 +2809,14 @@ static metac_storageclasses_t ParseStorageClasses(metac_parser_t* self)
 
 metac_declaration_t* MetaCParser_ParseDeclaration(metac_parser_t* self, metac_declaration_t* parent)
 {
+#ifndef NO_PREPROCESSOR
+    if (MetaCParser_PeekMatch(self, tok_hash, 1))
+    {
+        metac_token_buffer_t tokenBuffer;
+        MetaCParser_ParsePreproc(self, self->Preprocessor,  &tokenBuffer);
+    }
+#endif
+
     // get rid of attribs before declarations
     //TODO acutally keep track of them
     EatAttributes(self);

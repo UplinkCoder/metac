@@ -255,7 +255,7 @@ metac_sema_expression_t* MetaCSemantic_doExprSemantic_(metac_semantic_state_t* s
                         uint32_t compilerStructIndex = StructIndex(self, self->CompilerInterface);
                         fakeDotStruct.TypeIndex.v = TYPE_INDEX_V(type_index_struct, compilerStructIndex);
                         fakeDotStruct.VarIdentifier = expr->E1->IdentifierPtr;
-                        fakeDotStruct.Storage.v = STORAGE_V(storage_static, 1);
+                        fakeDotStruct.Storage.v = STORAGE_V(storage_external, 1);
 
                         result->Kind = exp_variable;
                         result->Variable = &fakeDotStruct;
@@ -637,7 +637,7 @@ metac_sema_expression_t* MetaCSemantic_doExprSemantic_(metac_semantic_state_t* s
             }
             else
             {
-               if (node->Kind == (metac_node_kind_t)exp_identifier)
+                if (node->Kind == (metac_node_kind_t)exp_identifier)
                 {
                     fprintf(stderr, "we should not be retured an identifier\n");
                 }
