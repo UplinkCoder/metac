@@ -71,7 +71,7 @@ void linenoiseCompletionCallbackFn(const char *input, linenoiseCompletions * res
 void Linenoise_SetCompletionCallback(struct ui_state_t* state, repl_state_t* repl, completion_cb_t completionCb)
 {
     s_repl = repl;
-    s_completionCb =  completionCb;
+    s_completionCb = completionCb;
     linenoiseSetCompletionCallback(linenoiseCompletionCallbackFn);
 }
 

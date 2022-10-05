@@ -298,6 +298,8 @@ typedef struct metac_lexer_t {
 
     metac_identifier_table_t IdentifierTable;
     metac_identifier_table_t StringTable;
+
+    metac_alloc_t* Allocator;
 } metac_lexer_t;
 
 
@@ -310,7 +312,7 @@ const char* MetaCTokenEnum_toChars(metac_token_enum_t tok);
     fprintf(stderr, "ParseError[%s:%u]: {%u:%u}"  MSG  "\n", __FILE__, __LINE__, (LOC.StartLine), (LOC.StartColumn)); \
     ParseErrorBreak();
 
-void MetaCLexer_Init(metac_lexer_t* self);
+void MetaCLexer_Init(metac_lexer_t* self, metac_alloc_t* Allocator);
 
 void MetaCLocation_Expand(metac_location_t* self, metac_location_t endLoc);
 void MetaCLocationStorage_Init(metac_location_t_array* self);

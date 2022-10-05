@@ -56,11 +56,11 @@ static inline void InitSpecialIdentifier(metac_parser_t* self)
 }
 
 
-void MetaCParser_Init(metac_parser_t* self)
+void MetaCParser_Init(metac_parser_t* self, metac_alloc_t* allocator)
 {
     self->CurrentTokenIndex = 0;
-    IdentifierTable_Init(&self->IdentifierTable, IDENTIFIER_LENGTH_SHIFT, 13);
-    IdentifierTable_Init(&self->StringTable, STRING_LENGTH_SHIFT, 13);
+    IdentifierTable_Init(&self->IdentifierTable, IDENTIFIER_LENGTH_SHIFT, 13, allocator);
+    IdentifierTable_Init(&self->StringTable, STRING_LENGTH_SHIFT, 13, allocator);
 
     self->CurrentBlockStatement = 0;
 
@@ -90,7 +90,7 @@ void MetaCParser_Init(metac_parser_t* self)
     MetaCPrinter_Init(&self->DebugPrinter,
                       &self->IdentifierTable, &self->StringTable);
 
-    Allocator_Init(&self->Allocator, 0, 0);
+    Allocator_Init(&self->Allocator, allocator, 0);
 }
 
 void MetaCParser_Free(metac_parser_t* self)
@@ -103,10 +103,10 @@ void MetaCParser_Free(metac_parser_t* self)
     self = 0;
 }
 
-void MetaCParser_InitFromLexer(metac_parser_t* self, metac_lexer_t* lexer)
+void MetaCParser_InitFromLexer(metac_parser_t* self, metac_lexer_t* lexer, metac_alloc_t* allocator)
 {
     self->Lexer = lexer;
-    MetaCParser_Init(self);
+    MetaCParser_Init(self, allocator);
 }
 //TODO Implement IsMacro
 //    and Handle Macro

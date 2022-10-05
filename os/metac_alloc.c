@@ -27,7 +27,7 @@ static const metac_identifier_ptr_t s_null_filename = {0};
 inline metac_identifier_ptr_t Add_Filename(const char* file)
 {
     if (g_filenames.Slots == 0)
-        IdentifierTable_Init(&g_filenames, IDENTIFIER_LENGTH_SHIFT, 7);
+        IdentifierTable_Init(&g_filenames, IDENTIFIER_LENGTH_SHIFT, 7, 0);
 
     const uint32_t len = cast(uint32_t) strlen(file);
     const uint32_t hash = crc32c_nozero(~0, file, len);
@@ -190,9 +190,6 @@ LsetResult:
 
     return result;
 }
-
-#define Allocator_Calloc(ALLOC, TYPE, ELEM_COUNT) \
-    (cast(TYPE*)Allocator_Calloc_((ALLOC), sizeof(TYPE), ELEM_COUNT, __FILE__, __LINE__))
 
 void* Allocator_Calloc_(metac_alloc_t* alloc, uint32_t elemSize, uint32_t elemCount,
                         const char* file, uint32_t line)

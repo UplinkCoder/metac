@@ -96,9 +96,11 @@ metac_expression_t* MetaCPreProcessor_ResolveDefineToExp(metac_preprocessor_t* s
 {
     assert(definePtr.v >= 4);
     metac_expression_t* result = 0;
-
+    metac_alloc_t tmpDefineParserAlloc;
+    Allocator_Init(&tmpDefineParserAlloc, 0);
+    
     metac_parser_t defineParser;
-    MetaCParser_Init(&defineParser);
+    MetaCParser_Init(&defineParser, &tmpDefineParserAlloc);
     defineParser.Preprocessor = self;
     metac_preprocessor_define_t* define = &self->DefineTable.DefineMemory[definePtr.v - 4];
     DEF_STACK_ARRAY(metac_token_t, tokens, 32);
@@ -166,10 +168,11 @@ metac_expression_t* MetaCPreProcessor_ResolveDefineToExp(metac_preprocessor_t* s
     DefineLexer.TokenCapacity = tokens.Count;
     DefineLexer.Tokens = tokens.Ptr;
     DefineLexer.LocationStorage = tokenLocationArray;
+    DefineLexer.Allocator = &tmpDefineParserAlloc;
 
     printf("expanded to %u tokens\n", tokens.Count);
 
-    MetaCParser_InitFromLexer(&defineParser, &DefineLexer);
+    MetaCParser_InitFromLexer(&defineParser, &DefineLexer, &tmpDefineParserAlloc);
 
     result = MetaCParser_ParseExpression(&defineParser, expr_flags_none, 0);
 Lret:
@@ -441,6 +444,7 @@ static inline int32_t MetaCPreProcessor_EvalExp(metac_preprocessor_t* self,
 }
 
 void MetaCPreProcessor_Init(metac_preprocessor_t *self, metac_lexer_t* lexer,
+                            metac_alloc_t* alloc,
                             metac_file_storage_t* fs, const char* filepath)
 {
     self->FileStorage = fs;
@@ -448,18 +452,17 @@ void MetaCPreProcessor_Init(metac_preprocessor_t *self, metac_lexer_t* lexer,
         self->File = MetaCFileStorage_LoadFile(fs, filepath);
     // self->Lexer = lexer;
     MetaCPreprocessor_DefineTable_Init(&self->DefineTable, self);
-    IdentifierTable_Init(&self->DefineIdentifierTable, IDENTIFIER_LENGTH_SHIFT, 7);
+    IdentifierTable_Init(&self->DefineIdentifierTable, IDENTIFIER_LENGTH_SHIFT, 7, alloc);
 
-    IdentifierTable_Init(&self->IdentifierTable, IDENTIFIER_LENGTH_SHIFT, 8);
-    IdentifierTable_Init(&self->StringTable, STRING_LENGTH_SHIFT, 7);
+    IdentifierTable_Init(&self->IdentifierTable, IDENTIFIER_LENGTH_SHIFT, 8, alloc);
+    IdentifierTable_Init(&self->StringTable, STRING_LENGTH_SHIFT, 7, alloc);
 
     self->DefineTokenStackCount = 0;
     self->Parent = 0;
 
     self->TokenMemoryCapacity = 256;
     self->TokenMemorySize = 0;
-    self->TokenMemory = (metac_token_t*)
-        calloc(sizeof(metac_token_t), self->TokenMemoryCapacity);
+    self->TokenMemory = Allocator_Calloc(alloc, metac_token_t, self->TokenMemoryCapacity);
 
     printf("Initialized preproc\n");
 }

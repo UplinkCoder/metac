@@ -8,6 +8,8 @@
 
 #include "../parser/metac_identifier_table.h"
 
+#include "../os/metac_alloc.h"
+
 typedef union metac_filehandle_t
 {
     uint32_t v;
@@ -85,7 +87,7 @@ typedef struct metac_file_storage_t
     metac_filesystem_t* FS;
 } metac_file_storage_t;
 
-void FileStorage_Init(metac_file_storage_t* self, metac_filesystem_t* fs);
+void FileStorage_Init(metac_file_storage_t* self, metac_filesystem_t* fs, metac_alloc_t* allocator);
 
 metac_file_ptr_t MetaCFileStorage_LoadFile(metac_file_storage_t* self, const char* path);
 

@@ -108,13 +108,12 @@ void VariableStore_SetValueI32(variable_store_t* vstore,
     *v = imm32(value);
 }
 
-void VariableStore_Init(variable_store_t* self, metac_identifier_table_t* externalTable)
+void VariableStore_Init(variable_store_t* self, metac_identifier_table_t* externalTable, metac_alloc_t* allocator)
 {
     self->VariableCapacity = 32;
     self->VariableSize = 0;
-    self->Variables = (variable_t*)
-        malloc(sizeof(variable_t) * self->VariableCapacity);
+    self->Variables = Allocator_Calloc(allocator, variable_t, self->VariableCapacity);
     self->ExternalTable = externalTable;
 
-    IdentifierTable_Init(&self->Table, IDENTIFIER_LENGTH_SHIFT, 9);
+    IdentifierTable_Init(&self->Table, IDENTIFIER_LENGTH_SHIFT, 7, allocator);
 }

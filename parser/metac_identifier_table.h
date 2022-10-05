@@ -26,6 +26,8 @@
 #define LENGTH_FROM_CHAR_KEY(KEY) \
     ( (KEY) >> CHAR_LENGTH_SHIFT )
 
+typedef struct metac_alloc_t metac_alloc_t;
+
 typedef struct metac_identifier_ptr_t
 {
     uint32_t v;
@@ -74,7 +76,7 @@ typedef struct identifier_table_file_header_t
 } identifier_table_file_header_t;
 #pragma pack(pop)
 
-void IdentifierTable_Init(metac_identifier_table_t* table, uint32_t lengthShift, uint32_t slotCountLog2);
+void IdentifierTable_Init(metac_identifier_table_t* table, uint32_t lengthShift, uint32_t slotCountLog2, metac_alloc_t* alloc);
 
 metac_identifier_ptr_t GetOrAddIdentifier(metac_identifier_table_t* table,
                                           uint32_t identifierKey,

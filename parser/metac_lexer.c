@@ -448,7 +448,7 @@ uint32_t MetaCTokenLength(metac_token_t token)
 
 
 
-void MetaCLexer_Init(metac_lexer_t* self)
+void MetaCLexer_Init(metac_lexer_t* self, metac_alloc_t* allocator)
 {
     self->TokenCount = 0;
     self->TokenCapacity = ARRAY_SIZE(self->inlineTokens);
@@ -458,8 +458,8 @@ void MetaCLexer_Init(metac_lexer_t* self)
     self->LocationStorage.LocationSize = 0;
     self->LocationStorage.Locations = self->inlineLocations;
 
-    IdentifierTable_Init(&self->IdentifierTable, IDENTIFIER_LENGTH_SHIFT, 13);
-    IdentifierTable_Init(&self->StringTable, STRING_LENGTH_SHIFT, 13);
+    IdentifierTable_Init(&self->IdentifierTable, IDENTIFIER_LENGTH_SHIFT, 13, allocator);
+    IdentifierTable_Init(&self->StringTable, STRING_LENGTH_SHIFT, 13, allocator);
 }
 
 void MetaCLexer_Free(metac_lexer_t* self)

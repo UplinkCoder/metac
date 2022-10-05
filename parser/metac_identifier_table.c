@@ -7,6 +7,7 @@
 #include <stdlib.h>
 #include "metac_lexer.h"
 #include "metac_identifier_table.h"
+#include "../os/metac_alloc.h"
 #include <string.h>
 #include <stdio.h>
 
@@ -35,12 +36,12 @@ const char* IdentifierPtrToCharPtr(const metac_identifier_table_t* table,
     return table->StringMemory + (ptr.v - 4);
 }
 
-void IdentifierTable_Init(metac_identifier_table_t* table, uint32_t lengthShift, uint32_t slotCountLog2)
+void IdentifierTable_Init(metac_identifier_table_t* table, uint32_t lengthShift, uint32_t slotCountLog2, metac_alloc_t* alloc)
 {
     table->SlotCount_Log2 = slotCountLog2;
     const uint32_t maxSlots = (1 << table->SlotCount_Log2);
-    table->Slots = (metac_identifier_table_slot_t*) calloc(maxSlots, sizeof(metac_identifier_table_slot_t));
-    table->StringMemory = (char*)malloc(maxSlots * 32);
+    table->Slots =  Allocator_Calloc(alloc, metac_identifier_table_slot_t, maxSlots);
+    table->StringMemory = Allocator_Calloc(alloc, char, maxSlots * 32);
     table->StringMemoryCapacity = maxSlots * 32;
     table->StringMemorySize = 0;
     table->SlotsUsed = 0;

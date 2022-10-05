@@ -183,6 +183,10 @@ void Presemantic_(repl_state_t* self)
 {
     metac_type_aggregate_t* compilerStruct = 0;
 
+    metac_alloc_t PresemanticAlloc;
+    Allocator_Init(&PresemanticAlloc, 0);
+
+
     repl_ui_context_t* uiContext = g_uiContext;
     ui_interface_t uiInterface = uiContext->UiInterface;
     struct ui_state_t* uiState = uiContext->UiState;
@@ -205,13 +209,13 @@ void Presemantic_(repl_state_t* self)
 
         DeclarationArray decls = {0};
         {
-            MetaCLexer_Init(&tmpLexer);
+            MetaCLexer_Init(&tmpLexer, &PresemanticAlloc);
 
             LexFile(&tmpLexer, "metac_compiler_interface.h",
                     fCompilterInterface.FileContent0,
                     fCompilterInterface.FileLength);
 
-            MetaCParser_InitFromLexer(&tmpParser, &tmpLexer);
+            MetaCParser_InitFromLexer(&tmpParser, &tmpLexer, &PresemanticAlloc);
             ParseFile(&tmpParser, "metac_compiler_interface.h", &decls);
         }
         MetaCLexer_Free(&tmpLexer);
@@ -442,44 +446,44 @@ void Repl_SwtichMode(repl_state_t* self)
 
 void Repl_Init(repl_state_t* self)
 {
+    metac_lpp_t* LPP = &self->LPP;
+
     self->LPP.LexerState.Position = 0;
     self->LPP.LexerState.Line = 1;
     self->LPP.LexerState.Column = 1;
     self->ParseMode = repl_mode_ee;
     self->CompilerInterface = 0;
-
-    AllocDefaultHeap(&self->Heap);
-
     self->SrcBuffer = 0;
     self->FreePtr = 0;
     self->SrcBufferLength = 0;
 
     self->Promt = ">";
 
+    AllocDefaultHeap(&self->Heap);
+
+
     // init line lexer with more than the default
     // tokens
-    metac_lpp_t* LPP = &self->LPP;
 
     // make sure we know our special identifiers
+    Allocator_Init(&self->Allocator, 0);
 
-
-    MetaCLPP_Init(&self->LPP);
+    MetaCLPP_Init(&self->LPP, &self->Allocator);
     MetaCSemantic_Init(&self->SemanticState, &LPP->Parser, 0);
     MetaCSemantic_PushNewScope(&self->SemanticState, scope_owner_module, cast(void*)cast(intptr_t)1);
 
-    LPP->Lexer.Tokens =
-        (metac_token_t*)malloc(128 * sizeof(metac_token_t));
     LPP->Lexer.TokenCapacity = 128;
+    LPP->Lexer.Tokens =
+        Allocator_Calloc(&self->Allocator, metac_token_t, LPP->Lexer.TokenCapacity);
     LPP->Lexer.LocationStorage.Locations =
-        (metac_location_t*)malloc(128 * sizeof(metac_location_t));
-    LPP->Lexer.LocationStorage.LocationCapacity = 128;
+        Allocator_Calloc(&self->Allocator, metac_location_t, LPP->Lexer.TokenCapacity);
+    LPP->Lexer.LocationStorage.LocationCapacity = LPP->Lexer.TokenCapacity;
 
 
     MetaCPrinter_Init(&self->printer,
         &LPP->Parser.IdentifierTable,
         &LPP->Parser.StringTable);
 
-    Allocator_Init(&self->Allocator, 0);
 
     //VariableStore_Init(&self->vstore, &LPP->Parser.IdentifierTable);
 }
@@ -627,7 +631,7 @@ LswitchMode:
                 else
                 {
                     metac_lexer_t *fileLexer = &repl->FileLexer;
-                    MetaCLexer_Init(fileLexer);
+                    MetaCLexer_Init(fileLexer, &repl->Allocator);
                     metac_lexer_state_t fileLexerState = {};
 
                     fseek(fd, 0, SEEK_END);
@@ -1166,13 +1170,21 @@ repl_ui_context_t* g_uiContext = 0;
 
 completion_list_t ReplComplete (repl_state_t* repl, const char *input, uint32_t inputLength)
 {
+    metac_lexer_t completionLexer = {0};
+    metac_parser_t completionParser = {0};
     completion_list_t result = {0};
-    result.CompletionsLength = 2;
 
-    char* completions[] =  {"a", "b", 0};
+    MetaCLexer_Init(&completionLexer, &repl->Allocator);
+
+    char* lastWord = 0;
+    char* completions[] =  {"1337", "0xF13"};
+
+    result.CompletionsLength = 2;
     result.Completions = Allocator_Calloc(&repl->Allocator, char*, result.CompletionsLength);
 
     memcpy(result.Completions, completions, result.CompletionsLength * sizeof(char*));
+
+    MetaCLexer_Free(&completionLexer);
 
     return result;
 }

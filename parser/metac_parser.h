@@ -94,8 +94,8 @@ extern metac_parser_t g_lineParser;
 bool IsBinaryAssignExp(metac_expression_kind_t exp_kind);
 bool IsBinaryExp(metac_expression_kind_t exp_kind);
 
-void MetaCParser_Init(metac_parser_t* self);
-void MetaCParser_InitFromLexer(metac_parser_t* self, metac_lexer_t* lexer);
+void MetaCParser_Init(metac_parser_t* self, metac_alloc_t* allocator);
+void MetaCParser_InitFromLexer(metac_parser_t* self, metac_lexer_t* lexer, metac_alloc_t* allocator);
 
 #define MetaCParser_PeekToken(SELF, P) \
     (MetaCParser_PeekToken_(SELF, P, __LINE__))

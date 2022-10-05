@@ -301,7 +301,7 @@ void MetaCCodegen_Begin(metac_bytecode_ctx_t* self, metac_identifier_table_t* id
     assert(self->c != 0);
     self->IdentifierTable = idTable;
     self->Sema = sema;
-    VariableStore_Init(&self->Vstore, idTable);
+    VariableStore_Init(&self->Vstore, idTable, &self->Allocator);
     ARENA_ARRAY_INIT(metac_bytecode_switch_t, self->SwitchStack, &self->Allocator);
 }
 

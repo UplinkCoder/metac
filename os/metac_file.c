@@ -101,12 +101,12 @@ static const metac_filesystem_t NativeFileSystem  = {
 };
 
 
-void FileStorage_Init(metac_file_storage_t* self, metac_filesystem_t* fs)
+void FileStorage_Init(metac_file_storage_t* self, metac_filesystem_t* fs, metac_alloc_t* allocator)
 {
 //    printf("Initializng file storage for worker.Storage: %p\n",
 //        cast(void*)CurrentWorker()->FileStorage);
-    IdentifierTable_Init(&self->Filenames, IDENTIFIER_LENGTH_SHIFT, 9);
-    IdentifierTable_Init(&self->Paths, IDENTIFIER_LENGTH_SHIFT, 9);
+    IdentifierTable_Init(&self->Filenames, IDENTIFIER_LENGTH_SHIFT, 9, allocator);
+    IdentifierTable_Init(&self->Paths, IDENTIFIER_LENGTH_SHIFT, 9, allocator);
 
     if (!fs)
     {

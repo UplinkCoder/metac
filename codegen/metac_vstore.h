@@ -24,7 +24,7 @@ void WalkTree(void* c, BCValue* result,
               variable_store_t* vstore);
 
 */
-void VariableStore_Init(variable_store_t* self, metac_identifier_table_t* externalTable);
+void VariableStore_Init(variable_store_t* self, metac_identifier_table_t* externalTable, metac_alloc_t* allocator);
 
 metac_sema_expression_t evalWithVariables(metac_sema_expression_t* e,
                                           variable_store_t* vars);
