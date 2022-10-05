@@ -479,6 +479,8 @@ void Repl_Init(repl_state_t* self)
         &LPP->Parser.IdentifierTable,
         &LPP->Parser.StringTable);
 
+    Allocator_Init(&self->Allocator, 0);
+
     //VariableStore_Init(&self->vstore, &LPP->Parser.IdentifierTable);
 }
 
@@ -582,7 +584,7 @@ LswitchMode:
     Repl_SwtichMode(repl);
 
     {
-        repl->Line = uiInterface.GetInputLine(repl, uiState, &repl->LineSz);
+        repl->Line = uiInterface.GetInputLine(uiState, repl, &repl->LineSz);
         if (repl->Line)
         {
             TracyCMessage(repl->Line, repl->LineSz);
@@ -1162,6 +1164,18 @@ LnextLine:
 }
 repl_ui_context_t* g_uiContext = 0;
 
+completion_list_t ReplComplete (repl_state_t* repl, const char *input, uint32_t inputLength)
+{
+    completion_list_t result = {0};
+    result.CompletionsLength = 2;
+
+    char* completions[] =  {"a", "b", 0};
+    result.Completions = Allocator_Calloc(&repl->Allocator, char*, result.CompletionsLength);
+
+    memcpy(result.Completions, completions, result.CompletionsLength * sizeof(char*));
+
+    return result;
+}
 
 void Repl_Fiber(void)
 {
@@ -1175,12 +1189,12 @@ void Repl_Fiber(void)
     struct ui_state_t* uiState = uiContext->UiState;
 
     Presemantic_(repl);
-/*
+
     if (uiInterface.SetCompletionCallback)
     {
-        uiInterface.SetCompletionCallback(uiState, ReplComplete);
+        uiInterface.SetCompletionCallback(uiState, repl, ReplComplete);
     }
-*/
+
     while (Repl_Loop(repl, uiContext) != false)
     {
 #ifndef NO_FIBERS

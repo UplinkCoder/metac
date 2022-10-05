@@ -12,7 +12,7 @@ typedef struct ui_state_t
     repl_mode_t parseMode;
 } ui_state_t;
 
-const char* Linenoise_GetInputLine(repl_state_t* repl, ui_state_t* state, uint32_t* length)
+const char* Linenoise_GetInputLine(ui_state_t* state, repl_state_t* repl, uint32_t* length)
 {
     const char* line = linenoise(repl->Promt);
 
@@ -57,16 +57,20 @@ static repl_state_t* s_repl;
 void linenoiseCompletionCallbackFn(const char *input, linenoiseCompletions * resultP)
 {
     completion_list_t list = s_completionCb(s_repl, input, strlen(input));
-    linenoiseCompletions result;
-    result.len = list.CompletionsLength;
-    result.cvec = list.Completions;
+    linenoiseCompletions result = {0};
+
+    for(uint32_t i = 0; i < list.CompletionsLength; i++)
+    {
+        linenoiseAddCompletion(&result, list.Completions[i]);
+    }
+
     (*resultP) = result;
 }
 
 
-const char* Linenoise_SetCompletionCallback(struct ui_state_t* state,
-                                            completion_cb_t completionCb)
+void Linenoise_SetCompletionCallback(struct ui_state_t* state, repl_state_t* repl, completion_cb_t completionCb)
 {
+    s_repl = repl;
     s_completionCb =  completionCb;
     linenoiseSetCompletionCallback(linenoiseCompletionCallbackFn);
 }
