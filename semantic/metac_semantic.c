@@ -1097,23 +1097,18 @@ metac_sema_declaration_t* MetaCSemantic_declSemantic(metac_semantic_state_t* sel
         case decl_type_ptr:
             (cast(decl_type_t*)decl)->TypeKind = type_ptr;
         goto LdoTypeSemantic;
+
     LdoTypeSemantic:
         {
             metac_type_index_t type_index =
                 MetaCSemantic_doTypeSemantic(self, (decl_type_t*)decl);
+            metac_type_t typeNode =
+                NodeFromTypeIndex(self, type_index);
+            result = cast(metac_sema_declaration_t*)typeNode;
+
             if (declId.v != 0 && declId.v != -1)
             {
-                metac_type_t node =
-                    NodeFromTypeIndex(self, type_index);
-                MetaCSemantic_RegisterInScope(self, declId, METAC_NODE(node));
-                result = cast(metac_sema_declaration_t*)node;
-            }
-            // special case for typeof
-            else if (decl->Kind == decl_type_typeof)
-            {
-                metac_type_t typeNode =
-                    NodeFromTypeIndex(self, type_index);
-                result = cast(metac_sema_declaration_t*)typeNode;
+                MetaCSemantic_RegisterInScope(self, declId, METAC_NODE(typeNode));
             }
         } break;
     }
