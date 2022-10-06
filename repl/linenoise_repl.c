@@ -112,7 +112,8 @@ int main(int argc, const char* argv[])
     g_uiContext = &ctx;
 #ifndef NO_FIBERS
     worker_context_t replWorkerContext = {0};
-    THREAD_CONTEXT_SET(&replWorkerContext);
+    worker_context_t* ctxPtr = &replWorkerContext;
+    THREAD_CONTEXT_SET(ctxPtr);
     RunWorkerThread(&replWorkerContext, Repl_Fiber, 0);
 #else
     ReplStart(&ctx);

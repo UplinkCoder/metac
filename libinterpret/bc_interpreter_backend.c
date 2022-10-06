@@ -157,6 +157,7 @@ void BCGen_clear_instance(BCGen* instance)
 {
     instance->allocFn = 0;
 }
+
 void BCGen_init_instance(BCGen* instance)
 {
     BCGen_Init(instance);

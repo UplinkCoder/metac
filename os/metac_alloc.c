@@ -19,6 +19,9 @@
 metac_identifier_table_t g_filenames = {0};
 metac_alloc_t*           g_allocators = 0;
 uint32_t                 g_allocatorCount = 0;
+uint8_t                  g_memory[1536];
+tagged_arena_t           g_arena = {(void*)&g_memory, 0, sizeof(g_memory), 0};
+metac_alloc_t            g_allocator = {&g_arena, 1, 1};
 
 #ifdef NDEBUG
 static const metac_identifier_ptr_t s_null_filename = {0};
@@ -27,7 +30,7 @@ static const metac_identifier_ptr_t s_null_filename = {0};
 inline metac_identifier_ptr_t Add_Filename(const char* file)
 {
     if (g_filenames.Slots == 0)
-        IdentifierTable_Init(&g_filenames, IDENTIFIER_LENGTH_SHIFT, 7, 0);
+        IdentifierTable_Init(&g_filenames, IDENTIFIER_LENGTH_SHIFT, 5, &g_allocator);
 
     const uint32_t len = cast(uint32_t) strlen(file);
     const uint32_t hash = crc32c_nozero(~0, file, len);
@@ -39,9 +42,11 @@ inline metac_identifier_ptr_t Add_Filename(const char* file)
 void Allocator_Init_(metac_alloc_t* allocator, metac_alloc_t* parent,
                      const char* file, uint32_t line)
 {
-    allocator->FreelistCount = 0;
     allocator->Parent = parent;
+
     allocator->Freelist = 0;
+    allocator->FreelistCount = 0;
+    allocator->FreelistCapacity = 0;
 
     allocator->ArenaCapacity = 64;
     allocator->ArenaCount = 16;
@@ -51,9 +56,10 @@ void Allocator_Init_(metac_alloc_t* allocator, metac_alloc_t* parent,
     allocator->FileID = ADD_FILENAME(file);
     allocator->Line = line;
 
-    uint32_t allocated;
+    uint32_t allocated = 0;
     void* firstBlock = 0;
     OS.PageAlloc(BLOCK_SIZE, &allocated, &firstBlock);
+
     uint32_t memoryPerArena = allocated / allocator->ArenaCount;
 
     for(uint32_t arenaIdx = 0;

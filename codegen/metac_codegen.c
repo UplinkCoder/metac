@@ -14,7 +14,6 @@
 #include  "metac_vstore.c"
 
 #include "metac_codegen.h"
-#include "../os/metac_alloc.h"
 
 #include <stdarg.h>
 

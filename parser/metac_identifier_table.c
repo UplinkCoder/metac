@@ -50,8 +50,8 @@ void IdentifierTable_Init(metac_identifier_table_t* table, uint32_t lengthShift,
 }
 void IdentifierTable_Free(metac_identifier_table_t* table)
 {
-    free(table->Slots);
-    free(table->StringMemory);
+    // free(table->Slots);
+    // free(table->StringMemory);
     static const metac_identifier_table_t zeroTable = {0};
     (*table) = zeroTable;
 }

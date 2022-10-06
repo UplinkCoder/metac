@@ -9,14 +9,6 @@
 
 #include "repl.c"
 
-#ifndef NO_FIBERS
-#  ifdef HAS_TLS
-    extern __thread worker_context_t *threadContext;
-#  else
-    extern worker_context_t *threadContext;
-#  endif
-#endif
-
 const char* MetaCTokenEnum_toChars(metac_token_enum_t tok);
 
 typedef enum {
@@ -160,7 +152,7 @@ void WritePromt(repl_state_t* repl, ui_state_t* uiState)
     else
         printw("(<null>)>");
     addch(' ');
-    
+
     if (uiState->Mode == CommandMode)
         addch(':');
 }
@@ -169,6 +161,12 @@ void SwitchToCommandMode(repl_state_t* repl, ui_state_t* uiState)
 {
     assert(uiState->Mode != CommandMode);
     uiState->Mode = CommandMode;
+}
+
+void SwitchToDefaultMode(repl_state_t* repl, ui_state_t* uiState)
+{
+    assert(uiState->Mode != DefaultMode);
+    uiState->Mode = DefaultMode;
 }
 
 int main(int argc, const char* argv[])
@@ -209,6 +207,10 @@ int main(int argc, const char* argv[])
                 case 'c':
                 {
                      clear();
+                } break;
+                case 27:
+                {
+                    SwitchToDefaultMode(g_ReplState, &g_UiState);
                 } break;
                 case 'q':
                 {
