@@ -253,7 +253,7 @@ typedef struct BCGen
     void* allocCtx;
 
     bool finalized;
-    uint32_t byteCodeArray[1024];
+    uint32_t byteCodeArray[512];
 } BCGen;
 
 typedef struct byte_code_array_t

@@ -65,6 +65,8 @@ typedef struct metac_bytecode_ctx_t
     tagged_arena_t GlobalMemory;
     uint32_t GlobalMemoryOffset;
 
+    AT(transient) const BackendInterface* gen;
+
     AT(transient) AT(per_function) ARENA_ARRAY(BCValue, Locals)
     AT(transient) AT(per_function) ARENA_ARRAY(BCValue, Parameters)
 
