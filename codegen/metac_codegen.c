@@ -185,7 +185,7 @@ long MetaCCodegen_RunFunction(metac_bytecode_ctx_t* self,
     va_list l;
     va_start(l, fargs);
     STACK_ARENA_ARRAY(BCValue, args, 8, interpAlloc);
-    const BackendInterface gen = *self->gen; 
+    const BackendInterface gen = *self->gen;
 
     const char* farg = fargs;
     uint32_t nArgs = 0;
@@ -245,7 +245,7 @@ void* MetaCCodegen_AllocMemory(metac_bytecode_ctx_t* self, uint32_t size, sema_d
         arena = Allocate_(&self->Allocator, size, __FILE__, __LINE__, false);
         return arena->Memory;
     }
-    
+
     return 0;
 }
 
@@ -320,7 +320,7 @@ metac_bytecode_function_t MetaCCodegen_GenerateFunctionFromExp(metac_bytecode_ct
 
     metac_bytecode_function_t func;
 
-    const BackendInterface gen = *ctx->gen; 
+    const BackendInterface gen = *ctx->gen;
 
     func.FunctionIndex =
         gen.BeginFunction(c, 0, "dummy_eval_func");
@@ -354,7 +354,7 @@ metac_bytecode_function_t MetaCCodegen_GenerateFunction(metac_bytecode_ctx_t* ct
 {
     void* c = ctx->c;
     const BackendInterface gen = *ctx->gen;
-    
+
     uint32_t frameSize = 0;
     uint32_t functionParameterCount = 1;
     STACK_ARENA_ARRAY(BCValue, parameters, 16, &ctx->Allocator);
@@ -528,7 +528,7 @@ static void LoadFromHeapRef(metac_bytecode_ctx_t* ctx, BCValue* hrv, uint32_t ab
 {
     // import std.stdio; writeln("Calling LoadHeapRef from: ", line); //DEBUGLINE
     const BackendInterface gen = *ctx->gen;
-    const void* c = ctx->c;
+    void* c = ctx->c;
     {
         BCTypeEnum types[] = {BCTypeEnum_i64, BCTypeEnum_f52};
         if(BCTypeEnum_anyOf(hrv->type.type, types, ARRAY_SIZE(types)))
@@ -581,7 +581,7 @@ static void StructMemberInit(void *c, BCValue* result, uint32_t offset, BCValue*
 static void StoreToHeapRef(metac_bytecode_ctx_t* ctx, BCValue* hrv, uint32_t abiSize)
 {
     const BackendInterface gen = *ctx->gen;
-    const void* c = ctx->c;
+    void* c = ctx->c;
     // import std.stdio; writeln("Calling LoadHeapRef from: ", line); //DEBUGLINE
     {
         BCTypeEnum types[] = {BCTypeEnum_i64, BCTypeEnum_f52};
@@ -647,7 +647,7 @@ static void MetaCCodegen_doExpression(metac_bytecode_ctx_t* ctx,
                                       metac_value_type_t lValue)
 {
     const BackendInterface gen = *ctx->gen;
-    const void* c = ctx->c;
+    void* c = ctx->c;
 
     metac_printer_t printer;
     MetaCPrinter_Init(&printer, ctx->Sema->ParserIdentifierTable, ctx->Sema->ParserStringTable);
@@ -1123,7 +1123,7 @@ static inline void MetaCCodegen_doCaseStmt(metac_bytecode_ctx_t* ctx,
                                            sema_stmt_case_t* caseStmt)
 {
     const BackendInterface gen = *ctx->gen;
-    const void* c = ctx->c;
+    void* c = ctx->c;
 
     assert(ctx->SwitchStackCount > 0);
 
@@ -1221,7 +1221,7 @@ void MetaCCodegen_doLocalVar(metac_bytecode_ctx_t* ctx,
                              sema_decl_variable_t* localVar)
 {
     const BackendInterface gen = *ctx->gen;
-    const void* c = ctx->c;
+    void* c = ctx->c;
 
     const char* localName = IdentifierPtrToCharPtr(ctx->IdentifierTable,
                                                    localVar->VarIdentifier);
@@ -1241,7 +1241,7 @@ void MetaCCodegen_doStatement(metac_bytecode_ctx_t* ctx,
                               metac_sema_statement_t* stmt)
 {
     const BackendInterface gen = *ctx->gen;
-    const void* c = ctx->c;
+    void* c = ctx->c;
 
     switch(stmt->Kind)
     {
