@@ -150,7 +150,7 @@ LsetResult:
         arena->Offset += size;
         arena->SizeLeft -= size;
 
-        if (arenas == allocator->Freelist)
+        if (arenas && arenas == allocator->Freelist)
         {
             uint32_t freelistIdx = arena - arenas;
             memmove(arena, arena + 1, --allocator->ArenaCount - freelistIdx);
@@ -188,6 +188,7 @@ LsetResult:
             arena->Alloc = allocator;
             arena->Line = line;
             arena->FileID = ADD_FILENAME(file);
+            goto LsetResult;
         }
 
         if (!forChild)
