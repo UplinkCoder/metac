@@ -1084,11 +1084,12 @@ static inline bool CouldBeType(metac_parser_t* self,
     // if we just had a single identifier don't
     // treat it as a type as we can resolve single identifiers just fine
     // and they don't impact parsing
+#if defined(PARSE_IDENTIFIER_EXPRESSIONS_BY_DEFAULT)
     if ((flags & TypeScan_FirstWasIdentifier) != 0)
     {
         result = false;
     }
-
+#endif
     return result;
 }
 
