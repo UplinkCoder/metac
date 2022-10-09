@@ -74,7 +74,9 @@ int main(int argc, const char* argv[])
         }
         printf("arg: %s\n", arg);
         metac_lexer_t lexer;
-        MetaCLexer_Init(&lexer);
+        metac_alloc_t lexerAlloc = {0};
+        Allocator_Init(&lexerAlloc, 0);
+        MetaCLexer_Init(&lexer, &lexerAlloc);
 
         read_result_t readResult = ReadFileAndZeroTerminate(arg);
 #if 0
@@ -91,7 +93,9 @@ int main(int argc, const char* argv[])
         }
 #endif
         metac_parser_t parser;
-        MetaCParser_InitFromLexer(&parser, &lexer);
+        metac_alloc_t parserAlloc = {0};
+        Allocator_Init(&parserAlloc, 0);
+        MetaCParser_InitFromLexer(&parser, &lexer, &parserAlloc);
         ParseFile(&parser, arg, 0);
 #if 0
         {
