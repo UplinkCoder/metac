@@ -25,8 +25,8 @@ const char* MetaCTokenEnum_toChars(metac_token_enum_t tok);
 #define MSGF(FMT, ...) uiInterface.Message(uiState, FMT, __VA_ARGS__)
 #define MSG(STR) MSGF(STR, 0);
 
-#define ERRORF(FMT, ...) MSGF(FMT, __VA_ARGS__)
-#define ERROR(FMT) MSG(FMT)
+#define ERRORMSGF(FMT, ...) MSGF(FMT, __VA_ARGS__)
+#define ERRORMSG(FMT) MSG(FMT)
 
 void HelpMessage(ui_interface_t uiInterface, struct ui_state_t* uiState)
 {
@@ -233,7 +233,7 @@ void Presemantic_(repl_state_t* self)
             &self->LPP.Parser.IdentifierTable
         };
 
-        for(int i = 0;
+        for(uint32_t i = 0;
             i < decls.Length;
             i++)
         {
@@ -244,7 +244,7 @@ void Presemantic_(repl_state_t* self)
             MetaCNode_TreeWalk_Real(cast(metac_node_t)decls.Ptr[i], Presemantic, &presemanticContext);
         }
 
-        for(int i = 0;
+        for(uint32_t i = 0;
             i < decls.Length;
             i++)
         {
@@ -305,7 +305,7 @@ void ConvertTupleElementToExp(metac_semantic_state_t* sema,
                               metac_sema_expression_t** dstP, metac_type_index_t elemType,
                               uint32_t offset, BCHeap* heap)
 {
-    metac_expression_t exp = {0};
+    metac_expression_t exp = {exp_invalid};
     *dstP = AllocNewSemaExpression(sema, &exp);
     metac_sema_expression_t* dst = *dstP;
 
@@ -470,7 +470,7 @@ void Repl_Init(repl_state_t* self)
 
     MetaCLPP_Init(&self->LPP, &self->Allocator);
     MetaCSemantic_Init(&self->SemanticState, &LPP->Parser, 0);
-    MetaCSemantic_PushNewScope(&self->SemanticState, scope_owner_module, cast(void*)cast(intptr_t)1);
+    MetaCSemantic_PushNewScope(&self->SemanticState, scope_owner_module, cast(metac_node_t)cast(intptr_t)1);
 
     LPP->Lexer.TokenCapacity = 128;
     LPP->Lexer.Tokens =
@@ -588,7 +588,7 @@ LswitchMode:
     Repl_SwtichMode(repl);
 
     {
-        repl->Line = uiInterface.GetInputLine(uiState, repl, &repl->LineSz);
+        repl->Line = uiInterface.GetInputLine(uiState, repl, (uint32_t*)&repl->LineSz);
         if (repl->Line)
         {
             TracyCMessage(repl->Line, repl->LineSz);
@@ -653,8 +653,8 @@ LswitchMode:
                         fileLexer->LocationStorage.LocationSize = 0;
                         fileLexer->LocationStorage.LocationCapacity = estimatedTokenCount;
                     }
-
-                    repl->FreePtr = repl->SrcBuffer = calloc(1, sz + 4);
+                    repl->SrcBuffer = (char*)calloc(1, sz + 4);
+                    repl->FreePtr = (void*)repl->SrcBuffer;
                     repl->SrcBufferLength = sz;
                     fread((void*)repl->SrcBuffer, 1, sz, fd);
                     repl->ParseMode = repl_mode_lex_file;
@@ -956,7 +956,7 @@ LswitchMode:
 
                     if (idPtr.v == 0)
                     {
-                        ERROR("declaration could not be handled only functions are supported for now\n");
+                        ERRORMSG("declaration could not be handled only functions are supported for now\n");
                         goto LnextLine;
                     }
 
@@ -975,7 +975,7 @@ LswitchMode:
                     {
                         if (assignExp->Kind != exp_assign)
                         {
-                            ERROR("You must write an expression of the from identifier = value");
+                            ERRORMSG("You must write an expression of the from identifier = value");
                             goto LnextLine;
                         }
 
@@ -993,14 +993,14 @@ LswitchMode:
                         }
                         else
                         {
-                            ERROR("Semantic on assign exp failed\n");
+                            ERRORMSG("Semantic on assign exp failed\n");
                         }
                         // MetaCSemantic_Free(&sema);
                         goto LnextLine;
                     }
                     else
                     {
-                        ERROR("Input did not parse as either an assign-expression or declaration\n");
+                        ERRORMSG("Input did not parse as either an assign-expression or declaration\n");
                     }
                 }
 #endif
@@ -1012,7 +1012,7 @@ LswitchMode:
                 if (stmt)
                     MSGF("stmt = %s\n", MetaCPrinter_PrintStatement(&repl->printer, stmt));
                 else
-                   ERROR("couldn't parse statement\n");
+                   ERRORMSG("couldn't parse statement\n");
                 MetaCPrinter_Reset(&repl->printer);
                 goto LnextLine;
             }
@@ -1024,7 +1024,7 @@ LswitchMode:
                 if (stmt)
                     MSGF("stmt = %s\n", MetaCPrinter_PrintStatement(&repl->printer, stmt));
                 else
-                   ERROR("couldn't parse statement\n");
+                   ERRORMSG("couldn't parse statement\n");
                 */
                 if (stmt)
                 {
@@ -1035,7 +1035,7 @@ LswitchMode:
                 }
                 else
                 {
-                   ERROR("couldn't parse statement\n");
+                   ERRORMSG("couldn't parse statement\n");
                 }
                 MetaCPrinter_Reset(&repl->printer);
                 goto LnextLine;
@@ -1054,12 +1054,13 @@ LswitchMode:
 
             case repl_mode_ds :
             {
+                metac_sema_declaration_t* ds;
                 decl = MetaCLPP_ParseDeclarationFromString(&repl->LPP, repl->Line);
                 if (decl)
                     MSGF("decl = %s\n", MetaCPrinter_PrintDeclaration(&repl->printer, decl));
                 else
                     MSG("Couldn't parse Declaration\n");
-                decl->StorageClass = storage_global;
+                decl->StorageClass = storageclass_global;
 
 #ifndef NO_FIBERS
                 MetaCSemantic_doDeclSemantic_task_context_t ctx =
@@ -1083,11 +1084,10 @@ LswitchMode:
 
                 if (taskId == 0)
                 {
-                    ERROR("Couldn't Push\n");
+                    ERRORMSG("Couldn't Push\n");
                 }
 #else
-                metac_sema_declaration_t* ds =
-                    MetaCSemantic_doDeclSemantic(&repl->SemanticState, decl);
+                ds = MetaCSemantic_doDeclSemantic(&repl->SemanticState, decl);
 #endif
                 goto LnextLine;
             }
@@ -1104,7 +1104,8 @@ LlexSrcBuffer: {}
                 const uint32_t token_length = MetaCTokenLength(token);
 #if 1
                 const uint32_t locPtr = token.LocationId;
-                const metac_location_t loc = locPtr ? repl->LPP.Lexer.LocationStorage.Locations[locPtr - 4] : (metac_location_t){0};
+                const static metac_location_t zeroLoc = {0};
+                const metac_location_t loc = locPtr ? repl->LPP.Lexer.LocationStorage.Locations[locPtr - 4] : zeroLoc;
 
                 MSGF("read tokenType: %s {length: %d}\n Location: {Line: %d, Col: %d}",
                         MetaCTokenEnum_toChars(token.TokenType), token_length,
@@ -1214,7 +1215,7 @@ void Repl_Fiber(void)
 #endif
     }
 
-    ERROR("Repl_Loop exited this should only happen on quit\n");
+    ERRORMSG("Repl_Loop exited this should only happen on quit\n");
 #ifndef NO_FIBERS
     aco_exit1(GET_CO());
 #endif

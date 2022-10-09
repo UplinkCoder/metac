@@ -321,6 +321,10 @@ typedef enum metac_storageclasses_t
     storageclass_extern   = (1 << 3),
     storageclass_volatile = (1 << 4),
     storageclass_thread   = (1 << 5),
+    // the global storage class is for the repl mainly
+    // it's potentially subject to future removal
+    storageclass_global   = (1 << 6),
+    storageclass_local    = (1 << 7),
 } metac_storageclasses_t;
 
 typedef enum metac_type_kind_t

@@ -1,4 +1,4 @@
-#include <stdint.h>
+#include "../../os/compat.h"
 
 #include "fpconv.h"
 #include "powers.h"

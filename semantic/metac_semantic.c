@@ -1051,15 +1051,15 @@ metac_sema_declaration_t* MetaCSemantic_declSemantic(metac_semantic_state_t* sel
             {
                 METAC_NODE(var->VarInitExpression) = emptyNode;
             }
-            assert(v->StorageClass != storageclass_static);
+
             //TODO make sure nLocals is reset at the end of a function
             //     also this doesn't deal with static properly
             var->VarIdentifier = v->VarIdentifier;
-            if (v->StorageClass == storage_local)
+            if (v->StorageClass == storageclass_local)
             {
                 var->Storage.v = STORAGE_V(storage_local, self->nLocals++);
             }
-            else if (v->StorageClass == storage_global)
+            else if (v->StorageClass == storageclass_global)
             {
                 var->Storage.v = STORAGE_V(storage_global, self->GlobalsCount);
                 // TODO maybe we have to mark the global as having been inserted.

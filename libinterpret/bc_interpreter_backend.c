@@ -4,6 +4,14 @@
 #ifndef _BC_INTERPRETER_C_
 #define _BC_INTERPRETER_C_
 
+#ifdef _WIN32
+#  define UINT8_MAX 0xff
+#  define UINT16_MAX 0xffff
+#  define UINT32_MAX 0xffffffff
+#  define INT32_MAX 0x7ffffe
+#  define INT32_MIN 0x7fffff
+#endif
+
 #include <assert.h>
 #include <math.h>
 #include <stdlib.h>
@@ -1500,13 +1508,13 @@ BCValue BCGen_interpret(BCGen* self, uint32_t fnIdx, BCValue* args, uint32_t n_a
         case LongInst_F64ToF32 :
             {
                 double drhs_ = *cast(double*)rhs;
-                float flhs_ = drhs_;
+                float flhs_ = (float)drhs_;
                 *lhsRef = *(uint32_t*)&flhs_;
             }
             break;
         case LongInst_F64ToI :
             {
-                float drhs_ = *(double*)rhs;
+                double drhs_ = *(double*)rhs;
                 *lhsRef = (int64_t)drhs_;
             }
             break;
@@ -2667,7 +2675,9 @@ Lreturn:
 static inline BCValue BCGen_MapExternal (BCGen* self,
                                          void* memory, uint32_t sz)
 {
+    BCValue result = {BCValueType_Unknown};
     assert(0);
+    return result;
 }
 
 static inline void BCGen_emitFlag(BCGen* self, BCValue* lhs)
@@ -2738,8 +2748,8 @@ BC_ARITH_FUNC(And)
 
 static inline void BCGen_Load_Store(BCGen* self, BCValue *to, const BCValue* from, LongInst inst)
 {
-    _Bool pushedFrom = 0;
-    _Bool pushedTo = 0;
+    bool pushedFrom = 0;
+    bool pushedTo = 0;
     BCValue fromV;
     BCValue toV;
 
@@ -2801,7 +2811,7 @@ static inline void BCGen_MemCpy(BCGen* self, BCValue *dst, const BCValue* src, c
 static inline void BCGen_Ret(BCGen* self, const BCValue* val)
 {
     LongInst inst = ((BCTypeEnum_basicTypeSize(val->type.type) == 8) ? LongInst_Ret64 : LongInst_Ret32);
-    _Bool newValTemp = 0;
+    bool newValTemp = 0;
     BCValue newVal;
     uint32_t hi = 0;
 
@@ -2985,9 +2995,10 @@ static inline void BCGen_InitializeV(BCGen* self, uint32_t n_args, va_list args)
 
 static inline void BCGen_Alloc(BCGen* self, BCValue *heapPtr, const BCValue* size)
 {
+    bool pushedSize = 0;
     BCValue newSize;
+
     assert(size->type.type == BCTypeEnum_u32);
-    _Bool pushedSize = 0;
 
     if (size->vType == BCValueType_Immediate)
     {
@@ -3140,8 +3151,12 @@ static inline void BCGen_ReadI32(BCGen* self, const BCValue* value, ReadI32_cb_t
 {
     assert(self->contextCount < self->contextCapacity);
 
-    ReadI32_ctx_t ctx = { .cb = ReadI32_cb,  .userCtx = userCtx };
     uint32_t ptr = self->contextCount;
+    ReadI32_ctx_t ctx;
+
+    ctx.cb = ReadI32_cb;
+    ctx.userCtx = userCtx;
+
     self->contexts[self->contextCount++] = ctx;
     assert(BCValue_isStackValueOrParameter(value));
 

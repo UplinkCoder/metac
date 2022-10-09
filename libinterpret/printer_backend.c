@@ -20,7 +20,7 @@ typedef struct Printer
 
     uint32_t vIp;
     uint32_t CurrentIndent;
-    _Bool LineIndented;
+    bool LineIndented;
 
     uint32_t NumberOfLocals;
     uint32_t NumberOfTemporaries;
@@ -701,7 +701,9 @@ static inline BCValue Printer_GenParameter(Printer* self, BCType bct, const char
 static inline BCValue Printer_MapExternal (Printer* self,
                                            void* memory, uint32_t sz)
 {
+    BCValue result = {BCValueType_Unknown};
     assert(0);
+    return result;
 }
 
 PR_OP1(emitFlag)
@@ -852,10 +854,14 @@ static inline void Printer_PrintCndJmp(Printer* self, const CndJmpBegin* jmp)
     Printer_PutU32(self, jmp->at.addr);
 }
 
-static inline CndJmpBegin Printer_BeginCndJmp(Printer* self, const BCValue* cond, _Bool ifTrue)
+static inline CndJmpBegin Printer_BeginCndJmp(Printer* self, const BCValue* cond, bool ifTrue)
 {
-    CndJmpBegin result =
-        {.at = {self->vIp}, .cond = cast(BCValue*)cond, .ifTrue = ifTrue};
+    CndJmpBegin result;
+
+    BCAddr at = {self->vIp};
+    result.at = at;
+    result.cond = cast(BCValue*)cond;
+    result.ifTrue = ifTrue;
 
     Printer_PutStr(self, "CndJmpBegin ");
     Printer_PrintCndJmp(self, &result);
@@ -920,7 +926,8 @@ static inline void Printer_ReadI32(Printer* self, const BCValue* val, const Read
 
 static inline BCValue Printer_run(Printer* self, uint32_t fnIdx, const BCValue* args, uint32_t n_args)
 {
-    return (BCValue) {BCValueType_Unknown};
+    BCValue result = {BCValueType_Unknown};
+    return result;
 }
 
 static inline void Printer_fini_instance(Printer* instance)
