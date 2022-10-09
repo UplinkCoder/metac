@@ -1,0 +1,27 @@
+- Forign langauge blocks 
+
+-Label variables to implement cheap local 'calls'
+-Git rid of real pointers and use indicies into the expression, statement and declaration table
+
+Features:
+- constructors and destructors
+- intialize variables - default init with 0;
+- union default initalsation is the size of the biggest member
+- Slices
+- SIMD intrinsics
+- Support void fields
+
+---- compiler interface ----------
+- 
+- backend info: SIMD_LAYOUT
+                CACHE SIZES
+- Halt task executions when .compiler handler is envoked
+- Control/Monitoring of tasks
+- Locking on tree modification such that when a property
+  is queried no-other task can llok at that property until
+  the modification is finished
+
+------- task system ---------------
+Tasks are transferred completely into the queue
+when they are enqueued which means the discricption
+the enqueuer of the task generated can go away
