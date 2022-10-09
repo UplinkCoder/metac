@@ -120,7 +120,6 @@ BCType MetaCCodegen_GetBCType(metac_bytecode_ctx_t* ctx, metac_type_index_t type
 }
 extern const BackendInterface Lightning_interface;
 extern const BackendInterface BCGen_interface;
-const BackendInterface* bc;
 
 uint32_t MetaCCodegen_GetStorageSize(metac_bytecode_ctx_t* ctx, BCType bcType)
 {
@@ -333,14 +332,14 @@ metac_bytecode_function_t MetaCCodegen_GenerateFunctionFromExp(metac_bytecode_ct
 
     gen.EndFunction(c, func.FunctionIndex);
 
-    if (bc == &Printer_interface)
+    if (ctx->gen == &Printer_interface)
     {
         Printer* printer = (Printer*)ctx->c;
         printf("%s\n\n", printer->BufferStart);
     }
 
 #ifdef PRINT_BYTECODE
-    if (bc == &BCGen_interface)
+    if (ctx->gen == &BCGen_interface)
     {
         BCGen_PrintCode(c, 0, 48);
     }
@@ -425,7 +424,7 @@ metac_bytecode_function_t MetaCCodegen_GenerateFunction(metac_bytecode_ctx_t* ct
 
     gen.EndFunction(c, result.FunctionIndex);
 #ifdef PRINT_BYTECODE
-    if (bc == &BCGen_interface)
+    if (ctx->gen == &BCGen_interface)
     {
         BCGen_PrintCode(c, 0, 600);
     }

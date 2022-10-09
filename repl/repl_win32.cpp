@@ -67,10 +67,6 @@ int main(int argc, const char* argv[])
 #ifndef NO_FIBERS
     aco_global_init();
 #endif
-    if (bc == 0)
-    {
-        bc = &BCGen_interface;
-    }
     linenoiseHistoryLoad(".repl_history");
     printf("Please enter :h for help\n");
     repl_state_t repl;
