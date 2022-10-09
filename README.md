@@ -75,6 +75,18 @@ If it does fail to compile please open an issue
 
 - NOTE: when you supply the defines `PRINT_BYTECODE=1` and `PRINT_CODE=1` the repl will print the first 24 instructions when evaluating expressions.
 
+#Forign language blocks (not currently impemented)
+
+forign langauge blocks are a tool to integrate other languauges with meta-c
+they are essentailly heredoc strings with a language tag that allows source processors to pick out the block it is interested in.
+an FLB starts with `\n@FLB{\n` for an untagged block or with`\n@(FLB, "some-tag-string"){\n` for a tagged forign language block
+and it ends with `\n}FLB\n`
+
+Even though the { syntax does suggest nesting;
+Forign langauge blocks do not nest currently.
+
+This may be subject to change in the future.
+
 ## Repl modes
 
 The repl is mostly a development and debugging tool for me
