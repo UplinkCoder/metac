@@ -1072,8 +1072,8 @@ static inline bool CouldBeType(metac_parser_t* self,
         }
 #endif
         if (((flags & TypeScan_SeenStar) != 0)
-              && (   tok == tok_identifier
-                  |  tok == tok_uint))
+              && (   (tok == tok_identifier)
+                  |  (tok == tok_uint) ))
         {
             result = false;
             break;
