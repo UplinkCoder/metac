@@ -655,6 +655,14 @@ static void MetaCCodegen_doExpression(metac_bytecode_ctx_t* ctx,
     {
         return ;
     }
+    else if (lValue == _Cond && exp->Kind == exp_signed_integer)
+    {
+        int32_t truthval = exp->ValueI64 & 0xffffffff
+                         | exp->ValueI64 << 32;
+        BCValue val = imm32(truthval);
+        gen.Set(c, result, &val);
+        return ;
+    }
     else
     {
         if (!result)
@@ -761,6 +769,24 @@ static void MetaCCodegen_doExpression(metac_bytecode_ctx_t* ctx,
         {
             metac_enum_member_t* enumMember = cast(metac_enum_member_t*) exp;
             MetaCCodegen_doExpression(ctx, enumMember->Value, result, _Rvalue);
+        } break;
+
+        case exp_ternary:
+        {
+            BCValue cond = gen.GenTemporary(c, BCType_i32);
+
+            MetaCCodegen_doExpression(ctx, exp->E1, &lhs, _Rvalue);
+            MetaCCodegen_doExpression(ctx, exp->E2, &rhs, _Rvalue);
+            MetaCCodegen_doExpression(ctx, exp->Econd, &cond, _Cond);
+
+            CndJmpBegin condExpJmp = gen.BeginCndJmp(c, &cond, false);
+            gen.Set(c, result, &lhs);
+            BCAddr toEnd = gen.BeginJmp(c);
+            BCLabel falseBranch = gen.GenLabel(c);
+            gen.Set(c, result, &rhs);
+            BCLabel endLabel = gen.GenLabel(c);
+            gen.EndJmp(c, toEnd, endLabel);
+            gen.EndCndJmp(c, &condExpJmp, falseBranch);
         } break;
 
         case exp_comma:

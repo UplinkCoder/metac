@@ -206,11 +206,16 @@ metac_sema_expression_t* MetaCSemantic_doExprSemantic_(metac_semantic_state_t* s
         && (   expr->Kind != exp_arrow
             && expr->Kind != exp_dot
             && expr->Kind != exp_index
-        )
+        ) ||   expr->Kind == exp_ternary
     )
     {
         MetaCSemantic_PushExpr(self, result);
 
+        if (expr->Kind == exp_ternary)
+        {
+            result->Econd = MetaCSemantic_doExprSemantic(self, expr->Econd, 0);
+            hash = CRC32C_VALUE(hash, result->Econd->Hash);
+        }
         result->E1 = MetaCSemantic_doExprSemantic(self, expr->E1, 0);
         result->E2 = MetaCSemantic_doExprSemantic(self, expr->E2, 0);
 
