@@ -764,12 +764,12 @@ void BCGen_PrintCode(BCGen* self, uint32_t start, uint32_t end)
             break;
         case LongInst_JmpNZ:
             {
-                printf("LongInst_JmpNZ :%u\n", hi);
+                printf("LongInst_JmpNZ R[%d] :%u\n", opRefOffset / 4, hi);
             }
             break;
         case LongInst_JmpZ:
             {
-                printf("LongInst_JmpZ :%u\n", hi);
+                printf("LongInst_JmpZ R[%d] :%u\n", opRefOffset / 4, hi);
             }
             break;
         case LongInst_JmpFalse:
