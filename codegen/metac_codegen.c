@@ -265,10 +265,10 @@ void MetaCCodegen_Init(metac_bytecode_ctx_t* self, metac_alloc_t* parentAlloc)
 
     Allocator_Init(&self->Allocator, parentAlloc, 0);
 
-#ifndef BC_PRINTER
     tagged_arena_t* arena =
         AllocateArena(&self->Allocator, gen.sizeof_instance());
     self->c = arena->Memory;
+
     if (gen.set_alloc_memory)
     {
         gen.set_alloc_memory(self->c, cast(alloc_fn_t)MetaCCodegen_AllocMemory, cast(void*)self);
@@ -278,10 +278,7 @@ void MetaCCodegen_Init(metac_bytecode_ctx_t* self, metac_alloc_t* parentAlloc)
         gen.set_get_typeinfo(self->c, cast(get_typeinfo_fn_t)MetaCCodegen_GetTypeInfo, cast(void*)self);
     }
     gen.init_instance(self->c);
-#else
-    gen.new_instance(&self->c);
-    Printer* printer = (Printer*) self->c;
-#endif
+
     gen.Initialize(self->c, 0);
 
     ARENA_ARRAY_INIT(metac_bytecode_function_t, self->Functions, &self->Allocator);
