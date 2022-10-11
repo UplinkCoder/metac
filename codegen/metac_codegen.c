@@ -338,7 +338,7 @@ metac_bytecode_function_t MetaCCodegen_GenerateFunctionFromExp(metac_bytecode_ct
 #ifdef PRINT_BYTECODE
     if (ctx->gen == &BCGen_interface)
     {
-        BCGen_PrintCode(c, 0, 48);
+        BCGen_PrintCode((BCGen*)c, 0, 48);
     }
 #endif
 
@@ -423,7 +423,7 @@ metac_bytecode_function_t MetaCCodegen_GenerateFunction(metac_bytecode_ctx_t* ct
 #ifdef PRINT_BYTECODE
     if (ctx->gen == &BCGen_interface)
     {
-        BCGen_PrintCode(c, 0, 600);
+        BCGen_PrintCode((BCGen*)c, 0, 64);
     }
 #endif
         return result;
