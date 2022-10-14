@@ -67,6 +67,63 @@ static int serveFile(const char* filename, const char* contentType, struct MHD_C
     return ret;
 }
 
+void outAllocRow(char* body, uint32_t sz, uint32_t* pp, metac_alloc_t* alloc)
+{
+    uint32_t p = *pp;
+    uint32_t j;
+    uint32_t usedSize = 0;
+    uint32_t allocatedSize = 0;
+    uint32_t arenasUsed = 0;
+
+
+    p += snprintf (body + p, sz - p, "<tr>", alloc);
+
+    for(j = 0; j < alloc->ArenaCount; j++)
+    {
+        usedSize += alloc->Arenas[j].Offset;
+        allocatedSize += (alloc->Arenas[j].Offset + alloc->Arenas[j].SizeLeft);
+        if (alloc->Arenas[j].Offset)
+        {
+            arenasUsed++;
+        }
+    }
+
+    {
+        p += snprintf (body + p, sz - p,
+                       "<td>%p</td>", alloc
+        );
+
+        p += snprintf (body + p, sz - p,
+                       "<td>%s</td>", ((!(alloc->FileID.v < 1 || alloc->FileID.v > g_filenames.StringMemorySize)
+                                       ) ? g_filenames.StringMemory + (alloc->FileID.v - 4) : "failed")
+        );
+
+        p += snprintf (body + p, sz - p,
+                       "<td>%u</td>", alloc->Line
+        );
+
+        p += snprintf (body + p, sz - p,
+                       "<td>%u</td>", alloc->ArenaCount
+        );
+
+        p += snprintf (body + p, sz - p,
+                       "<td>%u</td>", arenasUsed
+        );
+
+        p += snprintf (body + p, sz - p,
+                       "<td>%u</td>", usedSize
+        );
+
+        p += snprintf (body + p, sz - p,
+                       "<td>%u</td>", allocatedSize
+        );
+    }
+
+    p += snprintf(body + p, sz - p, "</tr>");
+
+    (*pp) = p;
+}
+
 MHD_HANDLER (handleAllocators)
 {
     static char responseString[4096];
@@ -75,11 +132,12 @@ MHD_HANDLER (handleAllocators)
     int p = 0;
     int len;
     int n_fields = 0;
-    
+
     char body[4096];
     body[0] = '\0';
 
     const char* headers[] = {
+        "Alloc_Addr",
         "File",
         "Line",
         "ArenaCount",
@@ -102,48 +160,9 @@ MHD_HANDLER (handleAllocators)
         uint32_t usedSize = 0;
         uint32_t allocatedSize = 0;
         uint32_t arenasUsed = 0;
-        
+
         metac_alloc_t * alloc = debugServer->Allocators[i];
-        p += snprintf (body + p, ARRAYSIZE (body) - p, "<tr>", alloc);
-    
-        for(j = 0; j < alloc->ArenaCount; j++)
-        {
-            usedSize += alloc->Arenas[j].Offset;
-            allocatedSize += (alloc->Arenas[j].Offset + alloc->Arenas[j].SizeLeft);
-            if (alloc->Arenas[j].Offset)
-            {
-                arenasUsed++;
-            }
-        }
-
-        {
-            p += snprintf (body + p, ARRAYSIZE (body) - p,
-                           "<td>%s</td>", ((!(alloc->FileID.v < 1 || alloc->FileID.v > g_filenames.StringMemorySize)
-                                           ) ? g_filenames.StringMemory + (alloc->FileID.v - 4) : "0")
-            );
-            
-            p += snprintf (body + p, ARRAYSIZE (body) - p,
-                           "<td>%u</td>", alloc->Line
-            );
-            
-            p += snprintf (body + p, ARRAYSIZE (body) - p,
-                           "<td>%u</td>", alloc->ArenaCount
-            );
-            
-            p += snprintf (body + p, ARRAYSIZE (body) - p,
-                           "<td>%u</td>", arenasUsed
-            );
-            
-            p += snprintf (body + p, ARRAYSIZE (body) - p,
-                           "<td>%u</td>", usedSize
-            );
-            
-            p += snprintf (body + p, ARRAYSIZE (body) - p,
-                           "<td>%u</td>", allocatedSize
-            );
-        }
-
-        p += snprintf(body + p, ARRAYSIZE(body) - p, "</tr>");
+        outAllocRow(body, ARRAYSIZE(body), &p, alloc);
     }
 
    len = snprintf (responseString, ARRAYSIZE (responseString),
@@ -199,17 +218,17 @@ int Debug_Init(debug_server_t* debugServer, unsigned short port) {
 
     uint32_t allocatorCapa = 64;
     uint32_t allocationCapa = 256;
-    
+
     debugServer->Allocators = (metac_alloc_t**)
         malloc(sizeof(metac_alloc_t*) * allocatorCapa);
     debugServer->AllocatorsCount = 0;
     debugServer->AllocatorsCapacity = allocatorCapa;
 
-    debugServer->Allocations = (debug_allocation_t*) 
+    debugServer->Allocations = (debug_allocation_t*)
         malloc(sizeof(debug_allocation_t) * allocationCapa);
     debugServer->AllocationsCount = 0;
     debugServer->AllocationsCapacity = allocationCapa;
-    
+
     return 0;
 }
 
@@ -222,7 +241,7 @@ void Debug_Allocator(debug_server_t* debugServer, metac_alloc_t* allocator)
 void Debug_Allocation(debug_server_t* debugServer, metac_alloc_t* allocator, uint32_t sz, const char* file, uint32_t line)
 {
     uint32_t count = debugServer->AllocationsCount++;
-    
+
     debugServer->Allocations[count].size = sz;
     debugServer->Allocations[count].file = file;
     debugServer->Allocations[count].line = line;
