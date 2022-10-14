@@ -1178,7 +1178,7 @@ completion_list_t ReplComplete (repl_state_t* repl, const char *input, uint32_t 
     MetaCLexer_Init(&completionLexer, &repl->Allocator);
 
     char* lastWord = 0;
-    char* completions[] =  {"1337", "0xF13"};
+    char* completions[] =  {(char*)"1337", (char*)"0xF13"};
 
     result.CompletionsLength = 2;
     result.Completions = Allocator_Calloc(&repl->Allocator, char*, result.CompletionsLength);

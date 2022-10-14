@@ -43,7 +43,7 @@
 * available. At this time, you don't get key repeats when enabled though. */
 /* #define ALT_KEYS */
 
-static HANDLE console_in, console_out;
+static HANDLE console_in = 0, console_out = 0;
 
 #define LINENOISE_DEFAULT_HISTORY_MAX_LEN 100
 #define LINENOISE_MAX_LINE 4096
@@ -75,7 +75,8 @@ static void output(const char* str,
                    int         y)
 {
     COORD pos = { (SHORT)x, (SHORT)y };
-    WriteConsoleOutputCharacterA(console_out, str, len, pos, 0);
+    DWORD written;
+    WriteConsoleOutputCharacterA(console_out, str, len, pos, &written);
 }
 
 static void refreshLine(const char* prompt,

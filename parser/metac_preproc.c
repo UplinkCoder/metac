@@ -97,6 +97,11 @@ metac_expression_t* MetaCPreProcessor_ResolveDefineToExp(metac_preprocessor_t* s
     assert(definePtr.v >= 4);
     metac_expression_t* result = 0;
     metac_alloc_t tmpDefineParserAlloc;
+    metac_lexer_t DefineLexer = { 0 };
+    metac_lexer_state_t LexerState = { 0 };
+    STACK_ARENA_ARRAY(metac_location_t, tokenLocationStorage, 32, 0)
+    metac_location_t_array tokenLocationArray;
+
     Allocator_Init(&tmpDefineParserAlloc, 0);
     
     metac_parser_t defineParser;
@@ -153,15 +158,11 @@ metac_expression_t* MetaCPreProcessor_ResolveDefineToExp(metac_preprocessor_t* s
             ADD_STACK_ARRAY(tokens, tok);
     }
 
-    STACK_ARENA_ARRAY(metac_location_t, tokenLocationStorage, 32, 0)
-    metac_location_t_array tokenLocationArray;
     tokenLocationArray.Locations = tokenLocationStorage;
     tokenLocationArray.LocationCapacity = 32;
     tokenLocationArray.LocationSize = tokens.Count;
 
 //    self->Lexer->IdentifierTable = self->IdentifierTable;
-    metac_lexer_t DefineLexer = {0};
-    metac_lexer_state_t LexerState = {0};
     DefineLexer.IdentifierTable = self->IdentifierTable;
     DefineLexer.StringTable = self->StringTable;
     DefineLexer.TokenCount = tokens.Count;

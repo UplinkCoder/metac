@@ -1,3 +1,4 @@
+#define _CRT_SECURE_NO_WARNINGS
 #define NO_FIBERS
 #include "../3rd_party/linenoise/linenoise-w32.cpp"
 

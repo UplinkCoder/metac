@@ -463,7 +463,7 @@ metac_type_aggregate_t* MetaCSemantic_PersistTemporaryAggregateAndPopulateScope(
     metac_scope_table_slot_t* slots = (metac_scope_table_slot_t*) (scope_ + 1);
 
     metac_type_index_t typeIndex;
-    metac_type_aggregate_t* semaAgg;
+    metac_type_aggregate_t* semaAgg = 0;
 
     if (tmpAgg->Header.Kind == decl_type_struct)
     {
@@ -937,6 +937,11 @@ LtryAgian: {}
                 {
                     metac_type_enum_t* enum_ = (metac_type_enum_t*)node;
                     result.v = TYPE_INDEX_V(type_index_enum, EnumIndex(self, enum_));
+                } break;
+                case decl_variable:
+                {
+                    sema_decl_variable_t* var = (sema_decl_variable_t*)node;
+                    result.v = var->TypeIndex.v;
                 } break;
             }
         }

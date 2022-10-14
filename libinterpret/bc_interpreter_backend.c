@@ -2117,7 +2117,7 @@ Lbailout :
 
 static void inline BCGen_emit2_at(BCGen* self, uint32_t low, uint32_t high, uint32_t atIp)
 {
-    uint32_t* codeP;
+    uint32_t* codeP = 0;
     if (atIp < ARRAY_SIZE(self->byteCodeArray))
     {
         codeP = self->byteCodeArray + atIp;

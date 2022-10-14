@@ -488,7 +488,7 @@ static bool MetaCCodegen_AccessVariable(metac_bytecode_ctx_t* ctx,
             BCType extType = {BCTypeEnum_Ptr};
 
             gen.GenTemporary(c, extType);
-            void* memory;
+            void* memory = 0;
             int sz = 0;
             gen.MapExternal(c, memory, 0);
             assert(!"External access ins't currently implemented");
@@ -644,6 +644,9 @@ static void MetaCCodegen_doExpression(metac_bytecode_ctx_t* ctx,
 {
     const BackendInterface gen = *ctx->gen;
     void* c = ctx->c;
+    bool doBinAss = false;
+    BCValue lhs = { BCValueType_Unknown };
+    BCValue rhs = { BCValueType_Unknown };
 
     metac_printer_t printer;
     MetaCPrinter_Init(&printer, ctx->Sema->ParserIdentifierTable, ctx->Sema->ParserStringTable);
@@ -686,15 +689,12 @@ static void MetaCCodegen_doExpression(metac_bytecode_ctx_t* ctx,
         }
     }
 
-    bool doBinAss = false;
     if (IsBinaryAssignExp(op))
     {
         doBinAss = true;
         U32(op) -= (exp_add_ass - exp_add);
     }
 
-    BCValue lhs = {BCValueType_Unknown};
-    BCValue rhs = {BCValueType_Unknown};
 
 
     if (op == exp_assign)

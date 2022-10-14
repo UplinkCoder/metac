@@ -393,7 +393,7 @@ metac_sema_statement_t* MetaCSemantic_doStatementSemantic_(metac_semantic_state_
                                                            const char* callFile,
                                                            uint32_t callLine)
 {
-    metac_sema_statement_t* result;
+    metac_sema_statement_t* result = 0;
 
     // metac_printer_t printer;
     // MetaCPrinter_Init(&printer, self->ParserIdentifierTable, self->ParserStringTable);

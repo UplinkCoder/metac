@@ -127,7 +127,7 @@ scope_insert_error_t MetaCScope_RegisterIdentifier(metac_scope_t* self,
 
 const char* ScopeInsertError_toChars(scope_insert_error_t error)
 {
-    const char* result;
+    const char* result = 0;
 
     switch(error)
     {
