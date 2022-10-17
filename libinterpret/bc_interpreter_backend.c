@@ -197,6 +197,11 @@ typedef struct ReturnAddr
 
 #define MAX_CALL_DEPTH 2000
 #define LOCAL_STACK_SIZE 2048
+typedef struct BCExternal {
+  void* addr;
+  uint32_t size;
+  uint32_t mapAddr;
+} BCExternal;
 
 typedef struct BCInterpreter {
     int64_t* fp;
@@ -216,8 +221,10 @@ typedef struct BCInterpreter {
 
     uint32_t lastLine;
 
+    uint32_t mapPtr;
     BCValue cRetval;
-    uint8_t* externals[16];
+    BCExternal externals[16];
+    uint16_t externalsCount;
 
     int64_t stack[LOCAL_STACK_SIZE];
     ReturnAddr returnAddrs[MAX_CALL_DEPTH];
@@ -873,6 +880,16 @@ void BCGen_PrintCode(BCGen* self, uint32_t start, uint32_t end)
             {
                 printf("LongInst_BuiltinCall\n");
                 assert(0);//, "Unsupported right now: BCBuiltin");
+            }
+            break;
+
+        case LongInst_MapExternal:
+            {
+                printf("LongInst_MapExternal R[%d] {sz: %u, ", opRefOffset / 4, imm32c);
+                lw = codeP[ip++];
+                hi = codeP[ip++];
+                printf("memPtr: %p}\n", ((intptr_t) (lw | ((uint64_t) hi) << 32)));
+                //assert(0);//, "Unsupported right now: BCBuiltin");
             }
             break;
 
@@ -1836,6 +1853,26 @@ BCValue BCGen_interpret(BCGen* self, uint32_t fnIdx, BCValue* args, uint32_t n_a
             }
             break;
 
+        case LongInst_MapExternal:
+            {
+                uint32_t mapSize = hi;
+                const uint32_t lw = (codeP)[state.ip];
+                const uint32_t hi = (codeP)[state.ip + 1];
+                intptr_t addrInt = lw | (((uint64_t) hi) << 32);
+                BCExternal external;
+                state.ip += 2;
+
+                external.size = mapSize;
+                external.addr = (void*) addrInt;
+                external.mapAddr = state.mapPtr | externalAddrMask;
+                state.mapPtr += ALIGN16(external.size);
+
+                state.externals[state.externalsCount++] = external;
+                (*opRef) = state.externalsCount;
+                //assert(0);//, "Unsupported right now: BCBuiltin");
+            }
+            break;
+
         case LongInst_BuiltinCall:
             {
                 assert(0);//, "Unsupported right now: BCBuiltin");
@@ -2424,6 +2461,22 @@ static inline BCValue BCGen_genParameter(BCGen* self, BCType bct, const char* na
     return p;
 }
 
+static inline BCValue BCGen_genExternal(BCGen* self, BCType bct, const char* name)
+{
+    BCValue p;
+
+    p.type = bct;
+    p.vType = BCValueType_External;
+    p.externalIndex = ++self->externalCount;
+    p.stackAddr.addr = self->sp;
+
+    self->sp += 4;
+    p.name = name;
+
+    return p;
+}
+
+
 static inline uint32_t BCGen_beginJmp(BCGen* self)
 {
     uint32_t atIp = self->ip;
@@ -2672,12 +2725,13 @@ Lreturn:
         BCGen_destroyTemporary(self, cast(BCValue*)lhsP);
 }
 
-static inline BCValue BCGen_MapExternal (BCGen* self,
-                                         void* memory, uint32_t sz)
+static inline void BCGen_MapExternal (BCGen* self, BCValue* result,
+                                      void* memory, uint32_t sz)
 {
-    BCValue result = {BCValueType_Unknown};
-    assert(0);
-    return result;
+    intptr_t memptr = (intptr_t) memory;
+    // assert(result->vType == BCValueType_StackValue);
+    BCGen_emit2(self, BCGen_ShortInst16(LongInst_MapExternal, result->stackAddr.addr), sz);
+    BCGen_emit2(self, memptr & 0xffffffff, memptr >> 32);
 }
 
 static inline void BCGen_emitFlag(BCGen* self, BCValue* lhs)
@@ -3244,8 +3298,11 @@ const BackendInterface BCGen_interface = {
     /*.GenLocal =*/ (GenLocal_t) BCGen_genLocal,
     /*.DestroyLocal =*/ (DestroyLocal_t) BCGen_destroyLocal,
     /*.GenParameter =*/ (GenParameter_t) BCGen_genParameter,
-    /*.EmitFlag =*/ (EmitFlag_t) BCGen_emitFlag,
+
+    /*.GenExternal =*/ (GenExternal_t) BCGen_genExternal,
     /*.MapExternal =*/ (MapExternal_t) BCGen_MapExternal,
+
+    /*.EmitFlag =*/ (EmitFlag_t) BCGen_emitFlag,
     /*.Alloc =*/ (Alloc_t) BCGen_Alloc,
     /*.Assert =*/ (Assert_t) BCGen_Assert,
     /*.MemCpy =*/ (MemCpy_t) BCGen_MemCpy,

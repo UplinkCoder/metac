@@ -106,6 +106,10 @@ typedef struct Lightning
     uint32_t ParametersCount;
     uint32_t ParametersCapacity;
 
+    BCValue* Externals;
+    uint32_t ExternalsCount;
+    uint32_t ExternalsCapacity;
+
     jit_node_t *heapArg;
     jit_node_t *LstackAlloc;
     uint32_t stackOffset;
@@ -401,6 +405,22 @@ static inline BCValue Lightning_GenParameter(Lightning* self, BCType bct, const 
 
     return p;
 }
+
+static inline BCValue Lightning_GenExternal(Lightning* self, BCType bct, const char* name)
+{
+    BCValue p;
+
+    p.type = bct;
+    p.vType = BCValueType_External;
+    p.externalIndex = ++self->ExternalsCount;
+    p.stackAddr.addr = self->FrameSize;
+
+    self->FrameSize += align4(BCTypeEnum_basicTypeSize(bct.type));
+    p.name = name;
+
+    return p;
+}
+
 
 static inline BCValue Lightning_MapExternal (Lightning* self,
                                              void* memory, uint32_t sz)
@@ -1161,11 +1181,17 @@ static inline void Lightning_init_instance(Lightning* self)
     }
 
     init_jit("");
-#define INITIAL_PARAMETER_CAPACITY 64
+#define INITIAL_PARAMETER_CAPACITY 16
     self->Parameters = (BCValue*) self->allocMemory(self->allocCtx,
                           sizeof(BCValue) * INITIAL_PARAMETER_CAPACITY, 0);
     self->ParametersCapacity = INITIAL_PARAMETER_CAPACITY;
     self->ParametersCount = 0;
+#define INITIAL_EXTERNAL_CAPACITY 8
+    self->Externals = (BCValue*) self->allocMemory(self->allocCtx,
+                          sizeof(BCValue) * INITIAL_PARAMETER_CAPACITY, 0);
+    self->ExternalsCapacity = INITIAL_EXTERNAL_CAPACITY;
+    self->ExternalsCount = 0;
+
 }
 
 static inline void Lightning_fini_instance(Lightning* self)
@@ -1206,8 +1232,9 @@ const BackendInterface Lightning_interface = {
     /*.GenLocal = */(GenLocal_t) Lightning_GenLocal,
     /*.DestroyLocal = */(DestroyLocal_t) Lightning_DestroyLocal,
     /*.GenParameter = */(GenParameter_t) Lightning_GenParameter,
-    /*.EmitFlag = */(EmitFlag_t) Lightning_EmitFlag,
+    /*.GenExternal = */(GenParameter_t) Lightning_GenExternal,
     /*.MapExternal = */(MapExternal_t) Lightning_MapExternal,
+    /*.EmitFlag = */(EmitFlag_t) Lightning_EmitFlag,
     /*.Alloc = */(Alloc_t) Lightning_Alloc,
     /*.Assert = */(Assert_t) Lightning_Assert,
     /*.MemCpy = */(MemCpy_t) Lightning_MemCpy,

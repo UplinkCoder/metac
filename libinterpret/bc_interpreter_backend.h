@@ -174,6 +174,7 @@ typedef enum LongInst
     LongInst_SetMode,
 
     LongInst_Alloc, /// SP[hi & 0xFFFF] = heapSize; heapSize += SP[hi >> 16]
+    LongInst_MapExternal,
     LongInst_MemCpy,
     LongInst_Realloc,
 
@@ -228,6 +229,7 @@ typedef struct BCGen
 
     uint8_t parameterCount;
     uint16_t temporaryCount;
+    uint16_t externalCount;
 
     BCFunction* functions;
     uint32_t functionCount;

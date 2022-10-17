@@ -698,12 +698,51 @@ static inline BCValue Printer_GenParameter(Printer* self, BCType bct, const char
     return result;
 }
 
-static inline BCValue Printer_MapExternal (Printer* self,
-                                           void* memory, uint32_t sz)
+static inline BCValue Printer_GenExternal(Printer* self, BCType bct, const char* name)
 {
-    BCValue result = {BCValueType_Unknown};
-    assert(0);
+    BCValue result = {BCValueType_External};
+    {
+        result.type = bct;
+        result.name = name;
+    };
+
+    result.parameterIndex = ++self->NumberOfParameters;
+    Printer_PutStr(self, "BCValue ");
+
+    Printer_PrintParameter(self, &result);
+
+    Printer_PutStr(self, " = GenExternal(");
+
+    Printer_PrintType(self, &bct);
+    Printer_PutStr(self, ", ");
+
+    if (name)
+        Printer_PutQuotedStr(self, name);
+    else
+        Printer_PutChar(self, '0');
+
+    Printer_PutStr(self, ");");
+    Printer_PutNewline(self);
+
     return result;
+}
+
+
+static inline void Printer_MapExternal (Printer* self, BCValue* result,
+                                        void* memory, uint32_t sz)
+{
+    Printer_PutStr(self, "MapExternal(");
+
+    Printer_PrintBCValue(self, result);
+    Printer_PutStr(self, ", ");
+
+    Printer_PutHex(self, (intptr_t) memory);
+    Printer_PutStr(self, ", ");
+
+    Printer_PutU32(self, sz);
+    Printer_PutStr(self, ");");
+
+    Printer_PutNewline(self);
 }
 
 PR_OP1(emitFlag)
@@ -993,8 +1032,9 @@ const BackendInterface Printer_interface = {
     /*.GenLocal =*/ (GenLocal_t) Printer_genLocal,
     /*.DestroyLocal =*/ (DestroyLocal_t) Printer_DestroyLocal,
     /*.GenParameter =*/ (GenParameter_t) Printer_GenParameter,
-    /*.EmitFlag =*/ (EmitFlag_t) Printer_emitFlag,
+    /*.GenExternal =*/ (GenExternal_t) Printer_GenExternal,
     /*.MapExternal =*/ (MapExternal_t) Printer_MapExternal,
+    /*.EmitFlag =*/ (EmitFlag_t) Printer_emitFlag,
     /*.Alloc =*/ (Alloc_t) Printer_Alloc,
     /*.Assert =*/ (Assert_t) Printer_Assert,
     /*.MemCpy =*/ (MemCpy_t) Printer_MemCpy,

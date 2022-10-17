@@ -37,6 +37,11 @@ typedef struct HeapAddr
     uint32_t addr;
 } HeapAddr;
 
+typedef struct ExternalAddr
+{
+    uint32_t addr;
+} ExternalAddr;
+
 typedef struct StackAddr
 {
     uint16_t addr;
@@ -146,22 +151,22 @@ typedef enum BCValueType
 {
     BCValueType_Unknown = 0,
 
-    BCValueType_Temporary = 1,
-    BCValueType_Parameter = 2,
-    BCValueType_Local = 3,
+    BCValueType_Temporary  = 1,
+    BCValueType_Parameter  = 2,
+    BCValueType_Local      = 3,
 
     BCValueType_StackValue = 1 << 3,
-    BCValueType_Immediate = 2 << 3,
-    BCValueType_HeapValue = 3 << 3,
+    BCValueType_Immediate  = 2 << 3,
+    BCValueType_HeapValue  = 3 << 3,
+    BCValueType_External   = 4 << 3,
 
-    BCValueType_LastCond = 0xFB,
-    BCValueType_Bailout = 0xFC,
+    BCValueType_LastCond  = 0xFB,
+    BCValueType_Bailout   = 0xFC,
     BCValueType_Exception = 0xFD,
     BCValueType_ErrorWithMessage = 0xFE,
-    BCValueType_Error = 0xFF, //Pinned = 0x80,
+    BCValueType_Error     = 0xFF, //Pinned = 0x80,
     /// Pinned values can be returned
     /// And should be kept in the compacted heap
-
 } BCValueType;
 
 EXTERN_C const char* BCValueType_toChars(const BCValueType* vTypePtr);
@@ -181,6 +186,7 @@ typedef struct BCHeapRef
     {
         HeapAddr heapAddr;
         StackAddr stackAddr;
+        ExternalAddr externalAddr;
         Imm32 imm32;
     };
 
@@ -204,6 +210,7 @@ typedef struct BCValue
         int8_t parameterIndex;
         uint16_t temporaryIndex;
         uint16_t localIndex;
+        uint16_t externalIndex;
     };
 
     BCHeapRef heapRef;
@@ -214,6 +221,7 @@ typedef struct BCValue
     {
         StackAddr stackAddr;
         HeapAddr heapAddr;
+        ExternalAddr externalAddr;
         Imm32 imm32;
         Imm64 imm64;
 /* for now we represent floats in imm32 or imm64 respectively
