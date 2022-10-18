@@ -30,7 +30,7 @@ metac_type_index_t MetaCSemantic_GetPtrTypeOf(metac_semantic_state_t* self,
     uint32_t hash = elementTypeIndex.v;
     metac_type_ptr_t key =
             {{decl_type_typedef, 0, hash, 0},
-             elementTypeIndex};
+             zeroIdx, elementTypeIndex};
 
     metac_type_index_t result =
         MetaCTypeTable_GetOrEmptyPtrType(&self->PtrTypeTable, &key);
@@ -454,16 +454,18 @@ metac_type_aggregate_t* MetaCSemantic_PersistTemporaryAggregateAndPopulateScope(
         ALIGN16(nFields * sizeof(metac_type_aggregate_field_t))
         + scopeTableSize;
 
-    tagged_arena_t* aggregateArena = AllocateArena(&self->Allocator, aggregateMemorySize);
+    arena_ptr_t arenaPtr = AllocateArena(&self->Allocator, aggregateMemorySize);
+    tagged_arena_t* aggregateArena = &self->Allocator.Arenas[arenaPtr.Index];
     metac_type_aggregate_field_t* aggFields = cast(metac_type_aggregate_field_t*)
         aggregateArena->Memory;
 
     metac_scope_t* scope_ = cast(metac_scope_t*) (aggFields + nFields);
-    memset(scope_, 0, scopeTableSize);
     metac_scope_table_slot_t* slots = (metac_scope_table_slot_t*) (scope_ + 1);
 
     metac_type_index_t typeIndex;
     metac_type_aggregate_t* semaAgg = 0;
+
+    memset(scope_, 0, scopeTableSize);
 
     if (tmpAgg->Header.Kind == decl_type_struct)
     {
@@ -678,7 +680,7 @@ metac_type_index_t MetaCSemantic_TypeSemantic(metac_semantic_state_t* self,
 
         metac_type_typedef_t key = {
             {decl_type_typedef, 0, hash},
-            elementTypeIndex, typedef_->Identifier
+            0, elementTypeIndex, typedef_->Identifier
         };
 
         result =
@@ -759,7 +761,7 @@ metac_type_index_t MetaCSemantic_TypeSemantic(metac_semantic_state_t* self,
 
         if (result.v != 0)
         {
-            FreeArena(enumScope.ScopeTable.Arena);
+            Allocator_FreeArena(&self->Allocator, enumScope.ScopeTable.Arena);
         }
 
         // STACK_ARENA_FREE(self->Allocator, members);
@@ -861,6 +863,7 @@ metac_type_index_t MetaCSemantic_TypeSemantic(metac_semantic_state_t* self,
 
         metac_type_functiontype_t key = {
             header,
+            0,
             returnType,
             parameterTypes,
             nParams,

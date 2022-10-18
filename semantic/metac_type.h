@@ -79,6 +79,7 @@ typedef struct metac_type_aggregate_field_t
     metac_type_header_t Header;
 
     metac_type_index_t Type;
+
     uint16_t Index;
     uint16_t Offset;
 
@@ -90,6 +91,8 @@ typedef struct metac_type_aggregate_field_t
 typedef struct metac_type_aggregate_t
 {
     metac_type_header_t Header;
+
+    metac_type_index_t TypeIndex;
 
     metac_identifier_ptr_t Identifier;
 
@@ -117,6 +120,8 @@ typedef struct metac_type_enum_t
 {
     metac_type_header_t Header;
 
+    metac_type_index_t TypeIndex;
+
     metac_identifier_ptr_t Name;
 
     metac_enum_member_t* Members;
@@ -135,6 +140,8 @@ typedef struct metac_type_array_t
 {
     metac_type_header_t Header;
 
+    metac_type_index_t TypeIndex;
+
     metac_type_index_t ElementType;
 
     uint32_t Dim;
@@ -144,12 +151,16 @@ typedef struct metac_type_ptr_t
 {
     metac_type_header_t Header;
 
+    metac_type_index_t TypeIndex;
+
     metac_type_index_t ElementType;
 } metac_type_ptr_t;
 
 typedef struct metac_type_functiontype_t
 {
     metac_type_header_t Header;
+
+    metac_type_index_t TypeIndex;
 
     metac_type_index_t ReturnType;
 
@@ -164,6 +175,8 @@ typedef struct metac_type_typedef_t
 {
     metac_type_header_t Header;
 
+    metac_type_index_t TypeIndex;
+
     metac_type_index_t Type;
 
     metac_identifier_ptr_t Identifier;
@@ -172,6 +185,8 @@ typedef struct metac_type_typedef_t
 typedef struct metac_type_tuple_t
 {
     metac_type_header_t Header;
+
+    metac_type_index_t TypeIndex;
 
     metac_type_index_t* typeIndicies;
 
