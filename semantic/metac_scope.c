@@ -13,10 +13,15 @@ void MetaCScopeTable_InitN(metac_scope_table_t* self, uint32_t nMembers, metac_a
     // we need to avoid the table being 100% full
     // so allocate 25% more than needed.
     uint32_t extraMembers = (nMembers > 16) ? 8 : (nMembers >> 2);
-    self->SlotCount_Log2 = LOG2(nMembers + extraMembers);
-    const uint32_t maxSlots = (1 << self->SlotCount_Log2);
+    tagged_arena_t* arena = 0;
+    const uint32_t slotsLog2 = LOG2(nMembers + extraMembers);
+    const uint32_t maxSlots = (1 << slotsLog2);
+
+    self->SlotCount_Log2 = slotsLog2;
+    self->Alloc = alloc;
     self->Arena = AllocateArena(alloc, maxSlots * sizeof(metac_scope_table_slot_t));
-    self->Slots = (metac_scope_table_slot_t*) self->Arena->Memory;
+    arena = &alloc->Arenas[self->Arena.Index];
+    self->Slots = (metac_scope_table_slot_t*) arena->Memory;
     self->SlotsUsed = 0;
 }
 

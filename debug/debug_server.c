@@ -24,7 +24,7 @@ static int send_html(struct MHD_Connection* connection, const char* text, int le
     struct MHD_Response* response;
     int ret;
     response =
-        MHD_create_response_from_buffer(len, text, MHD_RESPMEM_PERSISTENT);
+        MHD_create_response_from_buffer(len, cast(char*)text, MHD_RESPMEM_PERSISTENT);
     MHD_add_response_header(response, MHD_HTTP_HEADER_CONTENT_TYPE,
         "text/html");
     ret = MHD_queue_response(connection, MHD_HTTP_OK, response);
@@ -75,8 +75,7 @@ void outAllocRow(char* body, uint32_t sz, uint32_t* pp, metac_alloc_t* alloc)
     uint32_t allocatedSize = 0;
     uint32_t arenasUsed = 0;
 
-
-    p += snprintf (body + p, sz - p, "<tr>", alloc);
+    p += snprintf (body + p, sz - p, "<tr>");
 
     for(j = 0; j < alloc->ArenaCount; j++)
     {
@@ -152,6 +151,8 @@ MHD_HANDLER (handleAllocators)
         p += snprintf(body + p, ARRAYSIZE(body) - p, "<th>%s</th>", headers[i]);
     }
     p += snprintf(body + p, ARRAYSIZE(body) - p, "</tr>");
+
+    outAllocRow(body, ARRAYSIZE(body), &p, &g_allocator);
 
     for (i = 0; i < debugServer->AllocatorsCount; i++)
     {

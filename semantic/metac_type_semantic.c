@@ -24,6 +24,7 @@
 #  define emptyNode (metac_node_t) _emptyPointer
 #endif
 
+static const metac_type_index_t zeroIdx = {0};
 metac_type_index_t MetaCSemantic_GetPtrTypeOf(metac_semantic_state_t* self,
                                               metac_type_index_t elementTypeIndex)
 {
@@ -227,6 +228,8 @@ metac_type_index_t MetaCSemantic_CommonSubtype(metac_semantic_state_t* self,
             {
                 case type_index_basic:
                     result = CommonBasicType(a, b);
+                default:
+                    assert(!"CommonType not implemented for this type_kind");
             }
         }
     }
@@ -680,7 +683,7 @@ metac_type_index_t MetaCSemantic_TypeSemantic(metac_semantic_state_t* self,
 
         metac_type_typedef_t key = {
             {decl_type_typedef, 0, hash},
-            0, elementTypeIndex, typedef_->Identifier
+            zeroIdx, elementTypeIndex, typedef_->Identifier
         };
 
         result =
@@ -863,7 +866,7 @@ metac_type_index_t MetaCSemantic_TypeSemantic(metac_semantic_state_t* self,
 
         metac_type_functiontype_t key = {
             header,
-            0,
+            zeroIdx,
             returnType,
             parameterTypes,
             nParams,
@@ -1075,7 +1078,7 @@ metac_type_index_t MetaCSemantic_GetArrayTypeOf(metac_semantic_state_t* state,
     uint32_t hash = EntangleInts(TYPE_INDEX_INDEX(elementTypeIndex), dimension);
     metac_type_array_t key = {
         {decl_type_array, 0, hash, 0},
-        elementTypeIndex, dimension
+        zeroIdx, elementTypeIndex, dimension
     };
 
     metac_type_index_t result =

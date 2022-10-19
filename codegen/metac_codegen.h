@@ -48,6 +48,16 @@ typedef struct metac_bytecode_switch_t
     metac_sema_statement_t* DefaultBody;
 } metac_bytecode_switch_t;
 
+typedef struct metac_external_entry_t
+{
+    uint32_t hash;
+    uint32_t externalSize;
+
+    void* externalAddress;
+
+    BCValue ExtValue;
+} metac_external_entry_t;
+
 typedef struct metac_bytecode_ctx_t
 {
     /// backend context
@@ -56,6 +66,7 @@ typedef struct metac_bytecode_ctx_t
 
     ARENA_ARRAY(metac_bytecode_function_t, Functions)
     ARENA_ARRAY(BCValue, Globals)
+    ARENA_ARRAY(metac_external_entry_t, Externals)
 
     ARENA_ARRAY(BCStructType, StructTypes)
     ARENA_ARRAY(BCEnumType, EnumTypes)
@@ -64,6 +75,8 @@ typedef struct metac_bytecode_ctx_t
 
     tagged_arena_t GlobalMemory;
     uint32_t GlobalMemoryOffset;
+
+    BCValue CompilerInterfaceValue;
 
     AT(transient) const BackendInterface* gen;
 

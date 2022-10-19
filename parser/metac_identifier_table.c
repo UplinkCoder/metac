@@ -365,7 +365,9 @@ metac_identifier_table_t ReadTable(const char* filename)
         stringsProcessed++;
     }
 
-    assert(stringsProcessed == header.NumberOfSlots);
+    // assert(stringsProcessed == header.NumberOfSlots);
+    printf("stringProcessed: %d, header.NumberOfSlots\n",
+        stringsProcessed, header.NumberOfSlots);
     result.SlotsUsed = header.NumberOfSlots;
     return result;
 #undef slot_t
@@ -434,6 +436,7 @@ void WriteTable(metac_identifier_table_t* table, const char* filename, uint32_t 
         (header.SizeofSlot * header.NumberOfSlots);
 
     const char* stringP = table->StringMemory;
+
     for(uint32_t i = 0;
         i < header.NumberOfSlots;
         i++)
@@ -443,9 +446,20 @@ void WriteTable(metac_identifier_table_t* table, const char* filename, uint32_t 
         fwrite("\n", 1, 1, fd);
         uint32_t padBy = ALIGN4(len + 1) - (len + 1);
         fwrite("@@@@", 1, padBy, fd);
-        stringP += ALIGN4(len + 1);
+        if (len)
+        {
+            stringP += ALIGN4(len + 1);
+        }
     }
-    assert((stringP - table->StringMemory) == table->StringMemorySize);
+
+    if ((stringP - table->StringMemory) != table->StringMemorySize)
+    {
+        printf("StringLength: %d\n", stringP - table->StringMemory);
+        printf("StringMemorySize: %d\n", table->StringMemorySize);
+    }
+    else
+    {
+    }
 
     // --------------- write header / end of file ----------------------
     fsetpos(fd, &startPosition);

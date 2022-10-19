@@ -260,7 +260,8 @@ metac_sema_expression_t* MetaCSemantic_doExprSemantic_(metac_semantic_state_t* s
                         uint32_t compilerStructIndex = StructIndex(self, self->CompilerInterface);
                         fakeDotStruct.TypeIndex.v = TYPE_INDEX_V(type_index_struct, compilerStructIndex);
                         fakeDotStruct.VarIdentifier = expr->E1->IdentifierPtr;
-                        fakeDotStruct.Storage.v = STORAGE_V(storage_external, 1);
+                        //TODO implement metaCCodegen_RegisterExternal
+                        fakeDotStruct.Storage.v = STORAGE_V(storage_external, 0);
 
                         result->Kind = exp_variable;
                         result->Variable = &fakeDotStruct;
@@ -568,6 +569,44 @@ metac_sema_expression_t* MetaCSemantic_doExprSemantic_(metac_semantic_state_t* s
         } break;
         case exp_type:
         {
+            // type identifiers are special since they may not be types
+            decl_type_t* typeExpr = expr->TypeExp;
+            if (typeExpr->TypeKind == type_identifier)
+            {
+                metac_identifier_ptr_t idPtr = typeExpr->TypeIdentifier;
+
+                metac_node_t node =
+                    MetaCSemantic_LookupIdentifier(self, idPtr);
+                if (MetaCNode_IsDeclaration(node))
+                {
+                    if (node->Kind == node_decl_variable)
+                    {
+                        sema_decl_variable_t* v = cast(sema_decl_variable_t*)node;
+                        result->Kind = exp_variable;
+                        result->Variable = v;
+                        result->TypeIndex = v->TypeIndex;
+                        hash = v->Hash;
+                        goto Lret;
+                    }
+
+                    int k = 12;
+                    //MetaCSemantic_doExprSemantic(self, node, result);
+                }
+                else if (MetaCNode_IsExpression(node))
+                {
+                    MetaCSemantic_doExprSemantic(self, node, result);
+                }
+            }
+            // type ptrs can also be binary expressions
+            else if (expr->TypeExp->TypeKind == type_ptr)
+            {
+
+            }
+            // and so can type-arrays
+            else if (expr->TypeExp->TypeKind == type_array)
+            {
+
+            }
             hash = type_key;
             metac_type_index_t typeIdx
                 = MetaCSemantic_doTypeSemantic(self, expr->TypeExp);
@@ -725,10 +764,11 @@ metac_sema_expression_t* MetaCSemantic_doExprSemantic_(metac_semantic_state_t* s
             }
         break;
     }
-
+Lret:
+    {
     //assert(hash != 0);
     result->Hash = hash;
-
+    }
     return result;
 }
 

@@ -367,6 +367,19 @@ static inline void PrintType(metac_printer_t* self, decl_type_t* type)
             }
         }
         break;
+        case decl_type_union :
+        {
+            decl_type_union_t* unionType = (decl_type_union_t*) type;
+            if (unionType->Identifier.v != empty_identifier.v)
+            {
+                PrintIdentifier(self, unionType->Identifier);
+            }
+            else
+            {
+                PrintKeyword(self, tok_kw_union);
+            }
+        }
+        break;
         case decl_type_functiontype:
         {
             decl_type_functiontype_t *funcType = (decl_type_functiontype_t*) type;

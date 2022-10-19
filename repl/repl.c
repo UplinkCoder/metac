@@ -672,7 +672,7 @@ LswitchMode:
             case 'd' :
                 if (0 == strcmp("ate", repl->Line + 2))
                 {
-                    MSG("Build on " __DATE__ "\n");
+                    MSG("Build on " __DATE__ " " __TIME__ "\n");
                 }
                 else switch (repl->Line[2])
                 {

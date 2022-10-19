@@ -6,6 +6,10 @@
 #include "../driver/metac_driver.c"
 #include "../3rd_party/tracy/TracyC.h"
 
+#ifdef DEBUG_SERVER
+#  include "../debug/debug_server.h"
+#endif
+
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -42,6 +46,11 @@ void AddIncludePath(const char* path)
 
 int main(int argc, const char* argv[])
 {
+#ifdef DEBUG_SERVER
+    debug_server_t thisDebugServer = {0};
+    g_DebugServer = &thisDebugServer;
+    Debug_Init(g_DebugServer, 8180);
+#endif
     includePathCount = 0;
     includePathCapacity = 256;
     includePaths = (const char**)malloc(sizeof(char**) * includePathCapacity);
@@ -105,6 +114,8 @@ int main(int argc, const char* argv[])
         }
 #endif
 
+
+
         metac_identifier_table_slot_t firstEntry = {0};
 
 #if !defined(NO_DUMP) && defined(WRITE_TABLE)
@@ -142,6 +153,6 @@ int main(int argc, const char* argv[])
 #endif
     }
 
-    // getchar();
+    getchar();
     return errored;
 }

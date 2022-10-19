@@ -92,6 +92,11 @@ const struct ui_interface_t LinenoiseUiInterface =
 
 int main(int argc, const char* argv[])
 {
+#ifdef DEBUG_SERVER
+    debug_server_t dbgSrv = {0};
+    g_DebugServer = &dbgSrv;
+    Debug_Init(g_DebugServer, 8180);
+#endif
 #ifndef NO_FIBERS
     aco_global_init();
 #endif

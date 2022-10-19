@@ -90,7 +90,8 @@ typedef struct metac_scope_table_t
     metac_scope_table_slot_t* Slots;
     uint32_t SlotCount_Log2;
     uint32_t SlotsUsed;
-    tagged_arena_t* Arena;
+    arena_ptr_t Arena;
+    metac_alloc_t* Alloc;
 } metac_scope_table_t;
 
 

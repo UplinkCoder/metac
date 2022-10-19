@@ -138,7 +138,6 @@ BCTypeInfo* MetaCCodegen_GetTypeInfo(metac_bytecode_ctx_t* ctx, BCType* bcType)
 {
     return 0;
 }
-
 void MetaCCodegen_doGlobal(metac_bytecode_ctx_t* ctx, metac_sema_declaration_t* decl, uint32_t idx)
 {
     BCValue result = {BCValueType_HeapValue};
@@ -151,7 +150,10 @@ void MetaCCodegen_doGlobal(metac_bytecode_ctx_t* ctx, metac_sema_declaration_t* 
         uint32_t sz = MetaCCodegen_GetStorageSize(ctx, bcType);
         result.type = bcType;
 
+        assert(result.vType == BCValueType_HeapValue);
         ARENA_ARRAY_ADD(ctx->Globals, result);
+        assert(ctx->Globals[ctx->GlobalsCount - 1].vType == BCValueType_HeapValue);
+
         if (decl->Kind == decl_variable)
         {
             sema_decl_variable_t var = decl->sema_decl_variable;
@@ -161,8 +163,8 @@ void MetaCCodegen_doGlobal(metac_bytecode_ctx_t* ctx, metac_sema_declaration_t* 
                 MetaCCodegen_doExpression(ctx, var.VarInitExpression, &initVal, _Rvalue);
             }
         }
-        // printf("offset = %d sz = %d\n", ctx->GlobalMemoryOffset, sz);
-        ctx->GlobalMemoryOffset += align4(sz);
+        printf("offset = %d sz = %d\n", ctx->GlobalMemoryOffset, sz);
+                ctx->GlobalMemoryOffset += align4(sz);
         //printf("Doing da global\n");
         // if (decl.)
     }
@@ -234,6 +236,7 @@ void MetaCCodegen_End(metac_bytecode_ctx_t* self)
 void* MetaCCodegen_AllocMemory(metac_bytecode_ctx_t* self, uint32_t size, sema_decl_function_t* func)
 {
     tagged_arena_t* arena = 0;
+    arena_ptr_t arenaPtr;
     if (size == FREE_SIZE)
     {
         /*arena = MetaCCodegen_FindArena(self, cast(void*)func)*/
@@ -241,7 +244,13 @@ void* MetaCCodegen_AllocMemory(metac_bytecode_ctx_t* self, uint32_t size, sema_d
     else
     {
         // printf("Allocating for %s \n", (func ? "function" : "startup"));
-        arena = Allocate_(&self->Allocator, size, __FILE__, __LINE__, false);
+        arenaPtr = Allocate_(&self->Allocator, size, __FILE__, __LINE__, false);
+        if (arenaPtr.Index == -1)
+        {
+            return 0;
+        }
+
+        arena = &self->Allocator.Arenas[arenaPtr.Index];
         return arena->Memory;
     }
 
@@ -252,6 +261,8 @@ void MetaCCodegen_Init(metac_bytecode_ctx_t* self, metac_alloc_t* parentAlloc)
 {
     //TODO we might want a cheaper initialisation?
     static const metac_bytecode_ctx_t initValue = {0};
+    tagged_arena_t* arena = 0;
+
     (*self) = initValue;
     //TODO take BC as a parameter
     // bc = &Lightning_interface;
@@ -261,12 +272,17 @@ void MetaCCodegen_Init(metac_bytecode_ctx_t* self, metac_alloc_t* parentAlloc)
         self->gen = &BCGen_interface;
 #endif
 
+#if METAC_COMPILER_INTERFACE
+    compiler.help = compiler_help;
+#endif
+
     const BackendInterface gen = *self->gen;
 
     Allocator_Init(&self->Allocator, parentAlloc, 0);
 
-    tagged_arena_t* arena =
+    arena_ptr_t arenaPtr =
         AllocateArena(&self->Allocator, gen.sizeof_instance());
+    arena = &self->Allocator.Arenas[arenaPtr.Index];
     self->c = arena->Memory;
 
     if (gen.set_alloc_memory)
@@ -280,7 +296,6 @@ void MetaCCodegen_Init(metac_bytecode_ctx_t* self, metac_alloc_t* parentAlloc)
     gen.init_instance(self->c);
 
     gen.Initialize(self->c, 0);
-
     ARENA_ARRAY_INIT(metac_bytecode_function_t, self->Functions, &self->Allocator);
 
     // ARENA_ARRAY_INIT(sema_decl_variable_t, self->Locals, &self->Allocator);
@@ -320,6 +335,20 @@ metac_bytecode_function_t MetaCCodegen_GenerateFunctionFromExp(metac_bytecode_ct
 
     func.FunctionIndex =
         gen.BeginFunction(c, 0, "dummy_eval_func");
+
+#ifdef METAC_COMPILER_INTERFACE
+    if (ctx->Sema->CompilerInterface)
+    {
+        BCType compilerInterfaceType;
+        compilerInterfaceType.type = BCTypeEnum_Struct;
+        compilerInterfaceType.typeIndex =
+            ctx->Sema->CompilerInterface->TypeIndex.Index;
+
+        ctx->CompilerInterfaceValue = gen.GenExternal(c, compilerInterfaceType, ".compiler");
+        gen.MapExternal(c, &ctx->CompilerInterfaceValue, &compiler, sizeof(compiler));
+        ctx->Externals[0].ExtValue = ctx->CompilerInterfaceValue;
+    }
+#endif
 
     // we need to introduce all resolvable variables from the outer context here.
 
@@ -368,6 +397,8 @@ metac_bytecode_function_t MetaCCodegen_GenerateFunction(metac_bytecode_ctx_t* ct
     metac_bytecode_function_t result;
     result.FunctionIndex = functionId;
 
+
+
     for(uint32_t i = 0;
         i < functionParameterCount;
         i++)
@@ -386,6 +417,19 @@ metac_bytecode_function_t MetaCCodegen_GenerateFunction(metac_bytecode_ctx_t* ct
     }
 
     assert(parametersCount == functionParameterCount);
+
+
+#ifdef METAC_COMPILER_INTERFACE
+    BCType compilerInterfaceType;
+    compilerInterfaceType.type = BCTypeEnum_Struct;
+    compilerInterfaceType.typeIndex =
+        ctx->Sema->CompilerInterface->TypeIndex.Index;
+
+    ctx->CompilerInterfaceValue = gen.GenExternal(c, compilerInterfaceType, ".compiler");
+    gen.MapExternal(c, &ctx->CompilerInterfaceValue, &compiler, sizeof(compiler));
+    ctx->Externals[0].ExtValue = ctx->CompilerInterfaceValue;
+    frameSize += sizeof(void*);
+#endif
 
     ctx->Locals = locals;
     ctx->LocalsArena = localsArena;
@@ -412,11 +456,11 @@ metac_bytecode_function_t MetaCCodegen_GenerateFunction(metac_bytecode_ctx_t* ct
 
     if (ctx->BreaksAlloc)
     {
-        FreeArena(&ctx->BreaksArena);
+        Allocator_FreeArena(&ctx->Allocator, ctx->BreaksArenaPtr);
     }
     if (ctx->LocalsAlloc)
     {
-        FreeArena(&ctx->LocalsArena);
+        Allocator_FreeArena(&ctx->Allocator, ctx->LocalsArenaPtr);
     }
 
     gen.EndFunction(c, result.FunctionIndex);
@@ -485,13 +529,26 @@ static bool MetaCCodegen_AccessVariable(metac_bytecode_ctx_t* ctx,
 
         case storage_external:
         {
+
             BCType extType = {BCTypeEnum_Ptr};
 
-            gen.GenTemporary(c, extType);
+            BCValue ext = gen.GenExternal(c, extType, 0);
             void* memory = 0;
             int sz = 0;
-            gen.MapExternal(c, memory, 0);
+            gen.MapExternal(c, &ext, memory, 0);
+
+            // (*result) = ctx->Externals[var->Storage.Offset].ExtValue;
             assert(!"External access ins't currently implemented");
+/*
+            BCValue externalRef = ctx->Externals[var->Storage.Offset].ExtValue;
+            assert(externalRef.vType == BCValueType_External);
+            BCValue resTmp = gen.GenTemporary(c, externalRef.type);
+
+            resTmp.heapRef.vType = BCValueType_External;
+            resTmp.heapRef.externalAddr = externalRef.externalAddr;
+
+            (*result) = resTmp;
+*/
             return true;
         } break;
         case storage_parameter:
@@ -508,6 +565,7 @@ static bool MetaCCodegen_AccessVariable(metac_bytecode_ctx_t* ctx,
         case storage_global:
         {
             BCValue globalHeapRef = ctx->Globals[var->Storage.Offset];
+
             assert(globalHeapRef.vType == BCValueType_HeapValue);
             BCValue resTmp = gen.GenTemporary(c, globalHeapRef.type);
 
@@ -820,7 +878,14 @@ static void MetaCCodegen_doExpression(metac_bytecode_ctx_t* ctx,
         } break;
         case exp_assign:
         {
-            if (exp->E1->Kind != exp_variable)
+            if (exp->E1->Kind == exp_tuple)
+            {
+                if (exp->E2->Kind == exp_tuple)
+                {
+                    //
+                }
+            }
+            else if (exp->E1->Kind != exp_variable)
             {
                 fprintf(stderr, "left hand side of assignment is not a variable but a %s ..."
                                 " this should not happen; we are past semantic analysis\n", "");
