@@ -315,6 +315,15 @@ metac_sema_expression_t* MetaCSemantic_doExprSemantic_(metac_semantic_state_t* s
                 metac_identifier_ptr_t idPtr = {0};
                 switch(expr->E2->Kind)
                 {
+                    case exp_type:
+                    {
+                        if (expr->E2->TypeExp->TypeKind == type_identifier)
+                        {
+                            idPtr = expr->E2->TypeExp->TypeIdentifier;
+                        }
+                        else
+                            assert(0);
+                    } break;
                     case exp_identifier:
                     {
                         idPtr = expr->E2->IdentifierPtr;
@@ -330,7 +339,7 @@ metac_sema_expression_t* MetaCSemantic_doExprSemantic_(metac_semantic_state_t* s
                     }
                 }
 
-                assert(expr->E2->Kind == exp_identifier || expr->E2->Kind == exp_call);
+                assert(expr->E2->Kind == exp_identifier || expr->E2->Kind == exp_call || expr->E2->Kind == exp_type);
                 result->AggExp = result->E1;
 
                 if (expr->E2->Kind == exp_call)
@@ -347,7 +356,7 @@ metac_sema_expression_t* MetaCSemantic_doExprSemantic_(metac_semantic_state_t* s
                     result->DotE2 = callExp;
                     result->TypeIndex = result->DotE2->TypeIndex;
                 }
-                else if (expr->E2->Kind == exp_identifier)
+                else if (expr->E2->Kind == exp_identifier || expr->E2->Kind == exp_type)
                 {
                     result->DotE2 = MetaCSemantic_doExprSemantic(self, expr->E2, 0);
                     //printf("result->DotE2.Kind: %s\n",
@@ -586,6 +595,16 @@ metac_sema_expression_t* MetaCSemantic_doExprSemantic_(metac_semantic_state_t* s
                         result->Variable = v;
                         result->TypeIndex = v->TypeIndex;
                         hash = v->Hash;
+                        goto Lret;
+                    }
+                    else if (node->Kind == decl_field)
+                    {
+                        metac_type_aggregate_field_t* f =
+                            cast(metac_type_aggregate_field_t*)node;
+                        result->Kind = exp_field;
+                        result->Field = f;
+                        result->TypeIndex = f->Type;
+                        hash = f->Header.Hash;
                         goto Lret;
                     }
 

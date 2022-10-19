@@ -949,6 +949,11 @@ LtryAgian: {}
                     sema_decl_variable_t* var = (sema_decl_variable_t*)node;
                     result.v = var->TypeIndex.v;
                 } break;
+                case decl_field:
+                {
+                    sema_decl_variable_t* var = (sema_decl_variable_t*)node;
+                    result.v = var->TypeIndex.v;
+                } break;
             }
         }
         else
