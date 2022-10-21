@@ -306,6 +306,8 @@ void MetaCCodegen_Init(metac_bytecode_ctx_t* self, metac_alloc_t* parentAlloc)
 void MetaCCodegen_Free(metac_bytecode_ctx_t* self)
 {
     self->gen->fini_instance(self->c);
+    // Allocator_Remove(self->Allocator)
+    Debug_RemoveAllocator(g_DebugServer, &self->Allocator);
 }
 
 void MetaCCodegen_Begin(metac_bytecode_ctx_t* self, metac_identifier_table_t* idTable, metac_semantic_state_t* sema)

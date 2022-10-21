@@ -299,6 +299,8 @@ void Presemantic_(repl_state_t* self)
         // FreeSema
         MetaCParser_Free(&tmpParser);
     }
+    // Allocator_Remove
+    Debug_RemoveAllocator(g_DebugServer, &PresemanticAlloc);
 }
 
 void ConvertTupleElementToExp(metac_semantic_state_t* sema,
@@ -397,7 +399,8 @@ EvaluateExpression(metac_semantic_state_t* sema,
         result.ValueI64 = resultInt;
     }
 
-    //Allocator_Release(&interpAlloc);
+    Debug_RemoveAllocator(g_DebugServer, &interpAlloc);
+    // Allocator_Release(&interpAlloc);
 
     return result;
 }

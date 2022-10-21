@@ -55,6 +55,8 @@ void Debug_Pump(debug_server_t* debugServer);
 
 void Debug_Allocator(debug_server_t* debugServer, metac_alloc_t* allocator);
 void Debug_Allocation(debug_server_t* debugServer, metac_alloc_t* allocator, uint32_t sz, const char* file, uint32_t line);
+void Debug_RemoveAllocator(debug_server_t* debugServer, metac_alloc_t* allocator);
+
 extern debug_server_t* g_DebugServer;
 
 #else
@@ -63,7 +65,7 @@ extern debug_server_t* g_DebugServer;
 #define Debug_Pump(S)
 #define Debug_Allocator(S, A)
 #define Debug_Allocation(S, A, Z, F, L)
-
+#define Debug_RemoveAllocator(S, A)
 #endif
 
 #endif

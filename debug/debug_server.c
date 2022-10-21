@@ -156,12 +156,6 @@ MHD_HANDLER (handleAllocators)
 
     for (i = 0; i < debugServer->AllocatorsCount; i++)
     {
-        int j;
-        int vp = 0;
-        uint32_t usedSize = 0;
-        uint32_t allocatedSize = 0;
-        uint32_t arenasUsed = 0;
-
         metac_alloc_t * alloc = debugServer->Allocators[i];
         outAllocRow(body, ARRAYSIZE(body), &p, alloc);
     }
@@ -169,7 +163,7 @@ MHD_HANDLER (handleAllocators)
    len = snprintf (responseString, ARRAYSIZE (responseString),
                     "<hmtl><body>"
                     "<h3>Allocators: </h3>"
-                    "<table id=\"t1\">%s</table>"
+                    "<table id=\"allocators\">%s</table>"
                     "</body></hmtl>",
            body);
     return send_html (connection, responseString, len);
@@ -237,6 +231,23 @@ void Debug_Allocator(debug_server_t* debugServer, metac_alloc_t* allocator)
 {
     uint32_t count = debugServer->AllocatorsCount++;
     debugServer->Allocators[count] = allocator;
+  //  if (count == 5) { asm ( "int $3" ); }
+}
+
+void Debug_RemoveAllocator(debug_server_t* debugServer, metac_alloc_t* allocator)
+{
+    metac_alloc_t** allocs = debugServer->Allocators;
+    uint32_t count = debugServer->AllocatorsCount;
+    for(uint32_t i = 0; i < count; i++)
+    {
+        if (allocs[i] == allocator)
+        {
+            if (i != count - 1)
+                memmove(allocs + i, allocs + i + 1, count - i - 1);
+            break;
+        }
+    }
+    --debugServer->AllocatorsCount;
 }
 
 void Debug_Allocation(debug_server_t* debugServer, metac_alloc_t* allocator, uint32_t sz, const char* file, uint32_t line)
