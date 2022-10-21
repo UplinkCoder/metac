@@ -249,9 +249,26 @@ metac_sema_expression_t* MetaCSemantic_doExprSemantic_(metac_semantic_state_t* s
 
         case exp_unary_dot:
         {
-            if (expr->E1->Kind == exp_identifier)
+            metac_identifier_ptr_t idPtr = {0};
+            uint32_t idKey = 0;
+            const char* idString = 0;
+
+            if (expr->E1->Kind == exp_type &&
+                expr->E1->TypeExp->TypeKind == type_identifier)
             {
-                switch(expr->E1->IdentifierKey)
+                metac_sema_expression_t holder;
+                idPtr = expr->E1->TypeExp->TypeIdentifier;
+                goto LswitchIdKey;
+            }
+            else if (result->E1->Kind == exp_identifier)
+            {
+                idPtr = (expr->E1->IdentifierPtr);
+LswitchIdKey:
+                idString = IdentifierPtrToCharPtr(self->ParserIdentifierTable, idPtr);
+                int len = strlen(idString);
+                idKey = IDENTIFIER_KEY(crc32c(~0, idString, len), len);
+
+                switch(idKey)
                 {
                     case compiler_key:
                     {
@@ -586,7 +603,11 @@ metac_sema_expression_t* MetaCSemantic_doExprSemantic_(metac_semantic_state_t* s
 
                 metac_node_t node =
                     MetaCSemantic_LookupIdentifier(self, idPtr);
-                if (MetaCNode_IsDeclaration(node))
+                if (node == emptyNode)
+                {
+                    // TODO sticky couldn't resolve message
+                }
+                else if (MetaCNode_IsDeclaration(node))
                 {
                     if (node->Kind == node_decl_variable)
                     {

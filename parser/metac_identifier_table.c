@@ -36,18 +36,20 @@ const char* IdentifierPtrToCharPtr(const metac_identifier_table_t* table,
     return table->StringMemory + (ptr.v - 4);
 }
 
-void IdentifierTable_Init(metac_identifier_table_t* table, uint32_t lengthShift, uint32_t slotCountLog2, metac_alloc_t* alloc)
+void IdentifierTable_Init_(metac_identifier_table_t* table, uint32_t lengthShift, uint32_t slotCountLog2, metac_alloc_t* alloc,
+                           const char* file, uint32_t line)
 {
     table->SlotCount_Log2 = slotCountLog2;
     const uint32_t maxSlots = (1 << table->SlotCount_Log2);
-    table->Slots =  Allocator_Calloc(alloc, metac_identifier_table_slot_t, maxSlots);
-    table->StringMemory = Allocator_Calloc(alloc, char, maxSlots * 32);
+    table->Slots =  Allocator_Calloc_(alloc, sizeof(metac_identifier_table_slot_t), maxSlots, file, line);
+    table->StringMemory = Allocator_Calloc_(alloc, sizeof(char), maxSlots * 32, file, line);
     table->StringMemoryCapacity = maxSlots * 32;
     table->StringMemorySize = 0;
     table->SlotsUsed = 0;
     table->LengthShift = lengthShift;
     table->MaxDisplacement = 0;
 }
+
 void IdentifierTable_Free(metac_identifier_table_t* table)
 {
     // free(table->Slots);

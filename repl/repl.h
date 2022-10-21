@@ -53,6 +53,7 @@ typedef struct repl_state_t
     metac_printer_t printer;
 
     metac_alloc_t Allocator;
+    metac_alloc_t CompletionAlloc;
     // variable_store_t vstore;
 } repl_state_t;
 

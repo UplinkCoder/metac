@@ -33,7 +33,7 @@ typedef struct tagged_arena_t
     uint32_t SizeLeft;
 
     struct metac_alloc_t* Alloc;
-    metac_identifier_ptr_t FileID;
+    const char* File;
     uint32_t Line;
 
     uint32_t Flags;
@@ -50,7 +50,7 @@ typedef struct metac_alloc_t
 
     struct metac_alloc_t* Parent;
 
-    metac_identifier_ptr_t FileID;
+    const char* File;
     uint32_t Line;
 
     tagged_arena_t* Freelist;
@@ -62,13 +62,6 @@ typedef struct metac_alloc_t
 
 
 extern metac_alloc_t g_allocator;
-#endif
-
-#ifdef NDEBUG
-#  define ADD_FILENAME(FILE) s_null_filename
-#else
-#  define ADD_FILENAME(FILE) \
-    Add_Filename(FILE)
 #endif
 
 #define ARENA_ARRAY(TYPE, NAME) \
@@ -100,7 +93,7 @@ extern metac_alloc_t g_allocator;
     arena_ptr_t NAME##ArenaPtr = {-1}; \
     tagged_arena_t NAME##Arena = { \
         cast(void*) NAME##Stack, 0, sizeof(NAME##Stack), \
-        0, ADD_FILENAME(__FILE__), __LINE__ \
+        0, __FILE__, __LINE__ \
     }; \
     TYPE* NAME = NAME##Stack;
 

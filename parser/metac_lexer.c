@@ -460,18 +460,20 @@ void MetaCLexer_Init(metac_lexer_t* self, metac_alloc_t* allocator)
 
     IdentifierTable_Init(&self->IdentifierTable, IDENTIFIER_LENGTH_SHIFT, 13, allocator);
     IdentifierTable_Init(&self->StringTable, STRING_LENGTH_SHIFT, 13, allocator);
+
+    self->Allocator = allocator;
 }
 
 void MetaCLexer_Free(metac_lexer_t* self)
 {
     IdentifierTable_Free(&self->IdentifierTable);
     IdentifierTable_Free(&self->StringTable);
-
+/*
     if (self->LocationStorage.Locations != self->inlineLocations)
-        free(self->LocationStorage.Locations);
+        Allocator_FreeArena(self->Allocator, self->LocationStorage.Locations);
     if (self->Tokens != self->inlineTokens)
-        free(self->Tokens);
-
+        Allocator_FreeArena(self->Allocator, self->Tokens);
+*/
     static const metac_lexer_t zeroLexer = {0};
     *self = zeroLexer;
     self = 0;

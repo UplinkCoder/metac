@@ -3,6 +3,7 @@
 #include "../debug/debug_server.h"
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 debug_server_t* g_DebugServer;
 
@@ -80,6 +81,7 @@ void outAllocRow(char* body, uint32_t sz, uint32_t* pp, metac_alloc_t* alloc)
     for(j = 0; j < alloc->ArenaCount; j++)
     {
         usedSize += alloc->Arenas[j].Offset;
+        // we seem to be double counting allocated size
         allocatedSize += (alloc->Arenas[j].Offset + alloc->Arenas[j].SizeLeft);
         if (alloc->Arenas[j].Offset)
         {
@@ -93,8 +95,7 @@ void outAllocRow(char* body, uint32_t sz, uint32_t* pp, metac_alloc_t* alloc)
         );
 
         p += snprintf (body + p, sz - p,
-                       "<td>%s</td>", ((!(alloc->FileID.v < 1 || alloc->FileID.v > g_filenames.StringMemorySize)
-                                       ) ? g_filenames.StringMemory + (alloc->FileID.v - 4) : "failed")
+                       "<td>%s</td>", (alloc->File ? alloc->File : "(null)")
         );
 
         p += snprintf (body + p, sz - p,
@@ -128,7 +129,7 @@ MHD_HANDLER (handleAllocators)
     static char responseString[4096];
     debug_server_t* debugServer = (debug_server_t*) cls;
     int i;
-    int p = 0;
+    uint32_t p = 0;
     int len;
     int n_fields = 0;
 
@@ -152,8 +153,6 @@ MHD_HANDLER (handleAllocators)
     }
     p += snprintf(body + p, ARRAYSIZE(body) - p, "</tr>");
 
-    outAllocRow(body, ARRAYSIZE(body), &p, &g_allocator);
-
     for (i = 0; i < debugServer->AllocatorsCount; i++)
     {
         metac_alloc_t * alloc = debugServer->Allocators[i];
@@ -169,6 +168,85 @@ MHD_HANDLER (handleAllocators)
     return send_html (connection, responseString, len);
 }
 
+void outArenaRow(char* body, uint32_t sz, uint32_t* pp, tagged_arena_t* arena)
+{
+    uint32_t p = *pp;
+
+    p += snprintf (body + p, sz - p, "<tr>");
+    {
+        p += snprintf (body + p, sz - p,
+                       "<td>%p</td>", arena
+        );
+
+        p += snprintf (body + p, sz - p,
+                       "<td>%s</td>", (arena->File ? arena->File : "(null)")
+        );
+
+        p += snprintf (body + p, sz - p,
+                       "<td>%u</td>", arena->Line
+        );
+
+        p += snprintf (body + p, sz - p,
+                       "<td>%u</td>", arena->Offset
+        );
+
+        p += snprintf (body + p, sz - p,
+                       "<td>%u</td>", arena->SizeLeft
+        );
+    }
+
+    p += snprintf(body + p, sz - p, "</tr>");
+    (*pp) = p;
+}
+
+MHD_HANDLER(handleArenas)
+{
+    static char responseBuffer[4096];
+    uint32_t p = 0;
+    const char* headers[] = {
+        "Arena_Addr",
+        "File",
+        "Line",
+        "Offset",
+        "SizeLeft",
+    };
+    char body[4096];
+
+    debug_server_t *debugServer = cast(debug_server_t*) cls;
+    const char *allocIdxStr =
+        MHD_lookup_connection_value(connection, MHD_GET_ARGUMENT_KIND, "allocIdx");
+    uint32_t allocIdx = atoi(allocIdxStr);
+    metac_alloc_t* alloc = ((allocIdx && allocIdx <= (debugServer->AllocatorsCount))
+        ? debugServer->Allocators[allocIdx - 1] : 0);
+
+    const uint32_t arenaCount = alloc ? alloc->ArenaCount : 0;
+
+    p += snprintf(body + p, ARRAYSIZE(body) - p, "<tr>");
+    for(uint32_t i = 0; i < ARRAYSIZE(headers); i++)
+    {
+        p += snprintf(body + p, ARRAYSIZE(body) - p, "<th>%s</th>", headers[i]);
+    }
+    p += snprintf(body + p, ARRAYSIZE(body) - p, "</tr>");
+
+
+    for(uint32_t i = 0; i < arenaCount; i++)
+    {
+        tagged_arena_t* arena = &alloc->Arenas[i];
+        outArenaRow(body, ARRAYSIZE(body), &p, arena);
+    }
+
+    if (!alloc)
+        return MHD_NO;
+
+   uint32_t len = snprintf (responseBuffer, ARRAYSIZE (responseBuffer),
+                    "<hmtl><body>"
+                    "<h3>Arenas: </h3>"
+                    "<table id=\"arenas\">%s</table>"
+                    "</body></hmtl>",
+           body);
+    return send_html (connection, responseBuffer, len);
+}
+
 static MHD_HANDLER(debugServerHandler)
 {
     debug_server_t *debugServer = cast(debug_server_t*) cls;
@@ -176,6 +254,11 @@ static MHD_HANDLER(debugServerHandler)
     if (strcmp(url, "/allocators") == 0)
     {
         return handleAllocators(MHD_HANDLER_PASSTHROUGH);
+    }
+
+    if (memcmp(url, "/arenas", sizeof("/arenas") - 1) == 0)
+    {
+        return handleArenas(MHD_HANDLER_PASSTHROUGH);
     }
 
     if (debugServer->Handler)

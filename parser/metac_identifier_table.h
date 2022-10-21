@@ -76,7 +76,11 @@ typedef struct identifier_table_file_header_t
 } identifier_table_file_header_t;
 #pragma pack(pop)
 
-void IdentifierTable_Init(metac_identifier_table_t* table, uint32_t lengthShift, uint32_t slotCountLog2, metac_alloc_t* alloc);
+#define IdentifierTable_Init(Table, LengthShift, SlotCountLog2, Alloc) \
+    IdentifierTable_Init_((Table), (LengthShift), (SlotCountLog2), (Alloc), __FILE__, __LINE__)
+
+void IdentifierTable_Init_(metac_identifier_table_t* table, uint32_t lengthShift, uint32_t slotCountLog2, metac_alloc_t* alloc,
+                           const char* file, uint32_t line);
 
 metac_identifier_ptr_t GetOrAddIdentifier(metac_identifier_table_t* table,
                                           uint32_t identifierKey,

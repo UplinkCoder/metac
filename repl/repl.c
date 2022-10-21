@@ -286,10 +286,10 @@ void Presemantic_(repl_state_t* self)
                 MetaCPrinter_Init(&printer,
                     self->SemanticState.ParserIdentifierTable, self->SemanticState.ParserStringTable);
                 MSGF("struct: %s\n", MetaCPrinter_PrintNode(&printer, METAC_NODE(struct_), 0));
-/*
+
                 printf("compilerStruct: %s\n",
                     MetaCPrinter_PrintSemaNode(&printer, &self->SemanticState, cast(metac_node_t)compilerStruct));
-*/
+
             }
         }
 

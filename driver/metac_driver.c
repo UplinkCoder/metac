@@ -34,10 +34,10 @@ void LexFile(metac_lexer_t* lexer,
             MetaCLexerStateFromBuffer(1, text, length);
         if (estimated > ARRAY_SIZE(lexer->inlineTokens))
         {
-            lexer->Tokens = (metac_token_t*) malloc(estimated * sizeof(metac_token_t));
+            lexer->Tokens = (metac_token_t*) Allocator_Calloc(lexer->Allocator, metac_token_t, estimated);
             lexer->TokenCapacity = estimated;
             lexer->LocationStorage.Locations =
-                (metac_location_t*) malloc(estimated * sizeof(metac_location_t));
+                (metac_location_t*) Allocator_Calloc(lexer->Allocator, metac_location_t, estimated);
             lexer->LocationStorage.LocationCapacity = estimated;
         }
         else
@@ -92,7 +92,7 @@ void ParseFile(metac_parser_t* parser,
 
     metac_declaration_t** declarations =
         (metac_declaration_t**)
-            calloc(sizeof(metac_declaration_t*),
+            Allocator_Calloc(&parser->Allocator, metac_declaration_t*,
             declarationCapacity);
 
     while(parser->CurrentTokenIndex < parser->Lexer->TokenCount)
@@ -126,7 +126,7 @@ void ParseFile(metac_parser_t* parser,
         }
         result->Length = declarationSize;
         memcpy(result->Ptr, declarations, declarationSize * sizeof(metac_declaration_t*));
-        free(declarations);
+        // free(declarations);
     }
 }
 
