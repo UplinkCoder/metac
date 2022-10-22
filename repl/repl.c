@@ -482,7 +482,6 @@ void Repl_Init(repl_state_t* self)
         Allocator_Calloc(&self->Allocator, metac_location_t, LPP->Lexer.TokenCapacity);
     LPP->Lexer.LocationStorage.LocationCapacity = LPP->Lexer.TokenCapacity;
 
-
     MetaCPrinter_Init(&self->printer,
         &LPP->Parser.IdentifierTable,
         &LPP->Parser.StringTable);

@@ -43,7 +43,9 @@
     M(pp_define) \
     M(pp_include) \
     \
-    M(pp_eval)
+    M(pp_eval) \
+    \
+    M(pp_source_indicator)
 
 #define WITH_COMMA(TOK) \
     TOK,

@@ -1935,7 +1935,12 @@ metac_preprocessor_directive_t MetaCParser_ParsePreproc(metac_parser_t* self,
                     printf("CurrentTokenIndex after match: %u\n", self->CurrentTokenIndex);
                 }
             }
-        }
+        } break;
+        case tok_uint:
+        {
+            directive = pp_source_indicator;
+        } break;
+
     }
 
     return directive;
@@ -2814,7 +2819,8 @@ metac_declaration_t* MetaCParser_ParseDeclaration(metac_parser_t* self, metac_de
     if (MetaCParser_PeekMatch(self, tok_hash, 1))
     {
         metac_token_buffer_t tokenBuffer;
-        MetaCParser_ParsePreproc(self, self->Preprocessor,  &tokenBuffer);
+        metac_preprocessor_directive_t dirc =
+            MetaCParser_ParsePreproc(self, self->Preprocessor,  &tokenBuffer);
     }
 #endif
 

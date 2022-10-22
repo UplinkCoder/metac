@@ -103,7 +103,7 @@ metac_expression_t* MetaCPreProcessor_ResolveDefineToExp(metac_preprocessor_t* s
     metac_location_t_array tokenLocationArray;
 
     Allocator_Init(&tmpDefineParserAlloc, 0);
-    
+
     metac_parser_t defineParser;
     MetaCParser_Init(&defineParser, &tmpDefineParserAlloc);
     defineParser.Preprocessor = self;
