@@ -68,6 +68,25 @@ static int serveFile(const char* filename, const char* contentType, struct MHD_C
     return ret;
 }
 
+const char* PrintSize(uint32_t sz)
+{
+    static char s_buffer[32];
+    int suffixIdx = 0;
+
+    static const char suffix[] =
+        { 'b','k','m','g' };
+
+    while (sz > 1024)
+    {
+        sz /= 1024;
+        suffixIdx++;
+    }
+
+    snprintf(s_buffer, 32, "%u %c", sz, suffix[suffixIdx]);
+
+    return s_buffer;
+}
+
 void outAllocRow(char* body, uint32_t sz, uint32_t* pp, metac_alloc_t* alloc)
 {
     uint32_t p = *pp;
@@ -111,11 +130,11 @@ void outAllocRow(char* body, uint32_t sz, uint32_t* pp, metac_alloc_t* alloc)
         );
 
         p += snprintf (body + p, sz - p,
-                       "<td>%u</td>", usedSize
+                       "<td>%s</td>", PrintSize(usedSize)
         );
 
         p += snprintf (body + p, sz - p,
-                       "<td>%u</td>", allocatedSize
+                       "<td>%s</td>", PrintSize(allocatedSize)
         );
     }
 

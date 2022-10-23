@@ -607,8 +607,7 @@ Lerror:
     metac_filehandle_t fhandle = fs.functions->Open(fs.ctx, 0, filename);
     metac_buffer_t fileBuffer =
         fs.functions->ReadEntireFileAndZeroTerminate(fs.ctx, fhandle);
-
-    int k = 12;
+    printf("Loaded %u bytes\n", fileBuffer.Length);
 }
 
 metac_preprocessor_define_ptr_t
