@@ -39,6 +39,7 @@ typedef struct repl_state_t
 
     metac_lexer_t FileLexer;
 
+    metac_file_storage_t FileStorage;
 
     const char* Line;
 
@@ -52,6 +53,7 @@ typedef struct repl_state_t
 
     metac_printer_t printer;
 
+    metac_alloc_t FileAllocator;
     metac_alloc_t Allocator;
     metac_alloc_t CompletionAlloc;
     // variable_store_t vstore;
@@ -93,6 +95,7 @@ typedef struct ui_interface_t
     /// where a call to the server for completion suggestions might want to be avoided
     uint32_t (*UpdateLocalCompletionCache)(struct ui_state_t* state,
                                            completion_cache_entry_t* entries, uint32_t nEntries);
+    metac_filesystem_t* (*GetFileSystem) (struct ui_state_t* state);
 } ui_interface_t;
 
 typedef struct repl_ui_context_t

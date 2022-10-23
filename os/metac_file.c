@@ -19,7 +19,7 @@ metac_filehandle_t MetaCNative_Open(void* dummy, const char* path, const char* f
 {
     metac_filehandle_t result;
 
-    char _pathBuffer[1024];
+    char _pathBuffer[4096];
     char* pathBufferP = _pathBuffer;
 
     assert(!path || strlen(path) != 0);
@@ -41,8 +41,11 @@ metac_filehandle_t MetaCNative_Open(void* dummy, const char* path, const char* f
     {
         perror("Path Invalid");
     }
-    printf("Opening: %s -- %s\n", absPath, pathBufferP);
-    result.p = (void*)fopen(absPath, "rb");
+    else
+    {
+        printf("Opening: %s -- %s\n", absPath, pathBufferP);
+        result.p = (void*)fopen(absPath, "rb");
+    }
 
     return result;
 }
@@ -101,12 +104,12 @@ static const metac_filesystem_t NativeFileSystem  = {
 };
 
 
-void FileStorage_Init(metac_file_storage_t* self, metac_filesystem_t* fs, metac_alloc_t* allocator)
+void MetaCFileStorage_Init(metac_file_storage_t* self, metac_filesystem_t* fs, metac_alloc_t* allocator)
 {
 //    printf("Initializng file storage for worker.Storage: %p\n",
 //        cast(void*)CurrentWorker()->FileStorage);
-    IdentifierTable_Init(&self->Filenames, IDENTIFIER_LENGTH_SHIFT, 9, allocator);
-    IdentifierTable_Init(&self->Paths, IDENTIFIER_LENGTH_SHIFT, 9, allocator);
+    IdentifierTable_Init(&self->Filenames, IDENTIFIER_LENGTH_SHIFT, 6, allocator);
+    IdentifierTable_Init(&self->Paths, IDENTIFIER_LENGTH_SHIFT, 5, allocator);
 
     if (!fs)
     {

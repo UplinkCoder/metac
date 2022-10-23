@@ -191,7 +191,6 @@ void Presemantic_(repl_state_t* self)
     ui_interface_t uiInterface = uiContext->UiInterface;
     struct ui_state_t* uiState = uiContext->UiState;
 
-
     read_result_t fCompilterInterface =
         ReadFileAndZeroTerminate("metac_compiler_interface.h");
     if (!fCompilterInterface.FileContent0)
@@ -471,7 +470,7 @@ void Repl_Init(repl_state_t* self)
     // make sure we know our special identifiers
     Allocator_Init(&self->Allocator, 0);
 
-    MetaCLPP_Init(&self->LPP, &self->Allocator);
+    MetaCLPP_Init(&self->LPP, &self->Allocator, &self->FileStorage);
     MetaCSemantic_Init(&self->SemanticState, &LPP->Parser, 0);
     MetaCSemantic_PushNewScope(&self->SemanticState, scope_owner_module, cast(metac_node_t)cast(intptr_t)1);
 
@@ -872,6 +871,10 @@ LswitchMode:
                     metac_preprocessor_define_ptr_t define =
                         MetaCPreProcessor_ParseDefine(&repl->LPP.Preprocessor, &repl->LPP.Parser);
                 }
+                else if (directive == pp_include)
+                {
+                    MetaCPreProcessor_Include(&repl->LPP.Preprocessor, &repl->LPP.Parser);
+                }
 
                 goto LnextLine;
             }
@@ -1195,13 +1198,27 @@ completion_list_t ReplComplete (repl_state_t* repl, const char *input, uint32_t 
 void Repl_Fiber(void)
 {
 
-    repl_state_t repl_;
+    repl_state_t repl_ = {0};
     repl_state_t* repl = &repl_;
-    Repl_Init(repl);
+
 
     repl_ui_context_t* uiContext = g_uiContext;
     ui_interface_t uiInterface = uiContext->UiInterface;
     struct ui_state_t* uiState = uiContext->UiState;
+
+    metac_filesystem_t* fs = 0;
+
+    if (uiInterface.GetFileSystem)
+    {
+        fs = uiInterface.GetFileSystem(uiState);
+    }
+
+    Allocator_Init(&repl->FileAllocator, 0);
+
+    MetaCFileStorage_Init(&repl->FileStorage, fs, &repl->FileAllocator);
+
+    Repl_Init(repl);
+
 
     Presemantic_(repl);
 

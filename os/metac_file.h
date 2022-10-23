@@ -87,7 +87,7 @@ typedef struct metac_file_storage_t
     metac_filesystem_t* FS;
 } metac_file_storage_t;
 
-void FileStorage_Init(metac_file_storage_t* self, metac_filesystem_t* fs, metac_alloc_t* allocator);
+void MetaCFileStorage_Init(metac_file_storage_t* self, metac_filesystem_t* fs, metac_alloc_t* allocator);
 
 metac_file_ptr_t MetaCFileStorage_LoadFile(metac_file_storage_t* self, const char* path);
 

@@ -126,6 +126,8 @@ typedef struct metac_preprocessor_t
 
     /// the file we are running the preprocessor on
     metac_file_ptr_t File;
+
+    metac_alloc_t Allocator;
 } metac_preprocessor_t;
 
 void MetaCPreProcessor_Init(metac_preprocessor_t *self, metac_lexer_t* lexer,

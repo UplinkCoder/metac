@@ -464,8 +464,6 @@ void MetaCPreProcessor_Init(metac_preprocessor_t *self, metac_lexer_t* lexer,
     self->TokenMemoryCapacity = 256;
     self->TokenMemorySize = 0;
     self->TokenMemory = Allocator_Calloc(alloc, metac_token_t, self->TokenMemoryCapacity);
-
-    printf("Initialized preproc\n");
 }
 
 metac_preprocessor_define_ptr_t
@@ -521,6 +519,96 @@ MetaCPreprocessor_RegisterDefine(metac_preprocessor_t* self,
     }
 
     return result;
+}
+
+void MetaCPreProcessor_Include(metac_preprocessor_t *self, metac_parser_t* parser)
+{
+    metac_token_t* quoteOrLt = MetaCParser_PeekToken(parser, 1);
+    metac_token_t tokens[32];
+    const char *filename;
+    char filenameBuffer[4096];
+    const metac_filesystem_t fs =
+        *self->FileStorage->FS;
+
+    if (!quoteOrLt)
+    {
+        assert(!"Token expected after #include");
+    }
+    printf("%s\n", MetaCTokenEnum_toChars(quoteOrLt->TokenType));
+
+    if (quoteOrLt->TokenType == tok_string)
+    {
+        filename =
+            IdentifierPtrToCharPtr(&parser->Lexer->StringTable, quoteOrLt->StringPtr);
+    }
+    else if (quoteOrLt->TokenType == tok_lt)
+    {
+        uint32_t tokenCount = 0;
+        MetaCParser_Match(parser, tok_lt);
+        metac_token_t* peek = 0;
+        uint32_t p = 0;
+
+        for (;;)
+        {
+            peek = MetaCParser_PeekToken(parser, 1);
+            if (peek->TokenType == tok_gt)
+            {
+                MetaCParser_Match(parser, tok_gt);
+                break;
+            }
+            tokens[tokenCount++] = *MetaCParser_Match(parser, peek->TokenType);
+            printf("tokenType: %s\n", MetaCTokenEnum_toChars(peek->TokenType));
+        } while (peek && peek->TokenType != tok_gt);
+
+        for(uint32_t i = 0; i < tokenCount; i++)
+        {
+            metac_token_t* tokP = tokens + i;
+            switch(tokP->TokenType)
+            {
+                case tok_identifier:
+                {
+                    const char* idString =
+                        IdentifierPtrToCharPtr(&parser->Lexer->IdentifierTable, tokP->IdentifierPtr);
+                    uint32_t len = tokP->IdentifierKey >> IDENTIFIER_LENGTH_SHIFT;
+                    memcpy(filenameBuffer + p, idString, len);
+                    p += len;
+                } break;
+                case tok_dotdot:
+                {
+                    filenameBuffer[p++] = '.';
+                }
+                case tok_dot:
+                {
+                    filenameBuffer[p++] = '.';
+                } break;
+                case tok_div:
+                {
+                    filenameBuffer[p++] = '/';
+                } break;
+            }
+        }
+
+        filenameBuffer[p] = '\0';
+        filename = filenameBuffer;
+    }
+    else if (quoteOrLt->TokenType == tok_identifier)
+    {
+        //TODO do macro stuff here
+        goto Lerror;
+    }
+    else
+    {
+Lerror:
+        assert(!"< , \" or identifier expected after #include");
+    }
+    // MetaCParser_PushFile(self, )
+    printf("filename: %s\n", filename);
+
+    metac_filehandle_t fhandle = fs.functions->Open(fs.ctx, 0, filename);
+    metac_buffer_t fileBuffer =
+        fs.functions->ReadEntireFileAndZeroTerminate(fs.ctx, fhandle);
+
+    int k = 12;
 }
 
 metac_preprocessor_define_ptr_t
@@ -628,6 +716,7 @@ MetaCPreProcessor_ParseDefine(metac_preprocessor_t *self, metac_parser_t* parser
     define.IsVariadic = isVariadic;
     define.HasPaste = hasPaste;
     define.TokenCount = defineBodyTokens.Count;
+
     metac_preprocessor_define_ptr_t result =
         MetaCPreprocessor_RegisterDefine(self, defineKey, define, defineBodyTokens);
 

@@ -20,7 +20,7 @@ typedef struct metac_lpp_t
 #endif
 } metac_lpp_t;
 
-void MetaCLPP_Init(metac_lpp_t* lpp, metac_alloc_t* allocator);
+void MetaCLPP_Init(metac_lpp_t* lpp, metac_alloc_t* allocator, metac_file_storage_t* fileStorage);
 
 metac_expression_t* MetaCLPP_ParseExpressionFromString(metac_lpp_t* lpp, const char* exp);
 

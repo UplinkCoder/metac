@@ -26,11 +26,11 @@ static inline void LexString(metac_lexer_t* lexer, const char* line)
     }
 }
 
-void MetaCLPP_Init(metac_lpp_t* lpp, metac_alloc_t* allocator)
+void MetaCLPP_Init(metac_lpp_t* lpp, metac_alloc_t* allocator, metac_file_storage_t* fileStorage)
 {
     MetaCLexer_Init(&lpp->Lexer, allocator);
 #ifndef NO_PREPROCESSOR
-    MetaCPreProcessor_Init(&lpp->Preprocessor, &lpp->Lexer, allocator, 0, 0);
+    MetaCPreProcessor_Init(&lpp->Preprocessor, &lpp->Lexer, allocator, fileStorage, 0);
 #endif
     MetaCParser_InitFromLexer(&lpp->Parser, &lpp->Lexer, allocator);
 }
