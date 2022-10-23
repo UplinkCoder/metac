@@ -332,8 +332,16 @@ metac_bytecode_function_t MetaCCodegen_GenerateFunctionFromExp(metac_bytecode_ct
     BCValue resultVal = {BCValueType_Unknown};
 
     metac_bytecode_function_t func;
+    metac_bytecode_function_t calledF = {0};
 
     const BackendInterface gen = *ctx->gen;
+
+    if (expr->Kind == exp_call)
+    {
+        assert(expr->E1->Kind == exp_function);
+
+        calledF = MetaCCodegen_GenerateFunction(ctx, expr->E1->Function);
+    }
 
     func.FunctionIndex =
         gen.BeginFunction(c, 0, "dummy_eval_func");
@@ -382,6 +390,15 @@ metac_bytecode_function_t MetaCCodegen_GenerateFunction(metac_bytecode_ctx_t* ct
     void* c = ctx->c;
     const BackendInterface gen = *ctx->gen;
 
+    for(uint32_t i = 0; i < ctx->FunctionsCount; i++)
+    {
+        metac_bytecode_function_t* f = ctx->Functions + i;
+        if (f->FuncDeclPtr == cast(void*) function)
+        {
+            return *f;
+        }
+    }
+
     uint32_t frameSize = 0;
     uint32_t functionParameterCount = 1;
     STACK_ARENA_ARRAY(BCValue, parameters, 16, &ctx->Allocator);
@@ -394,12 +411,12 @@ metac_bytecode_function_t MetaCCodegen_GenerateFunction(metac_bytecode_ctx_t* ct
     uint32_t functionId =
         gen.BeginFunction(c, 0, fName);
 
-    gen.Comment(c, "Function Begin.");
+    // gen.Comment(c, "Function Begin.");
 
     metac_bytecode_function_t result;
+
     result.FunctionIndex = functionId;
-
-
+    result.FuncDeclPtr = (void*) function;
 
     for(uint32_t i = 0;
         i < functionParameterCount;
@@ -423,14 +440,18 @@ metac_bytecode_function_t MetaCCodegen_GenerateFunction(metac_bytecode_ctx_t* ct
 
 #ifdef METAC_COMPILER_INTERFACE
     BCType compilerInterfaceType;
-    compilerInterfaceType.type = BCTypeEnum_Struct;
-    compilerInterfaceType.typeIndex =
-        ctx->Sema->CompilerInterface->TypeIndex.Index;
 
-    ctx->CompilerInterfaceValue = gen.GenExternal(c, compilerInterfaceType, ".compiler");
-    gen.MapExternal(c, &ctx->CompilerInterfaceValue, &compiler, sizeof(compiler));
-    ctx->Externals[0].ExtValue = ctx->CompilerInterfaceValue;
-    frameSize += sizeof(void*);
+    if (ctx->Sema->CompilerInterface)
+    {
+        compilerInterfaceType.type = BCTypeEnum_Struct;
+        compilerInterfaceType.typeIndex =
+            ctx->Sema->CompilerInterface->TypeIndex.Index;
+
+        ctx->CompilerInterfaceValue = gen.GenExternal(c, compilerInterfaceType, ".compiler");
+        gen.MapExternal(c, &ctx->CompilerInterfaceValue, &compiler, sizeof(compiler));
+        ctx->Externals[0].ExtValue = ctx->CompilerInterfaceValue;
+        frameSize += sizeof(void*);
+    }
 #endif
 
     ctx->Locals = locals;
@@ -454,7 +475,8 @@ metac_bytecode_function_t MetaCCodegen_GenerateFunction(metac_bytecode_ctx_t* ct
     {
         MetaCCodegen_doStatement(ctx, function->FunctionBody->Body[i]);
     }
-    gen.Comment(c, "Function body end");
+
+    // gen.Comment(c, "Function body end");
 
     if (ctx->BreaksAlloc)
     {
@@ -472,7 +494,8 @@ metac_bytecode_function_t MetaCCodegen_GenerateFunction(metac_bytecode_ctx_t* ct
         BCGen_PrintCode((BCGen*)c, 0, 64);
     }
 #endif
-        return result;
+    ARENA_ARRAY_ADD(ctx->Functions, result);
+    return result;
 }
 
 
@@ -1486,6 +1509,8 @@ void MetaCCodegen_doStatement(metac_bytecode_ctx_t* ctx,
         // (?) Maybe we want to actually output the comment in a Comment directive?
         case stmt_comment:
         {
+            stmt_comment_t* comment = (stmt_comment_t*) stmt;
+            gen.Comment(c, comment->Text);
         } break;
 
         default:

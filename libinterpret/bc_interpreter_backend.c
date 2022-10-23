@@ -3173,6 +3173,17 @@ static inline void BCGen_Not(BCGen* self, BCValue *result, const BCValue* val)
 static inline void BCGen_Call(BCGen* self, BCValue *result, const BCValue* fn, BCValue* args, uint32_t n_args)
 {
     assert(BCValue_isStackValueOrParameter(result));
+    BCValue fnValue = imm32(self->callCount + 1);
+    BCValue callTmp = BCGen_pushTemporary(self, &fnValue);
+    StackAddr call_id = callTmp.stackAddr;
+    BCValue* allocArgs = cast(BCValue*)
+        self->allocFn(self->allocCtx, sizeof(BCValue) * n_args, 0);
+    memcpy(allocArgs, args, n_args * sizeof(BCValue));
+
+    RetainedCall rc = {*fn, allocArgs, n_args, self->functionIdx, self->ip, self->sp};
+    self->calls[self->callCount++] = rc;
+
+    BCGen_emitLongInstSS(self, LongInst_Call, result->stackAddr, call_id);
 }
 
 static inline BCLabel BCGen_genLabel(BCGen* self)

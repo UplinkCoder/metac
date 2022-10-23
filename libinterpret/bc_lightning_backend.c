@@ -1214,7 +1214,8 @@ static inline void Lightning_set_alloc_memory(Lightning* self, alloc_fn_t alloc_
 
 static inline void Lightning_set_get_typeinfo(Lightning* self, get_typeinfo_fn_t get_typeinfo_fn, void* userCtx)
 {
-    assert(0);
+    self->getTypeInfo = get_typeinfo_fn;
+    self->getTypeInfoCtx = userCtx;
 }
 
 const BackendInterface Lightning_interface = {

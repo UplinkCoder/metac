@@ -13,6 +13,7 @@
 typedef struct metac_bytecode_function_t
 {
     uint32_t FunctionIndex;
+    void* FuncDeclPtr;
 } metac_bytecode_function_t;
 
 typedef struct function_metadata_t

@@ -189,6 +189,87 @@ void MetaCSemantic_doCallSemantic(metac_semantic_state_t* self,
     //STACK_ARENA_ARRAY_FREE(arguments);
 }
 
+void ResolveIdentifierToExp(metac_semantic_state_t* self,
+                            metac_node_t node,
+                            metac_sema_expression_t* result,
+                            uint32_t* hashP)
+{
+    uint32_t hash = *hashP;
+    if (node->Kind == (metac_node_kind_t)exp_identifier)
+    {
+        fprintf(stderr, "we should not be retured an identifier\n");
+    }
+    else if (node->Kind == node_decl_variable ||
+             node->Kind == node_decl_parameter)
+    {
+        sema_decl_variable_t* v = cast(sema_decl_variable_t*)node;
+        result->Kind = exp_variable;
+        result->Variable = v;
+        result->TypeIndex = v->TypeIndex;
+        hash = v->Hash;
+    }
+    else if (node->Kind == node_decl_field)
+    {
+        metac_type_aggregate_field_t* field =
+            cast(metac_type_aggregate_field_t*) node;
+        result->Kind = exp_field;
+        result->Field = field;
+        result->TypeIndex = field->Type;
+        hash = field->Header.Hash;
+    }
+    else if (node->Kind == node_decl_enum_member)
+    {
+        metac_enum_member_t* enumMember = cast(metac_enum_member_t*)node;
+        // result->Kind =enumMember->Value.Kind;
+        // I don't love this cast but oh well
+        result = cast(metac_sema_expression_t*)enumMember;
+    }
+    else if (node->Kind == node_decl_type_struct)
+    {
+        result->Kind = exp_type;
+        result->TypeExp.v =
+            TYPE_INDEX_V(type_index_struct, StructIndex(self, cast(metac_type_aggregate_t*)node));
+        result->TypeIndex.v = TYPE_INDEX_V(type_index_basic, type_type);
+    }
+    else if (node->Kind == node_decl_type_typedef)
+    {
+        result->Kind = exp_type;
+        result->TypeExp.v =
+            TYPE_INDEX_V(type_index_typedef, TypedefIndex(self, cast(metac_type_typedef_t*)node));
+    }
+    else if (node->Kind == node_decl_function)
+    {
+        sema_decl_function_t* func = cast(sema_decl_function_t*) node;
+        result->Kind = exp_function;
+        result->Function = func;
+        result->TypeIndex = func->TypeIndex;
+    }
+    else
+    {
+        printf("[%s:%u] NodeType unexpected: %s\n", __FILE__, __LINE__, MetaCNodeKind_toChars(node->Kind));
+    }
+
+    (*hashP) = hash;
+}
+metac_sema_expression_t* UnwrapParen(metac_sema_expression_t* e)
+{
+    while(e->Kind == exp_paren)
+    {
+        e = e->E1;
+    }
+
+    return e;
+}
+
+metac_sema_expression_t* ExtractCastExp(metac_sema_expression_t* e)
+{
+    while(e->Kind == exp_cast)
+    {
+        e = e->CastExp;
+    }
+
+    return e;
+}
 metac_sema_expression_t* MetaCSemantic_doExprSemantic_(metac_semantic_state_t* self,
                                                        metac_expression_t* expr,
                                                        metac_sema_expression_t* result,
@@ -224,8 +305,6 @@ metac_sema_expression_t* MetaCSemantic_doExprSemantic_(metac_semantic_state_t* s
 
         MetaCSemantic_PopExpr(self, result);
     }
-
-    bool isParameter = false;
 
     switch(expr->Kind)
     {
@@ -299,7 +378,43 @@ LswitchIdKey:
             MetaCSemantic_doCallSemantic(self, expr, &result);
         } break;
 
+        case exp_deref:
+        {
+            result->E1 = MetaCSemantic_doExprSemantic(self, expr->E1, 0);
+            metac_type_index_t e1type = result->E1->TypeIndex;
+            if (TYPE_INDEX_KIND(e1type) == type_index_ptr)
+            {
+                metac_type_index_t elemType =
+                    PtrTypePtr(self, TYPE_INDEX_INDEX(e1type))->ElementType;
+                result->TypeIndex = elemType;
+            }
+            else
+            {
+                assert(!"lhs of * doesn't seem to be a pointer");
+            }
+        } break;
+
         case exp_arrow:
+        {
+            result->E1 = MetaCSemantic_doExprSemantic(self, expr->E1, 0);
+            result->E2 = MetaCSemantic_doExprSemantic(self, expr->E2, 0);
+
+            metac_type_index_t e1type = result->E1->TypeIndex;
+            if (TYPE_INDEX_KIND(e1type) == type_index_ptr)
+            {
+                metac_type_index_t elemType =
+                    PtrTypePtr(self, TYPE_INDEX_INDEX(e1type))->ElementType;
+                metac_sema_expression_t* e1 = UnwrapParen(result->E1);
+                printf("ExpKind: %s\n", MetaCExpressionKind_toChars(e1->Kind));
+                e1 = ExtractCastExp(e1);
+                printf("ExpKind: %s\n", MetaCExpressionKind_toChars(e1->Kind));
+                printf("E2->Kind: %s\n", MetaCExpressionKind_toChars(result->E2->Kind));
+            }
+            else
+            {
+                assert(!"lhs of -> doesn't seem to be a pointer");
+            }
+        } break;
         case exp_dot:
         {
             result->E1 = MetaCSemantic_doExprSemantic(self, expr->E1, 0);
@@ -387,7 +502,7 @@ LswitchIdKey:
             }
             else
             {
-                assert(!"lhs of . or -> doesn't seem to be an aggregate");
+                assert(!"lhs of . doesn't seem to be an aggregate");
             }
         } break;
 
@@ -409,6 +524,17 @@ LswitchIdKey:
             result->E1 = E1;
         } break;
 
+
+        case exp_cast:
+        {
+            metac_type_index_t castType =
+                MetaCSemantic_doTypeSemantic(self, expr->CastType);
+            metac_sema_expression_t* castExp =
+                MetaCSemantic_doExprSemantic(self, expr->CastExp, 0);
+            hash = CRC32C_VALUE(hash, castExp->Hash);
+            result->TypeIndex = castType;
+            result->CastExp = castExp;
+        } break;
 #define CASE(M) \
     case M:
 
@@ -607,34 +733,9 @@ LswitchIdKey:
                 {
                     // TODO sticky couldn't resolve message
                 }
-                else if (MetaCNode_IsDeclaration(node))
+                else
                 {
-                    if (node->Kind == node_decl_variable)
-                    {
-                        sema_decl_variable_t* v = cast(sema_decl_variable_t*)node;
-                        result->Kind = exp_variable;
-                        result->Variable = v;
-                        result->TypeIndex = v->TypeIndex;
-                        hash = v->Hash;
-                        goto Lret;
-                    }
-                    else if (node->Kind == decl_field)
-                    {
-                        metac_type_aggregate_field_t* f =
-                            cast(metac_type_aggregate_field_t*)node;
-                        result->Kind = exp_field;
-                        result->Field = f;
-                        result->TypeIndex = f->Type;
-                        hash = f->Header.Hash;
-                        goto Lret;
-                    }
-
-                    int k = 12;
-                    //MetaCSemantic_doExprSemantic(self, node, result);
-                }
-                else if (MetaCNode_IsExpression(node))
-                {
-                    MetaCSemantic_doExprSemantic(self, node, result);
+                    ResolveIdentifierToExp(self, node, result, &hash);
                 }
             }
             // type ptrs can also be binary expressions
@@ -647,12 +748,15 @@ LswitchIdKey:
             {
 
             }
-            hash = type_key;
-            metac_type_index_t typeIdx
-                = MetaCSemantic_doTypeSemantic(self, expr->TypeExp);
-            result->TypeExp = typeIdx;
-            result->TypeIndex.v = TYPE_INDEX_V(type_index_basic, type_type);
-            hash = CRC32C_VALUE(hash, typeIdx);
+            else
+            {
+                hash = type_key;
+                metac_type_index_t typeIdx
+                    = MetaCSemantic_doTypeSemantic(self, expr->TypeExp);
+                result->TypeExp = typeIdx;
+                result->TypeIndex.v = TYPE_INDEX_V(type_index_basic, type_type);
+                hash = CRC32C_VALUE(hash, typeIdx);
+            }
         } break;
         case exp_typeof:
         {
@@ -721,64 +825,7 @@ LswitchIdKey:
             }
             else
             {
-                if (node->Kind == (metac_node_kind_t)exp_identifier)
-                {
-                    fprintf(stderr, "we should not be retured an identifier\n");
-                }
-                else if (node->Kind == node_decl_parameter)
-                {
-                    isParameter = true;
-                    goto Lvar;
-                }
-                else if (node->Kind == node_decl_variable)
-                Lvar:
-                {
-                    sema_decl_variable_t* v = cast(sema_decl_variable_t*)node;
-                    result->Kind = exp_variable;
-                    result->Variable = v;
-                    result->TypeIndex = v->TypeIndex;
-                    hash = v->Hash;
-                }
-                else if (node->Kind == node_decl_field)
-                {
-                    metac_type_aggregate_field_t* field =
-                        cast(metac_type_aggregate_field_t*) node;
-                    result->Kind = exp_field;
-                    result->Field = field;
-                    result->TypeIndex = field->Type;
-                    hash = field->Header.Hash;
-                }
-                else if (node->Kind == node_decl_enum_member)
-                {
-                    metac_enum_member_t* enumMember = cast(metac_enum_member_t*)node;
-                    // result->Kind =enumMember->Value.Kind;
-                    // I don't love this cast but oh well
-                    result = cast(metac_sema_expression_t*)enumMember;
-                }
-                else if (node->Kind == node_decl_type_struct)
-                {
-                    result->Kind = exp_type;
-                    result->TypeExp.v =
-                        TYPE_INDEX_V(type_index_struct, StructIndex(self, cast(metac_type_aggregate_t*)node));
-                    result->TypeIndex.v = TYPE_INDEX_V(type_index_basic, type_type);
-                }
-                else if (node->Kind == node_decl_type_typedef)
-                {
-                    result->Kind = exp_type;
-                    result->TypeExp.v =
-                        TYPE_INDEX_V(type_index_typedef, TypedefIndex(self, cast(metac_type_typedef_t*)node));
-                }
-                else if (node->Kind == node_decl_function)
-                {
-                    sema_decl_function_t* func = cast(sema_decl_function_t*) node;
-                    result->Kind = exp_function;
-                    result->Function = func;
-                    result->TypeIndex = func->TypeIndex;
-                }
-                else
-                {
-                    printf("[%s:%u] NodeType unexpected: %s\n", __FILE__, __LINE__, MetaCNodeKind_toChars(node->Kind));
-                }
+                ResolveIdentifierToExp(self, node, result, &hash);
             }
             //printf("Resolved exp_identifier to: %s\n",
             //    MetaCExpressionKind_toChars(result->Kind));
