@@ -82,9 +82,9 @@ int MetaCNode_TreeWalk_Real(metac_node_t node, walker_function_t walker_fn, void
         case node_decl_enum_member:
         {
             decl_enum_member_t* enum_member = (decl_enum_member_t*) node;
-            while((metac_node_t)(enum_member->Next) != emptyNode)
+            while((metac_node_t)(enum_member) != emptyNode)
             {
-                result = MetaCNode_TreeWalk_Real(enum_member->Next, walker_fn, ctx);
+                result = walker_fn(enum_member, ctx);
                 if (result)
                     return result;
                 enum_member = enum_member->Next;
