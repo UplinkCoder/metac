@@ -1198,7 +1198,7 @@ completion_list_t ReplComplete (repl_state_t* repl, const char *input, uint32_t 
 void Repl_Fiber(void)
 {
 
-    repl_state_t repl_ = {0};
+    repl_state_t repl_ = {repl_mode_ee};
     repl_state_t* repl = &repl_;
 
 

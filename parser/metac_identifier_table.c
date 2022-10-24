@@ -41,8 +41,10 @@ void IdentifierTable_Init_(metac_identifier_table_t* table, uint32_t lengthShift
 {
     table->SlotCount_Log2 = slotCountLog2;
     const uint32_t maxSlots = (1 << table->SlotCount_Log2);
-    table->Slots =  Allocator_Calloc_(alloc, sizeof(metac_identifier_table_slot_t), maxSlots, file, line);
-    table->StringMemory = Allocator_Calloc_(alloc, sizeof(char), maxSlots * 32, file, line);
+    table->Slots = cast(metac_identifier_table_slot_t*)
+        Allocator_Calloc_(alloc, sizeof(metac_identifier_table_slot_t), maxSlots, file, line);
+    table->StringMemory = cast(char*)
+        Allocator_Calloc_(alloc, sizeof(char), maxSlots * 32, file, line);
     table->StringMemoryCapacity = maxSlots * 32;
     table->StringMemorySize = 0;
     table->SlotsUsed = 0;

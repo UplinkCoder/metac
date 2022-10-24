@@ -1154,7 +1154,6 @@ metac_expression_t* MetaCParser_ParsePrimaryExpression(metac_parser_t* self, par
             result->CastType->Hash = CRC32C_VALUE(~0, typeModifiers);
         }
         hash = CRC32C_VALUE(hash, result->CastType->Hash);
-        printf("Parsed CastType: '%s'\n", MetaCPrinter_PrintDeclaration(&self->DebugPrinter, result->CastType));
         MetaCParser_Match(self, tok_rParen);
         result->CastExp = MetaCParser_ParseExpression(self, flags, 0);
         hash = CRC32C_VALUE(hash, result->CastExp->Hash);
