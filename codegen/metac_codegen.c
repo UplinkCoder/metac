@@ -185,6 +185,7 @@ long MetaCCodegen_RunFunction(metac_bytecode_ctx_t* self,
 {
     va_list l;
     va_start(l, fargs);
+
     STACK_ARENA_ARRAY(BCValue, args, 8, interpAlloc);
     const BackendInterface gen = *self->gen;
 
@@ -208,6 +209,20 @@ long MetaCCodegen_RunFunction(metac_bytecode_ctx_t* self,
                 ARENA_ARRAY_ADD(args, imm32(a));
             }
             break;
+            case 's':
+            {
+                nArgs++;
+                const char* a = va_arg(l, const char*);
+                uint32_t sz = strlen(a);
+                HeapAddr ptr = {heap->heapSize};
+                heap->heapSize += align4(sz + 1);
+                BCValue stringPtr;
+                stringPtr.vType = BCValueType_Immediate;
+                BCType bcType = {BCTypeEnum_Ptr, 0};
+                stringPtr.type = bcType;
+                stringPtr.heapAddr = ptr;
+                ARENA_ARRAY_ADD(args, stringPtr);
+            } break;
             default:
             {
                 fprintf(stderr, "arg specifier, '%c' unsupported\n", c);
