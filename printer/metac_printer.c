@@ -210,6 +210,23 @@ static inline void PrintVariable(metac_printer_t* self,
     }
 }
 
+static inline void PrintDeclaration(metac_printer_t* self,
+                                    metac_declaration_t* decl,
+                                    uint32_t level);
+
+static inline void PrintField(metac_printer_t* self,
+                              decl_variable_t* field)
+{
+    if (field->VarIdentifier.v != empty_identifier.v)
+    {
+        PrintVariable(self, field);
+    }
+    else
+    {
+        PrintDeclaration(self, cast(metac_declaration_t*)field->VarType, 0);
+    }
+}
+
 static inline void PrintParameterList(metac_printer_t* self,
                                       decl_parameter_t* Parameters)
 {
@@ -307,7 +324,7 @@ static inline void PrintType(metac_printer_t* self, decl_type_t* type)
             }
             else if (type->TypeKind == type_unsigned_long_long)
             {
-                PrintString(self, "long long", sizeof("unsigned long long") - 1);
+                PrintString(self, "unsigned long long", sizeof("unsigned long long") - 1);
             }
             else if (type->TypeKind == type_long_long)
             {
@@ -390,13 +407,22 @@ static inline void PrintType(metac_printer_t* self, decl_type_t* type)
             PrintString(self, "function) ", sizeof("function) ") - 1);
             PrintParameterList(self, funcType->Parameters);
         } break;
+        case decl_type_enum :
+        {
+            decl_type_enum_t* enumType = (decl_type_enum_t*) type;
+            if (enumType->Identifier.v != empty_identifier.v)
+            {
+                PrintIdentifier(self, enumType->Identifier);
+            }
+            else
+            {
+                PrintKeyword(self, tok_kw_enum);
+            }
+        }
+        break;
         default : assert(0);
     }
 }
-
-static inline void PrintDeclaration(metac_printer_t* self,
-                                    metac_declaration_t* decl,
-                                    uint32_t level);
 
 #define CASE_MACRO(EXP_TYPE) \
     case EXP_TYPE : {result = #EXP_TYPE;} break;
@@ -675,12 +701,27 @@ static inline void PrintStatement(metac_printer_t* self, metac_statement_t* stmt
             PrintIndent(self);
             PrintStatement(self, stmt_while->WhileBody);
         } break;
+        case stmt_do_while:
+        {
+            stmt_do_while_t* stmt_while = (stmt_do_while_t*)stmt;
+            PrintKeyword(self, tok_kw_do);
+            PrintNewline(self);
+            PrintIndent(self);
+            PrintStatement(self, stmt_while->DoWhileBody);
+            PrintKeyword(self, tok_kw_while);
+            PrintChar(self, '(');
+            PrintExpression(self, stmt_while->DoWhileExp);
+            PrintChar(self, ')');
+        } break;
         case stmt_comment:
         {
             stmt_comment_t* comment = (stmt_comment_t*)stmt;
             PrintString(self, "/*", 2);
             PrintStringWithNewline(self, comment->Text, comment->Length);
             PrintString(self, "*/", 2);
+        } break;
+        case stmt_empty:
+        {
         } break;
 
         default : {
@@ -832,7 +873,7 @@ static inline void PrintDeclaration(metac_printer_t* self,
         case decl_field :
         {
             decl_field_t* field = (decl_field_t*) decl;
-            PrintVariable(self, field->Field);
+            PrintField(self, field->Field);
         } break;
         case decl_variable:
         {
