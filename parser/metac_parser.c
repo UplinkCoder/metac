@@ -1041,6 +1041,7 @@ static inline bool CouldBeType(metac_parser_t* self,
     metac_token_t* peek = 0;
     uint32_t peekN = 2;
     typescan_flags_t flags = TypeScan_None;
+    bool isStar = false;
 
     if (eflags & expr_flags_pp)
         return false;
@@ -1049,7 +1050,7 @@ static inline bool CouldBeType(metac_parser_t* self,
     {
         U32(flags) |= TypeScan_FirstWasIdentifier;
     }
-    else if (tok == tok_star)
+    else if (tok == tok_star || tok == tok_uint)
     {
         return false;
     }
@@ -1063,6 +1064,7 @@ static inline bool CouldBeType(metac_parser_t* self,
         if (tok == tok_star)
         {
             U32(flags) |= TypeScan_SeenStar;
+            isStar = true;
         }
 #ifndef PARSE_TYPE_TUPLE_EXP
         else if (tok == tok_lBrace)
@@ -1071,12 +1073,18 @@ static inline bool CouldBeType(metac_parser_t* self,
             break;
         }
 #endif
-        if (((flags & TypeScan_SeenStar) != 0)
-              && (   (tok == tok_identifier)
-                  |  (tok == tok_uint) ))
+        if (isStar)
         {
-            result = false;
-            break;
+            isStar = false;
+            metac_token_t* peek2 = MetaCParser_PeekToken(self, peekN);
+            metac_token_enum_t tok2 = peek2 ? peek2->TokenType : tok_eof;
+
+            if ((tok2 == tok_identifier)
+             |  (tok2 == tok_uint) )
+             {
+                result = false;
+                break;
+             }
         }
         peek = MetaCParser_PeekToken(self, peekN++);
         tok = (peek ? peek->TokenType : tok_eof);
@@ -1683,6 +1691,7 @@ exp_argument_t* MetaCParser_ParseArgumentList(metac_parser_t* self)
 
     return arguments;
 }
+
 metac_expression_t* MetaCParser_ParseBinaryExpression(metac_parser_t* self,
                                                       parse_expression_flags_t eflags,
                                                       metac_expression_t* left,
@@ -3611,8 +3620,11 @@ const char* MetaCNodeKind_toChars(metac_node_kind_t type)
 void TestParseExprssion(void)
 {
     metac_printer_t printer;
+
     metac_lpp_t LPP;
-    MetaCLPP_Init(&LPP);
+    metac_alloc_t testParseAlloc;
+    Allocator_Init(&testParseAlloc, 0);
+    MetaCLPP_Init(&LPP, &testParseAlloc, 0);
 
     MetaCPrinter_Init(&printer,
         &LPP.Parser.IdentifierTable,
@@ -3630,20 +3642,22 @@ void TestParseExprssion(void)
     assert(!strcmp(MetaCPrinter_PrintExpression(&printer, expr), "(2 + (10 * 2))"));
 
     expr = MetaCLPP_ParseExpressionFromString(&LPP, "a = b(c)");
-    assert(!strcmp(MetaCPrinter_PrintExpression(&printer, expr), "(a = b(c))"));
+    assert(!strcmp(MetaCPrinter_PrintExpression(&printer, expr), "((a) = (b)((c)))"));
 
     expr = MetaCLPP_ParseExpressionFromString(&LPP, "((x + ((((a + b))))) + d)");
-    assert(!strcmp(MetaCPrinter_PrintExpression(&printer, expr), "((x + ((((a + b))))) + d)"));
+    assert(!strcmp(MetaCPrinter_PrintExpression(&printer, expr), "(((x) + (((((a) + (b)))))) + (d))"));
 
     expr = MetaCLPP_ParseExpressionFromString(&LPP, "x + y * 6737203");
-    assert(!strcmp(MetaCPrinter_PrintExpression(&printer, expr), "(x + (y * 6737203))"));
+    assert(!strcmp(MetaCPrinter_PrintExpression(&printer, expr), "((x) + (y * 6737203))"));
 }
 
 void TestParseDeclaration(void)
 {
     metac_printer_t printer;
     metac_lpp_t LPP;
-    MetaCLPP_Init(&LPP);
+    metac_alloc_t testParseAlloc;
+    Allocator_Init(&testParseAlloc, 0);
+    MetaCLPP_Init(&LPP, &testParseAlloc, 0);
 
     MetaCPrinter_Init(&printer,
         &LPP.Parser.IdentifierTable,

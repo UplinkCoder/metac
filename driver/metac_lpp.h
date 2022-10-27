@@ -5,6 +5,7 @@
 
 #include "../parser/metac_lexer.h"
 #include "../parser/metac_parser.h"
+#include "../os/metac_file.h"
 
 #ifndef NO_PREPROCESSOR
 #  include "../parser/metac_preproc.h"

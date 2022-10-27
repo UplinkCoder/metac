@@ -304,6 +304,7 @@ void MetaCCodegen_Init(metac_bytecode_ctx_t* self, metac_alloc_t* parentAlloc)
     {
         gen.set_alloc_memory(self->c, cast(alloc_fn_t)MetaCCodegen_AllocMemory, cast(void*)self);
     }
+
     if (gen.set_get_typeinfo)
     {
         gen.set_get_typeinfo(self->c, cast(get_typeinfo_fn_t)MetaCCodegen_GetTypeInfo, cast(void*)self);
