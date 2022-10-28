@@ -1042,6 +1042,7 @@ static inline bool CouldBeType(metac_parser_t* self,
     uint32_t peekN = 2;
     typescan_flags_t flags = TypeScan_None;
     bool isStar = false;
+    bool isAnd = false;
 
     if (eflags & expr_flags_pp)
         return false;
@@ -1066,6 +1067,10 @@ static inline bool CouldBeType(metac_parser_t* self,
             U32(flags) |= TypeScan_SeenStar;
             isStar = true;
         }
+        else if (tok == tok_and)
+        {
+            isAnd = true;
+        }
 #ifndef PARSE_TYPE_TUPLE_EXP
         else if (tok == tok_lBrace)
         {
@@ -1085,6 +1090,10 @@ static inline bool CouldBeType(metac_parser_t* self,
                 result = false;
                 break;
              }
+        }
+        else if (isAnd)
+        {
+            isAnd = false;
         }
         peek = MetaCParser_PeekToken(self, peekN++);
         tok = (peek ? peek->TokenType : tok_eof);
@@ -2873,11 +2882,10 @@ metac_declaration_t* MetaCParser_ParseDeclaration(metac_parser_t* self, metac_de
     else if (tokenType == tok_comment_multi
           || tokenType == tok_comment_single)
     {
-        metac_token_t* tok = MetaCParser_Match(self, tokenType);
+        self->CurrentComment = *MetaCParser_Match(self, tokenType);
         decl_comment_t* comment = AllocNewDeclaration(decl_comment, &result);
-        comment->Text = tok->CommentBegin;
-        comment->Length = tok->CommentLength;
-        self->CurrentComment = *tok;
+        comment->Text = self->CurrentComment.CommentBegin;
+        comment->Length = self->CurrentComment.CommentLength;
         result->Hash = crc32c(CRC32C_SLASH_SLASH, comment->Text, comment->Length);
         return result;
     }
@@ -3119,7 +3127,9 @@ metac_statement_t* MetaCParser_ParseStatement(metac_parser_t* self,
         stmt_comment_t* comment = AllocNewStatement(stmt_comment, &result);
         comment->Text = self->CurrentComment.CommentBegin;
         comment->Length = self->CurrentComment.CommentLength;
-        comment->Hash = ~0;
+        comment->Hash = crc32c(CRC32C_SLASH_SLASH, comment->Text, comment->Length);
+        metac_token_t* tok2 = MetaCParser_PeekToken(self, 1);
+        int k = 12;
     }
     else if (tokenType == tok_kw_if)
     {

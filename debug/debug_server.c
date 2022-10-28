@@ -206,11 +206,11 @@ void outArenaRow(char* body, uint32_t sz, uint32_t* pp, tagged_arena_t* arena)
         );
 
         p += snprintf (body + p, sz - p,
-                       "<td>%u</td>", arena->Offset
+                       "<td>%s</td>", PrintSize(arena->Offset)
         );
 
         p += snprintf (body + p, sz - p,
-                       "<td>%u</td>", arena->SizeLeft
+                       "<td>%s</td>", PrintSize(arena->SizeLeft)
         );
     }
 

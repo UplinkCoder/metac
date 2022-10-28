@@ -175,7 +175,6 @@ void MetaCSemantic_doCallSemantic(metac_semantic_state_t* self,
     if (nArgs == 0)
     {
         METAC_NODE(result->Call.Arguments) = emptyNode;
-
     }
     else
     {
@@ -297,6 +296,7 @@ metac_sema_expression_t* MetaCSemantic_doExprSemantic_(metac_semantic_state_t* s
             result->Econd = MetaCSemantic_doExprSemantic(self, expr->Econd, 0);
             hash = CRC32C_VALUE(hash, result->Econd->Hash);
         }
+
         result->E1 = MetaCSemantic_doExprSemantic(self, expr->E1, 0);
         result->E2 = MetaCSemantic_doExprSemantic(self, expr->E2, 0);
 
@@ -363,7 +363,7 @@ LswitchIdKey:
                         result->Variable = &fakeDotStruct;
                         //result->TypeIndex = MetaCSemantic_doTypeSemantic(self, result->Variable);
                         result->TypeIndex = result->Variable->TypeIndex;
-                        hash = 2560;
+                        hash = self->CompilerInterface->Header.Hash;
                     } break;
                 }
             }
@@ -836,7 +836,7 @@ LswitchIdKey:
             result->E1 = MetaCSemantic_doExprSemantic(self, expr->E1, 0);
             MetaCSemantic_PopExpr(self, result);
             assert(result->E1->TypeIndex.v != 0);
-            if (!MetaCSemantic_CanHaveAddress(self, expr->E1))
+            if (!MetaCSemantic_CanHaveAddress(self, result->E1))
             {
                 result->TypeIndex.v = ERROR_TYPE_INDEX_V;
                 const char* e1String = "E1";
@@ -874,12 +874,18 @@ void MetaCSemantic_PopExpr(metac_semantic_state_t* self,  metac_sema_expression_
 }
 
 bool MetaCSemantic_CanHaveAddress(metac_semantic_state_t* self,
-                                  metac_expression_t* expr)
+                                  metac_sema_expression_t* expr)
 {
+    expr = ExtractCastExp(expr);
+    expr = UnwrapParen(expr);
+    expr = ExtractCastExp(expr);
+    expr = UnwrapParen(expr);
+
     switch (expr->Kind)
     {
-        case exp_identifier:
+        case exp_variable:
             return true;
+
         default: return false;
     }
 }

@@ -155,6 +155,7 @@ int MetaCSemaTree_Walk_Real(metac_sema_declaration_t* decl, struct metac_semanti
             result = MetaCSemaTree_Walk_Real(returnType, sema, walker_fn, ctx);
             if (result)
                 return result;
+
             for(uint32_t i = 0; i < type_functiontype->ParameterTypeCount; i++)
             {
                 metac_type_index_t parameterTypeIdx = type_functiontype->ParameterTypes[i];

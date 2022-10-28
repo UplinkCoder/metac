@@ -27,4 +27,4 @@ metac_sema_expression_t* MetaCSemantic_doExprSemantic_(metac_semantic_state_t* s
 void MetaCSemantic_PushExpr(metac_semantic_state_t* self, metac_sema_expression_t* expr);
 void MetaCSemantic_PopExpr(metac_semantic_state_t* self,  metac_sema_expression_t* expr);
 
-bool MetaCSemantic_CanHaveAddress(metac_semantic_state_t* self, metac_expression_t* expr);
+bool MetaCSemantic_CanHaveAddress(metac_semantic_state_t* self, metac_sema_expression_t* expr);

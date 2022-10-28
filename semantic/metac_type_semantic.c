@@ -208,6 +208,29 @@ static inline metac_type_index_t CommonBasicType(const metac_type_index_t a,
     return result;
 }
 
+static inline bool TypeConvertsToPointer(const metac_type_index_t a)
+{
+    bool result = false;
+
+    switch(TYPE_INDEX_KIND(a))
+    {
+        case type_index_functiontype:
+        case type_index_struct:
+        case type_index_array:
+        case type_index_ptr:
+            result = true;
+        break;
+        case type_index_basic:
+        {
+            basic_type_kind_t basicKind = (basic_type_kind_t)
+                TYPE_INDEX_INDEX(a);
+            result = (basicKind == basic_int);
+        }
+
+    }
+
+    return result;
+}
 
 
 ///TODO FIXME
@@ -228,9 +251,17 @@ metac_type_index_t MetaCSemantic_CommonSubtype(metac_semantic_state_t* self,
             {
                 case type_index_basic:
                     result = CommonBasicType(a, b);
+                break;
+                case type_index_functiontype:
+                    result.v = TYPE_INDEX_V(type_index_functiontype, 0);
+                break;
                 default:
                     assert(!"CommonType not implemented for this type_kind");
             }
+        }
+        else if (TypeConvertsToPointer(a) && TypeConvertsToPointer(b))
+        {
+            result.v = TYPE_INDEX_V(type_index_ptr, 0);
         }
     }
 

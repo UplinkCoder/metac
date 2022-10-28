@@ -93,9 +93,7 @@ typedef struct metac_sema_expression_t
         };
         // case exp_sizeof:
         // case  exp_inject, exp_eject, exp_assert, exp_outerParen, exp_outer :
-        struct {
-            struct metac_sema_expression_t* E1;
-        };
+        struct metac_sema_expression_t* E1;
         // case exp_cast:
         struct {
             struct metac_sema_expression_t* CastExp;
@@ -108,33 +106,23 @@ typedef struct metac_sema_expression_t
             struct metac_sema_expression_t* DotE2;
         };
         // case exp_type
-        struct {
-            struct metac_type_index_t TypeExp;
-        };
+        struct metac_type_index_t TypeExp;
         // case exp_tuple
         struct {
             struct metac_sema_expression_t** TupleExpressions;
             uint32_t TupleExpressionCount;
         };
         // case exp_argument:
-        struct {
-            sema_exp_argument_list_t* ArgumentList;
-        };
+        sema_exp_argument_list_t* ArgumentList;
         // case exp_function:
-        struct {
-            struct sema_decl_function_t* Function;
-        };
+        struct sema_decl_function_t* Function;
         // case exp_call:
         struct sema_exp_call_t Call;
 
         // case variable_exp:
-        struct {
-            struct sema_decl_variable_t* Variable;
-        };
+        struct sema_decl_variable_t* Variable;
         // case field_exp:
-        struct {
-            struct metac_type_aggregate_field_t* Field;
-        };
+        struct metac_type_aggregate_field_t* Field;
         // case identifier_exp :
         struct {
             uint32_t IdentifierKey;

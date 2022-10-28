@@ -91,11 +91,13 @@ typedef struct ui_interface_t
     /// [Optional] Sets our repl Completion function as the completion provider
     void (*SetCompletionCallback) (struct ui_state_t* state, repl_state_t* repl,
                                    completion_cb_t completionCb);
+    /// [Optional] Gets the filesystem provided by this ui_interface
+    metac_filesystem_t* (*GetFileSystem) (struct ui_state_t* state);
+
     /// [Optional] Updates local completion cache this is useful for webinterfaces and the like
     /// where a call to the server for completion suggestions might want to be avoided
     uint32_t (*UpdateLocalCompletionCache)(struct ui_state_t* state,
                                            completion_cache_entry_t* entries, uint32_t nEntries);
-    metac_filesystem_t* (*GetFileSystem) (struct ui_state_t* state);
 } ui_interface_t;
 
 typedef struct repl_ui_context_t

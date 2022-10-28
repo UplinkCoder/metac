@@ -81,13 +81,19 @@ repl_mode_t Linenoise_QueryMode(ui_state_t* uiState)
 
 }
 
+metac_filesystem_t* Linenoise_GetFilesystem(ui_state_t* uiState)
+{
+    return &NativeFileSystem;
+}
+
 const struct ui_interface_t LinenoiseUiInterface =
 {
     Linenoise_GetInputLine,
     Linenoise_Message,
     Linenoise_QueryMode,
     Linenoise_Info,
-    Linenoise_SetCompletionCallback
+    Linenoise_SetCompletionCallback,
+    Linenoise_GetFilesystem,
 } ;
 
 int main(int argc, const char* argv[])

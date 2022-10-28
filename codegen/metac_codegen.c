@@ -18,15 +18,9 @@
 #include <stdarg.h>
 
 #ifdef METAC_COMPILER_INTERFACE
-extern metac_compiler_t compiler;
-
-metac_compiler_t compiler;
+#include "../compiler_intrinsics/metac_compiler_interface.c"
 #endif
 
-const char* compiler_help(void)
-{
-    return "Hello I am Mr. compiler. I cannot help you ...";
-}
 
 uint32_t MetaCCodegen_GetTypeABISize(metac_bytecode_ctx_t* ctx,
                                      metac_type_index_t type)
@@ -107,13 +101,29 @@ BCType MetaCCodegen_GetBCType(metac_bytecode_ctx_t* ctx, metac_type_index_t type
             default : assert(0);
         }
     }
+    else if (type.Kind == type_index_tuple)
+    {
+        result.type = BCTypeEnum_Tuple;
+        result.typeIndex = type.Index;
+    }
+    else if (type.Kind == type_index_functiontype)
+    {
+        result.type = BCTypeEnum_Function;
+        result.typeIndex = type.Index;
+    }
+    else if (type.Kind == type_index_struct)
+    {
+        result.type = BCTypeEnum_Struct;
+        result.typeIndex = type.Index;
+    }
+    else if (type.Kind == type_index_ptr)
+    {
+        result.type = BCTypeEnum_Ptr;
+        result.typeIndex = type.Index;
+    }
     else
     {
-        if (type.Kind == type_index_tuple)
-        {
-            result.type = BCTypeEnum_Tuple;
-            result.typeIndex = type.Index;
-        }
+        assert(0);
     }
 
     return  result;
@@ -138,6 +148,7 @@ BCTypeInfo* MetaCCodegen_GetTypeInfo(metac_bytecode_ctx_t* ctx, BCType* bcType)
 {
     return 0;
 }
+
 void MetaCCodegen_doGlobal(metac_bytecode_ctx_t* ctx, metac_sema_declaration_t* decl, uint32_t idx)
 {
     BCValue result = {BCValueType_HeapValue};
@@ -163,8 +174,10 @@ void MetaCCodegen_doGlobal(metac_bytecode_ctx_t* ctx, metac_sema_declaration_t* 
                 MetaCCodegen_doExpression(ctx, var.VarInitExpression, &initVal, _Rvalue);
             }
         }
+/*
         printf("offset = %d sz = %d\n", ctx->GlobalMemoryOffset, sz);
                 ctx->GlobalMemoryOffset += align4(sz);
+*/
         //printf("Doing da global\n");
         // if (decl.)
     }
@@ -287,10 +300,6 @@ void MetaCCodegen_Init(metac_bytecode_ctx_t* self, metac_alloc_t* parentAlloc)
         self->gen = &BCGen_interface;
 #endif
 
-#if METAC_COMPILER_INTERFACE
-    compiler.help = compiler_help;
-#endif
-
     const BackendInterface gen = *self->gen;
 
     Allocator_Init(&self->Allocator, parentAlloc, 0);
@@ -309,14 +318,25 @@ void MetaCCodegen_Init(metac_bytecode_ctx_t* self, metac_alloc_t* parentAlloc)
     {
         gen.set_get_typeinfo(self->c, cast(get_typeinfo_fn_t)MetaCCodegen_GetTypeInfo, cast(void*)self);
     }
+
     gen.init_instance(self->c);
 
     gen.Initialize(self->c, 0);
     ARENA_ARRAY_INIT(metac_bytecode_function_t, self->Functions, &self->Allocator);
 
+    ARENA_ARRAY_INIT(metac_external_entry_t, self->Externals, &self->Allocator);
+
     // ARENA_ARRAY_INIT(sema_decl_variable_t, self->Locals, &self->Allocator);
     ARENA_ARRAY_INIT(BCValue, self->Globals, &self->Allocator);
     self->GlobalMemoryOffset = 4;
+
+#if METAC_COMPILER_INTERFACE
+    metac_external_entry_t* extCompP = self->Externals + 0;
+    extCompP->externalAddress = &compiler;
+    extCompP->externalSize = sizeof(compiler);
+    self->ExternalsCount = 1;
+    compiler.help = compiler_help;
+#endif
 }
 
 void MetaCCodegen_Free(metac_bytecode_ctx_t* self)
@@ -341,6 +361,7 @@ static BCValue MetaCCodegen_doFunction(metac_bytecode_ctx_t* ctx,
     metac_bytecode_function_t f = MetaCCodegen_GenerateFunction(ctx, fn);
     return imm32(f.FunctionIndex);
 }
+
 metac_bytecode_function_t MetaCCodegen_GenerateFunctionFromExp(metac_bytecode_ctx_t* ctx,
                                                                metac_sema_expression_t* expr)
 {
@@ -377,7 +398,7 @@ metac_bytecode_function_t MetaCCodegen_GenerateFunctionFromExp(metac_bytecode_ct
 #endif
 
     // we need to introduce all resolvable variables from the outer context here.
-
+// .compiler.help - .compiler
     MetaCCodegen_doExpression(ctx, expr, &resultVal, _Rvalue);
 
     gen.Ret(c, &resultVal);
@@ -570,27 +591,8 @@ static bool MetaCCodegen_AccessVariable(metac_bytecode_ctx_t* ctx,
 
         case storage_external:
         {
-
-            BCType extType = {BCTypeEnum_Ptr};
-
-            BCValue ext = gen.GenExternal(c, extType, 0);
-            void* memory = 0;
-            int sz = 0;
-            gen.MapExternal(c, &ext, memory, 0);
-
-            // (*result) = ctx->Externals[var->Storage.Offset].ExtValue;
-            assert(!"External access ins't currently implemented");
-/*
-            BCValue externalRef = ctx->Externals[var->Storage.Offset].ExtValue;
-            assert(externalRef.vType == BCValueType_External);
-            BCValue resTmp = gen.GenTemporary(c, externalRef.type);
-
-            resTmp.heapRef.vType = BCValueType_External;
-            resTmp.heapRef.externalAddr = externalRef.externalAddr;
-
-            (*result) = resTmp;
-*/
-            return true;
+            (*result) = ctx->Externals[var->Storage.Offset].ExtValue;
+            return false;
         } break;
         case storage_parameter:
         {
@@ -736,6 +738,94 @@ static bool HasSideEffect(metac_sema_expression_t* exp)
     return exp->Kind != exp_signed_integer;
 }
 
+static BCValue PtrValue(metac_bytecode_ctx_t* ctx, void* ptrV)
+{
+    size_t value = (size_t)ptrV;
+
+    if (sizeof(void*) == 4)
+    {
+        return imm32(value);
+    }
+    else if (sizeof(void*) == 8)
+    {
+        return imm64(value);
+    }
+}
+
+static void MetaCCodegen_ComputeAddress(metac_bytecode_ctx_t* ctx,
+                                        metac_sema_expression_t* exp,
+                                        BCValue* result)
+{
+    sema_decl_variable_t* var = exp->Variable;
+    assert(exp->Kind == exp_variable);
+    switch(var->Storage.Kind)
+    {
+        case storage_external:
+        {
+            *result = PtrValue(ctx, ctx->Externals[var->Storage.Offset].externalAddress);
+        } break;
+        case storage_global:
+        {
+            *result = PtrValue(ctx, ctx->GlobalsArena.Memory + var->Storage.Offset);
+        } break;
+        default: assert(!"this type of storage is not supported");
+    }
+
+}
+
+void MetaCCodegen_doDeref(metac_bytecode_ctx_t* ctx,
+                          BCValue* addr,
+                          metac_type_index_t varType,
+                          BCValue* result)
+{
+    if (TYPE_INDEX_KIND(varType) == type_index_functiontype)
+    {
+        *result = *addr;
+    }
+    else
+    {
+        assert(!"doDeref not implemented right now");
+    }
+}
+
+static void MetaCCodegen_doDotExpression(metac_bytecode_ctx_t* ctx,
+                                         metac_sema_expression_t* exp,
+                                         BCValue* result)
+{
+    const BackendInterface gen = *ctx->gen;
+    void* c = ctx->c;
+
+    metac_sema_expression_t* e1 = exp->E1;
+    metac_sema_expression_t* e2 = exp->DotE2;
+
+    metac_type_index_t expTypeIndex = e1->TypeIndex;
+    metac_type_index_kind_t idxKind = TYPE_INDEX_KIND(expTypeIndex);
+    metac_type_aggregate_field_t* field = 0;
+    BCType addrType = {BCTypeEnum_Ptr};
+    BCValue addr = gen.GenTemporary(c, addrType);
+    BCValue e1Value = {BCValueType_Unknown};
+    BCValue offsetVal = {BCValueType_Unknown};
+
+    assert(exp->Kind == exp_dot);
+    assert(idxKind == type_index_struct);
+    assert(e2->Kind == exp_field);
+
+    MetaCCodegen_doExpression(ctx, e1, &e1Value, _Rvalue);
+
+    field = e2->Field;
+    offsetVal = imm32(field->Offset);
+
+    // HACK remove!
+    if (e1Value.vType == BCValueType_HeapValue || e1Value.vType == BCValueType_External)
+    {
+        e1Value.vType = BCValueType_StackValue;
+    }
+
+    gen.Add3(c, &addr, &e1Value, &offsetVal);
+
+    MetaCCodegen_doDeref(ctx, &addr, field->Type, result);
+}
+
 static void MetaCCodegen_doExpression(metac_bytecode_ctx_t* ctx,
                                       metac_sema_expression_t* exp,
                                       BCValue* result,
@@ -801,6 +891,12 @@ static void MetaCCodegen_doExpression(metac_bytecode_ctx_t* ctx,
         MetaCCodegen_doExpression(ctx, exp->E1, result, _Lvalue);
         MetaCCodegen_doExpression(ctx, exp->E2, &rhs, _Rvalue);
     }
+    else if (op == exp_addr)
+    {
+    }
+    else if (op == exp_dot)
+    {
+    }
     else if (IsUnaryExp(op))
     {
         if (exp->E1->Kind == exp_signed_integer
@@ -859,6 +955,12 @@ static void MetaCCodegen_doExpression(metac_bytecode_ctx_t* ctx,
             assert(0);
         } break;
 
+
+        case exp_dot:
+        {
+            MetaCCodegen_doDotExpression(ctx, exp, result);
+        } break;
+
         case exp_function:
         {
             *result = MetaCCodegen_doFunction(ctx, exp->Function);
@@ -901,6 +1003,11 @@ static void MetaCCodegen_doExpression(metac_bytecode_ctx_t* ctx,
                 r = r->E2;
             }
             MetaCCodegen_doExpression(ctx, r, result, lValue);
+        } break;
+
+        case exp_addr:
+        {
+            MetaCCodegen_ComputeAddress(ctx, exp->E1, result);
         } break;
 
         case exp_string:
@@ -998,6 +1105,10 @@ static void MetaCCodegen_doExpression(metac_bytecode_ctx_t* ctx,
                         gen.Store32(c, &address, bcValues + i);
                     }
                     else if (te.TypeIndex.v == TYPE_INDEX_V(type_index_basic, type_type))
+                    {
+                        gen.Store32(c, &address, bcValues + i);
+                    }
+                    else if (TYPE_INDEX_KIND(te.TypeIndex) == type_index_struct)
                     {
                         gen.Store32(c, &address, bcValues + i);
                     }

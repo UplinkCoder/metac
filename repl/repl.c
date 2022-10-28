@@ -9,7 +9,6 @@
 #include "../semantic/metac_semantic_obj.c"
 #include "../driver/metac_driver.c"
 #include "../driver/metac_lpp.c"
-#include "../compiler_intrinsics/metac_compiler_interface.h"
 #include "../os/bsr.h"
 #include "../hash/crc32c.h"
 #include "../semantic/handoff.c"
@@ -195,10 +194,13 @@ void Presemantic_(repl_state_t* self)
         ReadFileAndZeroTerminate("metac_compiler_interface.h");
     if (!fCompilterInterface.FileContent0)
         fCompilterInterface =
-        ReadFileAndZeroTerminate("compiler_intrinsics/metac_compiler_interface.h");
+            ReadFileAndZeroTerminate("compiler_intrinsics/metac_compiler_interface.h");
     if (!fCompilterInterface.FileContent0)
         fCompilterInterface =
-        ReadFileAndZeroTerminate("../compiler_intrinsics/metac_compiler_interface.h");
+            ReadFileAndZeroTerminate("../compiler_intrinsics/metac_compiler_interface.h");
+    if (!fCompilterInterface.FileContent0)
+        fCompilterInterface =
+            ReadFileAndZeroTerminate("/home/uplink/dev/metac/compiler_intrinsics/metac_compiler_interface.h");
 
     if (fCompilterInterface.FileContent0)
     {
@@ -568,6 +570,10 @@ metac_identifier_ptr_t IdentifierPtrFromSemaDecl(metac_sema_declaration_t* decl)
     return idPtr;
 
 }
+#define COMMAND_FN(NAME) \
+    void NAME (repl_state_t* repl, ui_interface_t uiInterface, struct ui_state_t* uiState)
+typedef COMMAND_FN((*command_fn_t));
+
 
 #ifndef NO_FIBERS
 static void Repl_doDeclSemantic_cont(MetaCSemantic_doDeclSemantic_task_context_t* ctx)
@@ -607,11 +613,21 @@ LswitchMode:
                 return false;
             case 'f' :
             {
-                repl->ParseMode = repl_mode_lex_file;
-                const char* filename = repl->Line + 3;
-                MSG("querying fileStorage");
-                // metac_file_storage_t* fs = Global_GetFileStorage(worker);
-                // metac_file_ptr_t f = MetaCFileStorage_LoadFile(fs, filename);
+                if (uiInterface.GetFileSystem)
+                {
+                    metac_filesystem_t* fs = uiInterface.GetFileSystem(uiState);
+
+                    repl->ParseMode = repl_mode_lex_file;
+                    const char* filename = repl->Line + 3;
+                    MSG("querying fileStorage\n");
+                    // metac_file_storage_t* fs = Global_GetFileStorage(worker);
+                    // metac_file_ptr_t f = MetaCFileStorage_LoadFile(fs, filename);
+                }
+                else
+                {
+                    MSG("No filesystem in interface\n");
+                }
+                goto LnextLine;
             } break;
             case 'c' :
             {
@@ -1174,16 +1190,39 @@ LnextLine:
 }
 repl_ui_context_t* g_uiContext = 0;
 
+completion_list_t CompleteCommand (repl_state_t* repl, const char *input, uint32_t inputLength)
+{
+    completion_list_t result = {0};
+    assert(input[0] == ':');
+
+    for(uint32_t i = 0; i < 1; i++)
+    {
+
+    }
+
+    switch(input[1])
+    {
+
+    }
+
+    return result;
+}
+
 completion_list_t ReplComplete (repl_state_t* repl, const char *input, uint32_t inputLength)
 {
     metac_lexer_t completionLexer = {0};
     metac_parser_t completionParser = {0};
     completion_list_t result = {0};
 
-    MetaCLexer_Init(&completionLexer, &repl->Allocator);
+    MetaCLexer_Init(&completionLexer, &repl->CompletionAlloc);
 
     char* lastWord = 0;
     char* completions[] =  {(char*)"1337", (char*)"0xF13"};
+
+    if (input[0] == ':')
+    {
+        return CompleteCommand(repl, input, inputLength);
+    }
 
     result.CompletionsLength = 2;
     result.Completions = Allocator_Calloc(&repl->Allocator, char*, result.CompletionsLength);
