@@ -678,15 +678,19 @@ metac_type_index_t MetaCSemantic_TypeSemantic(metac_semantic_state_t* self,
     else if (type->Kind == decl_type_tuple)
     {
         uint32_t i;
-        uint32_t hash = ~0;
+#define tuple_key 0x55ee11
+
+        uint32_t hash = tuple_key;
         decl_type_tuple_t* tupleType = cast(decl_type_tuple_t*) type;
 
         STACK_ARENA_ARRAY(metac_type_index_t, typeIndicies, 16, &self->Allocator)
 
         for(i = 0; i < tupleType->TypeCount; i++)
         {
-            ARENA_ARRAY_ADD(typeIndicies,
-                MetaCSemantic_TypeSemantic(self, tupleType->Types[i]));
+            metac_type_index_t typ =
+                     MetaCSemantic_TypeSemantic(self, tupleType->Types[i]);
+            ARENA_ARRAY_ADD(typeIndicies, typ);
+            hash = CRC32C_VALUE(hash, typ);
         }
 
         printf("typeIndiciesCount %d\n", typeIndiciesCount);
@@ -697,6 +701,17 @@ metac_type_index_t MetaCSemantic_TypeSemantic(metac_semantic_state_t* self,
             header,
             zeroIdx, typeIndicies, typeIndiciesCount
         };
+
+        result =
+            MetaCTypeTable_GetOrEmptyTupleType(&self->TupleTypeTable, &key);
+
+        if (result.v == 0)
+        {
+            result = MetaCTypeTable_AddTupleType(&self->TupleTypeTable, &key);
+        }
+
+        metac_type_tuple_t* semaTypeTuple = TupleTypePtr(self, TYPE_INDEX_INDEX(result));
+        printf("should have gotten tuple type\n");
     }
     else if (type->Kind == decl_type_array)
     {
