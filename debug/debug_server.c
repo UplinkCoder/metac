@@ -334,7 +334,18 @@ int Debug_Init(debug_server_t* debugServer, unsigned short port) {
 void Debug_Allocator(debug_server_t* debugServer, metac_alloc_t* allocator)
 {
     uint32_t count = debugServer->AllocatorsCount++;
-    debugServer->Allocators[count] = allocator;
+    if (count < debugServer->AllocationsCapacity)
+    {
+        debugServer->Allocators[count] = allocator;
+    }
+    else
+    {
+        uint32_t newCapa = debugServer->AllocatorsCapacity + 16;
+        void* newMem =
+            realloc(debugServer->Allocators, newCapa * sizeof(debug_allocation_t));
+        if (newMem)
+            debugServer->Allocators = (debug_allocation_t*)newMem;
+    }
   //  if (count == 5) { asm ( "int $3" ); }
 }
 

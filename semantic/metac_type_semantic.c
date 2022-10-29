@@ -693,7 +693,6 @@ metac_type_index_t MetaCSemantic_TypeSemantic(metac_semantic_state_t* self,
             hash = CRC32C_VALUE(hash, typ);
         }
 
-        printf("typeIndiciesCount %d\n", typeIndiciesCount);
         metac_type_header_t header =
             {decl_type_tuple, 0, hash};
 
@@ -711,7 +710,6 @@ metac_type_index_t MetaCSemantic_TypeSemantic(metac_semantic_state_t* self,
         }
 
         metac_type_tuple_t* semaTypeTuple = TupleTypePtr(self, TYPE_INDEX_INDEX(result));
-        printf("should have gotten tuple type\n");
     }
     else if (type->Kind == decl_type_array)
     {
