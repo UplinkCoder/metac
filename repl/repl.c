@@ -905,7 +905,6 @@ LswitchMode:
                 metac_sema_expression_t* result =
                     MetaCSemantic_doExprSemantic(&repl->SemanticState, exp, 0);
 
-                metac_expression_t printExpStorage;
                 if (!result)
                     goto LnextLine;
 

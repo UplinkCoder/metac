@@ -550,15 +550,15 @@ static inline void Lightning_CmpOp3(Lightning* self, BCValue *result, const BCVa
                     jit_ler(JIT_R0, JIT_R0, JIT_R1);
                 break;
                 case HASH_ULE:
-                    jit_lei_u(JIT_R0, JIT_R0, JIT_R1);
+                    jit_ler_u(JIT_R0, JIT_R0, JIT_R1);
                 break;
                 case HASH_LT:
                     jit_ltr(JIT_R0, JIT_R0, JIT_R1);
                 break;
                 case HASH_ULT:
-                    jit_lti_u(JIT_R0, JIT_R0, JIT_R1);
+                    jit_ltr_u(JIT_R0, JIT_R0, JIT_R1);
                 break;
-                
+
                 case HASH_GE:
                     jit_ger(JIT_R0, JIT_R0, JIT_R1);
                 break;
@@ -569,7 +569,7 @@ static inline void Lightning_CmpOp3(Lightning* self, BCValue *result, const BCVa
                     jit_gtr(JIT_R0, JIT_R0, JIT_R1);
                 break;
                 case HASH_UGT:
-                    jit_gti_u(JIT_R0, JIT_R0, JIT_R1);
+                    jit_gtr_u(JIT_R0, JIT_R0, JIT_R1);
                 break;
 
                 case HASH_EQ:
@@ -583,7 +583,7 @@ static inline void Lightning_CmpOp3(Lightning* self, BCValue *result, const BCVa
             }
         }
     }
-    
+
     StoreRegValue(self, result, r0Index);
 }
 

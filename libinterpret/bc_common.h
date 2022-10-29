@@ -295,19 +295,19 @@ typedef struct CndJmpBegin
 
 static inline bool isStackAddress(uint32_t unrealPointer)
 {
-    // a stack address has the upper 1 bits set
+    // a stack address has the upper 2 bits set
     return (unrealPointer & AddrMask) == stackAddrMask;
 }
 
 static inline bool isExternalAddress(uint32_t unrealPointer)
 {
-    // an external address has
+    // an external address has 1 upper bit set
     return (unrealPointer & AddrMask) == externalAddrMask;
 }
 
 static inline bool isHeapAddress(uint32_t unrealPointer)
 {
-    // a heap address does not have the upper 1 bits set
+    // a heap address does not have the upper 2 bits set
     return (unrealPointer & stackAddrMask) == 0;
 }
 

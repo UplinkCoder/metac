@@ -97,8 +97,10 @@ void outAllocRow(char* body, uint32_t sz, uint32_t* pp, metac_alloc_t* alloc)
 
     p += snprintf (body + p, sz - p, "<tr>");
 
+    printf("arenaCount: %u\n", alloc->ArenaCount);
     for(j = 0; j < alloc->ArenaCount; j++)
     {
+        printf("j: %u\n", j);
         usedSize += alloc->Arenas[j].Offset;
         // we seem to be double counting allocated size
         allocatedSize += (alloc->Arenas[j].Offset + alloc->Arenas[j].SizeLeft);
@@ -145,14 +147,14 @@ void outAllocRow(char* body, uint32_t sz, uint32_t* pp, metac_alloc_t* alloc)
 
 MHD_HANDLER (handleAllocators)
 {
-    static char responseString[4096];
+    static char responseString[8192];
     debug_server_t* debugServer = (debug_server_t*) cls;
     int i;
     uint32_t p = 0;
     int len;
     int n_fields = 0;
 
-    char body[4096];
+    char body[8192];
     body[0] = '\0';
 
     const char* headers[] = {
@@ -171,7 +173,7 @@ MHD_HANDLER (handleAllocators)
         p += snprintf(body + p, ARRAYSIZE(body) - p, "<th>%s</th>", headers[i]);
     }
     p += snprintf(body + p, ARRAYSIZE(body) - p, "</tr>");
-
+    printf("debugServer->AllocatorsCount: %u\n", debugServer->AllocatorsCount);
     for (i = 0; i < debugServer->AllocatorsCount; i++)
     {
         metac_alloc_t * alloc = debugServer->Allocators[i];
@@ -220,7 +222,7 @@ void outArenaRow(char* body, uint32_t sz, uint32_t* pp, tagged_arena_t* arena)
 
 MHD_HANDLER(handleArenas)
 {
-    static char responseBuffer[4096];
+    static char responseBuffer[8192];
     uint32_t p = 0;
     const char* headers[] = {
         "Arena_Addr",
@@ -229,7 +231,7 @@ MHD_HANDLER(handleArenas)
         "Offset",
         "SizeLeft",
     };
-    char body[4096];
+    char body[8192];
 
     debug_server_t *debugServer = cast(debug_server_t*) cls;
     const char *allocIdxStr =

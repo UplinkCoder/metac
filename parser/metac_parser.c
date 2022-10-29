@@ -1588,7 +1588,7 @@ metac_expression_t* MetaCParser_ParseUnaryExpression(metac_parser_t* self, parse
         MetaCParser_Match(self, tok_and);
         result = AllocNewExpression(exp_addr);
         //PushOperator(exp_addr);
-        result->E1 = MetaCParser_ParseExpression(self, cast(parse_expression_flags_t)(expr_flags_addr | (eflags & expr_flags_pp)), 0);
+        result->E1 = MetaCParser_ParseExpression(self, cast(parse_expression_flags_t)(expr_flags_unary | (eflags & expr_flags_pp)), 0);
         result->Hash = CRC32C_VALUE(CRC32C_AND, result->E1->Hash);
         //PushOperand(result);
         //PopOperator(exp_addr);

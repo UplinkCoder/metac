@@ -1868,7 +1868,7 @@ BCValue BCGen_interpret(BCGen* self, uint32_t fnIdx, BCValue* args, uint32_t n_a
                 state.mapPtr += ALIGN16(external.size);
 
                 state.externals[state.externalsCount++] = external;
-                (*opRef) = state.externalsCount;
+                (*opRef) = external.mapAddr;
                 //assert(0);//, "Unsupported right now: BCBuiltin");
             }
             break;
@@ -2546,7 +2546,7 @@ static inline BCValue BCGen_castTo(BCGen* self, const BCValue* rhs, BCTypeEnum t
 static inline void BCGen_Set(BCGen* self, BCValue* lhs, const BCValue* rhs)
 {
     assert(BCValue_isStackValueOrParameter(lhs));//, "Set lhs is has to be a StackValue. Not: " ~ enumToString(lhs.vType));
-    assert(rhs->vType == BCValueType_Immediate || BCValue_isStackValueOrParameter(rhs));//, "Set rhs is has to be a StackValue or Imm not: " ~ rhs.vType.enumToString);
+    assert(rhs->vType == BCValueType_Immediate || rhs->vType == BCValueType_External || BCValue_isStackValueOrParameter(rhs));//, "Set rhs is has to be a StackValue or Imm not: " ~ rhs.vType.enumToString);
 
     if (rhs->vType == BCValueType_Immediate)
     {
@@ -2562,6 +2562,7 @@ static inline void BCGen_Set(BCGen* self, BCValue* lhs, const BCValue* rhs)
     }
     else if (!BCValue_eq(lhs, rhs)) // do not emit self assignments;
     {
+        BCValue tmp = *lhs;
         BCGen_emitArithInstruction(self, LongInst_Set, lhs, rhs, 0);
     }
 }
@@ -2604,18 +2605,20 @@ static inline void BCGen_emitArithInstruction(BCGen* self
     bool pushedLhs = 0, pushedRhs = 0;
 
     // FIXME Implement utf8 <-> utf32 conversion
+/*
     assert(commonType == BCTypeEnum_i32 || commonType == BCTypeEnum_i64
         || commonType == BCTypeEnum_u32 || commonType == BCTypeEnum_u64
         || commonType == BCTypeEnum_f23 || commonType == BCTypeEnum_c32
         || commonType == BCTypeEnum_c8  || commonType == BCTypeEnum_f52);//,
-    //    "only i32, i64, f23, f52, is supported for now not: " ~ enumToString(commonType));
+*/
+  //    "only i32, i64, f23, f52, is supported for now not: " ~ enumToString(commonType));
     //assert(lhs.type.type == rhs.type.type, enumToString(lhs.type.type) ~ " != " ~ enumToString(rhs.type.type));
 
     BCValueType lhs_vType = lhsP->vType;
     BCValueType rhs_vType = rhsP->vType;
 
-    BCValue lhs;
-    BCValue rhs;
+    BCValue lhs = {lhs_vType};
+    BCValue rhs = {rhs_vType};
 
     if (lhs_vType == BCValueType_Immediate)
     {
@@ -2709,7 +2712,7 @@ static inline void BCGen_emitArithInstruction(BCGen* self
         }
     }
 
-    if (BCValue_isStackValueOrParameter(rhsP))
+    if (BCValue_isStackValueOrParameter(rhsP) || rhsP->vType == BCValueType_External)
     {
         BCGen_emitLongInstSS(self, inst, lhsP->stackAddr, rhsP->stackAddr);
     }
@@ -2864,10 +2867,16 @@ static inline void BCGen_MemCpy(BCGen* self, BCValue *dst, const BCValue* src, c
 
 static inline void BCGen_Ret(BCGen* self, const BCValue* val)
 {
-    LongInst inst = ((BCTypeEnum_basicTypeSize(val->type.type) == 8) ? LongInst_Ret64 : LongInst_Ret32);
+
+    LongInst inst = LongInst_Ret32;
     bool newValTemp = 0;
     BCValue newVal;
     uint32_t hi = 0;
+    if (BCType_isBasicBCType(val->type))
+    {
+         inst = ((BCTypeEnum_basicTypeSize(val->type.type) == 8) ? LongInst_Ret64 : LongInst_Ret32);
+    }
+
 
     if (val->vType == BCValueType_Immediate)
     {
@@ -2890,6 +2899,11 @@ static inline void BCGen_Ret(BCGen* self, const BCValue* val)
      || (val->vType == BCValueType_Immediate))
     {
         BCGen_emit2(self, BCGen_ShortInst16(inst, val->stackAddr.addr), hi);
+    }
+    else if (val->vType == BCValueType_External)
+    {
+        uint32_t externalIndex = val->externalIndex;
+        BCGen_emit2(self, BCGen_ShortInst16(inst, val->stackAddr.addr), 0);
     }
     else
     {
@@ -2943,15 +2957,6 @@ void BCGen_endJmp(BCGen* self, BCAddr atIp, BCLabel target)
         ip += 2;
     }
 
-
-    void Call(BCValue result, BCValue fn, BCValue[] args)
-    {
-        auto call_id = BCGen_pushTemporary(imm32(callCount + 1)).stackAddr;
-        calls[callCount++] = RetainedCall(fn, args, functionIdx, ip, sp);
-        emitLongInst(LongInst_Call, result.stackAddr, call_id);
-
-    }
-
     void Throw(BCValue e)
     {
         assert(BCValue_isStackValueOrParameter(&e));
@@ -2974,7 +2979,7 @@ void BCGen_endJmp(BCGen* self, BCAddr atIp, BCLabel target)
         ip += 2;
     }
 
-/+
+/*
     void Push(BCValue v)
     {
         const sz = BCTypeEnum_basicTypeSize(v.typ.type);
@@ -2991,7 +2996,7 @@ void BCGen_endJmp(BCGen* self, BCAddr atIp, BCLabel target)
         }
         ip += 2;
     }
-+/
+*/
 
     void Memcmp(BCValue result, BCValue lhs, BCValue rhs)
     {

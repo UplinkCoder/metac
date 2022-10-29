@@ -362,6 +362,25 @@ static BCValue MetaCCodegen_doFunction(metac_bytecode_ctx_t* ctx,
     return imm32(f.FunctionIndex);
 }
 
+static void InitCompilerInterface(metac_bytecode_ctx_t* ctx)
+{
+#ifdef METAC_COMPILER_INTERFACE
+    void* c = ctx->c;
+    const BackendInterface gen = *ctx->gen;
+
+    if (ctx->Sema->CompilerInterface)
+    {
+        BCType compilerInterfaceType;
+        compilerInterfaceType.type = BCTypeEnum_Struct;
+        compilerInterfaceType.typeIndex =
+            ctx->Sema->CompilerInterface->TypeIndex.Index;
+
+        ctx->CompilerInterfaceValue = gen.GenExternal(c, compilerInterfaceType, ".compiler");
+        gen.MapExternal(c, &ctx->CompilerInterfaceValue, &compiler, sizeof(compiler));
+        ctx->Externals[0].ExtValue = ctx->CompilerInterfaceValue;
+    }
+#endif
+}
 metac_bytecode_function_t MetaCCodegen_GenerateFunctionFromExp(metac_bytecode_ctx_t* ctx,
                                                                metac_sema_expression_t* expr)
 {
@@ -375,30 +394,33 @@ metac_bytecode_function_t MetaCCodegen_GenerateFunctionFromExp(metac_bytecode_ct
 
     if (expr->Kind == exp_call)
     {
-        assert(expr->E1->Kind == exp_function);
+        if(expr->E1->Kind == exp_function)
+        {
+            calledF = MetaCCodegen_GenerateFunction(ctx, expr->E1->Function);
+        }
+        else if (expr->E1->Kind == exp_dot)
+        {
+            InitCompilerInterface(ctx);
 
-        calledF = MetaCCodegen_GenerateFunction(ctx, expr->E1->Function);
+            BCValue funcP;
+            MetaCCodegen_doExpression(ctx, expr->E1, &funcP, _Rvalue);
+
+            metac_sema_expression_t* e1Dot = expr->E1->E1;
+            metac_sema_expression_t* e2Dot = expr->E1->DotE2;
+        }
+        else
+        {
+            int k = 12;
+        }
     }
 
     func.FunctionIndex =
         gen.BeginFunction(c, 0, "dummy_eval_func");
 
-#ifdef METAC_COMPILER_INTERFACE
-    if (ctx->Sema->CompilerInterface)
-    {
-        BCType compilerInterfaceType;
-        compilerInterfaceType.type = BCTypeEnum_Struct;
-        compilerInterfaceType.typeIndex =
-            ctx->Sema->CompilerInterface->TypeIndex.Index;
-
-        ctx->CompilerInterfaceValue = gen.GenExternal(c, compilerInterfaceType, ".compiler");
-        gen.MapExternal(c, &ctx->CompilerInterfaceValue, &compiler, sizeof(compiler));
-        ctx->Externals[0].ExtValue = ctx->CompilerInterfaceValue;
-    }
-#endif
+    InitCompilerInterface(ctx);
 
     // we need to introduce all resolvable variables from the outer context here.
-// .compiler.help - .compiler
+    // .compiler.help - .compiler
     MetaCCodegen_doExpression(ctx, expr, &resultVal, _Rvalue);
 
     gen.Ret(c, &resultVal);
@@ -436,8 +458,11 @@ metac_bytecode_function_t MetaCCodegen_GenerateFunction(metac_bytecode_ctx_t* ct
         }
     }
 
+    metac_type_functiontype_t* functionType =
+        FunctiontypePtr(ctx->Sema, TYPE_INDEX_INDEX(function->TypeIndex));
     uint32_t frameSize = 0;
-    uint32_t functionParameterCount = 1;
+    uint32_t functionParameterCount = functionType->ParameterTypeCount;
+
     STACK_ARENA_ARRAY(BCValue, parameters, 16, &ctx->Allocator);
     STACK_ARENA_ARRAY(BCValue, locals, 16, &ctx->Allocator);
     STACK_ARENA_ARRAY(BCAddr, breaks, 32, &ctx->Allocator);
@@ -574,6 +599,7 @@ static bool IsUnaryExp(metac_expression_kind_t kind)
 
     storage_invalid = 0xE,
 */
+
 // Returns wheter the access was indirected i.e. we need to
 // store the result of the operation to the heap when we are done
 static bool MetaCCodegen_AccessVariable(metac_bytecode_ctx_t* ctx,
@@ -670,6 +696,7 @@ static void LoadFromHeapRef(metac_bytecode_ctx_t* ctx, BCValue* hrv, uint32_t ab
         }
     }
 }
+
 static void StructMemberInit(void *c, BCValue* result, uint32_t offset, BCValue* initValue, uint32_t memberSz)
 {
     assert(0);
@@ -808,7 +835,7 @@ static void MetaCCodegen_doDotExpression(metac_bytecode_ctx_t* ctx,
 
     assert(exp->Kind == exp_dot);
     assert(idxKind == type_index_struct);
-    assert(e2->Kind == exp_field);
+    assert(e2->Kind == exp_field || e2->Kind == exp_call);
 
     MetaCCodegen_doExpression(ctx, e1, &e1Value, _Rvalue);
 
@@ -1269,8 +1296,11 @@ static void MetaCCodegen_doExpression(metac_bytecode_ctx_t* ctx,
             BCValue resultVal =
                 gen.GenTemporary(c, MetaCCodegen_GetBCType(ctx, exp->TypeIndex));
 
-            assert(call.Function->Kind == exp_function);
-            assert(call.Function->Function);
+            if (call.Function->Kind == exp_function)
+            {
+                assert(call.Function->Function);
+            }
+
             BCValue fn = {BCValueType_Unknown};
             MetaCCodegen_doExpression(ctx, call.Function, &fn, _Rvalue);
 
@@ -1284,6 +1314,7 @@ static void MetaCCodegen_doExpression(metac_bytecode_ctx_t* ctx,
                 BCValue* argP = &args[i];
                 MetaCCodegen_doExpression(ctx, call.Arguments[i], argP, _Rvalue);
             }
+
             gen.Call(c, &resultVal, &fn, args, call.ArgumentCount);
             *result = resultVal;
         } break;

@@ -675,6 +675,29 @@ metac_type_index_t MetaCSemantic_TypeSemantic(metac_semantic_state_t* self,
     {
         result = MetaCSemantic_GetTypeIndex(self, type_auto, type);
     }
+    else if (type->Kind == decl_type_tuple)
+    {
+        uint32_t i;
+        uint32_t hash = ~0;
+        decl_type_tuple_t* tupleType = cast(decl_type_tuple_t*) type;
+
+        STACK_ARENA_ARRAY(metac_type_index_t, typeIndicies, 16, &self->Allocator)
+
+        for(i = 0; i < tupleType->TypeCount; i++)
+        {
+            ARENA_ARRAY_ADD(typeIndicies,
+                MetaCSemantic_TypeSemantic(self, tupleType->Types[i]));
+        }
+
+        printf("typeIndiciesCount %d\n", typeIndiciesCount);
+        metac_type_header_t header =
+            {decl_type_tuple, 0, hash};
+
+        metac_type_tuple_t key = {
+            header,
+            zeroIdx, typeIndicies, typeIndiciesCount
+        };
+    }
     else if (type->Kind == decl_type_array)
     {
         decl_type_array_t* arrayType =
@@ -992,10 +1015,6 @@ LtryAgian: {}
             printf("Empty node during lookup\n");
             assert(0);
         }
-    }
-    else if (typeKind == type_tuple)
-    {
-        printf("Tuple type-semantic placeholder\n");
     }
     else
     {

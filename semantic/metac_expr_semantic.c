@@ -63,6 +63,7 @@ metac_sema_expression_t* MetaCSemantic_doIndexSemantic_(metac_semantic_state_t* 
 
     metac_sema_expression_t* indexed = MetaCSemantic_doExprSemantic(self, expr->E1, 0/*, expr_asAddress*/);
     metac_sema_expression_t* index = MetaCSemantic_doExprSemantic(self, expr->E2, 0);
+
     if (indexed->Kind ==  exp_tuple)
     {
         bool errored = false;
@@ -129,8 +130,9 @@ metac_sema_expression_t* doCmpExpSemantic(metac_semantic_state_t* self,
 /// which I most certainly will; I want to have an entry point.
 static inline
 metac_sema_expression_t* ResloveFuncCall(metac_semantic_state_t* self,
-                     metac_expression_t* fn,
-                     metac_sema_expression_t** arguments, uint32_t nArgs)
+                                         metac_expression_t* fn,
+                                         metac_sema_expression_t** arguments,
+                                         uint32_t nArgs)
 {
     metac_expression_kind_t kind = fn->Kind;
     metac_sema_expression_t* result = MetaCSemantic_doExprSemantic(self, fn, 0);
@@ -139,11 +141,11 @@ metac_sema_expression_t* ResloveFuncCall(metac_semantic_state_t* self,
 
 static inline
 void MetaCSemantic_doCallSemantic(metac_semantic_state_t* self,
-                    metac_expression_t* call,
-                    metac_sema_expression_t** resultP)
+                                  metac_expression_t* call,
+                                  metac_sema_expression_t** resultP)
 {
+    metac_sema_expression_t* result;
     metac_expression_t* fn = call->E1;
-    metac_sema_expression_t* result = *resultP;
 
     exp_argument_t* argList = (METAC_NODE(call->E2) != emptyNode ?
         (exp_argument_t*)call->E2 : (exp_argument_t*)emptyNode);
@@ -160,6 +162,11 @@ void MetaCSemantic_doCallSemantic(metac_semantic_state_t* self,
 
     metac_sema_expression_t* func =
         ResloveFuncCall(self, fn, arguments, nArgs);
+    if (func)
+    {
+        result = AllocNewSemaExpression(self, call);
+        (*resultP) = result;
+    }
     result->Call.Function = func;
 
     printf("function call with: %u arguments\n", nArgs);
@@ -181,7 +188,6 @@ void MetaCSemantic_doCallSemantic(metac_semantic_state_t* self,
         result->Call.Arguments = arguments;
     }
     result->Call.ArgumentCount = nArgs;
-
 
     result->TypeIndex = funcType->ReturnType;
 
@@ -250,6 +256,7 @@ void ResolveIdentifierToExp(metac_semantic_state_t* self,
 
     (*hashP) = hash;
 }
+
 metac_sema_expression_t* UnwrapParen(metac_sema_expression_t* e)
 {
     while(e->Kind == exp_paren)
@@ -269,6 +276,44 @@ metac_sema_expression_t* ExtractCastExp(metac_sema_expression_t* e)
 
     return e;
 }
+
+void MetaCSemantic_doAssignSemantic(metac_semantic_state_t* self,
+                                    metac_expression_t* expr,
+                                    metac_sema_expression_t* result)
+{
+    assert(expr->Kind == exp_assign);
+    assert(result->Kind == exp_assign);
+
+    if (result->E1->TypeIndex.v != result->E2->TypeIndex.v)
+    {
+
+    }
+}
+
+metac_identifier_ptr_t GetIdentifierPtr(metac_expression_t* expr)
+{
+    metac_identifier_ptr_t result = {0};
+
+    switch(expr->Kind)
+    {
+        case exp_type:
+        {
+            if (expr->TypeExp->TypeKind == type_identifier)
+            {
+                result.v = expr->TypeExp->TypeIdentifier.v;
+            }
+        } break;
+        case exp_identifier:
+        {
+            result.v = expr->IdentifierPtr.v;
+        } break;
+
+        default: assert(0);
+    }
+
+    return result;
+}
+
 metac_sema_expression_t* MetaCSemantic_doExprSemantic_(metac_semantic_state_t* self,
                                                        metac_expression_t* expr,
                                                        metac_sema_expression_t* result,
@@ -448,21 +493,13 @@ LswitchIdKey:
                 switch(expr->E2->Kind)
                 {
                     case exp_type:
-                    {
-                        if (expr->E2->TypeExp->TypeKind == type_identifier)
-                        {
-                            idPtr = expr->E2->TypeExp->TypeIdentifier;
-                        }
-                        else
-                            assert(0);
-                    } break;
                     case exp_identifier:
                     {
-                        idPtr = expr->E2->IdentifierPtr;
+                        idPtr = GetIdentifierPtr(expr->E2);
                     } break;
                     case exp_call:
                     {
-                        idPtr = expr->E2->E1->IdentifierPtr;
+                        idPtr = GetIdentifierPtr(expr->E2->E1);
                     } break;
                     default : {
                         printf("Unexpected expression kind in . or -> expression: %s\n",
@@ -480,13 +517,33 @@ LswitchIdKey:
                     // is that we have to synthesize the call
                     // such that dot->E1 = struct dot->E2 becomes
                     // call->E1 = dot
+                    metac_sema_expression_t* dotExp = result;
 
-                    metac_sema_expression_t _callExp = {};
-                    metac_sema_expression_t* callExp = &_callExp;
+                    metac_sema_expression_t * callExp = 0;
+                    metac_node_t node =
+                        MetaCSemantic_LookupIdentifier(self, idPtr);
+
+
+                    if (node->Kind == node_decl_field)
+                    {
+                        metac_type_aggregate_field_t* field =
+                            cast(metac_type_aggregate_field_t*)node;
+                        result->AggMemberIndex = field->Index;
+                        metac_expression_t* fieldExp = AllocNewExpression(exp_field);
+                        fieldExp->LocationIdx = expr->E2->LocationIdx;
+                        dotExp->DotE2 = AllocNewSemaExpression(self, fieldExp);
+                        dotExp->DotE2->Field = field;
+                    }
 
                     MetaCSemantic_doCallSemantic(self, expr->E2, &callExp);
-                    result->DotE2 = callExp;
-                    result->TypeIndex = result->DotE2->TypeIndex;
+                    if (!callExp)
+                    {
+                        assert(!"couldn't do call semantic or something");
+                    }
+
+                    result = callExp;
+                    dotExp->TypeIndex = callExp->Call.Function->TypeIndex;
+                    callExp->E1 = dotExp;
                 }
                 else if (expr->E2->Kind == exp_identifier || expr->E2->Kind == exp_type)
                 {
@@ -562,6 +619,7 @@ LswitchIdKey:
             result->TypeIndex = MetaCSemantic_GetTypeIndex(self, type_int, (decl_type_t*)emptyPointer);
         break;
         case exp_assign:
+            MetaCSemantic_doAssignSemantic(self, expr, result);
             result->TypeIndex = result->E1->TypeIndex;
         break;
         case exp_lt:
@@ -832,6 +890,7 @@ LswitchIdKey:
         }
         break;
         case exp_addr:
+        {
             MetaCSemantic_PushExpr(self, result);
             result->E1 = MetaCSemantic_doExprSemantic(self, expr->E1, 0);
             MetaCSemantic_PopExpr(self, result);
@@ -849,7 +908,7 @@ LswitchIdKey:
             {
                 result->TypeIndex = MetaCSemantic_GetPtrTypeOf(self, result->E1->TypeIndex);
             }
-        break;
+        } break;
     }
 Lret:
     {

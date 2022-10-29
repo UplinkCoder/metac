@@ -892,7 +892,7 @@ sema_decl_function_t* MetaCSemantic_doFunctionSemantic(metac_semantic_state_t* s
         decl_variable_t* var = cast(decl_variable_t*)(f->Parameters + i);
        // (XXX) here we tried to force the __cdecl calling convention
        // this is commented out for now
-//        params[i].Storage.v = STORAGE_V(storage_stack, frameOffset);
+       // params[i].Storage.v = STORAGE_V(storage_stack, frameOffset);
         frameOffset += Align(MetaCSemantic_GetTypeSize(self, params[i].TypeIndex), 4);
         // We will reserve stack space though as we had pushed it on the stack
         // as we will need that space when we yield
