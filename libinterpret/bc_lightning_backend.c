@@ -611,7 +611,7 @@ static inline void Lightning_CmpOp3(Lightning* self, BCValue *result, const BCVa
                     jit_ger(JIT_R0, JIT_R0, JIT_R1);
                 break;
                 case HASH_UGE:
-                    jit_gei_u(JIT_R0, JIT_R0, JIT_R1);
+                    jit_ger_u(JIT_R0, JIT_R0, JIT_R1);
                 break;
                 case HASH_GT:
                     jit_gtr(JIT_R0, JIT_R0, JIT_R1);
