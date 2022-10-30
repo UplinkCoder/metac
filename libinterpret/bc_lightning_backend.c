@@ -37,6 +37,12 @@ typedef struct register_status_t
 // F = 1 D = 1 We are no longer relaying on the value is this register but we need to write it back into memory before using it again
 //register_index_t
 
+typedef struct Lightning_External {
+  void* addr;
+  uint32_t size;
+  uint32_t mapAddr;
+} Lightning_External;
+
 typedef struct RuntimeContext
 {
     size_t rSpill[NREGS];
@@ -81,7 +87,14 @@ typedef struct RuntimeContext
     uint32_t breakpoints[4];
 
     BCValue returnValue;
+
+    Lightning_External* externals;
+    uint32_t externalsCount;
+    uint32_t externalsCapacity;
+
+    uint32_t MapAddr;
 } RuntimeContext;
+
 
 typedef struct Lightning
 {
@@ -110,12 +123,13 @@ typedef struct Lightning
     uint32_t ExternalsCount;
     uint32_t ExternalsCapacity;
 
-    jit_node_t *heapArg;
-    jit_node_t *LstackAlloc;
+    jit_node_t *RuntimeContextArg;
+    jit_node_t *ArgumentsArg;
+    jit_node_t *NumberOfArgumentsArg;
+
     uint32_t stackOffset;
 
-    uint32_t (*FunctionPtrs[512]) (RuntimeContext* rtCtx, int32_t* stackP,
-                                   const char* fargs, ...);
+    uint32_t (*FunctionPtrs[512]) (RuntimeContext* rtCtx, BCValue* args, uint32_t nArgs);
     uint32_t nFunctions;
 
     alloc_fn_t allocMemory;
@@ -238,6 +252,7 @@ bool BCType_IsInt32(BCTypeEnum type)
         case BCTypeEnum_u8:
         case BCTypeEnum_u16:
         case BCTypeEnum_u32:
+        case BCTypeEnum_Function:
             return true;
         default:
             return false;
@@ -247,7 +262,11 @@ bool BCType_IsInt32(BCTypeEnum type)
 static inline register_index_t LoadRegValue(Lightning* self,
                                             register_index_t target, BCValue* val)
 {
-    switch(BCTypeEnum_basicTypeSize(val->type.type))
+    if (val->type.type == BCTypeEnum_Struct)
+    {
+        jit_ldxi_i(target.reg - 1, JIT_FP, -val->stackAddr.addr);
+    }
+    else switch(BCTypeEnum_basicTypeSize(val->type.type))
     {
         default:
             assert(0);
@@ -334,8 +353,11 @@ static inline uint32_t Lightning_BeginFunction(Lightning* self, uint32_t fnIdx, 
     // self->getFrameSize(fd);
     //TODO implement a way to get the assumed frame size of a function
     jit_frame(256);
-    self->heapArg = jit_arg();
-    jit_getarg(JIT_V2, self->heapArg);
+    self->RuntimeContextArg = jit_arg();
+    self->ArgumentsArg = jit_arg();
+    self->NumberOfArgumentsArg = jit_arg();
+
+    jit_getarg(JIT_V0, self->RuntimeContextArg);
 
     self->FrameSize = 4;
 
@@ -422,10 +444,36 @@ static inline BCValue Lightning_GenExternal(Lightning* self, BCType bct, const c
 }
 
 
-static inline BCValue Lightning_MapExternal (Lightning* self,
-                                             void* memory, uint32_t sz)
+static uint32_t Runtime_MapExternal(RuntimeContext* ctx, BCValue* result, void* memory, uint32_t sz)
 {
-    assert(0);
+    if (ctx->externalsCount < ctx->externalsCapacity)
+    {
+        uint32_t mapAddr = ctx->MapAddr;
+        ctx->MapAddr += align4(sz);
+
+        Lightning_External external = {
+            memory, sz, mapAddr
+        };
+
+        ctx->externals[ctx->externalsCount++] = external;
+        (*result) = imm32(mapAddr);
+        printf("Mapping: {ptr: %p, sz: %u} to %p\n", memory, sz, mapAddr);
+    }
+    else
+    {
+        assert(0);
+    }
+}
+
+static inline void Lightning_MapExternal (Lightning* self, BCValue* result,
+                                          void* memory, uint32_t sz)
+{
+    jit_prepare();
+    jit_pushargr(JIT_V0);
+    jit_pushargi((jit_pointer_t)result);
+    jit_pushargi((jit_pointer_t)memory);
+    jit_pushargi((jit_pointer_t)sz);
+    jit_finishi((jit_pointer_t) Runtime_MapExternal);
 }
 
 static inline void Lightning_EmitFlag(Lightning* self, BCValue* lhs)
@@ -638,7 +686,7 @@ static inline void Lightning_Neq3(Lightning* self, BCValue *result, const BCValu
     Lightning_CmpOp3(self, result, lhs, rhs, HASH_NEQ);
 }
 
-static inline void PrintString(Lightning* self, const char* text)
+static inline void PrintfString(Lightning* self, const char* text)
 {
     jit_prepare();
     jit_pushargi((jit_pointer_t)text);
@@ -774,7 +822,7 @@ static inline void Lightning_MathOp3(Lightning* self, BCValue *result, const BCV
 
 static inline void Lightning_Add3(Lightning* self, BCValue *result, const BCValue* lhs, const BCValue* rhs)
 {
-    assert(result->type.type == lhs->type.type && lhs->type.type == rhs->type.type);
+    // assert(result->type.type == lhs->type.type && lhs->type.type == rhs->type.type);
     if (BCType_IsInt32(lhs->type.type) && BCType_IsInt32(rhs->type.type))
     {
         Lightning_MathOp3(self, result, lhs, rhs, HASH_ADD);
@@ -904,51 +952,167 @@ static inline void Lightning_EndCndJmp(Lightning* self, const CndJmpBegin *jmp, 
     assert(0);
 }
 
+typedef enum address_kind_t
+{
+    AddressKind_Invalid,
+
+    AddressKind_Frame,
+    AddressKind_Heap,
+    AddressKind_External,
+
+    AddressKind_Max
+} address_kind_t;
+
+
+static inline address_kind_t ClassifyAddress(uint32_t unrealPointer)
+{
+    address_kind_t result = AddressKind_Invalid;
+
+    switch ((unrealPointer & AddrMask))
+    {
+        case stackAddrMask:
+            result = AddressKind_Frame;
+        break;
+        case externalAddrMask:
+            result = AddressKind_External;
+        break;
+        case heapAddrMask:
+            result = AddressKind_Heap;
+        break;
+    }
+
+    return result;
+}
+
+static inline void Runtime_Load(RuntimeContext* ctx, void* destPtr, uint32_t unrealPtr, uint32_t sz)
+{
+    address_kind_t addressKind = ClassifyAddress(unrealPtr);
+    printf("RuntimeLoad\n");
+    if (addressKind == AddressKind_Heap)
+    {
+        assert(unrealPtr < (*ctx->heapSizeP));
+
+        switch(sz)
+        {
+            default: assert(0);
+            case 1:
+                *((uint8_t*)destPtr) = (*(char*)(((char*) ctx->heapDataBegin) + unrealPtr));
+            break;
+            case 2:
+                *((uint16_t*)destPtr) = (*(uint16_t*)(((char*) ctx->heapDataBegin) + unrealPtr));
+            break;
+            case 4:
+                *((uint32_t*)destPtr) = (*(uint32_t*)(((char*) ctx->heapDataBegin) + unrealPtr));
+            break;
+            case 8:
+                assert(0);
+        }
+    }
+    else if (addressKind == AddressKind_Frame)
+    {
+        switch(sz)
+        {
+            default: assert(0);
+            case 1:
+                *((uint8_t*)destPtr) = (*(char*)(ctx->framePointer + unrealPtr));
+            break;
+            case 2:
+                *((uint16_t*)destPtr) = (*(uint16_t*)(ctx->framePointer + unrealPtr));
+            break;
+            case 4:
+                *((uint32_t*)destPtr) = (*(uint32_t*)(ctx->framePointer + unrealPtr));
+            break;
+            case 8:
+                assert(0);
+        }
+    }
+    else if (addressKind == AddressKind_External)
+    {
+        uint32_t i;
+        Lightning_External external = {0, 0, 0};
+
+        for(i = 0; i < ctx->externalsCount; i++)
+        {
+            Lightning_External canidate = ctx->externals[i];
+            if (unrealPtr >= canidate.mapAddr && unrealPtr <= (canidate.mapAddr + canidate.size))
+            {
+                external = canidate;
+                printf("Found external.\n");
+                break;
+            }
+        }
+
+        assert(external.mapAddr != 0);
+        uint32_t externalOffset = unrealPtr - external.mapAddr;
+        switch(sz)
+        {
+            default: assert(0);
+            case 1:
+                *((uint8_t*)destPtr) = (*(char*)(((char*)external.addr) + externalOffset));
+            break;
+            case 2:
+                *((uint16_t*)destPtr) = (*(uint16_t*)(((char*)external.addr) + externalOffset));
+            break;
+            case 4:
+                *((uint32_t*)destPtr) = (*(uint32_t*)(((char*)external.addr) + externalOffset));
+            break;
+            case 8:
+                assert(0);
+        }
+    }
+    else
+    {
+        assert(0);
+    }
+}
 
 static inline void Lightning_Load(Lightning* self, BCValue *dest, const BCValue* from, uint32_t sz)
 {
 
     assert(BCValue_isStackValueOrParameter(dest));
 
-    jit_ldxi(JIT_R1, JIT_V2, offsetof(BCHeap, heapData));
-
     if (from->vType == BCValueType_Immediate)
     {
-        switch(sz)
-        {
-            default: assert(0);
-            case 1:
-                jit_ldxi_c(JIT_R0, JIT_R1, from->imm32.imm32);
-            break;
-            case 2:
-                jit_ldxi_s(JIT_R0, JIT_R1, from->imm32.imm32);
-            break;
-            case 4:
-                jit_ldxi_i(JIT_R0, JIT_R1, from->imm32.imm32);
-            break;
-            case 8:
-                assert(0);
-        }
+        address_kind_t addressKind = ClassifyAddress(from->imm32.imm32);
 
+        if (addressKind == AddressKind_Heap)
+        {
+            jit_ldxi(JIT_R1, JIT_V0, offsetof(BCHeap, heapData));
+
+            switch(sz)
+            {
+                default: assert(0);
+                case 1:
+                    jit_ldxi_c(JIT_R0, JIT_R1, from->imm32.imm32);
+                break;
+                case 2:
+                    jit_ldxi_s(JIT_R0, JIT_R1, from->imm32.imm32);
+                break;
+                case 4:
+                    jit_ldxi_i(JIT_R0, JIT_R1, from->imm32.imm32);
+                break;
+                case 8:
+                    assert(0);
+            }
+        }
+        else if (addressKind == AddressKind_Frame)
+        {
+            assert(0);
+        }
+        else if (addressKind == AddressKind_External)
+        {
+            assert(0);
+        }
+        else
+        {
+            assert(0);
+        }
     }
     else
     {
+        assert(BCValue_isStackValueOrParameter(from));
+
         jit_ldxi(JIT_R2, JIT_FP, -from->stackAddr.addr);
-        switch(sz)
-        {
-            default: assert(0);
-            case 1:
-                jit_ldxr_c(JIT_R0, JIT_R1, JIT_R2);
-            break;
-            case 2:
-                jit_ldxr_s(JIT_R0, JIT_R1, JIT_R2);
-            break;
-            case 4:
-                jit_ldxr_i(JIT_R0, JIT_R1, JIT_R2);
-            break;
-            case 8:
-                assert(0);
-        }
     }
 
     jit_stxi(-dest->stackAddr.addr, JIT_FP, JIT_R0);
@@ -965,7 +1129,7 @@ static inline void Lightning_Store(Lightning* self, BCValue *dest, const BCValue
         LoadRegValue(self, r0Index, value);
     }
 
-    jit_ldxi(JIT_R1, JIT_V2, offsetof(BCHeap, heapData));
+    jit_ldxi(JIT_R1, JIT_V0, offsetof(BCHeap, heapData));
     if (dest->vType == BCValueType_Immediate)
     {
         switch(sz)
@@ -1130,10 +1294,26 @@ static inline void Lightning_Realloc(Lightning* self, BCValue *result, const BCV
 static inline BCValue Lightning_Run(Lightning* self, uint32_t fnIdx, const BCValue* args, uint32_t n_args, BCHeap* heap)
 {
     uint32_t fnResult;
+
+    RuntimeContext rtContext = {0};
+
     BCValue result = {BCValueType_Unknown};
     char parameterString[64];
 
     void* marshaled_args = self->allocMemory(self->allocCtx, sizeof(double) * n_args, 0);
+
+    {
+        rtContext.heapDataBegin = heap->heapData;
+        rtContext.heapDataLength = heap->heapMax;
+        rtContext.heapSizeP = &heap->heapSize;
+
+        rtContext.externals = self->allocMemory(self->allocCtx, sizeof(Lightning_External) * 16, 0);
+        rtContext.externalsCount = 0;
+        rtContext.externalsCapacity = 16;
+
+        rtContext.MapAddr = externalAddrMask;
+    }
+
     for(uint32_t i = 0; i < n_args; i++)
     {
         assert((args + i)->vType == BCValueType_Immediate);
@@ -1156,7 +1336,7 @@ static inline BCValue Lightning_Run(Lightning* self, uint32_t fnIdx, const BCVal
         marshaled_args += (sizeof(double));
     }
     jit_disassemble();
-    fnResult = self->FunctionPtrs[fnIdx](heap, "", marshaled_args);
+    fnResult = self->FunctionPtrs[fnIdx](&rtContext, args, n_args);
     result = imm32(fnResult);
 
     return result;

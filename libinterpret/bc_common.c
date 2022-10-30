@@ -171,6 +171,9 @@ const char* BCValueType_toChars(const BCValueType* vTypePtr)
         case BCValueType_Unknown:
             result = "BCValueType_Unknown";
         break;
+        case BCValueType_External:
+            result = "BCValueType_External";
+        break;
         case BCValueType_Temporary:
             result = "BCValueType_Temporary";
         break;

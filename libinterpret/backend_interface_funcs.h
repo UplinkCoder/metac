@@ -59,6 +59,9 @@ typedef void (*Mod3_t) (void* ctx, BCValue *result, const BCValue* lhs, const BC
 typedef void (*Umod3_t) (void* ctx, BCValue *result, const BCValue* lhs, const BCValue* rhs);
 typedef void (*Not_t) (void* ctx, BCValue *result, const BCValue* val);
 
+typedef void (*SetFramePointer_t) (void* ctx, BCValue* frameP);
+typedef void (*GetFramePointer_t) (void* ctx, BCValue* frameP);
+
 typedef void (*LoadFramePointer_t) (void* ctx, BCValue *result, const int32_t offset);
 
 typedef void (*Call_t) (void* ctx, BCValue *result, const BCValue* fn, const BCValue* args, uint32_t n_args);

@@ -397,6 +397,12 @@ static inline void Printer_PrintBCValue(Printer* self, const BCValue* val)
                     Printer_PutStr(self, "*/");
             }
         } break;
+    case BCValueType_External:
+    {
+        Printer_PutStr(self, "ext");
+        Printer_PutU32(self, val->externalIndex);
+    } break;
+
     case BCValueType_Unknown:
         {
             Printer_PutStr(self, "BCValue.init");
@@ -407,7 +413,7 @@ static inline void Printer_PrintBCValue(Printer* self, const BCValue* val)
             char* msg = errorBuffer;
 
             CatStr(msg, cast(char*)"Printing for ");
-            CatStr(msg, cast(char*)BCValueType_toChars(&val->vType));
+            CatStr(msg, cast(char*) BCValueType_toChars(&val->vType));
             CatStr(msg, cast(char*)" unimplemented ");
             *msg = '\0';
 
@@ -709,7 +715,7 @@ static inline BCValue Printer_GenExternal(Printer* self, BCType bct, const char*
     result.parameterIndex = ++self->NumberOfParameters;
     Printer_PutStr(self, "BCValue ");
 
-    Printer_PrintParameter(self, &result);
+    Printer_PrintBCValue(self, &result);
 
     Printer_PutStr(self, " = GenExternal(");
 
