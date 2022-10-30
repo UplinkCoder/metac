@@ -157,6 +157,7 @@ typedef struct metac_semantic_state_t
     ARENA_ARRAY(metac_scope_t*, DeclStatementScope)
 
     metac_type_aggregate_t* CompilerInterface;
+    sema_decl_variable_t CompilerVariable;
 
     ARENA_ARRAY(metac_sema_declaration_t*, Globals)
 } metac_semantic_state_t;

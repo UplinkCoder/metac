@@ -185,7 +185,6 @@ void Presemantic_(repl_state_t* self)
     metac_alloc_t PresemanticAlloc;
     Allocator_Init(&PresemanticAlloc, 0);
 
-
     repl_ui_context_t* uiContext = g_uiContext;
     ui_interface_t uiInterface = uiContext->UiInterface;
     struct ui_state_t* uiState = uiContext->UiState;
@@ -296,6 +295,18 @@ void Presemantic_(repl_state_t* self)
 
         self->SemanticState.CompilerInterface = compilerStruct;
         g_compilerInterface = self->SemanticState.CompilerInterface;
+
+        sema_decl_variable_t fakeDotStruct = {};
+        uint32_t compilerStructIndex = StructIndex(&self->SemanticState, self->CompilerInterface);
+
+        fakeDotStruct.Kind = decl_variable;
+        fakeDotStruct.TypeIndex.v = TYPE_INDEX_V(type_index_struct, compilerStructIndex);
+        //fakeDotStruct.VarIdentifier = expr->E1->IdentifierPtr;
+        //TODO implement metaCCodegen_RegisterExternal
+        fakeDotStruct.Storage.v = STORAGE_V(storage_external, 0);
+        fakeDotStruct.VarIdentifier = GetOrAddIdentifier(&self->SemanticState.SemanticIdentifierTable, compiler_key, "compiler");
+        self->SemanticState.CompilerVariable = fakeDotStruct;
+
 
         // FreeSema
         MetaCParser_Free(&tmpParser);

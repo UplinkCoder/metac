@@ -396,17 +396,9 @@ LswitchIdKey:
                 {
                     case compiler_key:
                     {
-                        sema_decl_variable_t fakeDotStruct = {};
-                        fakeDotStruct.Kind = decl_variable;
-                        uint32_t compilerStructIndex = StructIndex(self, self->CompilerInterface);
-                        fakeDotStruct.TypeIndex.v = TYPE_INDEX_V(type_index_struct, compilerStructIndex);
-                        fakeDotStruct.VarIdentifier = expr->E1->IdentifierPtr;
-                        //TODO implement metaCCodegen_RegisterExternal
-                        fakeDotStruct.Storage.v = STORAGE_V(storage_external, 0);
-
                         result->Kind = exp_variable;
-                        result->Variable = &fakeDotStruct;
-                        //result->TypeIndex = MetaCSemantic_doTypeSemantic(self, result->Variable);
+                        result->Variable = &self->CompilerVariable;
+                        // result->TypeIndex = MetaCSemantic_doTypeSemantic(self, result->Variable);
                         result->TypeIndex = result->Variable->TypeIndex;
                         hash = self->CompilerInterface->Header.Hash;
                     } break;

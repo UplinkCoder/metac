@@ -21,3 +21,5 @@ typedef struct metac_compiler_t
 
     void (*RegisterLogCallback) (void (*LogCb)(const char* msg, void* context), void* context);
 } metac_compiler_t;
+
+static metac_compiler_t* getCompiler();

@@ -295,9 +295,11 @@ void MetaCCodegen_Init(metac_bytecode_ctx_t* self, metac_alloc_t* parentAlloc)
     //TODO take BC as a parameter
     // bc = &Lightning_interface;
 #if BC_PRINTER
-        self->gen = &Printer_interface;
+    self->gen = &Printer_interface;
+#elif BC_LIGHTNING
+    self->gen = &Lightning_interface;
 #else
-        self->gen = &BCGen_interface;
+    self->gen = &BCGen_interface;
 #endif
 
     const BackendInterface gen = *self->gen;
@@ -397,16 +399,6 @@ metac_bytecode_function_t MetaCCodegen_GenerateFunctionFromExp(metac_bytecode_ct
         if(expr->E1->Kind == exp_function)
         {
             calledF = MetaCCodegen_GenerateFunction(ctx, expr->E1->Function);
-        }
-        else if (expr->E1->Kind == exp_dot)
-        {
-            InitCompilerInterface(ctx);
-
-            BCValue funcP;
-            MetaCCodegen_doExpression(ctx, expr->E1, &funcP, _Rvalue);
-
-            metac_sema_expression_t* e1Dot = expr->E1->E1;
-            metac_sema_expression_t* e2Dot = expr->E1->DotE2;
         }
         else
         {
