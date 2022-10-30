@@ -163,6 +163,8 @@ typedef struct Lightning
 #define HASH_UMOD 0xc3 // u%
 #define HASH_UDIV 0xfb // u/
 #define HASH_UMUL 0xe7 // u*
+#define HASH_LSH  0xab // <<
+#define HASH_RSH  0x2b // >>
 
 // logic ops
 #define HASH_AND 0x98 // &
@@ -252,7 +254,6 @@ bool BCType_IsInt32(BCTypeEnum type)
         case BCTypeEnum_u8:
         case BCTypeEnum_u16:
         case BCTypeEnum_u32:
-        case BCTypeEnum_Function:
             return true;
         default:
             return false;
@@ -785,6 +786,24 @@ static inline void Lightning_MathOp3(Lightning* self, BCValue *result, const BCV
                 case HASH_MOD:
                     jit_remi(JIT_R0, JIT_R0, rhs->imm32.imm32);
                 break;
+                case HASH_UMOD:
+                    jit_remi_u(JIT_R0, JIT_R0, rhs->imm32.imm32);
+                break;
+                case HASH_LSH:
+                    jit_lshi(JIT_R0, JIT_R0, rhs->imm32.imm32);
+                break;
+                case HASH_RSH:
+                    jit_rshi(JIT_R0, JIT_R0, rhs->imm32.imm32);
+                break;
+                case HASH_AND:
+                    jit_andi(JIT_R0, JIT_R0, rhs->imm32.imm32);
+                break;
+                case HASH_OR:
+                    jit_ori(JIT_R0, JIT_R0, rhs->imm32.imm32);
+                break;
+                case HASH_XOR:
+                    jit_xori(JIT_R0, JIT_R0, rhs->imm32.imm32);
+                break;
             }
         }
         else
@@ -809,6 +828,24 @@ static inline void Lightning_MathOp3(Lightning* self, BCValue *result, const BCV
                 break;
                 case HASH_MOD:
                     jit_remr(JIT_R0, JIT_R0, JIT_R1);
+                break;
+                case HASH_UMOD:
+                    jit_remr_u(JIT_R0, JIT_R0, JIT_R1);
+                break;
+                case HASH_LSH:
+                    jit_lshr(JIT_R0, JIT_R0, JIT_R1);
+                break;
+                case HASH_RSH:
+                    jit_rshr(JIT_R0, JIT_R0, JIT_R1);
+                break;
+                case HASH_AND:
+                    jit_andr(JIT_R0, JIT_R0, JIT_R1);
+                break;
+                case HASH_OR:
+                    jit_orr(JIT_R0, JIT_R0, JIT_R1);
+                break;
+                case HASH_XOR:
+                    jit_xorr(JIT_R0, JIT_R0, JIT_R1);
                 break;
             }
         }
@@ -864,32 +901,62 @@ static inline void Lightning_Div3(Lightning* self, BCValue *result, const BCValu
 
 static inline void Lightning_Udiv3(Lightning* self, BCValue *result, const BCValue* lhs, const BCValue* rhs)
 {
-    assert(0);
+    if (BCType_IsInt32(lhs->type.type) && BCType_IsInt32(rhs->type.type))
+    {
+        Lightning_MathOp3(self, result, lhs, rhs, HASH_UDIV);
+    }
+    else
+        assert(0);
 }
 
 static inline void Lightning_And3(Lightning* self, BCValue *result, const BCValue* lhs, const BCValue* rhs)
 {
-    assert(0);
+    if (BCType_IsInt32(lhs->type.type) && BCType_IsInt32(rhs->type.type))
+    {
+        Lightning_MathOp3(self, result, lhs, rhs, HASH_AND);
+    }
+    else
+        assert(0);
 }
 
 static inline void Lightning_Or3(Lightning* self, BCValue *result, const BCValue* lhs, const BCValue* rhs)
 {
-    assert(0);
+    if (BCType_IsInt32(lhs->type.type) && BCType_IsInt32(rhs->type.type))
+    {
+        Lightning_MathOp3(self, result, lhs, rhs, HASH_OR);
+    }
+    else
+        assert(0);
 }
 
 static inline void Lightning_Xor3(Lightning* self, BCValue *result, const BCValue* lhs, const BCValue* rhs)
 {
-    assert(0);
+    if (BCType_IsInt32(lhs->type.type) && BCType_IsInt32(rhs->type.type))
+    {
+        Lightning_MathOp3(self, result, lhs, rhs, HASH_XOR);
+    }
+    else
+        assert(0);
 }
 
 static inline void Lightning_Lsh3(Lightning* self, BCValue *result, const BCValue* lhs, const BCValue* rhs)
 {
-    assert(0);
+    if (BCType_IsInt32(lhs->type.type) && BCType_IsInt32(rhs->type.type))
+    {
+        Lightning_MathOp3(self, result, lhs, rhs, HASH_LSH);
+    }
+    else
+        assert(0);
 }
 
 static inline void Lightning_Rsh3(Lightning* self, BCValue *result, const BCValue* lhs, const BCValue* rhs)
 {
-    assert(0);
+    if (BCType_IsInt32(lhs->type.type) && BCType_IsInt32(rhs->type.type))
+    {
+        Lightning_MathOp3(self, result, lhs, rhs, HASH_RSH);
+    }
+    else
+        assert(0);
 }
 
 static inline void Lightning_Mod3(Lightning* self, BCValue *result, const BCValue* lhs, const BCValue* rhs)
@@ -904,7 +971,12 @@ static inline void Lightning_Mod3(Lightning* self, BCValue *result, const BCValu
 
 static inline void Lightning_Umod3(Lightning* self, BCValue *result, const BCValue* lhs, const BCValue* rhs)
 {
-    assert(0);
+    if (BCType_IsInt32(lhs->type.type) && BCType_IsInt32(rhs->type.type))
+    {
+        Lightning_MathOp3(self, result, lhs, rhs, HASH_UMOD);
+    }
+    else
+        assert(0);
 }
 
 static inline void Lightning_Not(Lightning* self, BCValue *result, const BCValue* val)
