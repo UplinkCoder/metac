@@ -690,7 +690,7 @@ static inline void Lightning_Neq3(Lightning* self, BCValue *result, const BCValu
 static inline void PrintfString(Lightning* self, const char* text)
 {
     jit_prepare();
-    jit_pushargi((jit_pointer_t)text);
+    jit_pushargi((intptr_t)text);
     jit_ellipsis();
 
     jit_finishi(printf);
@@ -699,9 +699,9 @@ static inline void PrintfString(Lightning* self, const char* text)
 static inline void PrintPointerR(Lightning* self, uint32_t line, jit_gpr_t reg)
 {
     jit_prepare();
-    jit_pushargi((jit_pointer_t)"[%d] %p\n");
+    jit_pushargi((intptr_t)"[%d] %p\n");
     jit_ellipsis();
-    jit_pushargi((jit_pointer_t) line);
+    jit_pushargi((intptr_t) line);
     jit_pushargr(reg);
     jit_finishi(printf);
 }

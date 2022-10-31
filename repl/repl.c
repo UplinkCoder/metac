@@ -297,16 +297,14 @@ void Presemantic_(repl_state_t* self)
         g_compilerInterface = self->SemanticState.CompilerInterface;
 
         sema_decl_variable_t fakeDotStruct = {};
-        uint32_t compilerStructIndex = StructIndex(&self->SemanticState, self->CompilerInterface);
-
+        metac_type_index_t compilerTypeIndex = self->SemanticState.CompilerInterface->TypeIndex;
         fakeDotStruct.Kind = decl_variable;
-        fakeDotStruct.TypeIndex.v = TYPE_INDEX_V(type_index_struct, compilerStructIndex);
+        fakeDotStruct.TypeIndex = compilerTypeIndex;
         //fakeDotStruct.VarIdentifier = expr->E1->IdentifierPtr;
         //TODO implement metaCCodegen_RegisterExternal
         fakeDotStruct.Storage.v = STORAGE_V(storage_external, 0);
         fakeDotStruct.VarIdentifier = GetOrAddIdentifier(&self->SemanticState.SemanticIdentifierTable, compiler_key, "compiler");
         self->SemanticState.CompilerVariable = fakeDotStruct;
-
 
         // FreeSema
         MetaCParser_Free(&tmpParser);
@@ -467,7 +465,7 @@ void Repl_Init(repl_state_t* self)
     self->LPP.LexerState.Line = 1;
     self->LPP.LexerState.Column = 1;
     self->ParseMode = repl_mode_ee;
-    self->CompilerInterface = 0;
+    // self->CompilerInterface = 0;
     self->SrcBuffer = 0;
     self->FreePtr = 0;
     self->SrcBufferLength = 0;

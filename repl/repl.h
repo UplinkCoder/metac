@@ -32,7 +32,7 @@ typedef struct repl_state_t
 
     metac_lpp_t LPP;
 
-    metac_type_aggregate_t* CompilerInterface;
+//    metac_type_aggregate_t* CompilerInterface;
     metac_semantic_state_t SemanticState;
 
     BCHeap Heap;

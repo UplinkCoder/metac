@@ -83,7 +83,7 @@ repl_mode_t Linenoise_QueryMode(ui_state_t* uiState)
 
 metac_filesystem_t* Linenoise_GetFilesystem(ui_state_t* uiState)
 {
-    return &NativeFileSystem;
+    return (metac_filesystem_t*)&NativeFileSystem;
 }
 
 const struct ui_interface_t LinenoiseUiInterface =

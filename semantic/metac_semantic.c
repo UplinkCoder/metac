@@ -965,6 +965,33 @@ sema_decl_type_t* TypeBasicPtr(metac_type_index_t basicTypeIdx)
     return cast(sema_decl_type_t*) &basicTypes[basicTypeIdx.Index];
 }
 
+void SetTypeIndex(metac_type_t typeNode,
+                  metac_type_index_t typeIndex)
+{
+    const uint32_t index = TYPE_INDEX_INDEX(typeIndex);
+    switch(TYPE_INDEX_KIND(typeIndex))
+    {
+        case type_index_struct:
+            (cast(metac_type_aggregate_t*) typeNode)->TypeIndex = typeIndex;
+            break;
+        case type_index_union:
+            (cast(metac_type_aggregate_t*) typeNode)->TypeIndex = typeIndex;
+            break;
+        case type_index_typedef:
+            (cast(metac_type_typedef_t*) typeNode)->TypeIndex = typeIndex;
+        break;
+        case type_index_enum:
+            (cast(metac_type_enum_t*) typeNode)->TypeIndex = typeIndex;
+        break;
+        case type_index_basic:
+            (cast(metac_type_basic_t*)typeNode)->TypeIndex = typeIndex;
+        break;
+        case type_index_tuple:
+            (cast(metac_type_tuple_t*)typeNode)->TypeIndex = typeIndex;
+        break;
+    }
+}
+
 metac_type_t NodeFromTypeIndex(metac_semantic_state_t* sema,
                                metac_type_index_t typeIndex)
 {
@@ -976,11 +1003,13 @@ metac_type_t NodeFromTypeIndex(metac_semantic_state_t* sema,
         case type_index_union:
             return cast(metac_type_t) UnionPtr(sema, index);
         case type_index_typedef:
-            return cast (metac_type_t) TypedefPtr(sema, index);
+            return cast(metac_type_t) TypedefPtr(sema, index);
         case type_index_enum:
             return cast(metac_type_t) EnumTypePtr(sema, index);
         case type_index_basic:
             return cast(metac_type_t) TypeBasicPtr(typeIndex);
+        case type_index_tuple:
+            return cast(metac_type_t) TupleTypePtr(sema, index);
     }
 
     return 0;
@@ -1105,6 +1134,7 @@ metac_sema_declaration_t* MetaCSemantic_declSemantic(metac_semantic_state_t* sel
             metac_type_t typeNode =
                 NodeFromTypeIndex(self, type_index);
             result = cast(metac_sema_declaration_t*)typeNode;
+            SetTypeIndex(typeNode, type_index);
 
             if (declId.v != 0 && declId.v != -1)
             {

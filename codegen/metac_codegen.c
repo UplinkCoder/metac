@@ -136,10 +136,14 @@ extern const BackendInterface BCGen_interface;
 
 uint32_t MetaCCodegen_GetStorageSize(metac_bytecode_ctx_t* ctx, BCType bcType)
 {
+    uint32_t sz = 0;
     if (BCType_isBasicBCType(bcType))
     {
-        return BCTypeEnum_basicTypeSize(bcType.type);
+        sz = BCTypeEnum_basicTypeSize(bcType.type);
     }
+
+    assert(sz);
+    return sz;
 }
 
 void MetaCCodegen_doType(metac_bytecode_ctx_t* ctx, metac_type_index_t typeIdx)
@@ -176,7 +180,9 @@ void MetaCCodegen_doGlobal(metac_bytecode_ctx_t* ctx, metac_sema_declaration_t* 
                 BCValue initVal;
                 MetaCCodegen_doExpression(ctx, var.VarInitExpression, &initVal, _Rvalue);
             }
+            ctx->GlobalMemoryOffset += sz;
         }
+
 /*
         printf("offset = %d sz = %d\n", ctx->GlobalMemoryOffset, sz);
                 ctx->GlobalMemoryOffset += align4(sz);
@@ -188,7 +194,6 @@ void MetaCCodegen_doGlobal(metac_bytecode_ctx_t* ctx, metac_sema_declaration_t* 
     {
         assert(0);
     }
-    //ctx->GlobalMemoryOffset += MetaCCodegen_GetTypeABISize(ctx, decl->TypeIndex);
 
 }
 
@@ -480,11 +485,11 @@ metac_bytecode_function_t MetaCCodegen_GenerateFunction(metac_bytecode_ctx_t* ct
         i++)
     {
         sema_decl_variable_t* paramVar = function->Parameters + i;
-        uint32_t paramSize = MetaCCodegen_GetTypeABISize(ctx, paramVar->TypeIndex);
+        BCType paramType = MetaCCodegen_GetBCType(ctx, paramVar->TypeIndex);
+        uint32_t paramSize = MetaCCodegen_GetStorageSize(ctx, paramType);
 
         const char* paramName = IdentifierPtrToCharPtr(ctx->IdentifierTable,
                                                        paramVar->VarIdentifier);
-        BCType paramType = MetaCCodegen_GetBCType(ctx, paramVar->TypeIndex);
         BCValue param = gen.GenParameter(c, paramType, paramName);
         ARENA_ARRAY_ADD(parameters, param);
         VariableStore_AddVariable(&ctx->Vstore, paramVar, &parameters[parametersCount - 1]);
@@ -674,7 +679,7 @@ static void LoadFromHeapRef(metac_bytecode_ctx_t* ctx, BCValue* hrv, uint32_t ab
     // since the stuff below are heapValues we may not want to do this ??
     {
         BCTypeEnum types[] =
-            { BCTypeEnum_Struct, BCTypeEnum_Slice, BCTypeEnum_Array };
+            { BCTypeEnum_Struct, BCTypeEnum_Slice, BCTypeEnum_Array, BCTypeEnum_Tuple };
         if (BCTypeEnum_anyOf(hrv->type.type, types, ARRAY_SIZE(types)))
         {
             BCValue sz = imm32(abiSize);
@@ -808,6 +813,14 @@ void MetaCCodegen_doDeref(metac_bytecode_ctx_t* ctx,
     {
         assert(!"doDeref not implemented right now");
     }
+}
+
+static void MetaCCodegen_doCastExpression(metac_bytecode_ctx_t* ctx,
+                                         metac_sema_expression_t* exp,
+                                         BCValue* result)
+
+{
+    assert(!"Handling for exp_cast not implemented at the moment");
 }
 
 static void MetaCCodegen_doDotExpression(metac_bytecode_ctx_t* ctx,
@@ -977,6 +990,10 @@ static void MetaCCodegen_doExpression(metac_bytecode_ctx_t* ctx,
             assert(0);
         } break;
 
+        case exp_cast:
+        {
+            MetaCCodegen_doCastExpression(ctx, exp, result);
+        } break;
 
         case exp_dot:
         {
@@ -1244,7 +1261,9 @@ static void MetaCCodegen_doExpression(metac_bytecode_ctx_t* ctx,
         {
             if (MetaCCodegen_AccessVariable(ctx, exp->Variable, result, lValue))
             {
-                LoadFromHeapRef(ctx, result, MetaCCodegen_GetTypeABISize(ctx, exp->TypeIndex));
+                BCType bcType = MetaCCodegen_GetBCType(ctx, exp->Variable->TypeIndex);
+                uint32_t sz = MetaCCodegen_GetStorageSize(ctx, bcType);
+                LoadFromHeapRef(ctx, result, sz);
                 // Info("Indirected access");
             }
         } break;
