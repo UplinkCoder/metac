@@ -1337,12 +1337,12 @@ static inline void TypeToCharsP(metac_semantic_state_t* self,
                TupleTypePtr(self, TYPE_INDEX_INDEX(typeIndex));
 
             MetacPrinter_PrintStringLiteral(printer, "{");
-            const uint32_t typeCount = tupleType->typeCount;
+            const uint32_t typeCount = tupleType->TypeCount;
             for(uint32_t i = 0;
-                i < tupleType->typeCount;
+                i < typeCount;
                 i++)
             {
-                TypeToCharsP(self, printer, tupleType->typeIndicies[i]);
+                TypeToCharsP(self, printer, tupleType->TypeIndicies[i]);
                 if (i != (typeCount - 1))
                 {
                     MetacPrinter_PrintStringLiteral(printer, ", ");

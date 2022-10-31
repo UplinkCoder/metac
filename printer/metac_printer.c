@@ -1251,15 +1251,15 @@ static inline void PrintSemaType(metac_printer_t* self,
             uint32_t tupleIdx = TYPE_INDEX_INDEX(typeIndex);
             PrintString(self, "{", sizeof("{") - 1);
             metac_type_tuple_t* tupleType = TupleTypePtr(sema, tupleIdx);
-            const int32_t typeCount = cast(int32_t)tupleType->typeCount;
+            const int32_t typeCount = cast(int32_t)tupleType->TypeCount;
             for(int32_t i = 0; i < typeCount - 1; i++)
             {
-                PrintSemaType(self, sema, tupleType->typeIndicies[i]);
+                PrintSemaType(self, sema, tupleType->TypeIndicies[i]);
                 PrintString(self, ", ", sizeof(", ") - 1);
             }
             if (typeCount)
             {
-                PrintSemaType(self, sema, tupleType->typeIndicies[typeCount - 1]);
+                PrintSemaType(self, sema, tupleType->TypeIndicies[typeCount - 1]);
             }
             PrintString(self, "}", 1);
         } break;

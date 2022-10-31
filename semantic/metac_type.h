@@ -188,8 +188,8 @@ typedef struct metac_type_tuple_t
 
     metac_type_index_t TypeIndex;
 
-    metac_type_index_t* typeIndicies;
+    metac_type_index_t* TypeIndicies;
 
-    uint32_t typeCount;
+    uint32_t TypeCount;
 } metac_type_tuple_t;
 #endif

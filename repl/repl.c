@@ -381,7 +381,7 @@ EvaluateExpression(metac_semantic_state_t* sema,
         metac_type_tuple_t* typeTuple =
             TupleTypePtr(ctx.Sema, TYPE_INDEX_INDEX(e->TypeIndex));
 
-        const uint32_t count = typeTuple->typeCount;
+        const uint32_t count = typeTuple->TypeCount;
 
         uint32_t currrentHeapOffset = resultInt;
 
@@ -394,8 +394,8 @@ EvaluateExpression(metac_semantic_state_t* sema,
 
         for(uint32_t i = 0; i < count; i++)
         {
-            BCType bcType = MetaCCodegen_GetBCType(&ctx, typeTuple->typeIndicies[i]);
-            ConvertTupleElementToExp(sema, tupleExps + i, typeTuple->typeIndicies[i],
+            BCType bcType = MetaCCodegen_GetBCType(&ctx, typeTuple->TypeIndicies[i]);
+            ConvertTupleElementToExp(sema, tupleExps + i, typeTuple->TypeIndicies[i],
                                      currrentHeapOffset, heap);
             currrentHeapOffset += MetaCCodegen_GetStorageSize(&ctx, bcType);
         }

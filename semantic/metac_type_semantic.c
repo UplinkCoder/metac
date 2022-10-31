@@ -458,7 +458,7 @@ uint32_t MetaCSemantic_GetTypeSize(metac_semantic_state_t* self,
     else if (TYPE_INDEX_KIND(typeIndex) == type_index_tuple)
     {
         metac_type_tuple_t* tuple = TupleTypePtr(self, TYPE_INDEX_INDEX(typeIndex));
-        uint32_t sz = ComputeStructSize(self, tuple->typeIndicies, tuple->typeCount, NextTypeTupleElem);
+        uint32_t sz = ComputeStructSize(self, tuple->TypeIndicies, tuple->TypeCount, NextTypeTupleElem);
         // we now create a struct temporarily so we can use the same
         // logic we use to determine the size of structs
         result = sz;

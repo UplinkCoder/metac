@@ -160,13 +160,13 @@ static inline const bool TupleSlotsEqual(const metac_type_table_slot_t* a,
    metac_type_tuple_t* slotB = cast(metac_type_tuple_t*) b;
    bool result = false;
 
-   if (slotA->typeCount == slotB->typeCount)
+   if (slotA->TypeCount == slotB->TypeCount)
    {
        result = true;
-       const uint32_t typeCount = slotA->typeCount;
+       const uint32_t typeCount = slotA->TypeCount;
        for(uint32_t i = 0; i < typeCount; i++)
        {
-           if (slotA->typeIndicies[i].v != slotB->typeIndicies[i].v)
+           if (slotA->TypeIndicies[i].v != slotB->TypeIndicies[i].v)
            {
                result = false;
                break;

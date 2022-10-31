@@ -683,8 +683,8 @@ LswitchIdKey:
             metac_type_tuple_t typeTuple;
             typeTuple.Header.Kind = decl_type_tuple;
             typeTuple.Header.Hash = hash;
-            typeTuple.typeCount = tupleExpressionCount;
-            typeTuple.typeIndicies = typeIndicies;
+            typeTuple.TypeCount = tupleExpressionCount;
+            typeTuple.TypeIndicies = typeIndicies;
 
            // AllocNewTupleType()
             metac_type_index_t tupleIdx =
@@ -699,7 +699,7 @@ LswitchIdKey:
         //            malloc(expr->TupleExpressionCount * sizeof(metac_type_index_t));
                 memcpy(newIndicies, typeIndicies,
                     expr->TupleExpressionCount * sizeof(metac_type_index_t));
-                typeTuple.typeIndicies = newIndicies;
+                typeTuple.TypeIndicies = newIndicies;
                 tupleIdx =
                     MetaCTypeTable_AddTupleType(&self->TupleTypeTable, &typeTuple);
             }
@@ -940,4 +940,3 @@ bool MetaCSemantic_CanHaveAddress(metac_semantic_state_t* self,
         default: return false;
     }
 }
-
