@@ -3,41 +3,56 @@
 
 #include "../os/compat.h"
 #include "../parser/metac_identifier_table.h"
-#include "metac_scope.h"
+#include "../semantic/metac_scope.h"
 #include "../parser/metac_node.h"
 
 #ifndef AT
 #define AT(...)
 #endif
 
+#define FOREACH_TYPE_INDEX_KIND(M) \
+    M(type_index_unknown       , 0x0) \
+    M(type_index_basic         , 0x1) \
+    M(type_index_enum          , 0x2) \
+    M(type_index_ptr           , 0x3) \
+    M(type_index_array         , 0x4) \
+    M(type_index_struct        , 0x5) \
+    M(type_index_union         , 0x6) \
+    M(type_index_class         , 0x7) \
+    M(type_index_map           , 0x8) \
+    M(type_index_functiontype  , 0x9) \
+    M(type_index_typedef       , 0xA) \
+    M(type_index_tuple         , 0xB) \
+    \
+    M(type_index_extended      , 0xE) \
+    M(type_index_invalid       , 0xF)
+
+#define TYPE_INDEX_MEMBER(KIND, VALUE) \
+    KIND = VALUE,
+
 typedef enum metac_type_index_kind_t
 {
-    type_index_unknown       = 0x0,
-
-    type_index_basic         = 0x1,
-
-    type_index_enum          = 0x2,
-
-    type_index_ptr           = 0x3,
-    type_index_array         = 0x4,
-
-    type_index_struct        = 0x5,
-    type_index_union         = 0x6,
-    type_index_class         = 0x7,
-
-    type_index_map           = 0x8,
-
-    type_index_functiontype  = 0x9,
-
-    type_index_typedef       = 0xA,
-
-    type_index_tuple         = 0xB,
-
-    // unused range C-D C, D
-
-    type_index_extended      = 0xE,
-    type_index_invalid       = 0xF
+    FOREACH_TYPE_INDEX_KIND(TYPE_INDEX_MEMBER)
+    dummy = 0xf
 } metac_type_index_kind_t;
+
+#undef TYPE_INDEX_MEMBER
+
+const char* type_index_kind_toChars(metac_type_index_kind_t Kind)
+{
+    const char* result = 0;
+
+#define CASE(KIND, VALUE) \
+    case KIND: result = #KIND; break;
+
+    switch(Kind)
+    {
+        FOREACH_TYPE_INDEX_KIND(CASE)
+    }
+
+    return result;
+#undef CASE
+}
 
 typedef struct metac_type_index_t
 {
