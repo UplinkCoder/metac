@@ -724,7 +724,8 @@ EXTERN_C bool BCValue_isStackValueOrParameter(const BCValue* val)
     return (val->vType == BCValueType_StackValue
          || val->vType == BCValueType_Parameter
          || val->vType == BCValueType_Local
-         || val->vType == BCValueType_Temporary);
+         || val->vType == BCValueType_Temporary
+         || val->vType == BCValueType_External);
 }
 
 /*

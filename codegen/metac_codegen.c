@@ -28,9 +28,6 @@ uint32_t MetaCCodegen_GetTypeABISize(metac_bytecode_ctx_t* ctx,
     return 0;
 }
 
-void MetaCCodegen_doStatement(metac_bytecode_ctx_t* ctx,
-                              metac_sema_statement_t* stmt);
-
 BCType MetaCCodegen_GetBCType(metac_bytecode_ctx_t* ctx, metac_type_index_t type)
 {
     BCType result = {BCTypeEnum_Undef};
@@ -134,12 +131,33 @@ BCType MetaCCodegen_GetBCType(metac_bytecode_ctx_t* ctx, metac_type_index_t type
 extern const BackendInterface Lightning_interface;
 extern const BackendInterface BCGen_interface;
 
+static metac_type_index_t GetTypeIndex(BCType bcType)
+{
+    metac_type_index_t result;
+    metac_type_index_kind_t kind = type_index_invalid;
+
+    switch (bcType.type)
+    {
+        case BCTypeEnum_Tuple:
+            kind = type_index_tuple;
+        break;
+    }
+
+    result.v = TYPE_INDEX_V(kind, bcType.typeIndex);
+    return result;
+}
+
 uint32_t MetaCCodegen_GetStorageSize(metac_bytecode_ctx_t* ctx, BCType bcType)
 {
     uint32_t sz = 0;
     if (BCType_isBasicBCType(bcType))
     {
         sz = BCTypeEnum_basicTypeSize(bcType.type);
+    }
+    else
+    {
+         metac_type_index_t typeIdx = GetTypeIndex(bcType);
+         sz = MetaCSemantic_GetTypeSize(ctx->Sema, typeIdx);
     }
 
     assert(sz);
@@ -391,6 +409,23 @@ static void InitCompilerInterface(metac_bytecode_ctx_t* ctx)
     }
 #endif
 }
+
+bool IsExternal(metac_sema_expression_t* expr)
+{
+    bool result = false;
+
+    switch(expr->Kind)
+    {
+        case exp_variable:
+            result = (STORAGE_KIND(expr->Variable->Storage) == storage_external);
+        break;
+        case exp_dot:
+            result = IsExternal(expr->E1);
+        break;
+        default: assert(0);
+    }
+}
+
 metac_bytecode_function_t MetaCCodegen_GenerateFunctionFromExp(metac_bytecode_ctx_t* ctx,
                                                                metac_sema_expression_t* expr)
 {
@@ -410,6 +445,7 @@ metac_bytecode_function_t MetaCCodegen_GenerateFunctionFromExp(metac_bytecode_ct
         }
         else
         {
+            bool isExternal = IsExternal(expr->E1);
             int k = 12;
         }
     }
@@ -442,6 +478,9 @@ metac_bytecode_function_t MetaCCodegen_GenerateFunctionFromExp(metac_bytecode_ct
 
     return func;
 }
+
+void MetaCCodegen_doStatement(metac_bytecode_ctx_t* ctx,
+                              metac_sema_statement_t* stmt);
 
 metac_bytecode_function_t MetaCCodegen_GenerateFunction(metac_bytecode_ctx_t* ctx,
                                                         sema_decl_function_t* function)
@@ -809,6 +848,10 @@ void MetaCCodegen_doDeref(metac_bytecode_ctx_t* ctx,
     {
         *result = *addr;
     }
+    else if (TYPE_INDEX_KIND(varType) == type_index_ptr)
+    {
+        *result = *addr;
+    }
     else
     {
         assert(!"doDeref not implemented right now");
@@ -851,11 +894,12 @@ static void MetaCCodegen_doDotExpression(metac_bytecode_ctx_t* ctx,
     offsetVal = imm32(field->Offset);
 
     // HACK remove!
+/*
     if (e1Value.vType == BCValueType_HeapValue || e1Value.vType == BCValueType_External)
     {
         e1Value.vType = BCValueType_StackValue;
     }
-
+*/
     gen.Add3(c, &addr, &e1Value, &offsetVal);
 
     MetaCCodegen_doDeref(ctx, &addr, field->Type, result);

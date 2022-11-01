@@ -160,6 +160,8 @@ void MetaCSemantic_doCallSemantic(metac_semantic_state_t* self,
         argList = argList->Next;
     }
 
+
+
     metac_sema_expression_t* func =
         ResloveFuncCall(self, fn, arguments, nArgs);
     if (func)
@@ -168,6 +170,8 @@ void MetaCSemantic_doCallSemantic(metac_semantic_state_t* self,
         (*resultP) = result;
     }
     result->Call.Function = func;
+
+    if (func->Function)
 
     printf("function call with: %u arguments\n", nArgs);
 
@@ -671,8 +675,6 @@ LswitchIdKey:
                 typeExp.Kind = exp_type;
                 result = AllocNewSemaExpression(self, &typeExp);
             }
-
-
 
 #define tuple_key 0x55ee11
 

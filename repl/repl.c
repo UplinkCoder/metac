@@ -347,6 +347,7 @@ EvaluateExpression(metac_semantic_state_t* sema,
 
     metac_bytecode_ctx_t ctx;
     MetaCCodegen_Init(&ctx, 0);
+    ctx.Sema = sema;
 
     for(uint32_t i = 0; i < sema->GlobalsCount; i++)
     {

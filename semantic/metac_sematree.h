@@ -51,6 +51,9 @@ typedef struct metac_storage_location_t
 #define STORAGE_V(KIND, OFFSET) \
     (((KIND) << 28) | (OFFSET))
 
+#define STORAGE_KIND(STORAGE) \
+    ((metac_storage_kind_t) ((STORAGE).v >> 28) & 0xF)
+
 typedef struct sema_exp_argument_list_t
 {
     struct metac_sema_expression_t** Arguments;
@@ -405,6 +408,7 @@ typedef struct sema_decl_function_t
 
     sema_stmt_block_t* FunctionBody;
 
+    uint32_t IsExternal;
 } sema_decl_function_t;
 
 typedef struct sema_decl_type_ptr_t
