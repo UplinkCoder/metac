@@ -28,16 +28,17 @@ uint32_t MetaCCodegen_GetTypeABISize(metac_bytecode_ctx_t* ctx,
     return 0;
 }
 
-BCType MetaCCodegen_GetBCType(metac_bytecode_ctx_t* ctx, metac_type_index_t type)
+BCType MetaCCodegen_GetBCType(metac_bytecode_ctx_t* ctx, metac_type_index_t typeIdx)
 {
     BCType result = {BCTypeEnum_Undef};
+    metac_type_index_kind_t typeKind = TYPE_INDEX_KIND(typeIdx);
 
-    if (type.Kind == type_index_enum)
+    if (typeKind == type_index_enum)
         result.type = BCTypeEnum_i32;
 
-    if (type.Kind == type_index_basic)
+    if (typeKind == type_index_basic)
     {
-        switch(type.Index)
+        switch(typeIdx.Index)
         {
             case type_void:
                 result.type = BCTypeEnum_Void;
@@ -98,31 +99,31 @@ BCType MetaCCodegen_GetBCType(metac_bytecode_ctx_t* ctx, metac_type_index_t type
             default : assert(0);
         }
     }
-    else if (type.Kind == type_index_tuple)
+    else if (typeKind == type_index_tuple)
     {
         result.type = BCTypeEnum_Tuple;
-        result.typeIndex = type.Index;
+        result.typeIndex = typeIdx.Index;
     }
-    else if (type.Kind == type_index_functiontype)
+    else if (typeKind == type_index_functiontype)
     {
         result.type = BCTypeEnum_Function;
-        result.typeIndex = type.Index;
+        result.typeIndex = typeIdx.Index;
     }
-    else if (type.Kind == type_index_struct)
+    else if (typeKind == type_index_struct)
     {
         result.type = BCTypeEnum_Struct;
-        result.typeIndex = type.Index;
+        result.typeIndex = typeIdx.Index;
     }
-    else if (type.Kind == type_index_ptr)
+    else if (typeKind == type_index_ptr)
     {
         result.type = BCTypeEnum_Ptr;
-        result.typeIndex = type.Index;
+        result.typeIndex = typeIdx.Index;
     }
     else
     {
         printf("cannot convert typekind: {%s, %u}\n",
-            type_index_kind_toChars(TYPE_INDEX_KIND(type)),
-                                    TYPE_INDEX_INDEX(type));
+            type_index_kind_toChars(TYPE_INDEX_KIND(typeIdx)),
+                                    TYPE_INDEX_INDEX(typeIdx));
         assert(0);
     }
 
@@ -178,10 +179,12 @@ BCTypeInfo* MetaCCodegen_GetTypeInfo(metac_bytecode_ctx_t* ctx, BCType* bcType)
 void MetaCCodegen_doGlobal(metac_bytecode_ctx_t* ctx, metac_sema_declaration_t* decl, uint32_t idx)
 {
     BCValue result = {BCValueType_HeapValue};
-    result.heapAddr.addr = ctx->GlobalMemoryOffset;
-
+ 
     metac_type_index_t typeIdx = MetaCSemantic_GetType(ctx->Sema, METAC_NODE(decl));
-    if (typeIdx.Kind != type_index_invalid)
+    metac_type_index_kind_t typeIdxKind = TYPE_INDEX_KIND(typeIdx);
+    
+    result.heapAddr.addr = ctx->GlobalMemoryOffset;
+    if (typeIdxKind != type_index_invalid)
     {
         BCType bcType = MetaCCodegen_GetBCType(ctx, typeIdx);
         uint32_t sz = MetaCCodegen_GetStorageSize(ctx, bcType);
@@ -1233,7 +1236,12 @@ static void MetaCCodegen_doExpression(metac_bytecode_ctx_t* ctx,
             BCValue imm = imm32(exp->TypeExp.v);
             gen.Set(c, result, &imm);
         } break;
-
+/*
+        case exp_char:
+        {
+            // BCValue imm = imm32()
+        } break;
+*/
         case exp_signed_integer:
         {
             // BCValue imm = imm32((int32_t)exp->ValueU64);

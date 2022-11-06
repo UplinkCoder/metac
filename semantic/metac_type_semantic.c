@@ -332,8 +332,9 @@ uint32_t MetaCSemantic_GetTypeAlignment(metac_semantic_state_t* self,
                                         metac_type_index_t typeIndex)
 {
     uint32_t result = INVALID_SIZE;
+    metac_type_index_kind_t typeIndexKind = TYPE_INDEX_KIND(typeIndex);
 
-    if (TYPE_INDEX_KIND(typeIndex) == type_index_basic)
+    if (typeIndexKind == type_index_basic)
     {
         uint32_t idx = TYPE_INDEX_INDEX(typeIndex);
 
@@ -357,12 +358,12 @@ uint32_t MetaCSemantic_GetTypeAlignment(metac_semantic_state_t* self,
             result = 4;
         }
     }
-    else if (TYPE_INDEX_KIND(typeIndex) == type_index_ptr
-        ||   TYPE_INDEX_KIND(typeIndex) == type_index_functiontype)
+    else if (typeIndexKind == type_index_ptr
+        ||   typeIndexKind == type_index_functiontype)
     {
         result = default_target_info.AlignmentSizeT;
     }
-    else if (TYPE_INDEX_KIND(typeIndex) == type_index_typedef)
+    else if (typeIndexKind == type_index_typedef)
     {
         uint32_t idx = TYPE_INDEX_INDEX(typeIndex);
         metac_type_index_t elementTypeIndex =
@@ -370,18 +371,18 @@ uint32_t MetaCSemantic_GetTypeAlignment(metac_semantic_state_t* self,
 
         result = MetaCSemantic_GetTypeAlignment(self, elementTypeIndex);
     }
-    else if (TYPE_INDEX_KIND(typeIndex) == type_index_struct)
+    else if (typeIndexKind == type_index_struct)
     {
         metac_type_aggregate_t* struct_ = StructPtr(self, TYPE_INDEX_INDEX(typeIndex));
         result = struct_->Alignment;
     }
-    else if (TYPE_INDEX_KIND(typeIndex) == type_index_enum)
+    else if (typeIndexKind == type_index_enum)
     {
         metac_type_enum_t* enum_ = EnumTypePtr(self, TYPE_INDEX_INDEX(typeIndex));
         //TODO use an enum basetype
         result = MetaCTargetInfo_GetBasicAlign(&default_target_info, basic_int);
     }
-    else if (TYPE_INDEX_KIND(typeIndex) == type_index_array)
+    else if (typeIndexKind == type_index_array)
     {
         uint32_t idx = TYPE_INDEX_INDEX(typeIndex);
         metac_type_array_t* arrayType_ = ArrayTypePtr(self, idx);
@@ -584,7 +585,7 @@ void MetaCSemantic_ComputeEnumValues(metac_semantic_state_t* self,
 
     uint32_t hash = enum_key;
     hash = CRC32C_VALUE(hash, enum_->Identifier.v);
-    assert(self->CurrentScope->Owner.Kind == scope_owner_enum);
+    assert(SCOPE_OWNER_KIND(self->CurrentScope->Owner) == scope_owner_enum);
     ARENA_ARRAY_ENSURE_SIZE(memberPlaceholders, memberCount);
     memberPlaceholdersCount = memberCount;
 
@@ -667,9 +668,6 @@ void MetaCSemantic_ComputeEnumValues(metac_semantic_state_t* self,
             memberIdx++, member = member->Next)
         {
 
-            printf("member.Name: %s\n",
-                IdentifierPtrToCharPtr(self->ParserIdentifierTable, member->Name));
-
             semaEnum->Members[memberIdx].Identifier = member->Name;
             semaEnum->Members[memberIdx].Header.Kind = decl_enum_member;
 
@@ -701,9 +699,6 @@ void MetaCSemantic_ComputeEnumValues(metac_semantic_state_t* self,
             semaEnum->Members[memberIdx].Header.LocationIdx = member->LocationIdx;
             hash = CRC32C_VALUE(hash, semaEnum->Members[memberIdx].Identifier);
             hash = CRC32C_VALUE(hash, semaEnum->Members[memberIdx].Value->ValueI64);
-            printf("Registering %p for %s\n",
-                semaEnum->Members + memberIdx,
-                IdentifierPtrToCharPtr(self->ParserIdentifierTable, member->Name));
             MetaCSemantic_RegisterInScope(self, member->Name, semaEnum->Members + memberIdx);
         }
     }
@@ -813,8 +808,7 @@ metac_type_index_t TypeEnumSemantic(metac_semantic_state_t* self,
     metac_type_enum_t tmpSemaEnum = {0};
 
     metac_scope_t enumScope = { scope_flag_temporary };
-    enumScope.Owner.Kind = scope_owner_enum;
-
+    enumScope.Owner.v = SCOPE_OWNER_V(scope_owner_enum, 0);
     tmpSemaEnum.MemberCount = enm->MemberCount;
     tmpSemaEnum.Name = enm->Identifier;
 
@@ -851,7 +845,7 @@ metac_type_index_t TypeEnumSemantic(metac_semantic_state_t* self,
 #define ISOLATED_ENUM_SCOPE 0
     if (!ISOLATED_ENUM_SCOPE)
     {
-        assert(self->CurrentScope->Owner.Kind == scope_owner_module);
+        assert(TYPE_INDEX_KIND(self->CurrentScope->Owner) == scope_owner_module);
 
         for(uint32_t memberIndex = 0;
             memberIndex < tmpSemaEnum.MemberCount;

@@ -2883,7 +2883,7 @@ metac_declaration_t* MetaCParser_ParseDeclaration(metac_parser_t* self, metac_de
     decl_type_t* type = 0;
 
     if (tokenType == tok_eof)
-        return emptyNode;
+        return (metac_declaration_t*)emptyNode;
 
     // Let's deal with labels right at the start.
     if (MetaCParser_PeekMatch(self, tok_identifier, 1))

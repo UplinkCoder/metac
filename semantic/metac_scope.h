@@ -66,7 +66,7 @@ typedef enum scope_insert_error_t
     ((PARENT_INDEX).v & 0xfffffff)
 
 #define SCOPE_OWNER_KIND(PARENT_INDEX) \
-    ((metac_sema_parent_kind_t)((PARENT_INDEX).v >> 28))
+    ((metac_scope_owner_kind_t)((PARENT_INDEX).v >> 28))
 
 #define SCOPE_OWNER_V(KIND, INDEX) \
     ((uint32_t)(((KIND) << 28) | (INDEX)))
