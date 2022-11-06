@@ -68,6 +68,40 @@ static int serveFile(const char* filename, const char* contentType, struct MHD_C
     return ret;
 }
 
+MHD_HANDLER (handleCurrentScope)
+{
+    static char responseString[8192];
+    uint32_t responseSize = 0;
+    debug_server_t* debugServer = (debug_server_t*) cls;
+    if (!debugServer->CurrentScope)
+    {
+        return send_html(connection, "<html><body>No CurrentScope set</body></html>", sizeof("<html><body>No CurrentScope set</body></html>") - 1);
+    }
+    char* resp = responseString;
+
+    responseSize +=
+        snprintf(responseString, ARRAYSIZE(responseString) - responseSize,
+            "<hmtl><body>");
+    metac_scope_table_slot_t* slot = debugServer->CurrentScope->ScopeTable.Slots;
+    for(uint32_t i = 0; i < debugServer->CurrentScope->ScopeTable.SlotsUsed;)
+    {
+        if (slot->Hash == 0)
+            continue;
+        else
+        {
+            responseSize +=
+                snprintf(responseString, ARRAYSIZE(responseString) - responseSize,
+                    "%s <br/>", IdentifierPtrFromSemaDecl(debugServer->CurrentIdentifierTable, slot->Ptr));
+        }
+    }
+
+    responseSize +=
+        snprintf(responseString, ARRAYSIZE(responseString) - responseSize,
+            "</body></hmtl>");
+    return send_html(connection, responseString, responseSize);
+}
+
+
 const char* PrintSize(uint32_t sz)
 {
     static char s_buffer[32];
@@ -98,9 +132,9 @@ void outAllocRow(char* body, uint32_t sz, uint32_t* pp, metac_alloc_t* alloc)
     p += snprintf (body + p, sz - p, "<tr>");
 
     printf("arenaCount: %u\n", alloc->ArenaCount);
+
     for(j = 0; j < alloc->ArenaCount; j++)
     {
-        printf("j: %u\n", j);
         usedSize += alloc->Arenas[j].Offset;
         // we seem to be double counting allocated size
         allocatedSize += (alloc->Arenas[j].Offset + alloc->Arenas[j].SizeLeft);
@@ -176,7 +210,13 @@ MHD_HANDLER (handleAllocators)
     printf("debugServer->AllocatorsCount: %u\n", debugServer->AllocatorsCount);
     for (i = 0; i < debugServer->AllocatorsCount; i++)
     {
+        printf("i: %u ---       ", i);
         metac_alloc_t * alloc = debugServer->Allocators[i];
+        if (alloc->ArenaCount > 500)
+        {
+            fprintf(stderr, "Unreasonable ArenaCount for alloc %u\n", i);
+            continue;
+        }
         outAllocRow(body, ARRAYSIZE(body), &p, alloc);
     }
 
@@ -282,6 +322,11 @@ static MHD_HANDLER(debugServerHandler)
         return handleArenas(MHD_HANDLER_PASSTHROUGH);
     }
 
+    if (memcmp(url, "/currentScope", sizeof("/currentScope") - 1) == 0)
+    {
+        return handleCurrentScope(MHD_HANDLER_PASSTHROUGH);
+    }
+
     if (debugServer->Handler)
     {
         return debugServer->Handler(MHD_HANDLER_PASSTHROUGH);
@@ -346,7 +391,7 @@ void Debug_Allocator(debug_server_t* debugServer, metac_alloc_t* allocator)
         if (newMem)
             debugServer->Allocators = (debug_allocation_t*)newMem;
     }
-  //  if (count == 5) { asm ( "int $3" ); }
+    // if (count == 10) { asm ( "int $3" ); }
 }
 
 void Debug_RemoveAllocator(debug_server_t* debugServer, metac_alloc_t* allocator)
@@ -376,6 +421,16 @@ void Debug_Allocation(debug_server_t* debugServer, metac_alloc_t* allocator, uin
 
 void Debug_Pump(debug_server_t* debugServer)
 {
+}
+
+void Debug_CurrentScope(debug_server_t* debugServer, metac_scope_t* scopeP)
+{
+    debugServer->CurrentScope = scopeP;
+}
+void Debug_CurrentIdentifierTable(debug_server_t* debugServer,
+                                  metac_identifier_table_t* idTab)
+{
+    debugServer->CurrentIdentifierTable = idTab;
 }
 
 #endif

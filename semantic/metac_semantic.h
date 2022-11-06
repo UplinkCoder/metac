@@ -25,49 +25,17 @@
     M(SELF, sema_stmt_block_t, BlockStatements) \
     M(SELF, metac_sema_statement_t, Statements)
 
-#define DECLARE_ARRAY(UNUSED, TYPE_NAME, VAR) \
-    TYPE_NAME* VAR; \
-    uint32_t VAR##_size; \
-    uint32_t VAR##_capacity;
-
 #define DECLARE_ARENA_STATE_ARRAY(UNUSED, TYPE_NAME, VAR) \
     metac_alloc_t VAR##Allocator; \
     ARENA_ARRAY(TYPE_NAME, VAR)
 
-#define INIT_ARRAY(SELF, TYPE_NAME, VAR) \
-   SELF->VAR = (TYPE_NAME*)0; \
-   SELF->VAR##_size = 0; \
-   SELF->VAR##_capacity = 0;
-
 #define INIT_ARENA_STATE_ARRAY(SELF, TYPE_NAME, VAR) \
     SELF->VAR = (TYPE_NAME*) 0; \
-    Allocator_Init(SELF->VAR##Allocator, &(SELF->Allocator));
+    Allocator_Init(&SELF->VAR##Allocator, &(SELF->Allocator)); \
+    ARENA_ARRAY_INIT(TYPE_NAME, SELF->VAR, &(SELF->Allocator));
 
 noinline void _newMemRealloc(void** memP, uint32_t* capacityP, const uint32_t elementSize);
 //static uint32_t _nodeCounter = 1;
-
-/// TODO: lock during realloc
-#define REALLOC_BOILERPLATE(VAR) \
-if (VAR ## _capacity <= VAR ## _size) \
-    { \
-        _newMemRealloc( \
-            ((void**)&VAR), \
-            &VAR## _capacity, \
-            sizeof(*VAR) \
-        ); \
-    }
-
-/// TODO: lock during realloc
-#define REALLOC_N_BOILERPLATE(VAR, N) \
-if (VAR ## _capacity <= (VAR ## _size + (N))) \
-    { \
-        _newMemRealloc( \
-            ((void**)&VAR), \
-            &VAR## _capacity, \
-            sizeof(*VAR) \
-        ); \
-    }
-
 
 typedef struct metac_semantic_waiter_t
 {
@@ -108,6 +76,38 @@ typedef struct metac_sema_decl_state_t
     M(functiontype, FunctionTypeTable, functiontype) \
     M(tuple,        TupleTypeTable,           tuple)
 
+#define FOREACH_ON_RESOLVE_FAIL(M) \
+    M(OnResolveFail_Invalid)       \
+    M(OnResolveFail_Yield)         \
+    M(OnResolveFail_ReturnNull)    \
+    M(OnResolveFail_ReturnError)
+
+#define DEFINE_MEMBER(MEMBER) MEMBER,
+
+typedef enum metac_semantic_on_resolve_fail_t
+{
+    FOREACH_ON_RESOLVE_FAIL(DEFINE_MEMBER)
+    OnResolveFail_Max
+} metac_semantic_on_resolve_fail_t;
+
+#undef DEFINE_MEMBER
+
+static const char* OnResolveFail_toChars(metac_semantic_on_resolve_fail_t onFail)
+{
+    const char* result = 0;
+
+    switch(onFail)
+    {
+#define CASE(MEMBER) \
+    case MEMBER: result = #MEMBER; break;
+    FOREACH_ON_RESOLVE_FAIL(CASE)
+#undef CASE
+    default: break;
+    }
+
+    return result;
+}
+
 typedef struct metac_switch_state_t
 {
     //ARENA_ARRAY(sema_stmt_case_t*, PendingCases)
@@ -142,7 +142,7 @@ typedef struct metac_semantic_state_t
     // metac_type_table_t* TypeTable;
     FOREACH_TYPE_TABLE(DECLARE_TYPE_TABLE)
 
-    FOREACH_SEMA_STATE_ARRAY(NULL, DECLARE_ARRAY)
+    FOREACH_SEMA_STATE_ARRAY(NULL, DECLARE_ARENA_STATE_ARRAY)
 
     AT(TaskLocal) AT(transient) metac_scope_t* MountParent;
 
@@ -160,7 +160,18 @@ typedef struct metac_semantic_state_t
     sema_decl_variable_t CompilerVariable;
 
     ARENA_ARRAY(metac_sema_declaration_t*, Globals)
+    ARENA_ARRAY(metac_semantic_on_resolve_fail_t, OnResolveFailStack)
 } metac_semantic_state_t;
+
+bool IsUnresolved(metac_node_t node);
+
+/// Sets the behavior for name-resolve failing
+void MetaCSemantic_PushOnResolveFail(metac_semantic_state_t* self,
+                                     metac_semantic_on_resolve_fail_t onFail);
+
+// Resets the behavior for the case of a name-resolve failing
+void MetaCSemantic_PopOnResolveFail(metac_semantic_state_t* self);
+
 
 #include "metac_type_semantic.h"
 #include "metac_expr_semantic.h"
@@ -318,5 +329,6 @@ void MetaCSemantic_PopTemporaryScope_(metac_semantic_state_t* self,
 //                                      metac_scope_t* tmpScope,
                                       uint32_t line,
                                       const char* file);
+void MetaCSemantic_ConstantFold(metac_semantic_state_t* self, metac_sema_expression_t* exp);
 
 #endif

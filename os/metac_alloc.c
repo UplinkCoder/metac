@@ -239,8 +239,6 @@ void* Allocator_Calloc_(metac_alloc_t* alloc, uint32_t elemSize, uint32_t elemCo
     return arena->Memory;
 }
 
-/// After free Arena has been called
-/// acessing the area pointer itself is invalid
 void Allocator_FreeArena (metac_alloc_t* alloc, arena_ptr_t arena)
 {
 

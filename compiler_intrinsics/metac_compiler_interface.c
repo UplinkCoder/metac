@@ -22,7 +22,7 @@
 
 uint32_t compiler_CurrentTimeStamp ()
 {
-    
+
 }
 
 uint32_t compiler_BuiltinCount ()
@@ -32,12 +32,12 @@ uint32_t compiler_BuiltinCount ()
 
 const char* compiler_PrintType (type T)
 {
-    
+
 }
 
 const char** compiler_FieldNames (type T)
 {
-    
+
 }
 
 const char* compiler_BuiltinName (uint32_t builtinNumber)
@@ -52,7 +52,7 @@ const char* compiler_help ()
 }
 
 
- 
+
 metac_compiler_t compiler = {
     0,
     0,
@@ -68,7 +68,7 @@ metac_compiler_t compiler = {
 
     0,
     0,
-    
+
     0,
 };
 

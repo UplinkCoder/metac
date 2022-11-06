@@ -139,6 +139,8 @@ typedef struct metac_type_enum_t
 
     metac_identifier_ptr_t Name;
 
+    metac_type_index_t BaseType;
+
     metac_enum_member_t* Members;
 
     uint32_t MemberCount;

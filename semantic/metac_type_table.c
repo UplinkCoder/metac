@@ -78,7 +78,7 @@ metac_type_index_t MetaCTypeTable_GetOrEmptyImpl(metac_type_table_t* table,
     return result;
 }
 
-FOREACH_TABLE_MEMBER(GET_OR_EMPTY_TYPE_DEF);
+FOREACH_TABLE_MEMBER(GET_OR_EMPTY_TYPE_DEF)
 
 
 #define ADD_TYPE_DEF(TYPE_NAME, MEMBER_NAME, CMP_FUNC) \
@@ -139,7 +139,7 @@ metac_type_index_t MetaCTypeTable_AddImpl(metac_type_table_t* self,
     assert(0);
 }
 
-FOREACH_TABLE_MEMBER(ADD_TYPE_DEF);
+FOREACH_TABLE_MEMBER(ADD_TYPE_DEF)
 
 
 

@@ -141,6 +141,7 @@ static metac_type_index_t GetTypeIndex(BCType bcType)
         case BCTypeEnum_Tuple:
             kind = type_index_tuple;
         break;
+        default: assert(0);
     }
 
     result.v = TYPE_INDEX_V(kind, bcType.typeIndex);
@@ -257,7 +258,7 @@ long MetaCCodegen_RunFunction(metac_bytecode_ctx_t* self,
                 heap->heapSize += align4(sz + 1);
                 BCValue stringPtr;
                 stringPtr.vType = BCValueType_Immediate;
-                BCType bcType = {BCTypeEnum_Ptr, 0};
+                BCType bcType = {BCTypeEnum_Ptr, 10};
                 stringPtr.type = bcType;
                 stringPtr.heapAddr = ptr;
                 ARENA_ARRAY_ADD(args, stringPtr);
@@ -363,7 +364,7 @@ void MetaCCodegen_Init(metac_bytecode_ctx_t* self, metac_alloc_t* parentAlloc)
     extCompP->externalAddress = &compiler;
     extCompP->externalSize = sizeof(compiler);
     self->ExternalsCount = 1;
-    compiler.help = compiler_help;
+    compiler.Help = compiler_help;
 #endif
 }
 
@@ -424,6 +425,8 @@ bool IsExternal(metac_sema_expression_t* expr)
         break;
         default: assert(0);
     }
+
+    return result;
 }
 
 metac_bytecode_function_t MetaCCodegen_GenerateFunctionFromExp(metac_bytecode_ctx_t* ctx,
@@ -692,7 +695,7 @@ static void LoadFromHeapRef(metac_bytecode_ctx_t* ctx, BCValue* hrv, uint32_t ab
     const BackendInterface gen = *ctx->gen;
     void* c = ctx->c;
     {
-        BCTypeEnum types[] = {BCTypeEnum_i64, BCTypeEnum_f52};
+        BCTypeEnum types[] = {BCTypeEnum_u64, BCTypeEnum_i64, BCTypeEnum_f52};
         if(BCTypeEnum_anyOf(hrv->type.type, types, ARRAY_SIZE(types)))
         {
             BCValue hr = BCValue_fromHeapref(hrv->heapRef);
@@ -774,7 +777,7 @@ static void StoreToHeapRef(metac_bytecode_ctx_t* ctx, BCValue* hrv, uint32_t abi
     // since the stuff below are heapValues we may not want to do this ??
     {
         BCTypeEnum types[] =
-            { BCTypeEnum_Struct, BCTypeEnum_Slice, BCTypeEnum_Array };
+            { BCTypeEnum_Struct, BCTypeEnum_Slice, BCTypeEnum_Array, BCTypeEnum_Tuple };
         if (BCTypeEnum_anyOf(hrv->type.type, types, ARRAY_SIZE(types)))
         {
             BCValue hr = BCValue_fromHeapref(hrv->heapRef);
@@ -880,7 +883,7 @@ static void MetaCCodegen_doDotExpression(metac_bytecode_ctx_t* ctx,
     metac_type_index_kind_t idxKind = TYPE_INDEX_KIND(expTypeIndex);
     metac_type_aggregate_field_t* field = 0;
     BCType addrType = {BCTypeEnum_Ptr};
-    BCValue addr = gen.GenTemporary(c, addrType);
+    BCValue addr;
     BCValue e1Value = {BCValueType_Unknown};
     BCValue offsetVal = {BCValueType_Unknown};
 
@@ -888,6 +891,13 @@ static void MetaCCodegen_doDotExpression(metac_bytecode_ctx_t* ctx,
     assert(idxKind == type_index_struct);
     assert(e2->Kind == exp_field || e2->Kind == exp_call);
 
+    if (TYPE_INDEX_KIND(e2->TypeIndex) == type_functiontype)
+    {
+        BCType type_ = {BCTypeEnum_Function, TYPE_INDEX_INDEX(e2->TypeIndex)};
+        addrType = type_;
+    }
+
+    addr = gen.GenTemporary(c, addrType);
     MetaCCodegen_doExpression(ctx, e1, &e1Value, _Rvalue);
 
     field = e2->Field;
@@ -1032,6 +1042,13 @@ static void MetaCCodegen_doExpression(metac_bytecode_ctx_t* ctx,
                 MetaCExpressionKind_toChars(exp->Kind)
             );
             assert(0);
+        } break;
+
+        case exp_unknown_value:
+        {
+            assert(0);
+            BCValue unknown = gen.GenTemporary(c, expType);
+            gen.Set(c, result, &unknown);
         } break;
 
         case exp_cast:

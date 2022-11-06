@@ -140,4 +140,6 @@ long MetaCCodegen_RunFunction(metac_bytecode_ctx_t* self,
                               BCHeap* heap,
                               const char* fargs, ...);
 
+void MetaCCodegen_Free(metac_bytecode_ctx_t* self);
+
 #endif

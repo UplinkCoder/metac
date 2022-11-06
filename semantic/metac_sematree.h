@@ -122,6 +122,8 @@ typedef struct metac_sema_expression_t
         // case exp_call:
         struct sema_exp_call_t Call;
 
+        // case unknown_value_exp:
+        metac_expression_t* Expression;
         // case variable_exp:
         struct sema_decl_variable_t* Variable;
         // case field_exp:
@@ -172,7 +174,7 @@ typedef struct sema_stmt_block_t
 {
     SEMA_STATEMENT_HEADER
 
-    struct metac_sema_statement_t** Body;
+    ARENA_ARRAY(struct metac_sema_statement_t*, Body)
     uint32_t StatementCount;
 } sema_stmt_block_t;
 
@@ -234,7 +236,7 @@ typedef struct sema_stmt_casebody_t
 {
     SEMA_STATEMENT_HEADER
 
-    struct metac_sema_statement_t** Statements;
+    ARENA_ARRAY(struct metac_sema_statement_t*, Statements)
 
     uint32_t StatementCount;
 } sema_stmt_casebody_t;

@@ -21,11 +21,6 @@ typedef enum repl_mode_t
     repl_mode_max
 } repl_mode_t;
 
-void ConvertTupleElementToExp(metac_semantic_state_t* sema,
-                              metac_sema_expression_t** dstP, metac_type_index_t elemType,
-                              uint32_t offset, BCHeap* heap);
-
-
 typedef struct repl_state_t
 {
     repl_mode_t ParseMode;

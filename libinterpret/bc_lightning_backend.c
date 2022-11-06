@@ -76,7 +76,7 @@ typedef struct RuntimeContext
     uint8_t* stackDataLength;
 
     uint8_t* heapDataBegin;
-    uint32_t* heapDataLength;
+    uint32_t* heapCapacityP;
     // bc function to be determined.
     void* functions;
 
@@ -277,8 +277,8 @@ static inline bool ConvertsToPointer(BCTypeEnum bcTypeEnum)
     return result;
 }
 
-static inline register_index_t LoadRegValue(Lightning* self,
-                                            register_index_t target, BCValue* val)
+static inline void LoadRegValue(Lightning* self,
+                                register_index_t target, BCValue* val)
 {
     uint32_t sz = 0;
 
@@ -286,7 +286,8 @@ static inline register_index_t LoadRegValue(Lightning* self,
     {
         sz = BCTypeEnum_basicTypeSize(val->type.type);
     }
-    else if (val->type.type == BCTypeEnum_Struct)
+    else if (val->type.type == BCTypeEnum_Struct
+          || val->type.type == BCTypeEnum_Tuple)
     {
         sz = 4;
     }
@@ -320,8 +321,8 @@ static inline register_index_t LoadRegValue(Lightning* self,
     }
 }
 
-static inline register_index_t StoreRegValue(Lightning* self,
-                                             BCValue* result, register_index_t target)
+static inline void StoreRegValue(Lightning* self,
+                                 BCValue* result, register_index_t target)
 {
     assert(BCValue_isStackValueOrParameter(result));
     uint32_t sz = 0;
@@ -329,7 +330,8 @@ static inline register_index_t StoreRegValue(Lightning* self,
     {
         sz = BCTypeEnum_basicTypeSize(result->type.type);
     }
-    else if (result->type.type == BCTypeEnum_Struct)
+    else if (result->type.type == BCTypeEnum_Struct
+          || result->type.type == BCTypeEnum_Tuple)
     {
         sz = 4;
     }
@@ -542,9 +544,31 @@ static inline void Lightning_EmitFlag(Lightning* self, BCValue* lhs)
     assert(0);
 }
 
+uint32_t Runtime_Alloc(RuntimeContext* ctx, uint32_t size)
+{
+    uint32_t result = 0;
+
+    uint32_t heapSize = *ctx->heapSizeP;
+    uint32_t heapCapacity = *ctx->heapCapacityP;
+
+    if (heapSize + size < heapCapacity)
+    {
+        (*ctx->heapSizeP) = heapSize + size;
+        result = heapSize;
+    }
+
+    return result;
+}
+
 static inline void Lightning_Alloc(Lightning* self, BCValue *heapPtr, const BCValue* size)
 {
-    assert(0);
+    jit_prepare();
+    jit_pushargr(JIT_V0);
+    LoadRegValue(self, r1Index, size);
+    jit_pushargr(JIT_R1);
+    jit_finishi(Runtime_Alloc);
+    jit_retval(JIT_R0);
+    StoreRegValue(self, heapPtr, r0Index);
 }
 
 static inline void Lightning_Assert(Lightning* self, const BCValue* value, const BCValue* err)
@@ -552,9 +576,105 @@ static inline void Lightning_Assert(Lightning* self, const BCValue* value, const
     assert(0);
 }
 
-static inline void Lightning_MemCpy(Lightning* self, const BCValue* dst, const BCValue* src, const BCValue* size)
+#if 0
+static inline void Lightning_PushArg(Lightning* self, const BCValue* value)
 {
-    assert(0);
+    assert(self->InCall);
+    if (self->LastUsed <= JIT_R2)
+    {
+        switch (self->LastUsed)
+        {
+            case 0xffff:
+                LoadRegValue(self, r0Index, value);
+                self->LastUsed = JIT_R0;
+            break;
+            case JIT_R0:
+                LoadRegValue(self, r1Index, value);
+                self->LastUsed = JIT_R1;
+            break;
+            case JIT_R1:
+                LoadRegValue(self, r2Index, value);
+                self->LastUsed = JIT_R2;
+            break;
+        }
+    }
+}
+#endif
+typedef enum address_kind_t
+{
+    AddressKind_Invalid,
+
+    AddressKind_Frame,
+    AddressKind_Heap,
+    AddressKind_External,
+
+    AddressKind_Max
+} address_kind_t;
+
+static inline address_kind_t ClassifyAddress(uint32_t unrealPointer)
+{
+    address_kind_t result = AddressKind_Invalid;
+
+    switch ((unrealPointer & AddrMask))
+    {
+        case stackAddrMask:
+            result = AddressKind_Frame;
+        break;
+        case externalAddrMask:
+            result = AddressKind_External;
+        break;
+        case heapAddrMask:
+            result = AddressKind_Heap;
+        break;
+    }
+
+    return result;
+}
+
+static inline void Lightning_BeginCall(Lightning* self, const BCValue fn)
+{
+
+}
+
+static inline void Runtime_MemCpy(RuntimeContext* ctx,
+                                  uint32_t dst, uint32_t src, uint32_t size)
+{
+    address_kind_t dstKind = ClassifyAddress(dst);
+    address_kind_t srcKind = ClassifyAddress(src);
+
+    if (dstKind == AddressKind_Heap)
+    {
+        if (srcKind == AddressKind_Heap)
+        {
+            uint8_t* heapPtr = ctx->heapDataBegin;
+            memcpy(heapPtr + dst, heapPtr + src, size);
+        }
+        else
+        {
+            assert(0);
+        }
+    }
+    else
+    {
+        assert(0);
+    }
+}
+
+static inline void Lightning_MemCpy(Lightning* self,
+                                    const BCValue* dst, const BCValue* src,
+                                    const BCValue* size)
+{
+    jit_prepare();
+    jit_pushargr(JIT_V0);
+
+    LoadRegValue(self, r0Index, dst);
+    jit_pushargr(JIT_R0);
+    LoadRegValue(self, r1Index, src);
+    jit_pushargr(JIT_R1);
+    LoadRegValue(self, r2Index, size);
+    jit_pushargr(JIT_R2);
+
+    jit_finishi(Runtime_MemCpy);
 }
 
 static inline void Lightning_File(Lightning* self, const char* filename)
@@ -1112,42 +1232,10 @@ static inline void Lightning_EndCndJmp(Lightning* self, const CndJmpBegin *jmp, 
     assert(0);
 }
 
-typedef enum address_kind_t
-{
-    AddressKind_Invalid,
-
-    AddressKind_Frame,
-    AddressKind_Heap,
-    AddressKind_External,
-
-    AddressKind_Max
-} address_kind_t;
-
-
-static inline address_kind_t ClassifyAddress(uint32_t unrealPointer)
-{
-    address_kind_t result = AddressKind_Invalid;
-
-    switch ((unrealPointer & AddrMask))
-    {
-        case stackAddrMask:
-            result = AddressKind_Frame;
-        break;
-        case externalAddrMask:
-            result = AddressKind_External;
-        break;
-        case heapAddrMask:
-            result = AddressKind_Heap;
-        break;
-    }
-
-    return result;
-}
-
 static inline void Runtime_Load(RuntimeContext* ctx, void* destPtr, uint32_t unrealPtr, uint32_t sz)
 {
     address_kind_t addressKind = ClassifyAddress(unrealPtr);
-    printf("RuntimeLoad\n");
+
     if (addressKind == AddressKind_Heap)
     {
         assert(unrealPtr < (*ctx->heapSizeP));
@@ -1472,7 +1560,7 @@ static inline BCValue Lightning_Run(Lightning* self, uint32_t fnIdx, const BCVal
 
     {
         rtContext.heapDataBegin = heap->heapData;
-        rtContext.heapDataLength = heap->heapMax;
+        rtContext.heapCapacityP = &heap->heapMax;
         rtContext.heapSizeP = &heap->heapSize;
 
         rtContext.externals = self->allocMemory(self->allocCtx, sizeof(Lightning_External) * 8, 0);

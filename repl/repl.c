@@ -78,7 +78,6 @@ static inline int TranslateIdentifiers(metac_node_t node, void* ctx)
     const metac_identifier_table_t* SrcTable = context->SrcTable;
     metac_identifier_table_t* DstTable = context->DstTable;
 
-    // printf("Visiting: %s\n", MetaCNodeKind_toChars(node->Kind));
     switch(node->Kind)
     {
         case decl_variable:
@@ -108,6 +107,22 @@ static inline int TranslateIdentifiers(metac_node_t node, void* ctx)
                 TranslateIdentifier(DstTable, SrcTable, &struct_->BaseIdentifier);
             if (struct_->Identifier.v != empty_identifier.v)
                 TranslateIdentifier(DstTable, SrcTable, &struct_->Identifier);
+        } break;
+        case decl_type_enum:
+        {
+            decl_type_enum_t* enum_ = (decl_type_enum_t*) node;
+            if (enum_->Identifier.v != empty_identifier.v)
+            {
+                TranslateIdentifier(DstTable, SrcTable, &enum_->Identifier);
+            }
+        } break;
+        case decl_enum_member:
+        {
+            decl_enum_member_t* enumMember = (decl_enum_member_t*) node;
+            if (enumMember->Name.v != empty_identifier.v)
+            {
+                TranslateIdentifier(DstTable, SrcTable, &enumMember->Name);
+            }
         } break;
 
         default : break;
@@ -166,6 +181,10 @@ static inline int Presemantic(metac_node_t node, void* ctx)
             MetaCSemantic_doTypeSemantic(context->Sema, node);
 
         return 1;
+    }
+    else if (MetaCNode_IsDeclaration(node))
+    {
+        MetaCSemantic_doDeclSemantic(context->Sema, node);
     }
     else
     {
@@ -252,6 +271,9 @@ void Presemantic_(repl_state_t* self)
 
             metac_declaration_t* decl = decls.Ptr[i];
 
+            if (METAC_NODE(decl) == emptyNode)
+                continue;
+
             if (decl->Kind == decl_type_typedef)
             {
                 decl_type_typedef_t* typedef_ = (decl_type_typedef_t*) decl;
@@ -268,7 +290,14 @@ void Presemantic_(repl_state_t* self)
 
             if (decl->Kind == decl_type_struct)
             {
+                const char* structNameStr = 0;
                 decl_type_struct_t* struct_ = (decl_type_struct_t*) decl;
+                metac_printer_t printer;
+
+                MetaCPrinter_Init(&printer,
+                    self->SemanticState.ParserIdentifierTable, self->SemanticState.ParserStringTable);
+                MSGF("%s\n", MetaCPrinter_PrintNode(&printer, METAC_NODE(struct_), 0));
+
                 if (struct_->Identifier.v != empty_identifier.v)
                 {
                     printIdentifier = struct_->Identifier;
@@ -277,143 +306,40 @@ void Presemantic_(repl_state_t* self)
                 {
                     // struct_->Identifier = printIdentifier;
                 }
-                MSGF("found struct : '%s'\n",
-                    IdentifierPtrToCharPtr(&tmpParser.IdentifierTable, printIdentifier));
-
-                compilerStruct = (metac_type_aggregate_t*)
-                    MetaCSemantic_doDeclSemantic(&self->SemanticState, struct_);
-                metac_printer_t printer;
-                MetaCPrinter_Init(&printer,
-                    self->SemanticState.ParserIdentifierTable, self->SemanticState.ParserStringTable);
-                MSGF("struct: %s\n", MetaCPrinter_PrintNode(&printer, METAC_NODE(struct_), 0));
-
-                printf("compilerStruct: %s\n",
-                    MetaCPrinter_PrintSemaNode(&printer, &self->SemanticState, cast(metac_node_t)compilerStruct));
-
+                structNameStr =
+                    IdentifierPtrToCharPtr(self->SemanticState.ParserIdentifierTable, printIdentifier);
+                printf("structNameStr: '%s'\n", structNameStr);
+                if (printIdentifier.v
+                 && printIdentifier.v != empty_identifier.v
+                 && 0 == strcmp("metac_compiler_t", structNameStr))
+                {
+                    compilerStruct = (metac_type_aggregate_t*)
+                        MetaCSemantic_doDeclSemantic(&self->SemanticState, struct_);
+                    printf("compilerStruct: %s\n",
+                        MetaCPrinter_PrintSemaNode(&printer, &self->SemanticState, cast(metac_node_t)compilerStruct));
+                    self->SemanticState.CompilerInterface = compilerStruct;
+                    g_compilerInterface = self->SemanticState.CompilerInterface;
+                    {
+                        sema_decl_variable_t fakeDotStruct = {};
+                        metac_type_index_t compilerTypeIndex = self->SemanticState.CompilerInterface->TypeIndex;
+                        fakeDotStruct.Kind = decl_variable;
+                        fakeDotStruct.TypeIndex = compilerTypeIndex;
+                        //fakeDotStruct.VarIdentifier = expr->E1->IdentifierPtr;
+                        //TODO implement metaCCodegen_RegisterExternal
+                        fakeDotStruct.Storage.v = STORAGE_V(storage_external, 0);
+                        fakeDotStruct.VarIdentifier = GetOrAddIdentifier(&self->SemanticState.SemanticIdentifierTable, compiler_key, "compiler");
+                        self->SemanticState.CompilerVariable = fakeDotStruct;
+                    }
+                }
             }
         }
 
-        self->SemanticState.CompilerInterface = compilerStruct;
-        g_compilerInterface = self->SemanticState.CompilerInterface;
-
-        sema_decl_variable_t fakeDotStruct = {};
-        metac_type_index_t compilerTypeIndex = self->SemanticState.CompilerInterface->TypeIndex;
-        fakeDotStruct.Kind = decl_variable;
-        fakeDotStruct.TypeIndex = compilerTypeIndex;
-        //fakeDotStruct.VarIdentifier = expr->E1->IdentifierPtr;
-        //TODO implement metaCCodegen_RegisterExternal
-        fakeDotStruct.Storage.v = STORAGE_V(storage_external, 0);
-        fakeDotStruct.VarIdentifier = GetOrAddIdentifier(&self->SemanticState.SemanticIdentifierTable, compiler_key, "compiler");
-        self->SemanticState.CompilerVariable = fakeDotStruct;
 
         // FreeSema
         MetaCParser_Free(&tmpParser);
     }
     // Allocator_Remove
     Debug_RemoveAllocator(g_DebugServer, &PresemanticAlloc);
-}
-
-void ConvertTupleElementToExp(metac_semantic_state_t* sema,
-                              metac_sema_expression_t** dstP, metac_type_index_t elemType,
-                              uint32_t offset, BCHeap* heap)
-{
-    metac_expression_t exp = {exp_invalid};
-    *dstP = AllocNewSemaExpression(sema, &exp);
-    metac_sema_expression_t* dst = *dstP;
-
-    if (elemType.v == TYPE_INDEX_V(type_index_basic, type_int))
-    {
-        int32_t value = *cast(int32_t*)(heap->heapData + offset);
-        dst->Kind = exp_signed_integer;
-        dst->TypeIndex = elemType;
-        dst->ValueI64 = value;
-    }
-    else if (elemType.v == TYPE_INDEX_V(type_index_basic, type_type))
-    {
-        metac_type_index_t value = *cast(metac_type_index_t*)(heap->heapData + offset);
-        dst->Kind = exp_type;
-        dst->TypeIndex = elemType;
-        dst->TypeExp = value;
-    }
-}
-
-metac_sema_expression_t
-EvaluateExpression(metac_semantic_state_t* sema,
-                   metac_sema_expression_t* e,
-                   BCHeap* heap)
-{
-    metac_alloc_t interpAlloc;
-    Allocator_Init(&interpAlloc, &sema->TempAlloc, 0);
-
-    metac_bytecode_ctx_t ctx;
-    MetaCCodegen_Init(&ctx, 0);
-    ctx.Sema = sema;
-
-    for(uint32_t i = 0; i < sema->GlobalsCount; i++)
-    {
-        MetaCCodegen_doGlobal(&ctx, sema->Globals[i], i);
-    }
-
-    MetaCCodegen_Begin(&ctx, sema->ParserIdentifierTable, sema);
-
-    metac_bytecode_function_t fCode =
-        MetaCCodegen_GenerateFunctionFromExp(&ctx, e);
-
-    MetaCCodegen_End(&ctx);
-
-    uint32_t resultInt =
-        MetaCCodegen_RunFunction(&ctx, fCode, &interpAlloc, heap, "", 0);
-
-    MetaCCodegen_Free(&ctx);
-
-    metac_sema_expression_t result;
-    // BCGen_printFunction(c);
-
-    if (e->TypeIndex.v == TYPE_INDEX_V(type_index_basic, type_type))
-    {
-        result.Kind = exp_type;
-        result.TypeIndex.v = TYPE_INDEX_V(type_index_basic, type_type);
-        result.TypeExp.v = resultInt;
-    }
-    else if (TYPE_INDEX_KIND(e->TypeIndex) == type_index_tuple)
-    {
-        metac_type_tuple_t* typeTuple =
-            TupleTypePtr(ctx.Sema, TYPE_INDEX_INDEX(e->TypeIndex));
-
-        const uint32_t count = typeTuple->TypeCount;
-
-        uint32_t currrentHeapOffset = resultInt;
-
-        STACK_ARENA_ARRAY(metac_sema_expression_t*, tupleExps, 32, &sema->TempAlloc)
-
-        ARENA_ARRAY_ENSURE_SIZE(tupleExps, count);
-
-        result.Kind = exp_tuple;
-        result.TypeIndex = e->TypeIndex;
-
-        for(uint32_t i = 0; i < count; i++)
-        {
-            BCType bcType = MetaCCodegen_GetBCType(&ctx, typeTuple->TypeIndicies[i]);
-            ConvertTupleElementToExp(sema, tupleExps + i, typeTuple->TypeIndicies[i],
-                                     currrentHeapOffset, heap);
-            currrentHeapOffset += MetaCCodegen_GetStorageSize(&ctx, bcType);
-        }
-
-        result.TupleExpressions = tupleExps;
-        result.TupleExpressionCount = count;
-
-        STACK_ARENA_ARRAY_TO_HEAP(tupleExps, &sema->TempAlloc);
-    }
-    else
-    {
-        result.Kind = exp_signed_integer;
-        result.ValueI64 = resultInt;
-    }
-
-    Debug_RemoveAllocator(g_DebugServer, &interpAlloc);
-    // Allocator_Release(&interpAlloc);
-
-    return result;
 }
 
 
@@ -497,7 +423,8 @@ void Repl_Init(repl_state_t* self)
         &LPP->Parser.IdentifierTable,
         &LPP->Parser.StringTable);
 
-
+    Debug_CurrentIdentifierTable(g_DebugServer, self->SemanticState.ParserIdentifierTable);
+    Debug_CurrentScope(g_DebugServer, self->SemanticState.CurrentScope);
     //VariableStore_Init(&self->vstore, &LPP->Parser.IdentifierTable);
 }
 

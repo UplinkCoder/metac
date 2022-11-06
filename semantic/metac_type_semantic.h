@@ -30,4 +30,7 @@ uint32_t ComputeStructSize(metac_semantic_state_t* self, metac_type_index_t* typ
 bool MetaCSemantic_ComputeStructLayout(metac_semantic_state_t* self,
                                        decl_type_struct_t* agg,
                                        metac_type_aggregate_t* semaAgg);
+
+metac_type_index_t MetaCSemantic_TypeSemantic(metac_semantic_state_t* self,
+                                              decl_type_t* type);
 #endif //_METAC_TYPE_SEMANTIC_H_

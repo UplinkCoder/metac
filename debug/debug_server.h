@@ -5,6 +5,8 @@
 #include "microhttpd.h"
 
 #include "../os/metac_alloc.h"
+#include "../semantic/metac_scope.h"
+#include "../parser/metac_identifier_table.h"
 
 #define MHD_COMPLETED_CB(NAME) \
 void NAME (void *cls, \
@@ -48,6 +50,9 @@ typedef struct debug_server_t
     debug_allocation_t* Allocations;
     uint32_t AllocationsCount;
     uint32_t AllocationsCapacity;
+
+    metac_scope_t* CurrentScope;
+    metac_identifier_table_t* CurrentIdentifierTable;
 } debug_server_t;
 
 int Debug_Init(debug_server_t* debugServer, unsigned short port);
@@ -57,15 +62,20 @@ void Debug_Allocator(debug_server_t* debugServer, metac_alloc_t* allocator);
 void Debug_Allocation(debug_server_t* debugServer, metac_alloc_t* allocator, uint32_t sz, const char* file, uint32_t line);
 void Debug_RemoveAllocator(debug_server_t* debugServer, metac_alloc_t* allocator);
 
+void Debug_CurrentScope(debug_server_t* debugServer, metac_scope_t* scopeP);
+void Debug_CurrentIdentifierTable(debug_server_t* debugServer, metac_identifier_table_t* scopeP);
+
 extern debug_server_t* g_DebugServer;
 
 #else
 
-#define Debug_Init(S, P)
-#define Debug_Pump(S)
-#define Debug_Allocator(S, A)
-#define Debug_Allocation(S, A, Z, F, L)
-#define Debug_RemoveAllocator(S, A)
+#define Debug_Init(D, P)
+#define Debug_Pump(D)
+#define Debug_Allocator(D, A)
+#define Debug_Allocation(D, A, Z, F, L)
+#define Debug_RemoveAllocator(D, A)
+#define Debug_CurrentIdentifierTable(D, IT)
+#define Debug_CurrentScope(D, SC)
 #endif
 
 #endif

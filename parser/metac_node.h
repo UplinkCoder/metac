@@ -141,6 +141,8 @@
     M(exp_field) \
     M(exp_function) \
     \
+    M(exp_unknown_value) \
+    \
     M(exp_addr_or_and) \
     M(exp_deref_or_mul) \
     \

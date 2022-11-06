@@ -4,6 +4,8 @@
 #define _METAC_EXPR_SEMANTIC_H_
 #include "../os/metac_task.h"
 
+void MetaCSemantic_PushResultType(metac_semantic_state_t* self, metac_type_index_t castType);
+
 typedef struct MetaCSemantic_doExprSemantic_task_context_t
 {
     metac_semantic_state_t* Sema;

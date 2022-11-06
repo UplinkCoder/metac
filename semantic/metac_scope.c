@@ -23,6 +23,7 @@ void MetaCScopeTable_InitN(metac_scope_table_t* self, uint32_t nMembers, metac_a
     arena = &alloc->Arenas[self->Arena.Index];
     self->Slots = (metac_scope_table_slot_t*) arena->Memory;
     self->SlotsUsed = 0;
+    self->AllowOverride = false;
 }
 
 void MetaCScopeTable_Init(metac_scope_table_t* self, metac_alloc_t* alloc)
@@ -88,6 +89,7 @@ metac_scope_table_slot_t* MetaCScopeTable_Insert(metac_scope_table_t* self,
             &self->Slots[(slotIndex - 1) & slotIndexMask];
         if (slot->Hash == 0)
         {
+LdoOverride:
             self->SlotsUsed++;
             slot->Hash = hash;
             slot->Ptr = idPtr;
@@ -96,6 +98,8 @@ metac_scope_table_slot_t* MetaCScopeTable_Insert(metac_scope_table_t* self,
         }
         else if (slot->Hash == hash && slot->Ptr.v == idPtr.v)
         {
+            if (self->AllowOverride)
+                goto LdoOverride;
             return existsPointer;
         }
     }

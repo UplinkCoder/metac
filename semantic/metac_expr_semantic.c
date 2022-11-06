@@ -1,4 +1,5 @@
 #include "metac_semantic.h"
+#include "../codegen/metac_codegen.h"
 
 #ifndef NO_FIBERS
 #  include "../os/metac_task.h"
@@ -20,8 +21,8 @@ void MetaCSemantic_doExprSemantic_Task(task_t* task)
 }
 #endif
 
-#define report_error(FMT, ...) \
-    fprintf(stderr, FMT "\n")
+#define report_error(FMT) \
+    fprintf(stderr, FMT);
 
 static bool IsAggregateType(metac_type_index_kind_t typeKind)
 {
@@ -36,6 +37,117 @@ static bool IsAggregateType(metac_type_index_kind_t typeKind)
     }
 
     return false;
+}
+
+void ConvertTupleElementToExp(metac_semantic_state_t* sema,
+                              metac_sema_expression_t** dstP, metac_type_index_t elemType,
+                              uint32_t offset, BCHeap* heap)
+{
+    metac_expression_t exp = {exp_invalid};
+    *dstP = AllocNewSemaExpression(sema, &exp);
+    metac_sema_expression_t* dst = *dstP;
+
+    if (elemType.v == TYPE_INDEX_V(type_index_basic, type_int))
+    {
+        int32_t value = *cast(int32_t*)(heap->heapData + offset);
+        dst->Kind = exp_signed_integer;
+        dst->TypeIndex = elemType;
+        dst->ValueI64 = value;
+    }
+    else if (elemType.v == TYPE_INDEX_V(type_index_basic, type_type))
+    {
+        metac_type_index_t value = *cast(metac_type_index_t*)(heap->heapData + offset);
+        dst->Kind = exp_type;
+        dst->TypeIndex = elemType;
+        dst->TypeExp = value;
+    }
+}
+
+metac_sema_expression_t
+EvaluateExpression(metac_semantic_state_t* sema,
+                   metac_sema_expression_t* e,
+                   BCHeap* heap)
+{
+    metac_alloc_t interpAlloc;
+    Allocator_Init(&interpAlloc, &sema->TempAlloc, 0);
+
+    metac_bytecode_ctx_t ctx;
+    MetaCCodegen_Init(&ctx, 0);
+    ctx.Sema = sema;
+
+    for(uint32_t i = 0; i < sema->GlobalsCount; i++)
+    {
+        MetaCCodegen_doGlobal(&ctx, sema->Globals[i], i);
+    }
+
+    MetaCCodegen_Begin(&ctx, sema->ParserIdentifierTable, sema);
+
+    metac_bytecode_function_t fCode =
+        MetaCCodegen_GenerateFunctionFromExp(&ctx, e);
+
+    MetaCCodegen_End(&ctx);
+
+    uint32_t resultInt =
+        MetaCCodegen_RunFunction(&ctx, fCode, &interpAlloc, heap, "", 0);
+
+    MetaCCodegen_Free(&ctx);
+
+    metac_sema_expression_t result;
+    // BCGen_printFunction(c);
+
+    if (e->TypeIndex.v == TYPE_INDEX_V(type_index_basic, type_type))
+    {
+        result.Kind = exp_type;
+        result.TypeIndex.v = TYPE_INDEX_V(type_index_basic, type_type);
+        result.TypeExp.v = resultInt;
+    }
+    else if (TYPE_INDEX_KIND(e->TypeIndex) == type_index_tuple)
+    {
+        metac_type_tuple_t* typeTuple =
+            TupleTypePtr(ctx.Sema, TYPE_INDEX_INDEX(e->TypeIndex));
+
+        const uint32_t count = typeTuple->TypeCount;
+
+        uint32_t currrentHeapOffset = resultInt;
+
+        STACK_ARENA_ARRAY(metac_sema_expression_t*, tupleExps, 32, &sema->TempAlloc)
+
+        ARENA_ARRAY_ENSURE_SIZE(tupleExps, count);
+
+        result.Kind = exp_tuple;
+        result.TypeIndex = e->TypeIndex;
+
+        for(uint32_t i = 0; i < count; i++)
+        {
+            BCType bcType = MetaCCodegen_GetBCType(&ctx, typeTuple->TypeIndicies[i]);
+            ConvertTupleElementToExp(sema, tupleExps + i, typeTuple->TypeIndicies[i],
+                                     currrentHeapOffset, heap);
+            currrentHeapOffset += MetaCCodegen_GetStorageSize(&ctx, bcType);
+        }
+
+        result.TupleExpressions = tupleExps;
+        result.TupleExpressionCount = count;
+
+        STACK_ARENA_ARRAY_TO_HEAP(tupleExps, &sema->TempAlloc);
+    }
+    else
+    {
+        result.Kind = exp_signed_integer;
+        result.ValueI64 = resultInt;
+    }
+    result.LocationIdx = e->LocationIdx;
+
+    Debug_RemoveAllocator(g_DebugServer, &interpAlloc);
+    // Allocator_Release(&interpAlloc);
+
+    return result;
+}
+
+void
+MetaCSemantic_ConstantFold(metac_semantic_state_t* self, metac_sema_expression_t* exp)
+{
+    metac_sema_expression_t resExp = EvaluateExpression(self, exp, 0);
+    (*exp) = resExp;
 }
 
 static inline int32_t GetConstI32(metac_semantic_state_t* self, metac_sema_expression_t* index, bool *errored)
@@ -200,10 +312,13 @@ void MetaCSemantic_doCallSemantic(metac_semantic_state_t* self,
 
 void ResolveIdentifierToExp(metac_semantic_state_t* self,
                             metac_node_t node,
-                            metac_sema_expression_t* result,
+                            metac_sema_expression_t** resultP,
                             uint32_t* hashP)
 {
     uint32_t hash = *hashP;
+    metac_sema_expression_t* result = *resultP;
+    // printf("Resolving node: %p\n", node);
+    
     if (node->Kind == (metac_node_kind_t)exp_identifier)
     {
         fprintf(stderr, "we should not be retured an identifier\n");
@@ -229,9 +344,8 @@ void ResolveIdentifierToExp(metac_semantic_state_t* self,
     else if (node->Kind == node_decl_enum_member)
     {
         metac_enum_member_t* enumMember = cast(metac_enum_member_t*)node;
-        // result->Kind =enumMember->Value.Kind;
-        // I don't love this cast but oh well
-        result = cast(metac_sema_expression_t*)enumMember;
+        (*resultP) = enumMember->Value;
+        printf("node->Kind == node_decl_enum_member\n");
     }
     else if (node->Kind == node_decl_type_struct)
     {
@@ -252,6 +366,11 @@ void ResolveIdentifierToExp(metac_semantic_state_t* self,
         result->Kind = exp_function;
         result->Function = func;
         result->TypeIndex = func->TypeIndex;
+    }
+    else if (node->Kind == node_exp_unknown_value)
+    {
+        (*result) = *cast(metac_sema_expression_t*) node;
+        hash = result->Hash;
     }
     else
     {
@@ -316,6 +435,11 @@ metac_identifier_ptr_t GetIdentifierPtr(metac_expression_t* expr)
     }
 
     return result;
+}
+
+void MetaCSemantic_PushResultType(metac_semantic_state_t* self, metac_type_index_t type_)
+{
+
 }
 
 metac_sema_expression_t* MetaCSemantic_doExprSemantic_(metac_semantic_state_t* self,
@@ -529,6 +653,7 @@ LswitchIdKey:
                         fieldExp->LocationIdx = expr->E2->LocationIdx;
                         dotExp->DotE2 = AllocNewSemaExpression(self, fieldExp);
                         dotExp->DotE2->Field = field;
+                        dotExp->DotE2->TypeIndex = field->Type;
                     }
 
                     MetaCSemantic_doCallSemantic(self, expr->E2, &callExp);
@@ -572,6 +697,9 @@ LswitchIdKey:
                 MetaCSemantic_doExprSemantic(self, expr->E1, 0);
             hash = CRC32C_VALUE(hash, E1->Hash);
 
+            if (result->E1->Kind == exp_unknown_value)
+                result->Kind = exp_unknown_value;
+
             //result->Kind = exp_paren;
             result->TypeIndex = E1->TypeIndex;
             result->E1 = E1;
@@ -582,21 +710,29 @@ LswitchIdKey:
         {
             metac_type_index_t castType =
                 MetaCSemantic_doTypeSemantic(self, expr->CastType);
+            MetaCSemantic_PushResultType(self, castType);
+
             metac_sema_expression_t* castExp =
                 MetaCSemantic_doExprSemantic(self, expr->CastExp, 0);
             hash = CRC32C_VALUE(hash, castExp->Hash);
             result->TypeIndex = castType;
             result->CastExp = castExp;
+            if (castType.v == 0 || castExp->Kind == exp_unknown_value)
+                result->Kind = exp_unknown_value;
         } break;
 #define CASE(M) \
     case M:
-
         FOREACH_BIN_ARITH_EXP(CASE)
         case exp_ternary:
+            if (result->E1->Kind == exp_unknown_value || result->E2->Kind == exp_unknown_value)
+                result->Kind = exp_unknown_value;
+
             result->TypeIndex =
                 MetaCSemantic_CommonSubtype(self, result->E1->TypeIndex, result->E2->TypeIndex);
         break;
         FOREACH_BIN_ARITH_ASSIGN_EXP(CASE)
+            if (result->E1->Kind == exp_unknown_value)
+                result->Kind = exp_unknown_value;
             result->TypeIndex = result->E1->TypeIndex;
         break;
         case exp_index:
@@ -787,7 +923,9 @@ LswitchIdKey:
                 }
                 else
                 {
-                    ResolveIdentifierToExp(self, node, result, &hash);
+                    const char* idString = IdentifierPtrToCharPtr(self->ParserIdentifierTable, idPtr);
+                    printf("Resolving id: '%s' to %p\n", idString, node);
+                    ResolveIdentifierToExp(self, node, &result, &hash);
                 }
             }
             // type ptrs can also be binary expressions

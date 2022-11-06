@@ -1,8 +1,8 @@
 #include <stdio.h>
 
-#include "metac_lexer.h"
-#include "metac_parser.h"
-#include "metac_sematree.h"
+#include "../parser/metac_lexer.h"
+#include "../parser/metac_parser.h"
+#include "../semantic/metac_sematree.h"
 
 void main()
 {

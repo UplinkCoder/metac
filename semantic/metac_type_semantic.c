@@ -239,7 +239,7 @@ metac_type_index_t MetaCSemantic_CommonSubtype(metac_semantic_state_t* self,
                                                const metac_type_index_t a,
                                                const metac_type_index_t b)
 {
-    metac_type_index_t result = {-1};
+    metac_type_index_t result = {0};
 
     if (a.v == b.v)
         result = a;
@@ -265,6 +265,7 @@ metac_type_index_t MetaCSemantic_CommonSubtype(metac_semantic_state_t* self,
         }
     }
 
+    assert(result.v != -1);
     return result;
 }
 
@@ -345,8 +346,16 @@ uint32_t MetaCSemantic_GetTypeAlignment(metac_semantic_state_t* self,
         {
             idx = type_long_long;
         }
-        result =
-            MetaCTargetInfo_GetBasicAlign(&default_target_info, (basic_type_kind_t) idx);
+
+        if (idx != type_type)
+        {
+            result =
+                MetaCTargetInfo_GetBasicAlign(&default_target_info, (basic_type_kind_t) idx);
+        }
+        else
+        {
+            result = 4;
+        }
     }
     else if (TYPE_INDEX_KIND(typeIndex) == type_index_ptr
         ||   TYPE_INDEX_KIND(typeIndex) == type_index_functiontype)
@@ -414,8 +423,15 @@ uint32_t MetaCSemantic_GetTypeSize(metac_semantic_state_t* self,
         {
             idx = type_long_long;
         }
-        result =
-            MetaCTargetInfo_GetBasicSize(&default_target_info, (basic_type_kind_t) idx);
+        if (idx != type_type)
+        {
+            result =
+                MetaCTargetInfo_GetBasicSize(&default_target_info, (basic_type_kind_t) idx);
+        }
+        else
+        {
+            result = 4;
+        }
     }
     else if (TYPE_INDEX_KIND(typeIndex) == type_index_ptr
         ||   TYPE_INDEX_KIND(typeIndex) == type_index_functiontype)
@@ -552,41 +568,122 @@ metac_type_aggregate_t* MetaCSemantic_PersistTemporaryAggregateAndPopulateScope(
 
     return semaAgg;
 }
+#define BeginTaskBarrier()
+#define EndTaskBarrier()
 
 void MetaCSemantic_ComputeEnumValues(metac_semantic_state_t* self,
                                      decl_type_enum_t* enum_,
                                      metac_type_enum_t* semaEnum)
 {
+    uint32_t lastUnresolvedMembers = 0;
+    uint32_t unresolvedMembers = 0;
+    decl_enum_member_t* member = enum_->Members;
+    int64_t nextValue = 0;
+    const uint32_t memberCount = enum_->MemberCount;
+    STACK_ARENA_ARRAY(metac_sema_expression_t, memberPlaceholders, 32, &self->TempAlloc);
+
     uint32_t hash = enum_key;
     hash = CRC32C_VALUE(hash, enum_->Identifier.v);
+    assert(self->CurrentScope->Owner.Kind == scope_owner_enum);
+    ARENA_ARRAY_ENSURE_SIZE(memberPlaceholders, memberCount);
+    memberPlaceholdersCount = memberCount;
 
     //TODO you want to make CurrentValue a metac_sema_expression_t
     // such that you can interpret the increment operator
-    int64_t nextValue = 0;
-    const uint32_t memberCount = enum_->MemberCount;
     //SetInProgress(semaEnum, "Members");
+    // semaEnum->Name = MetaCSemantic_RegisterIdentifier(self, enum->Identifier);
+
     semaEnum->Name = enum_->Identifier;
     semaEnum->Header.Kind = decl_type_enum;
+    if (METAC_NODE(enum_->BaseType) == emptyNode)
     {
-        decl_enum_member_t* member = enum_->Members;
-
+        semaEnum->BaseType.v = TYPE_INDEX_V(type_index_basic, type_int);
+    }
+    else
+    {
+        semaEnum->BaseType = MetaCSemantic_TypeSemantic(self, enum_->BaseType);
+    }
+    // first register dummy members
+    // such that we can type forward reference expressions
+    {
+        member = enum_->Members;
         for(uint32_t memberIdx = 0;
             memberIdx < memberCount;
             memberIdx++, member = member->Next)
         {
-/*
+            memberPlaceholders[memberIdx].Kind = exp_unknown_value;
+            memberPlaceholders[memberIdx].TypeIndex = semaEnum->BaseType;
+            memberPlaceholders[memberIdx].Expression = member->Value;
+
+            MetaCSemantic_RegisterInScope(self, member->Name, memberPlaceholders + memberIdx);
+        }
+    }
+
+    self->CurrentScope->ScopeTable.AllowOverride = true;
+    {
+        MetaCSemantic_PushOnResolveFail(self, OnResolveFail_ReturnNull);
+        do
+        {
+            lastUnresolvedMembers = unresolvedMembers;
+
+            member = enum_->Members;
+            for(uint32_t memberIdx = 0;
+                memberIdx < memberCount;
+                memberIdx++, member = member->Next)
+            {
+                if (METAC_NODE(member->Value) != emptyNode)
+                {
+                    metac_sema_expression_t* semaValue =
+                        MetaCSemantic_doExprSemantic(self, member->Value, 0);
+                    semaEnum->Members[memberIdx].Value = semaValue;
+                    semaEnum->Members[memberIdx].Header.Kind = node_decl_enum_member;
+
+                    if (IsUnresolved(METAC_NODE(semaValue)))
+                    {
+                        unresolvedMembers++;
+                    }
+                    else
+                    {
+                        MetaCSemantic_RegisterInScope(self, member->Name, semaEnum->Members + memberIdx);
+                    }
+                }
+            }
+            if (!unresolvedMembers)
+            {
+                MetaCSemantic_PopOnResolveFail(self);
+            }
+            else if (unresolvedMembers == lastUnresolvedMembers)
+            {
+                // we have a the same number of unresolved members as last round
+                // which indicates a lack of local progress.
+                MetaCSemantic_PopOnResolveFail(self);
+                YIELD("Yielding because we are waiting for more enum members to become resolvable");
+            }
+        } while (unresolvedMembers);
+
+        member = enum_->Members;
+        for(uint32_t memberIdx = 0;
+            memberIdx < memberCount;
+            memberIdx++, member = member->Next)
+        {
+
             printf("member.Name: %s\n",
                 IdentifierPtrToCharPtr(self->ParserIdentifierTable, member->Name));
-*/
-           semaEnum->Members[memberIdx].Identifier = member->Name;
+
+            semaEnum->Members[memberIdx].Identifier = member->Name;
+            semaEnum->Members[memberIdx].Header.Kind = decl_enum_member;
 
             if (member->Value != cast(metac_expression_t*)emptyPointer)
             {
-                assert(member->Value);
                 metac_sema_expression_t* semaValue =
-                    MetaCSemantic_doExprSemantic(self, member->Value, 0);
+                    semaEnum->Members[memberIdx].Value;
+                assert(member->Value);
+                if (semaValue->Kind != exp_signed_integer)
+                {
+                    semaValue->TypeIndex.v = semaEnum->BaseType.v;
+                    MetaCSemantic_ConstantFold(self, semaValue);
+                }
                 assert(semaValue->Kind == exp_signed_integer);
-                semaEnum->Members[memberIdx].Value = semaValue;
                 nextValue = semaValue->ValueI64 + 1;
             }
             else
@@ -604,38 +701,13 @@ void MetaCSemantic_ComputeEnumValues(metac_semantic_state_t* self,
             semaEnum->Members[memberIdx].Header.LocationIdx = member->LocationIdx;
             hash = CRC32C_VALUE(hash, semaEnum->Members[memberIdx].Identifier);
             hash = CRC32C_VALUE(hash, semaEnum->Members[memberIdx].Value->ValueI64);
+            printf("Registering %p for %s\n",
+                semaEnum->Members + memberIdx,
+                IdentifierPtrToCharPtr(self->ParserIdentifierTable, member->Name));
+            MetaCSemantic_RegisterInScope(self, member->Name, semaEnum->Members + memberIdx);
         }
     }
     semaEnum->Header.Hash = hash;
-
-    {
-        // Let's inject our values into the temporary scope.
-        // setup before this call
-        assert(self->CurrentScope->ScopeFlags & scope_flag_temporary);
-        decl_enum_member_t* member = enum_->Members;
-
-        for(uint32_t i = 0;
-            i < semaEnum->MemberCount;
-            i++)
-        {
-
-            metac_enum_member_t* semaMember =
-                semaEnum->Members + i;
-            semaMember->Header.Kind = decl_enum_member;
-            scope_insert_error_t gotInserted =
-                MetaCSemantic_RegisterInScope(self, member->Name, METAC_NODE(semaMember));
-
-      //      assert(gotInserted != success ||
-      //             MetaCSemantic_LookupIdentifier(self, member->Name) == semaMember);
-
-            if (gotInserted != success)
-            {
-                int k = 12;
-            }
-
-            member = member->Next;
-        }
-    }
 
     return ;
 }
@@ -653,6 +725,156 @@ static bool TypeIsInteger(metac_type_index_t typeIdx)
                  ((typeIdxIndex == type_long_long) | (typeIdxIndex == type_unsigned_long_long));
     }
 
+    return result;
+}
+
+static metac_type_index_t TypeTupleSemantic(metac_semantic_state_t* self,
+                                            decl_type_t* type_)
+{
+    metac_type_index_t result = {0};
+
+    uint32_t i;
+#define tuple_key 0x55ee11
+    uint32_t hash = tuple_key;
+    decl_type_tuple_t* tupleType = cast(decl_type_tuple_t*) type_;
+
+    STACK_ARENA_ARRAY(metac_type_index_t, typeIndicies, 16, &self->Allocator)
+
+    for(i = 0; i < tupleType->TypeCount; i++)
+    {
+        metac_type_index_t typ =
+                 MetaCSemantic_TypeSemantic(self, tupleType->Types[i]);
+        ARENA_ARRAY_ADD(typeIndicies, typ);
+        hash = CRC32C_VALUE(hash, typ);
+    }
+
+    metac_type_header_t header =
+        {decl_type_tuple, 0, hash};
+
+    metac_type_tuple_t key = {
+        header,
+        zeroIdx, typeIndicies, typeIndiciesCount
+    };
+
+    result =
+        MetaCTypeTable_GetOrEmptyTupleType(&self->TupleTypeTable, &key);
+
+    if (result.v == 0)
+    {
+        STACK_ARENA_ARRAY_TO_HEAP(typeIndicies, &self->Allocator);
+        key.TypeIndicies = typeIndicies;
+        result = MetaCTypeTable_AddTupleType(&self->TupleTypeTable, &key);
+    }
+
+        // metac_type_tuple_t* semaTypeTuple = TupleTypePtr(self, TYPE_INDEX_INDEX(result));
+    return result;
+}
+metac_type_index_t TypeArraySemantic(metac_semantic_state_t* self,
+                                     decl_type_t* type_)
+{
+    metac_type_index_t result = {0};
+
+       decl_type_array_t* arrayType =
+        cast(decl_type_array_t*)type_;
+    metac_type_index_t elementType =
+        MetaCSemantic_doTypeSemantic(self, arrayType->ElementType);
+    // it could be an array win inferred dimensions in which case
+    // arrayType->Dim is the empty pointer
+
+    metac_sema_expression_t* dim = (METAC_NODE(arrayType->Dim) == emptyNode ?
+        cast(metac_sema_expression_t*)emptyNode :
+        MetaCSemantic_doExprSemantic(self, arrayType->Dim, 0)
+    );
+
+    if (METAC_NODE(dim) != emptyNode)
+    {
+        if (dim->Kind != exp_signed_integer)
+        {
+            fprintf(stderr, "Array dimension should eval to integer but it is: %s\n",
+                MetaCExpressionKind_toChars(dim->Kind));
+        }
+    }
+    uint32_t dimValue = (
+        METAC_NODE(dim) != emptyNode ?
+            (uint32_t)dim->ValueU64 : -1);
+
+    result =
+        MetaCSemantic_GetArrayTypeOf(self, elementType, dimValue);
+
+    return result;
+}
+metac_type_index_t TypeEnumSemantic(metac_semantic_state_t* self,
+                                    decl_type_t* type_)
+{
+    metac_type_index_t result = {0};
+
+    decl_type_enum_t* enm = cast(decl_type_enum_t*) type_;
+
+    metac_type_enum_t tmpSemaEnum = {0};
+
+    metac_scope_t enumScope = { scope_flag_temporary };
+    enumScope.Owner.Kind = scope_owner_enum;
+
+    tmpSemaEnum.MemberCount = enm->MemberCount;
+    tmpSemaEnum.Name = enm->Identifier;
+
+    MetaCScopeTable_InitN(&enumScope.ScopeTable, tmpSemaEnum.MemberCount, &self->TempAlloc);
+
+    MetaCSemantic_PushTemporaryScope(self, &enumScope);
+    bool keepEnumScope = false;
+    STACK_ARENA_ARRAY(metac_enum_member_t, semaMembers, 64, &self->TempAlloc);
+
+    ARENA_ARRAY_ENSURE_SIZE(semaMembers, tmpSemaEnum.MemberCount);
+
+    semaMembersCount = tmpSemaEnum.MemberCount;
+    tmpSemaEnum.Members = semaMembers;
+
+    MetaCSemantic_ComputeEnumValues(self, enm, &tmpSemaEnum);
+
+    MetaCSemantic_PopTemporaryScope(self);
+
+    enumScope.Closed = true;
+
+    result = MetaCTypeTable_GetOrEmptyEnumType(&self->EnumTypeTable, &tmpSemaEnum);
+    if (result.v == 0)
+    {
+        STACK_ARENA_ARRAY_TO_HEAP(semaMembers, &self->Allocator);
+
+        tmpSemaEnum.Members = semaMembers;
+        result = MetaCTypeTable_AddEnumType(&self->EnumTypeTable, &tmpSemaEnum);
+
+        keepEnumScope = true;
+        MetaCSemantic_RegisterInScope(self, tmpSemaEnum.Name, cast(metac_node_t)EnumTypePtr(self, result.Index));
+    }
+
+    Allocator_FreeArena(&self->TempAlloc, semaMembersArenaPtr);
+#define ISOLATED_ENUM_SCOPE 0
+    if (!ISOLATED_ENUM_SCOPE)
+    {
+        assert(self->CurrentScope->Owner.Kind == scope_owner_module);
+
+        for(uint32_t memberIndex = 0;
+            memberIndex < tmpSemaEnum.MemberCount;
+            memberIndex++)
+        {
+            metac_enum_member_t* member = tmpSemaEnum.Members + memberIndex;
+
+            scope_insert_error_t inserted =
+                MetaCSemantic_RegisterInScope(self, member->Identifier, METAC_NODE(member));
+            if(inserted != success)
+            {
+                SemanticError(member->Header.LocationIdx, "Couldn't be inserted into the scope", 0);
+            }
+        }
+    }
+
+    if (result.v != 0)
+    {
+        Allocator_FreeArena(&self->Allocator, enumScope.ScopeTable.Arena);
+    }
+
+    // STACK_ARENA_FREE(self->Allocator, members);
+    // STACK_ARENA_FREE(self->Allocator, semaMembers);
     return result;
 }
 
@@ -677,68 +899,11 @@ metac_type_index_t MetaCSemantic_TypeSemantic(metac_semantic_state_t* self,
     }
     else if (type->Kind == decl_type_tuple)
     {
-        uint32_t i;
-#define tuple_key 0x55ee11
-
-        uint32_t hash = tuple_key;
-        decl_type_tuple_t* tupleType = cast(decl_type_tuple_t*) type;
-
-        STACK_ARENA_ARRAY(metac_type_index_t, typeIndicies, 16, &self->Allocator)
-
-        for(i = 0; i < tupleType->TypeCount; i++)
-        {
-            metac_type_index_t typ =
-                     MetaCSemantic_TypeSemantic(self, tupleType->Types[i]);
-            ARENA_ARRAY_ADD(typeIndicies, typ);
-            hash = CRC32C_VALUE(hash, typ);
-        }
-
-        metac_type_header_t header =
-            {decl_type_tuple, 0, hash};
-
-        metac_type_tuple_t key = {
-            header,
-            zeroIdx, typeIndicies, typeIndiciesCount
-        };
-
-        result =
-            MetaCTypeTable_GetOrEmptyTupleType(&self->TupleTypeTable, &key);
-
-        if (result.v == 0)
-        {
-            result = MetaCTypeTable_AddTupleType(&self->TupleTypeTable, &key);
-        }
-
-        metac_type_tuple_t* semaTypeTuple = TupleTypePtr(self, TYPE_INDEX_INDEX(result));
+        result = TypeTupleSemantic(self, type);
     }
     else if (type->Kind == decl_type_array)
     {
-        decl_type_array_t* arrayType =
-            cast(decl_type_array_t*)type;
-        metac_type_index_t elementType =
-            MetaCSemantic_doTypeSemantic(self, arrayType->ElementType);
-        // it could be an array win inferred dimensions in which case
-        // arrayType->Dim is the empty pointer
-
-        metac_sema_expression_t* dim = (METAC_NODE(arrayType->Dim) == emptyNode ?
-            cast(metac_sema_expression_t*)emptyNode :
-            MetaCSemantic_doExprSemantic(self, arrayType->Dim, 0)
-        );
-
-        if (METAC_NODE(dim) != emptyNode)
-        {
-            if (dim->Kind != exp_signed_integer)
-            {
-                fprintf(stderr, "Array dimension should eval to integer but it is: %s\n",
-                    MetaCExpressionKind_toChars(dim->Kind));
-            }
-        }
-        uint32_t dimValue = (
-            METAC_NODE(dim) != emptyNode ?
-                (uint32_t)dim->ValueU64 : -1);
-
-        result =
-            MetaCSemantic_GetArrayTypeOf(self, elementType, dimValue);
+        result = TypeArraySemantic(self, type);
     }
     else if (type->Kind == decl_type_typedef)
     {
@@ -775,67 +940,7 @@ metac_type_index_t MetaCSemantic_TypeSemantic(metac_semantic_state_t* self,
     }
     else if (type->Kind == decl_type_enum)
     {
-        decl_type_enum_t* enm = cast(decl_type_enum_t*) type;
-
-        metac_type_enum_t tmpSemaEnum;
-
-        tmpSemaEnum.MemberCount = enm->MemberCount;
-        tmpSemaEnum.Name = enm->Identifier;
-
-        metac_scope_t enumScope = { scope_flag_temporary };
-        MetaCScopeTable_InitN(&enumScope.ScopeTable, tmpSemaEnum.MemberCount, &self->TempAlloc);
-
-        MetaCSemantic_PushTemporaryScope(self, &enumScope);
-        bool keepEnumScope = false;
-        STACK_ARENA_ARRAY(metac_enum_member_t, semaMembers, 64, &self->Allocator);
-
-        ARENA_ARRAY_ENSURE_SIZE(semaMembers, tmpSemaEnum.MemberCount);
-
-        tmpSemaEnum.Members = semaMembers;
-
-        MetaCSemantic_ComputeEnumValues(self, enm, &tmpSemaEnum);
-        MetaCSemantic_PopTemporaryScope(self);
-
-        enumScope.Closed = true;
-
-        result = MetaCTypeTable_GetOrEmptyEnumType(&self->EnumTypeTable, &tmpSemaEnum);
-        if (result.v == 0)
-        {
-            STACK_ARENA_ARRAY_TO_HEAP(semaMembers, &self->Allocator);
-            tmpSemaEnum.Members = semaMembers;
-            result = MetaCTypeTable_AddEnumType(&self->EnumTypeTable, &tmpSemaEnum);
-
-            keepEnumScope = true;
-            MetaCSemantic_RegisterInScope(self, tmpSemaEnum.Name, cast(metac_node_t)EnumTypePtr(self, result.Index));
-        }
-
-        #define ISOLATED_ENUM_SCOPE 0
-        if (!ISOLATED_ENUM_SCOPE)
-        {
-            assert(self->CurrentScope->Owner.Kind == scope_owner_module);
-
-            for(uint32_t memberIndex = 0;
-                memberIndex < tmpSemaEnum.MemberCount;
-                memberIndex++)
-            {
-                metac_enum_member_t* member = tmpSemaEnum.Members + memberIndex;
-
-                scope_insert_error_t inserted =
-                    MetaCSemantic_RegisterInScope(self, member->Identifier, METAC_NODE(member));
-                if(inserted != success)
-                {
-                    // SemaError(member, "Couldn't be inserted into the scope");
-                }
-            }
-        }
-
-        if (result.v != 0)
-        {
-            Allocator_FreeArena(&self->Allocator, enumScope.ScopeTable.Arena);
-        }
-
-        // STACK_ARENA_FREE(self->Allocator, members);
-        // STACK_ARENA_FREE(self->Allocator, semaMembers);
+        result = TypeEnumSemantic(self, type);
     }
     else if (IsAggregateTypeDecl(type->Kind))
     {
@@ -970,6 +1075,12 @@ LtryAgian: {}
                                        "empty"));
             if (node == emptyNode)
             {
+                if (self->OnResolveFailStack[self->OnResolveFailStackCount - 1] == OnResolveFail_ReturnNull)
+                {
+                    // MetaCSemantic_ResolveFail(self, type->TypeIdentifier);
+                    metac_type_index_t unresolvedIdx = {0};
+                    return unresolvedIdx;
+                }
 #ifndef NO_FIBERS
 #if 0
                 WaitForSignal(MetaCSemantic_RegisterInScope, type->TypeIdentifier);
@@ -1289,4 +1400,3 @@ bool MetaCSemantic_ComputeStructLayout(metac_semantic_state_t* self,
 
     return result;
 }
-

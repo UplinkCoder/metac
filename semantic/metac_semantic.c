@@ -110,11 +110,12 @@ void MetaCSemantic_Init(metac_semantic_state_t* self, metac_parser_t* parser,
 
     FOREACH_TYPE_TABLE(INIT_TYPE_TABLE)
 
-    FOREACH_SEMA_STATE_ARRAY(self, INIT_ARRAY)
+    FOREACH_SEMA_STATE_ARRAY(self, INIT_ARENA_STATE_ARRAY)
 
     ARENA_ARRAY_INIT(metac_scope_t*, self->DeclStatementScope, &self->Allocator);
 
     ARENA_ARRAY_INIT(metac_sema_declaration_t*, self->Globals, &self->Allocator);
+    ARENA_ARRAY_INIT(metac_scope_t, self->Scopes, &self->Allocator);
 
     self->TemporaryScopeDepth = 0;
 
@@ -140,6 +141,8 @@ void MetaCSemantic_Init(metac_semantic_state_t* self, metac_parser_t* parser,
 
     self->CurrentScope = 0;
     self->CurrentDeclarationState = 0;
+
+    ARENA_ARRAY_INIT(metac_semantic_on_resolve_fail_t, self->OnResolveFailStack, &self->Allocator);
 
     memset(&self->LRU, 0, sizeof(self->LRU));
 
@@ -755,7 +758,13 @@ scope_insert_error_t MetaCSemantic_RegisterInScope(metac_semantic_state_t* self,
     Store16(&self->LRU.LRUContentHashes, cleared);
 
     if (self->CurrentScope != 0)
+    {
         result = MetaCScope_RegisterIdentifier(self->CurrentScope, idPtr, node);
+    }
+    else
+    {
+        assert(!"RegisterInScope: CurrentScope is null");
+    }
 #ifndef NO_FIBERS
     /* At some point we want to emit a wake-up signal to waiters
        rather than doing an explicit loop here.
@@ -1240,7 +1249,23 @@ metac_node_t MetaCSemantic_LRU_LookupIdentifier(metac_semantic_state_t* self,
 
     return result;
 }
+// Sets the behavior for the case of a name-resolve failing
+void MetaCSemantic_PushOnResolveFail(metac_semantic_state_t* self,
+                                     metac_semantic_on_resolve_fail_t onFail)
+{
+    ARENA_ARRAY_ADD(self->OnResolveFailStack, onFail);
+}
 
+// Resets the behavior for the case of a name-resolve failing
+void MetaCSemantic_PopOnResolveFail(metac_semantic_state_t* self)
+{
+    --self->OnResolveFailStackCount;
+}
+
+bool IsUnresolved(metac_node_t node)
+{
+    return node == (metac_node_t)0 || node->Kind == node_exp_unknown_value;
+}
 
 /// Returns _emptyNode to signifiy it could not be found
 /// a valid node otherwise
@@ -1277,8 +1302,8 @@ metac_node_t MetaCSemantic_LookupIdentifier(metac_semantic_state_t* self,
 
     metac_node_t result = emptyNode;
     uint32_t idPtrHash = crc32c_nozero(~0, &identifierPtr.v, sizeof(identifierPtr.v));
-    //printf("Looking up: %s\n",
-    //    IdentifierPtrToCharPtr(self->ParserIdentifierTable, identifierPtr));
+    printf("Looking up: %s\n",
+        IdentifierPtrToCharPtr(self->ParserIdentifierTable, identifierPtr));
     metac_scope_t *currentScope = self->CurrentScope;
     {
         while(currentScope)

@@ -12,11 +12,17 @@
     aco_resume(CO); \
 } while(0);
 
-#define YIELD(REASON) do { \
+#ifndef NO_FIBERS
+#  define YIELD(REASON) do { \
 /*    printf("Yielding %x from {%s:%d} %s\n",  (GET_CO()), __FILE__, __LINE__, #REASON);*/ \
     aco_yield(); \
 } while(0)
-
+#else
+#  define YIELD(REASON) do { \
+    fprintf(stderr, "No yielding supported -- " REASON); \
+    assert(0); \
+} while (0)
+#endif
 #define RETURN() do { \
 /*    printf("Yielding %x from {%s:%d} %s\n",  (GET_CO()), __FILE__, __LINE__, #REASON);*/ \
     aco_exit(); \

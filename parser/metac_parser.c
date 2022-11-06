@@ -98,6 +98,8 @@ void MetaCParser_Free(metac_parser_t* self)
     IdentifierTable_Free(&self->IdentifierTable);
     IdentifierTable_Free(&self->StringTable);
     free(self->BlockStatementStack);
+    Debug_RemoveAllocator(g_DebugServer, &self->Allocator);
+
     static const metac_parser_t zeroParser = {0};
     *self = zeroParser;
     self = 0;
@@ -1043,6 +1045,7 @@ static inline bool CouldBeType(metac_parser_t* self,
     typescan_flags_t flags = TypeScan_None;
     bool isStar = false;
     bool isAnd = false;
+    bool inAggregate = false;
 
     if (eflags & expr_flags_pp)
         return false;
@@ -1067,17 +1070,21 @@ static inline bool CouldBeType(metac_parser_t* self,
             U32(flags) |= TypeScan_SeenStar;
             isStar = true;
         }
+        else if (tok == tok_kw_enum || tok == tok_kw_struct)
+        {
+            inAggregate = true;
+        }
         else if (tok == tok_and)
         {
             isAnd = true;
         }
-#ifndef PARSE_TYPE_TUPLE_EXP
-        else if (tok == tok_lBrace)
+        else if (tok == tok_lBrace && !inAggregate)
         {
+#ifndef PARSE_TYPE_TUPLE_EXP
             result = false;
             break;
-        }
 #endif
+        }
         if (isStar)
         {
             isStar = false;
@@ -1610,6 +1617,14 @@ metac_expression_t* MetaCParser_ParseUnaryExpression(metac_parser_t* self, parse
 			cast(parse_expression_flags_t)(expr_flags_unary | (eflags & expr_flags_pp)), 0);
         result->Hash = CRC32C_VALUE(CRC32C_BANG, result->E1->Hash);
     }
+    else if (tokenType == tok_dollar)
+    {
+        MetaCParser_Match(self, tok_dollar);
+        result = AllocNewExpression(exp_outer);
+        result->E1 = MetaCParser_ParseExpression(self,
+            cast(parse_expression_flags_t)(expr_flags_unary | (eflags & expr_flags_pp)), 0);
+        result->Hash = CRC32C_VALUE(CRC32C_BANG, result->E1->Hash);
+    }
     else if (tokenType == tok_tilde)
     {
         MetaCParser_Match(self, tok_tilde);
@@ -1852,6 +1867,7 @@ metac_expression_t* MetaCParser_ParseBinaryExpression(metac_parser_t* self,
     {
         assert(!"Unexpected Token");
     }
+
     if (!result->Hash)
     {
         if (result->E2 == emptyPointer)
@@ -1916,6 +1932,11 @@ metac_preprocessor_directive_t MetaCParser_ParsePreproc(metac_parser_t* self,
                     directive = pp_ifdef;
                 } goto Lmatch;
 
+                case ifndef_key:
+                {
+                    directive = pp_ifndef;
+                } goto Lmatch;
+
                 case elif_key:
                 {
                     directive = pp_elif;
@@ -1935,6 +1956,7 @@ metac_preprocessor_directive_t MetaCParser_ParsePreproc(metac_parser_t* self,
                 {
                     directive = pp_endif;
                 } goto Lmatch;
+
                 case undef_key:
                 {
                     directive = pp_undef;
@@ -2393,6 +2415,10 @@ decl_type_t* MetaCParser_ParseTypeDeclaration(metac_parser_t* self, metac_declar
                     MetaCParser_ParseTypeDeclaration(self, 0, 0);
                 hash = CRC32C_VALUE(hash, enum_->BaseType->Hash);
             }
+            else
+            {
+                METAC_NODE(enum_->BaseType) = emptyNode;
+            }
 
             if (MetaCParser_PeekMatch(self, tok_lBrace, 1))
             {
@@ -2849,7 +2875,7 @@ metac_declaration_t* MetaCParser_ParseDeclaration(metac_parser_t* self, metac_de
 
     metac_token_t* currentToken = MetaCParser_PeekToken(self, 1);
     metac_token_enum_t tokenType =
-        (currentToken ? currentToken->TokenType : tok_invalid);
+        (currentToken ? currentToken->TokenType : tok_eof);
     metac_location_t loc =
         currentToken ? LocationFromToken(self, currentToken) : invalidLocation;
     metac_declaration_t* result = 0;
@@ -2857,7 +2883,7 @@ metac_declaration_t* MetaCParser_ParseDeclaration(metac_parser_t* self, metac_de
     decl_type_t* type = 0;
 
     if (tokenType == tok_eof)
-        return 0;
+        return emptyNode;
 
     // Let's deal with labels right at the start.
     if (MetaCParser_PeekMatch(self, tok_identifier, 1))

@@ -44,8 +44,8 @@ void IdentifierTable_Init_(metac_identifier_table_t* table, uint32_t lengthShift
     table->Slots = cast(metac_identifier_table_slot_t*)
         Allocator_Calloc_(alloc, sizeof(metac_identifier_table_slot_t), maxSlots, file, line);
     table->StringMemory = cast(char*)
-        Allocator_Calloc_(alloc, sizeof(char), maxSlots * 32, file, line);
-    table->StringMemoryCapacity = maxSlots * 32;
+        Allocator_Calloc_(alloc, sizeof(char), maxSlots * 16, file, line);
+    table->StringMemoryCapacity = maxSlots * 16;
     table->StringMemorySize = 0;
     table->SlotsUsed = 0;
     table->LengthShift = lengthShift;

@@ -140,9 +140,6 @@ metac_scope_t* MetaCScope_PushNewScope(metac_semantic_state_t* sema,
 metac_sema_expression_t* AllocNewSemaExpression(metac_semantic_state_t* self, metac_expression_t* expr)
 {
     metac_sema_expression_t* result = 0;
-    REALLOC_BOILERPLATE(self->Expressions);
-
-    result = self->Expressions + INC(self->Expressions_size);
 
     {
         metac_sema_expression_t exp;
@@ -150,16 +147,17 @@ metac_sema_expression_t* AllocNewSemaExpression(metac_semantic_state_t* self, me
 
         exp.TypeIndex.v = 0;
         exp.Serial = INC(_nodeCounter);
-        (*result) = exp;
+        ARENA_ARRAY_ADD(self->Expressions, exp);
+        result = self->Expressions + self->ExpressionsCount - 1;
     }
 
 
     if (expr->Kind == exp_tuple)
     {
         const uint32_t tupleExpCount = expr->TupleExpressionCount;
-        REALLOC_N_BOILERPLATE(self->Expressions, tupleExpCount);
+        ARENA_ARRAY_ENSURE_SIZE(self->Expressions, tupleExpCount);
 
-        uint32_t allocPos = POST_ADD(self->Expressions_size, tupleExpCount);
+        uint32_t allocPos = POST_ADD(self->ExpressionsCount, tupleExpCount);
         metac_sema_expression_t* elements =
             self->Expressions + allocPos;
         metac_sema_expression_t** elemArray =
@@ -196,23 +194,28 @@ metac_sema_expression_t* AllocNewSemaExpression(metac_semantic_state_t* self, me
             sizeof(metac_expression_t) - sizeof(metac_expression_header_t)
         );
     }
-
+#if 0
+    if (result->Serial == 119)
+    {
+        asm ("int $3;");
+    }
+#endif
     return result;
 }
 
 metac_scope_t* AllocNewScope(metac_semantic_state_t* self,
                              metac_scope_t* parent, metac_scope_owner_t owner)
 {
-    metac_scope_t* result;
-
-    REALLOC_BOILERPLATE(self->Scopes)
+    metac_scope_t scope_ = {0};
+    metac_scope_t* result = 0;
 
     {
-        result = self->Scopes + INC(self->Scopes_size);
+        scope_.Serial = INC(_nodeCounter);
+        scope_.Owner = owner;
+        scope_.Parent = parent;
 
-        result->Serial = INC(_nodeCounter);
-        result->Owner = owner;
-        result->Parent = parent;
+        ARENA_ARRAY_ADD(self->Scopes, scope_);
+        result = self->Scopes + self->ScopesCount - 1;
     }
 
     return result;
@@ -220,33 +223,35 @@ metac_scope_t* AllocNewScope(metac_semantic_state_t* self,
 
 
 sema_decl_function_t* AllocNewSemaFunction(metac_semantic_state_t* self,
-                                           decl_function_t* func)
+                                           decl_function_t* declFunc)
 {
     sema_decl_function_t* result = 0;
-
-    REALLOC_BOILERPLATE(self->Functions)
+    sema_decl_function_t func = {0};
 
     {
-        result = self->Functions + INC(self->Functions_size);
-        (*(metac_node_header_t*) result) = (*(metac_node_header_t*) func);
-
-        result->Serial = INC(_nodeCounter);
-        result->TypeIndex.v = 0;
+        func.Serial = INC(_nodeCounter);
+        func.TypeIndex.v = 0;
+        ARENA_ARRAY_ADD(self->Functions, func);
+        result = self->Functions + self->FunctionsCount - 1;
+        (*(metac_node_header_t*) result) = (*(metac_node_header_t*) declFunc);
     }
 
     return result;
 }
 
-sema_decl_variable_t* AllocNewSemaVariable(metac_semantic_state_t* self, decl_variable_t* decl, metac_sema_declaration_t** result_ptr)
+sema_decl_variable_t* AllocNewSemaVariable(metac_semantic_state_t* self,
+                                           decl_variable_t* declVar,
+                                           metac_sema_declaration_t** result_ptr)
 {
     sema_decl_variable_t* result = 0;
-    REALLOC_BOILERPLATE(self->Variables)
+    sema_decl_variable_t variable = {0};
 
-    result = self->Variables + INC(self->Variables_size);
+    variable.Kind = decl_variable;
+    variable.Serial = INC(_nodeCounter);
+
+    result = self->Variables + INC(self->VariablesCount) - 1;
+    (*result) = variable;
     (*result_ptr) = (metac_sema_declaration_t*)result;
-
-    result->Kind = decl_variable;
-    result->Serial = INC(_nodeCounter);
 
     return result;
 }
@@ -257,10 +262,11 @@ sema_decl_variable_t* AllocFunctionParameters(metac_semantic_state_t* self,
 {
     sema_decl_variable_t* result = 0;
 
-    REALLOC_N_BOILERPLATE(self->Variables, parameterCount)
+    ARENA_ARRAY_ENSURE_SIZE(self->Variables,
+                            self->VariablesCount + parameterCount);
 
     {
-        result = self->Variables + POST_ADD(self->Variables_size, parameterCount);
+        result = self->Variables + POST_ADD(self->VariablesCount, parameterCount);
         for(uint32_t i = 0;
             i < parameterCount;
             i++)
@@ -288,14 +294,14 @@ metac_type_aggregate_field_t* AllocAggregateFields(metac_semantic_state_t* self,
         {
             REALLOC_BOILERPLATE(_newSemaStructFields)
             result = _newSemaStructFields_mem +
-                POST_ADD(_newSemaStructFields_size, fieldCount);
+                POST_ADD(_newSemaStructFieldsCount, fieldCount);
             aggregateIndex = aggregate - _newSemaStructs_mem;
         } break;
         case decl_type_union:
         {
             REALLOC_BOILERPLATE(_newSemaUnionFields)
             result = _newSemaUnionFields_mem +
-                POST_ADD(_newSemaUnionFields_size, fieldCount);
+                POST_ADD(_newSemaUnionFieldsCount, fieldCount);
             aggregateIndex = aggregate - _newSemaUnions_mem;
         } break;
 
@@ -328,17 +334,16 @@ metac_sema_statement_t* AllocNewSemaStatement_(metac_semantic_state_t* self,
                                                size_t nodeSize, void** result_ptr)
 {
     metac_sema_statement_t* result = 0;
-
-    REALLOC_BOILERPLATE(self->Statements)
+    metac_sema_statement_t stmt = {0};
 
     {
-        result = self->Statements + INC(self->Statements_size);
-
         // result->Parent = 0;
-        result->Kind = kind;
-        result->Serial = INC(_nodeCounter);
+        stmt.Kind = kind;
+        stmt.Serial = INC(_nodeCounter);
         // result->TypeIndex.v = 0;
+        ARENA_ARRAY_ADD(self->Statements, stmt);
     }
+    result = self->Statements + self->StatementsCount;
 
     *result_ptr = result;
 
@@ -353,17 +358,16 @@ sema_stmt_block_t* AllocNewSemaBlockStatement(metac_semantic_state_t* self,
                                               void** result_ptr)
 {
     sema_stmt_block_t* result = 0;
-
-    REALLOC_BOILERPLATE(self->BlockStatements)
+    sema_stmt_block_t stmt = {0};
 
     {
-        result = self->BlockStatements + INC(self->BlockStatements_size);
-        metac_sema_statement_t** body =
-            AllocateArray(self->BS_Allocator, metac_sema_statement_t*, statementCount);
-        result->Body = body;
-        result->Kind = stmt_block;
-        result->StatementCount = statementCount;
-        result->Serial = INC(_nodeCounter);
+        stmt.Kind = stmt_block;
+        stmt.StatementCount = statementCount;
+        stmt.Serial = INC(_nodeCounter);
+
+        ARENA_ARRAY_ADD(self->BlockStatements, stmt);
+        result = self->BlockStatements + self->BlockStatementsCount - 1;
+        ARENA_ARRAY_INIT_SZ(metac_sema_statement_t*, result->Body, &self->Allocator, statementCount);
     }
     (*result_ptr) = result;
 
@@ -375,16 +379,17 @@ sema_stmt_casebody_t* AllocNewSemaCasebodyStatement(metac_semantic_state_t* self
                                                     void** result_ptr)
 {
     sema_stmt_casebody_t* result;
-
-    REALLOC_BOILERPLATE(self->Statements)
+    sema_stmt_casebody_t stmt = {0};
 
     {
         result = cast(sema_stmt_casebody_t*)
             AllocNewSemaStatement(self, stmt_casebody, &result);
 
+        ARENA_ARRAY_ADD(self->Statements, *(metac_sema_statement_t*)&stmt);
+        result = self->BlockStatements + self->BlockStatementsCount - 1;
+        ARENA_ARRAY_INIT_SZ(metac_sema_statement_t*, result->Statements, &self->Allocator, statementCount);
+
         result->StatementCount = statementCount;
-        result->Statements =
-            AllocateArray(self->BS_Allocator, metac_sema_statement_t*, statementCount);
         result->Serial = INC(_nodeCounter);
     }
     (*result_ptr) = result;

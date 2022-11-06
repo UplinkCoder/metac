@@ -92,6 +92,8 @@ typedef struct metac_scope_table_t
     uint32_t SlotsUsed;
     arena_ptr_t Arena;
     metac_alloc_t* Alloc;
+
+    bool AllowOverride;
 } metac_scope_table_t;
 
 
