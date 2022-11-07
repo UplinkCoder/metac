@@ -175,6 +175,11 @@ int main(int argc, const char* argv[])
                           &resultAlloc, DeclarationIsParseFunc);
 
     printf("Found %d parserFuncs\n", (int)parseFunctions.Length);
-
+    for(uint32_t i = 0; i < parseFunctions.Length; i++)
+    {
+        metac_identifier_ptr_t id = IdentifierFromDecl(parseFunctions.Ptr[i]);
+        const char* s = IdentifierPtrToCharPtr(&LPP.Parser.IdentifierTable, id);
+        printf("  %s\n", s);
+    }
     return 0;
 }

@@ -6,13 +6,8 @@
 #include <stdlib.h>
 #include "../hash/crc32c.h"
 
-#ifdef DEBUG_SERVER
-#  include "../debug/debug_server.h"
-#endif
-
-#ifndef NDEBUG
 #include "../debug/debug_server.h"
-#endif
+
 
 #ifndef ALIGN16
 #  define ALIGN16(N) \
