@@ -354,7 +354,7 @@ static uint32_t MetaCStaticTokenLength(metac_token_enum_t token)
         case tok_kw_signed   : return 6;
         case tok_kw_unsigned : return 8;
         case tok_kw_volatile : return 8;
-        case tok_kw___shared : return 8;
+        case tok_kw__shared  : return 7;
         case tok_kw_extern   : return 6;
         case tok_kw_for      : return 3;
         case tok_kw_sizeof   : return 6;
@@ -458,7 +458,7 @@ void MetaCLexer_Init(metac_lexer_t* self, metac_alloc_t* allocator)
     self->LocationStorage.LocationSize = 0;
     self->LocationStorage.Locations = self->inlineLocations;
 
-    IdentifierTable_Init(&self->IdentifierTable, IDENTIFIER_LENGTH_SHIFT, 13, allocator);
+    IdentifierTable_Init(&self->IdentifierTable, IDENTIFIER_LENGTH_SHIFT, 14, allocator);
     IdentifierTable_Init(&self->StringTable, STRING_LENGTH_SHIFT, 13, allocator);
 
     self->Allocator = allocator;

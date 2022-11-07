@@ -100,7 +100,7 @@ typedef struct metac_lexer_state_t
     M(tok_kw_unsigned) \
     M(tok_kw_const) \
     M(tok_kw_volatile) \
-    M(tok_kw___shared) \
+    M(tok_kw__shared) \
     M(tok_kw_extern) \
     \
     M(tok_kw_for) \

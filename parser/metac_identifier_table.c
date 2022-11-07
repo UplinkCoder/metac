@@ -44,8 +44,8 @@ void IdentifierTable_Init_(metac_identifier_table_t* table, uint32_t lengthShift
     table->Slots = cast(metac_identifier_table_slot_t*)
         Allocator_Calloc_(alloc, sizeof(metac_identifier_table_slot_t), maxSlots, file, line);
     table->StringMemory = cast(char*)
-        Allocator_Calloc_(alloc, sizeof(char), maxSlots * 16, file, line);
-    table->StringMemoryCapacity = maxSlots * 16;
+        Allocator_Calloc_(alloc, sizeof(char), maxSlots * 32, file, line);
+    table->StringMemoryCapacity = maxSlots * 32;
     table->StringMemorySize = 0;
     table->SlotsUsed = 0;
     table->LengthShift = lengthShift;
@@ -116,12 +116,18 @@ metac_identifier_ptr_t GetOrAddIdentifier(metac_identifier_table_t* table,
             // TracyCPlot("MaxDisplacement", table->MaxDisplacement);
             TracyCPlot("Displacement", displacement);
             do {
-                assert(table->StringMemorySize + ALIGN4(length + 1)
-                       < table->StringMemoryCapacity);
-                result.v = (table->StringMemorySize + 4);
-                // Compare xchange here
-                expected = table->StringMemorySize;
-                newValue = (result.v - 4) + ALIGN4(length + 1);
+                if (table->StringMemorySize + ALIGN4(length + 1)
+                       < table->StringMemoryCapacity)
+                {
+                    result.v = (table->StringMemorySize + 4);
+                    // Compare xchange here
+                    expected = table->StringMemorySize;
+                    newValue = (result.v - 4) + ALIGN4(length + 1);
+                }
+                else
+                {
+                    
+                }
 #ifndef ATOMIC
                 table->StringMemorySize = newValue;
             } while (false);

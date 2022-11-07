@@ -2362,7 +2362,24 @@ decl_type_t* MetaCParser_ParseTypeDeclaration(metac_parser_t* self, metac_declar
                     if (decl->Kind == decl_comment)
                         continue;
 
+                    EatAttributes(self);
                     // only match the semicolon if we didn't parse a comment
+                    bool warnedMutlipleFields = false;
+
+                    while(currentToken = MetaCParser_PeekToken(self, 1))
+                    {
+                        if (currentToken->TokenType == tok_semicolon)
+                        {
+                            break;
+                        }
+                        MetaCParser_Match(self, currentToken->TokenType);
+                        if (!warnedMutlipleFields)
+                        {
+                            fprintf(stderr, "warning: igonring multiple field definitions\n");
+                            warnedMutlipleFields = 1;
+                        }
+                    }
+
                     MetaCParser_Match(self, tok_semicolon);
 
                     if (decl->Kind == decl_variable)
@@ -2501,7 +2518,7 @@ decl_type_t* MetaCParser_ParseTypeDeclaration(metac_parser_t* self, metac_declar
             case tok_kw_const:
                 MetaCParser_Match(self, tok_kw_const);
                 nextIsConst = true;
-                continue;
+                goto LnextToken;
             case tok_star: {
                 MetaCParser_Match(self, tok_star);
                 decl_type_ptr_t* ptr = AllocNewDeclaration(decl_type_ptr, &result);
@@ -2525,10 +2542,6 @@ decl_type_t* MetaCParser_ParseTypeDeclaration(metac_parser_t* self, metac_declar
                     METAC_NODE(array->Dim) = emptyNode;
                 }
                 goto LnextToken;
-            }
-             {
-                MetaCParser_Match(self, tok_full_slice);
-
             }
 
             LnextToken:
@@ -2633,24 +2646,33 @@ static stmt_block_t* MetaCParser_ParseBlockStatement(metac_parser_t* self,
                                                      metac_statement_t* prev);
 void EatAttributes(metac_parser_t* self)
 {
+    int32_t parenDepth = 0;
+
     while(MetaCParser_PeekMatch(self, tok_kw___attribute__, 1))
     {
         MetaCParser_Match(self, tok_kw___attribute__);
+
         MetaCParser_Match(self, tok_lParen);
         MetaCParser_Match(self, tok_lParen);
+
+        parenDepth = 2;
+
         metac_token_t *currentToken =
             MetaCParser_PeekToken(self, 1);
 
-        while(currentToken && currentToken->TokenType != tok_rParen)
+        while(currentToken && parenDepth)
         {
+            if (currentToken->TokenType == tok_lParen)
+            {
+                parenDepth++;
+            }
+            else if (currentToken->TokenType == tok_rParen)
+            {
+                parenDepth--;
+            }
+
             MetaCParser_Match(self, currentToken->TokenType);
             currentToken = MetaCParser_PeekToken(self, 1);
-        }
-
-        if (currentToken)
-        {
-            MetaCParser_Match(self, tok_rParen);
-            MetaCParser_Match(self, tok_rParen);
         }
     }
 }

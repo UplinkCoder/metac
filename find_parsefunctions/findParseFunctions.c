@@ -26,7 +26,10 @@ DeclarationArray ReadLexParse(const char* filename, metac_lpp_t* lpp)
         readResult.FileContent0, readResult.FileLength
     );
 
-    MetaCParser_InitFromLexer(&lpp->Parser, &lpp->Lexer);
+    metac_alloc_t alloc;
+    Allocator_Init(&alloc, 0);
+
+    MetaCParser_InitFromLexer(&lpp->Parser, &lpp->Lexer, &alloc);
 
     ParseFile(&lpp->Parser, filename, &result);
 
@@ -101,7 +104,9 @@ DeclarationArray FilterDeclarations(DeclarationArray decls, metac_parser_t* pars
                                     metac_alloc_t* alloc,
                                     bool (*filterFunc) (metac_declaration_t*, metac_parser_t*))
 {
-    STACK_ARENA_ARRAY(metac_declaration_t*, result, 16, alloc)
+    ARENA_ARRAY(metac_declaration_t*, result)
+
+    ARENA_ARRAY_INIT(metac_declaration_t*, result, alloc);
 
     for(uint32_t idx = 0;
         idx < decls.Length;
@@ -112,7 +117,6 @@ DeclarationArray FilterDeclarations(DeclarationArray decls, metac_parser_t* pars
             ARENA_ARRAY_ADD(result, decls.Ptr[idx]);
         }
     }
-    STACK_ARENA_ARRAY_TO_HEAP(result, alloc);
 
     DeclarationArray retval;
 
@@ -157,8 +161,10 @@ int main(int argc, const char* argv[])
     metac_lpp_t LPP;
     // lpp stands for lexer preprocessor parser
     // it simply bundles them as they are mostly used together
-    MetaCLPP_Init(&LPP);
-    // TODO MetaCLPP_Init should take an allocator
+    metac_alloc_t alloc;
+    Allocator_Init(&alloc, 0);
+
+    MetaCLPP_Init(&LPP, &alloc, 0);
 
     DeclarationArray decls = ReadLexParse(filename, &LPP);
     metac_alloc_t resultAlloc;
