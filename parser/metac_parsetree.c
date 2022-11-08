@@ -1,6 +1,5 @@
 #include "metac_parsetree.h"
 #include "../hash/crc32c.h"
-void breakme(void) {}
 #include "metac_node.c"
 
 #ifndef emptyNode

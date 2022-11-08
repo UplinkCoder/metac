@@ -766,6 +766,7 @@ LswitchMode:
                         metac_scope_table_slot_t slot = table->Slots[slotIdx];
                         if (slot.Hash)
                         {
+                            printf("Kind %s\n", MetaCNodeKind_toChars(slot.Node->Kind));
                             MSGF("Member [%u] : %s\n", memberIdx++, MetaCPrinter_PrintSemaNode(&repl->printer, &repl->SemanticState, slot.Node));
                         }
                     }

@@ -43,6 +43,21 @@ typedef struct Lightning_External {
   uint32_t mapAddr;
 } Lightning_External;
 
+typedef struct Lightning_ExternalFunc {
+  void* addr;
+  BCType* parameterTypes;
+  uint32_t ParameterTypesCount;
+  BCType returnType;
+
+  uint32_t mapAddr;
+} Lightning_ExternalFunc;
+
+typedef struct Lightning_Functiontype {
+    BCType* parameterTypes;
+    uint32_t ParameterTypesCount;
+    BCType returnType;
+} Lightning_Functiontype;
+
 typedef struct RuntimeContext
 {
     size_t rSpill[NREGS];
@@ -92,6 +107,11 @@ typedef struct RuntimeContext
     uint32_t externalsCount;
     uint32_t externalsCapacity;
 
+    Lightning_ExternalFunc* externalFuncs;
+    uint32_t externalFuncsCount;
+    uint32_t externalFuncsCapacity;
+
+
     uint32_t MapAddr;
 } RuntimeContext;
 
@@ -122,6 +142,11 @@ typedef struct Lightning
     BCValue* Externals;
     uint32_t ExternalsCount;
     uint32_t ExternalsCapacity;
+
+    BCValue* ExternalFuncs;
+    uint32_t ExternalFuncsCount;
+    uint32_t ExternalFuncsCapacity;
+
 
     jit_node_t *RuntimeContextArg;
     jit_node_t *ArgumentsArg;
@@ -278,7 +303,7 @@ static inline bool ConvertsToPointer(BCTypeEnum bcTypeEnum)
 }
 
 static inline void LoadRegValue(Lightning* self,
-                                register_index_t target, BCValue* val)
+                                register_index_t target, const BCValue* val)
 {
     uint32_t sz = 0;
 
@@ -495,7 +520,7 @@ static inline BCValue Lightning_GenExternal(Lightning* self, BCType bct, const c
     p.externalIndex = ++self->ExternalsCount;
     p.stackAddr.addr = self->FrameSize;
 
-    self->FrameSize += align4(BCTypeEnum_basicTypeSize(bct.type));
+    self->FrameSize += align4(sizeof(void*));
     p.name = name;
 
     return p;
@@ -535,6 +560,64 @@ static inline void Lightning_MapExternal (Lightning* self, BCValue* result,
     jit_pushargi((intptr_t)memory);
     jit_pushargi(sz);
     jit_finishi((jit_pointer_t) Runtime_MapExternal);
+    jit_retval(JIT_R0);
+    StoreRegValue(self, result, r0Index);
+}
+
+static inline BCValue Lightning_GenExternalFunc(Lightning* self, BCType bct, const char* name)
+{
+    BCValue p;
+    assert(bct.type == BCTypeEnum_Function);
+
+    p.type = bct;
+    p.vType = BCValueType_ExternalFunction;
+    p.externalIndex = ++self->ExternalFuncsCount;
+    p.stackAddr.addr = self->FrameSize;
+
+    self->FrameSize += 4;
+    p.name = name;
+
+    return p;
+}
+
+static uint32_t Runtime_MapExternalFunc(RuntimeContext* ctx, void* funcP, uint32_t funcTypeIdx)
+{
+    uint32_t result = 0;
+
+    if (ctx->externalFuncsCount < ctx->externalFuncsCapacity)
+    {
+        uint32_t funcIdx = ctx->externalFuncsCount++;
+
+        uint32_t nParams;
+        BCType* parameterTypes;
+        BCType returnType;
+
+        Lightning_ExternalFunc externalFunc = {
+            funcP, parameterTypes, nParams, returnType, funcIdx
+        };
+
+        ctx->externalFuncs[funcIdx] = externalFunc;
+        result = funcIdx;
+    }
+    else
+    {
+        assert(0);
+    }
+
+    return result;
+}
+
+// static uint32_t Runtime_RegisterFunctionType(RuntimeContext* ctx, )
+
+static inline BCValue Lightning_MapExternalFunc(Lightning* self, BCValue* result, BCValue* funcP)
+{
+    jit_prepare();
+    jit_pushargr(JIT_V0);
+    LoadRegValue(self, r1Index, result);
+    jit_pushargr(JIT_R1);
+    LoadRegValue(self, r2Index, result);
+    jit_pushargr(JIT_R2);
+    jit_finishi((jit_pointer_t) Runtime_MapExternalFunc);
     jit_retval(JIT_R0);
     StoreRegValue(self, result, r0Index);
 }
@@ -600,36 +683,6 @@ static inline void Lightning_PushArg(Lightning* self, const BCValue* value)
     }
 }
 #endif
-typedef enum address_kind_t
-{
-    AddressKind_Invalid,
-
-    AddressKind_Frame,
-    AddressKind_Heap,
-    AddressKind_External,
-
-    AddressKind_Max
-} address_kind_t;
-
-static inline address_kind_t ClassifyAddress(uint32_t unrealPointer)
-{
-    address_kind_t result = AddressKind_Invalid;
-
-    switch ((unrealPointer & AddrMask))
-    {
-        case stackAddrMask:
-            result = AddressKind_Frame;
-        break;
-        case externalAddrMask:
-            result = AddressKind_External;
-        break;
-        case heapAddrMask:
-            result = AddressKind_Heap;
-        break;
-    }
-
-    return result;
-}
 
 static inline void Lightning_BeginCall(Lightning* self, const BCValue fn)
 {
@@ -1669,8 +1722,10 @@ const BackendInterface Lightning_interface = {
     /*.GenLocal = */(GenLocal_t) Lightning_GenLocal,
     /*.DestroyLocal = */(DestroyLocal_t) Lightning_DestroyLocal,
     /*.GenParameter = */(GenParameter_t) Lightning_GenParameter,
-    /*.GenExternal = */(GenParameter_t) Lightning_GenExternal,
+    /*.GenExternal = */(GenExternal_t) Lightning_GenExternal,
     /*.MapExternal = */(MapExternal_t) Lightning_MapExternal,
+    /*.GenExternalFunc = */(GenExternalFunc_t) Lightning_GenExternalFunc,
+    /*.MapExternalFunc = */(MapExternalFunc_t) Lightning_MapExternalFunc,
     /*.EmitFlag = */(EmitFlag_t) Lightning_EmitFlag,
     /*.Alloc = */(Alloc_t) Lightning_Alloc,
     /*.Assert = */(Assert_t) Lightning_Assert,

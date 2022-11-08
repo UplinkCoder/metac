@@ -159,6 +159,7 @@ typedef enum BCValueType
     BCValueType_Immediate  = 2 << 3,
     BCValueType_HeapValue  = 3 << 3,
     BCValueType_External   = 4 << 3,
+    BCValueType_ExternalFunction   = 5 << 3,
 
     BCValueType_LastCond  = 0xFB,
     BCValueType_Bailout   = 0xFC,
@@ -291,6 +292,38 @@ typedef struct CndJmpBegin
 #define stackAddrMask  ((1 << 31) | (1 << 30))
 #define externalAddrMask (1 << 31 | 0 << 30)
 #define heapAddrMask (0 << 31 | 0 << 30)
+
+typedef enum address_kind_t
+{
+    AddressKind_Invalid,
+
+    AddressKind_Frame,
+    AddressKind_Heap,
+    AddressKind_External,
+
+    AddressKind_Max
+} address_kind_t;
+
+static inline address_kind_t ClassifyAddress(uint32_t unrealPointer)
+{
+    address_kind_t result = AddressKind_Invalid;
+
+    switch ((unrealPointer & AddrMask))
+    {
+        case stackAddrMask:
+            result = AddressKind_Frame;
+        break;
+        case externalAddrMask:
+            result = AddressKind_External;
+        break;
+        case heapAddrMask:
+            result = AddressKind_Heap;
+        break;
+    }
+
+    return result;
+}
+
 
 static inline bool isStackAddress(uint32_t unrealPointer)
 {

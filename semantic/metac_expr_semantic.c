@@ -281,6 +281,10 @@ void MetaCSemantic_doCallSemantic(metac_semantic_state_t* self,
         result = AllocNewSemaExpression(self, call);
         (*resultP) = result;
     }
+    else
+    {
+        assert(!"Can't resolve function call\n");
+    }
     result->Call.Function = func;
 
     if (func->Function)

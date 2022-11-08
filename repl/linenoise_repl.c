@@ -103,6 +103,9 @@ int main(int argc, const char* argv[])
     g_DebugServer = &dbgSrv;
     Debug_Init(g_DebugServer, 8180);
 #endif
+#ifdef METAC_COMPILER_INTERFACE
+    OS.GetTimeStamp(&compiler.StartTimeStamp);
+#endif
 #ifndef NO_FIBERS
     aco_global_init();
 #endif

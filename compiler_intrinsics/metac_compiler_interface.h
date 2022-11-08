@@ -3,6 +3,8 @@
 #define _METAC_COMPILER_INTERFACE_H_
 */
 typedef unsigned int uint32_t;
+typedef unsigned long int uint64_t;
+
 typedef void* type;
 
 typedef enum type_kind_t

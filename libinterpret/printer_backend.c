@@ -24,6 +24,8 @@ typedef struct Printer
 
     uint32_t NumberOfLocals;
     uint32_t NumberOfTemporaries;
+    uint32_t NumberOfExternals;
+    uint32_t NumberOfExternalFunctions;
 
     ErrorInfo* ErrorInfos;
     uint32_t ErrorInfoCount;
@@ -712,7 +714,7 @@ static inline BCValue Printer_GenExternal(Printer* self, BCType bct, const char*
         result.name = name;
     };
 
-    result.parameterIndex = ++self->NumberOfParameters;
+    result.externalIndex = ++self->NumberOfExternals;
     Printer_PutStr(self, "BCValue ");
 
     Printer_PrintBCValue(self, &result);
@@ -748,6 +750,50 @@ static inline void Printer_MapExternal (Printer* self, BCValue* result,
     Printer_PutU32(self, sz);
     Printer_PutStr(self, ");");
 
+    Printer_PutNewline(self);
+}
+
+static inline BCValue Printer_GenExternalFunc(Printer* self, BCType bct, const char* name)
+{
+    BCValue result = {BCValueType_ExternalFunction};
+    {
+        result.type = bct;
+        result.name = name;
+    };
+
+    result.parameterIndex = ++self->NumberOfExternalFunctions;
+    Printer_PutStr(self, "BCValue ");
+
+    Printer_PrintBCValue(self, &result);
+
+    Printer_PutStr(self, " = GenExternalFunc(");
+
+    Printer_PrintType(self, &bct);
+    Printer_PutStr(self, ", ");
+
+    if (name)
+        Printer_PutQuotedStr(self, name);
+    else
+        Printer_PutChar(self, '0');
+
+    Printer_PutStr(self, ");");
+    Printer_PutNewline(self);
+
+    return result;
+}
+
+
+static inline void Printer_MapExternalFunc (Printer* self, BCValue* result,
+                                            BCValue* funcP)
+{
+    Printer_PutStr(self, "MapExternalFunc(");
+
+    Printer_PrintBCValue(self, result);
+    Printer_PutStr(self, ", ");
+
+    Printer_PrintBCValue(self, funcP);
+    
+    Printer_PutStr(self, ")");
     Printer_PutNewline(self);
 }
 
@@ -1040,6 +1086,8 @@ const BackendInterface Printer_interface = {
     /*.GenParameter =*/ (GenParameter_t) Printer_GenParameter,
     /*.GenExternal =*/ (GenExternal_t) Printer_GenExternal,
     /*.MapExternal =*/ (MapExternal_t) Printer_MapExternal,
+    /*.GenExternal =*/ (GenExternalFunc_t) Printer_GenExternalFunc,
+    /*.MapExternal =*/ (MapExternalFunc_t) Printer_MapExternalFunc,
     /*.EmitFlag =*/ (EmitFlag_t) Printer_emitFlag,
     /*.Alloc =*/ (Alloc_t) Printer_Alloc,
     /*.Assert =*/ (Assert_t) Printer_Assert,

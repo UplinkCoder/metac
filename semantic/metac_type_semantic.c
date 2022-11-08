@@ -798,6 +798,7 @@ metac_type_index_t TypeArraySemantic(metac_semantic_state_t* self,
 
     return result;
 }
+
 metac_type_index_t TypeEnumSemantic(metac_semantic_state_t* self,
                                     decl_type_t* type_)
 {

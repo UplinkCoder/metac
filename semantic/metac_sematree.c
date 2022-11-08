@@ -9,7 +9,7 @@ int MetaCSemaTree_Walk_Debug(metac_sema_declaration_t* decl, struct metac_sema_d
     // make sure the context confusion cookie is set
     assert((*(uint32_t*) ctx) == crc32c_nozero(~0, fn_name, strlen(fn_name)));
 
-    return MetaCSemaTree_Walk_Real(decl, sema, sema, walker_fn, ctx);
+    return MetaCSemaTree_Walk_Real(decl, sema, walker_fn, ctx);
 }
 
 metac_type_t TypePtrToNode(metac_type_index_t typeIdx,metac_semantic_state_t* sema)
@@ -75,7 +75,7 @@ int MetaCSemaTree_Walk_Real(metac_sema_declaration_t* decl, struct metac_semanti
 
     switch(decl->Kind)
     {
-        //default 0:
+        default:
         case decl_min:
         case decl_max:
             assert(0);

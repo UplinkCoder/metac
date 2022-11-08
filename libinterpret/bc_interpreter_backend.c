@@ -893,7 +893,16 @@ void BCGen_PrintCode(BCGen* self, uint32_t start, uint32_t end)
             }
             break;
 
-        case LongInst_Realloc:
+        case LongInst_MapExternalFunc:
+            {
+                printf("LongInst_MapExternal R[%d] " , opRefOffset / 4, imm32c);
+                lw = codeP[ip++];
+                hi = codeP[ip++];
+                printf("{memPtr: %p}\n", ((intptr_t) (lw | ((uint64_t) hi) << 32)));
+                //assert(0);//, "Unsupported right now: BCBuiltin");
+            }
+            break;
+       case LongInst_Realloc:
             {
                 const uint32_t result = opRefOffset / 4;
                 const uint32_t ptr =  lhsOffset / 4;
@@ -1750,8 +1759,32 @@ BCValue BCGen_interpret(BCGen* self, uint32_t fnIdx, BCValue* args, uint32_t n_a
 
             case LongInst_HeapLoad32:
             {
+                uint32_t addr = (uint32_t)*rhs;
+                address_kind_t addressKind = ClassifyAddress(addr);
                 assert(*rhs); //, "trying to deref null pointer inLine: " ~ itos(lastLine));
-                (*lhsRef) = loadu32(heapPtr->heapData + *rhs);
+                if (addressKind == AddressKind_Heap)
+                {
+                    (*lhsRef) = loadu32(heapPtr->heapData + addr);
+                }
+                else if (addressKind == AddressKind_External)
+                {
+                    for(uint32_t i = 0; i < state.externalsCount; i++)
+                    {
+                        BCExternal canidate = state.externals[i];
+                        if (canidate.mapAddr <= addr && canidate.mapAddr + canidate.size > addr)
+                        {
+                            uint32_t offset = (addr & (~externalAddrMask));
+                            (*lhsRef) = loadu32(canidate.addr + offset);
+                            goto LendSearch;
+                        }
+                    }
+                    assert(!"couldn't find mapped addr");
+LendSearch:{}
+                }
+                else
+                {
+                    assert(0);
+                }
             }
             break;
         case LongInst_HeapStore32:
@@ -1766,7 +1799,29 @@ BCValue BCGen_interpret(BCGen* self, uint32_t fnIdx, BCValue* args, uint32_t n_a
             {
                 assert(*rhs);//, "trying to deref null pointer ");
                 const uint32_t addr = (uint32_t)*rhs;
-                const uint8_t* basePtr = heapPtr->heapData + addr;
+                uint8_t* basePtr = heapPtr->heapData + addr;
+                address_kind_t addressKind = ClassifyAddress(addr);
+                assert(*rhs); //, "trying to deref null pointer inLine: " ~ itos(lastLine));
+
+                if (addressKind == AddressKind_Heap)
+                {
+                    basePtr = heapPtr->heapData + addr;
+                }
+                else if (addressKind == AddressKind_External)
+                {
+                    for(uint32_t i = 0; i < state.externalsCount; i++)
+                    {
+                        BCExternal canidate = state.externals[i];
+                        if (canidate.mapAddr <= addr && canidate.mapAddr + canidate.size > addr)
+                        {
+                            uint32_t offset = (addr & (~externalAddrMask));
+                            basePtr = canidate.addr + offset;
+                            goto LendSearch2;
+                        }
+                    }
+                    assert(!"couldn't find mapped addr");
+                }
+LendSearch2:{}
 
                 uint64_t value = loadu32(basePtr + 4);
                 value <<= 32UL;
@@ -2477,6 +2532,22 @@ static inline BCValue BCGen_genExternal(BCGen* self, BCType bct, const char* nam
 }
 
 
+static inline BCValue BCGen_GenExternalFunc(BCGen* self, BCType bct, const char* name)
+{
+    BCValue p;
+
+    p.type = bct;
+    p.vType = BCValueType_ExternalFunction;
+    p.externalIndex = ++self->externalCount;
+    p.stackAddr.addr = self->sp;
+
+    self->sp += 4;
+    p.name = name;
+
+    return p;
+}
+
+
 static inline uint32_t BCGen_beginJmp(BCGen* self)
 {
     uint32_t atIp = self->ip;
@@ -2735,6 +2806,22 @@ static inline void BCGen_MapExternal (BCGen* self, BCValue* result,
     // assert(result->vType == BCValueType_StackValue);
     BCGen_emit2(self, BCGen_ShortInst16(LongInst_MapExternal, result->stackAddr.addr), sz);
     BCGen_emit2(self, memptr & 0xffffffff, memptr >> 32);
+}
+
+static inline void BCGen_MapExternalFunc (BCGen* self, BCValue* result,
+                                          BCValue* funcP)
+{
+    uint32_t nParams = 0;
+    intptr_t funcptr = (intptr_t) funcP;
+    BCValue fnTypeIndex = BCGen_genTemporary(self, BCType_i32);
+    const BCValue fnTypeValue = imm32(result->type.typeIndex);
+
+    assert(result->vType == BCValueType_ExternalFunction);
+    assert(result->type.type == BCTypeEnum_Function);
+    BCGen_Set(self, &fnTypeIndex, &fnTypeValue);
+    assert(BCValue_isStackValueOrParameter(funcP));
+
+    BCGen_emitLongInstSS(self, LongInst_MapExternalFunc, result->stackAddr, funcP->stackAddr);
 }
 
 static inline void BCGen_emitFlag(BCGen* self, BCValue* lhs)
@@ -3317,6 +3404,9 @@ const BackendInterface BCGen_interface = {
 
     /*.GenExternal =*/ (GenExternal_t) BCGen_genExternal,
     /*.MapExternal =*/ (MapExternal_t) BCGen_MapExternal,
+
+    /*.GenExternalFunc =*/ (GenExternalFunc_t) BCGen_GenExternalFunc,
+    /*.MapExternalFunc =*/ (MapExternalFunc_t) BCGen_MapExternalFunc,
 
     /*.EmitFlag =*/ (EmitFlag_t) BCGen_emitFlag,
     /*.Alloc =*/ (Alloc_t) BCGen_Alloc,

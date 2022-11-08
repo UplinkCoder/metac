@@ -2191,6 +2191,9 @@ LnextToken:
 #define CRC32C_SEMICOLON 0x4e84e24
 #define CRC32C_PARENSTARPAREN 0xdb5bdc12
 
+static void EatAttributes(metac_parser_t* self);
+
+
 decl_type_t* MetaCParser_ParseTypeDeclaration(metac_parser_t* self, metac_declaration_t* parent, metac_declaration_t* prev)
 {
     decl_type_t* result = 0;
@@ -2644,7 +2647,7 @@ decl_parameter_list_t ParseParameterList(metac_parser_t* self,
 static stmt_block_t* MetaCParser_ParseBlockStatement(metac_parser_t* self,
                                                      metac_statement_t* parent,
                                                      metac_statement_t* prev);
-void EatAttributes(metac_parser_t* self)
+static void EatAttributes(metac_parser_t* self)
 {
     int32_t parenDepth = 0;
 

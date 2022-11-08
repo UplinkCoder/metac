@@ -21,7 +21,6 @@
 #include "../compiler_intrinsics/metac_compiler_interface.c"
 #endif
 
-
 uint32_t MetaCCodegen_GetTypeABISize(metac_bytecode_ctx_t* ctx,
                                      metac_type_index_t type)
 {
@@ -179,10 +178,10 @@ BCTypeInfo* MetaCCodegen_GetTypeInfo(metac_bytecode_ctx_t* ctx, BCType* bcType)
 void MetaCCodegen_doGlobal(metac_bytecode_ctx_t* ctx, metac_sema_declaration_t* decl, uint32_t idx)
 {
     BCValue result = {BCValueType_HeapValue};
- 
+
     metac_type_index_t typeIdx = MetaCSemantic_GetType(ctx->Sema, METAC_NODE(decl));
     metac_type_index_kind_t typeIdxKind = TYPE_INDEX_KIND(typeIdx);
-    
+
     result.heapAddr.addr = ctx->GlobalMemoryOffset;
     if (typeIdxKind != type_index_invalid)
     {
@@ -432,6 +431,25 @@ bool IsExternal(metac_sema_expression_t* expr)
     return result;
 }
 
+BCValue
+MetacCodegen_ExternalFunction(metac_bytecode_ctx_t* ctx, metac_sema_expression_t* func)
+{
+    void* c = ctx->c;
+    const BackendInterface gen = *ctx->gen;
+    BCType fType = MetaCCodegen_GetBCType(ctx, func->TypeIndex);
+    BCValue extValue = gen.GenExternalFunc(c, fType, "externalFunc");
+    BCValue funcPtr = gen.GenTemporary(c, fType);
+
+    assert(TYPE_INDEX_KIND(func->TypeIndex) == type_index_functiontype);
+
+    MetaCCodegen_doExpression(ctx, func, &funcPtr, _Rvalue);
+
+    gen.MapExternalFunc(c, &extValue, &funcPtr);
+
+    return extValue;
+}
+
+
 metac_bytecode_function_t MetaCCodegen_GenerateFunctionFromExp(metac_bytecode_ctx_t* ctx,
                                                                metac_sema_expression_t* expr)
 {
@@ -452,6 +470,11 @@ metac_bytecode_function_t MetaCCodegen_GenerateFunctionFromExp(metac_bytecode_ct
         else
         {
             bool isExternal = IsExternal(expr->E1);
+            if (isExternal)
+            {
+                BCValue func =
+                    MetacCodegen_ExternalFunction(ctx, expr->E1);
+            }
             int k = 12;
         }
     }
@@ -701,6 +724,7 @@ static void LoadFromHeapRef(metac_bytecode_ctx_t* ctx, BCValue* hrv, uint32_t ab
         BCTypeEnum types[] = {BCTypeEnum_u64, BCTypeEnum_i64, BCTypeEnum_f52};
         if(BCTypeEnum_anyOf(hrv->type.type, types, ARRAY_SIZE(types)))
         {
+Lload64: {}
             BCValue hr = BCValue_fromHeapref(hrv->heapRef);
             gen.Load64(c, hrv, &hr);
             return ;
@@ -716,6 +740,7 @@ static void LoadFromHeapRef(metac_bytecode_ctx_t* ctx, BCValue* hrv, uint32_t ab
         };
         if(BCTypeEnum_anyOf(hrv->type.type, types, ARRAY_SIZE(types)))
         {
+Lload32: {}
             BCValue hr = BCValue_fromHeapref(hrv->heapRef);
             gen.Load32(c, hrv, &hr);
             return ;
@@ -734,6 +759,14 @@ static void LoadFromHeapRef(metac_bytecode_ctx_t* ctx, BCValue* hrv, uint32_t ab
             hrv_i32.type = BCType_i32;
 
             gen.MemCpy(c, &hrv_i32, &hr, &sz);
+        }
+        else if (abiSize == 4)
+        {
+            goto Lload32;
+        }
+        else if (abiSize == 8)
+        {
+            goto Lload64;
         }
         else
         {
@@ -850,13 +883,26 @@ void MetaCCodegen_doDeref(metac_bytecode_ctx_t* ctx,
                           metac_type_index_t varType,
                           BCValue* result)
 {
-    if (TYPE_INDEX_KIND(varType) == type_index_functiontype)
+    if (TYPE_INDEX_KIND(varType) == type_index_functiontype
+     || TYPE_INDEX_KIND(varType) == type_index_ptr)
     {
-        *result = *addr;
+        BCType bct = MetaCCodegen_GetBCType(ctx, varType);
+        BCHeapRef heapRef;
+        heapRef.vType = addr->vType;
+        heapRef.localIndex = addr->localIndex;
+        heapRef.stackAddr = addr->stackAddr;
+        result->heapRef = heapRef;
+        LoadFromHeapRef(ctx, result, sizeof(void*));
     }
-    else if (TYPE_INDEX_KIND(varType) == type_index_ptr)
+    else if (TYPE_INDEX_KIND(varType) == type_index_basic)
     {
-        *result = *addr;
+        BCType bct = MetaCCodegen_GetBCType(ctx, varType);
+        BCHeapRef heapRef;
+        heapRef.vType = addr->vType;
+        heapRef.localIndex = addr->localIndex;
+        heapRef.stackAddr = addr->stackAddr;
+        result->heapRef = heapRef;
+        LoadFromHeapRef(ctx, result, BCTypeEnum_basicTypeSize(bct.type));
     }
     else
     {

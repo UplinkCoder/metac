@@ -175,6 +175,7 @@ typedef enum LongInst
 
     LongInst_Alloc, /// SP[hi & 0xFFFF] = heapSize; heapSize += SP[hi >> 16]
     LongInst_MapExternal,
+    LongInst_MapExternalFunc,
     LongInst_MemCpy,
     LongInst_Realloc,
 

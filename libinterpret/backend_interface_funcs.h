@@ -23,6 +23,9 @@ typedef BCValue (*GenParameter_t) (void* ctx, BCType bct, const char* name);
 typedef BCValue (*GenExternal_t) (void* ctx, BCType bct, const char* name);
 typedef void (*MapExternal_t) (void* ctx, BCValue* result, void* memory, uint32_t sz);
 
+typedef BCValue (*GenExternalFunc_t) (void* ctx, BCType bct, const char* name);
+typedef void (*MapExternalFunc_t) (void* ctx, BCValue* result, BCValue* func);
+
 typedef void (*EmitFlag_t) (void* ctx, BCValue* lhs);
 
 typedef void (*Alloc_t) (void* ctx, BCValue *heapPtr, const BCValue* size);
@@ -136,6 +139,9 @@ typedef struct BackendInterface
 
     BCValue (*const GenExternal) (void* ctx, BCType bct, const char* name);
     void (*const MapExternal) (void* ctx, BCValue* result, void* memory, uint32_t sz);
+
+    BCValue (*const GenExternalFunc) (void* ctx, BCType bct, const char* name);
+    void (*const MapExternalFunc) (void* ctx, BCValue* result, BCValue* fnP);
 
     void (*const EmitFlag) (void* ctx, BCValue* lhs);
 

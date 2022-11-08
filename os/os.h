@@ -5,6 +5,7 @@
 #ifdef __unix__
 #  include <unistd.h>
 #  include <sys/mman.h>
+#  include <sys/time.h>
 #  define POSIX
 #endif
 
@@ -37,13 +38,14 @@ typedef enum os_error_t
     Error_NotEnoughSpace,
 } os_error_t;
 
-
-
 struct OS
 {
     uint32_t PageSize;
 
     os_error_t (*PageAlloc)(uint32_t minSize, uint32_t* allocatedSize, void** outMemory);
+
+    os_error_t (*GetTimeStamp) (uint32_t* tsp);
+
 #if 0
     /// Opens a file
     os_error_t (*FileOpen)(const char* path, file_mode_t mode, fhandle* outFile);
@@ -71,7 +73,7 @@ struct OS
     os_error_t (*FileSetPostion)(fhandle file, uint32_t loWord, uint32_t hiWord);
 
     // Closes the file and flushes any pending write/operations
-    void (*FileClose)(fhandle handle);
+    os_error_t (*FileClose)(fhandle handle);
 #endif
 };
 
