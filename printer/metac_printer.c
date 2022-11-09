@@ -1209,6 +1209,13 @@ static inline void PrintSemaFunctionType(metac_printer_t* self,
     PrintChar(self, ')');
 }
 
+void TypeToCharsP(metac_semantic_state_t* sema,
+                  metac_printer_t* printer,
+                  metac_type_index_t typeIndex)
+{
+    PrintSemaType(printer, sema, typeIndex);
+}
+
 static inline void PrintSemaType(metac_printer_t* self,
                                  metac_semantic_state_t* sema,
                                  metac_type_index_t typeIndex)
