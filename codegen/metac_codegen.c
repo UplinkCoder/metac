@@ -141,10 +141,56 @@ static metac_type_index_t GetTypeIndex(BCType bcType)
         case BCTypeEnum_Tuple:
             kind = type_index_tuple;
         break;
+        case BCTypeEnum_Struct:
+            kind = type_index_struct;
+        break;
+
+        case BCTypeEnum_Void:
+            result.v = TYPE_INDEX_V(type_index_basic, type_void);
+        break;
+        case BCTypeEnum_i8:
+            result.v = TYPE_INDEX_V(type_index_basic, type_char);
+        break;
+        case BCTypeEnum_i16:
+            result.v = TYPE_INDEX_V(type_index_basic, type_short);
+        break;
+        case BCTypeEnum_i32:
+            result.v = TYPE_INDEX_V(type_index_basic, type_int);
+        break;
+        case BCTypeEnum_i64:
+            result.v = TYPE_INDEX_V(type_index_basic, type_long_long);
+        break;
+
+        case BCTypeEnum_f23:
+            result.v = TYPE_INDEX_V(type_index_basic, type_float);
+        break;
+        case BCTypeEnum_f52:
+            result.v = TYPE_INDEX_V(type_index_basic, type_double);
+        break;
+
+        case BCTypeEnum_f106:
+            result.v = TYPE_INDEX_V(type_index_basic, type_long_double);
+        break;
+
+        case BCTypeEnum_u8:
+            result.v = TYPE_INDEX_V(type_index_basic, type_unsigned_char);
+        break;
+        case BCTypeEnum_u16:
+            result.v = TYPE_INDEX_V(type_index_basic, type_unsigned_short);
+        break;
+        case BCTypeEnum_u32:
+            result.v = TYPE_INDEX_V(type_index_basic, type_unsigned_int);
+        break;
+        case BCTypeEnum_u64:
+            result.v = TYPE_INDEX_V(type_index_basic, type_unsigned_long_long);
+        break;
+
         default: assert(0);
     }
 
-    result.v = TYPE_INDEX_V(kind, bcType.typeIndex);
+    if (kind != type_index_invalid)
+        result.v = TYPE_INDEX_V(kind, bcType.typeIndex);
+
     return result;
 }
 

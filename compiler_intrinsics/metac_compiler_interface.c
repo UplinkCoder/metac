@@ -25,6 +25,16 @@ uint32_t compiler_CurrentTimeStamp ()
 
 }
 
+uint32_t compiler_Message ()
+{
+
+}
+
+uint32_t compiler_Error ()
+{
+
+}
+
 uint32_t compiler_BuiltinCount ()
 {
     return 1;
@@ -74,8 +84,8 @@ metac_compiler_t compiler = {
     compiler_BuiltinName,
     compiler_help,
 
-    0,
-    0,
+    compiler_Message,
+    compiler_Error,
 
     0,
 };
