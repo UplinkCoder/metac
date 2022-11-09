@@ -405,6 +405,12 @@ static inline void Printer_PrintBCValue(Printer* self, const BCValue* val)
         Printer_PutU32(self, val->externalIndex);
     } break;
 
+    case BCValueType_ExternalFunction:
+    {
+        Printer_PutStr(self, "extFn");
+        Printer_PutU32(self, val->externalIndex);
+    } break;
+
     case BCValueType_Unknown:
         {
             Printer_PutStr(self, "BCValue.init");
@@ -792,8 +798,8 @@ static inline void Printer_MapExternalFunc (Printer* self, BCValue* result,
     Printer_PutStr(self, ", ");
 
     Printer_PrintBCValue(self, funcP);
-    
-    Printer_PutStr(self, ")");
+
+    Printer_PutStr(self, ");");
     Printer_PutNewline(self);
 }
 

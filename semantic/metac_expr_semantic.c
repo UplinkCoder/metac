@@ -322,7 +322,7 @@ void ResolveIdentifierToExp(metac_semantic_state_t* self,
     uint32_t hash = *hashP;
     metac_sema_expression_t* result = *resultP;
     // printf("Resolving node: %p\n", node);
-    
+
     if (node->Kind == (metac_node_kind_t)exp_identifier)
     {
         fprintf(stderr, "we should not be retured an identifier\n");
@@ -659,6 +659,11 @@ LswitchIdKey:
                         dotExp->DotE2->Field = field;
                         dotExp->DotE2->TypeIndex = field->Type;
                     }
+                    else
+                    {
+                        int k = 12;
+                        assert(0);
+                    }
 
                     MetaCSemantic_doCallSemantic(self, expr->E2, &callExp);
                     if (!callExp)
@@ -680,7 +685,7 @@ LswitchIdKey:
 
                 MetaCSemantic_UnmountScope(self);
 
-                hash = 0xfefefefe;
+                // hash = 0xfefefefe;
             }
             else
             {
@@ -928,7 +933,7 @@ LswitchIdKey:
                 else
                 {
                     const char* idString = IdentifierPtrToCharPtr(self->ParserIdentifierTable, idPtr);
-                    printf("Resolving id: '%s' to %p\n", idString, node);
+                    // printf("Resolving id: '%s' to %p\n", idString, node);
                     ResolveIdentifierToExp(self, node, &result, &hash);
                 }
             }

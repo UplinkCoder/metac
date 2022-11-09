@@ -96,34 +96,49 @@ const struct ui_interface_t LinenoiseUiInterface =
     Linenoise_GetFilesystem,
 } ;
 
+void doUiMessage(const char* msg)
+{
+    g_uiContext->UiInterface.Message(g_uiContext->UiState, msg);
+}
+
 int main(int argc, const char* argv[])
 {
 #ifdef DEBUG_SERVER
     debug_server_t dbgSrv = {0};
-    g_DebugServer = &dbgSrv;
-    Debug_Init(g_DebugServer, 8180);
 #endif
-#ifdef METAC_COMPILER_INTERFACE
-    OS.GetTimeStamp(&compiler.StartTimeStamp);
-#endif
+    repl_state_t repl;
+    ui_state_t uiState = {0};
+    repl_ui_context_t ctx;
+
 #ifndef NO_FIBERS
     aco_global_init();
 #endif
-    linenoiseHistoryLoad(".repl_history");
-    printf("Please enter :h for help\n");
-    repl_state_t repl;
-    ui_state_t uiState = {0};
-
-    repl_ui_context_t ctx;
+#ifdef DEBUG_SERVER
+    g_DebugServer = &dbgSrv;
+    Debug_Init(g_DebugServer, 8180);
+#endif
 
     ctx.UiInterface = LinenoiseUiInterface;
     ctx.UiState = cast(void*)&uiState;
 
+    linenoiseHistoryLoad(".repl_history");
+    printf("Please enter :h for help\n");
+
+#ifdef METAC_COMPILER_INTERFACE
+    OS.GetTimeStamp(&compiler.StartTimeStamp);
+    compiler.Message = doUiMessage;
+#endif
     g_uiContext = &ctx;
 #ifndef NO_FIBERS
     worker_context_t replWorkerContext = {0};
     worker_context_t* ctxPtr = &replWorkerContext;
     THREAD_CONTEXT_SET(ctxPtr);
+/*
+    for(uint32_t slaveIdx = 0; slaveIdx < slaveCount; slaveIdx++)
+    {
+
+    }
+*/
     RunWorkerThread(&replWorkerContext, Repl_Fiber, 0);
 #else
     ReplStart(&ctx);

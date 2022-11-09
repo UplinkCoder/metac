@@ -42,13 +42,13 @@ task_t* CurrentTask()
 
 
 #if defined(HAS_TLS)
-#define THREAD_CONTEXT threadContext
-#define THREAD_CONTEXT_SET(WORKER) threadContext = WORKER
+#  define THREAD_CONTEXT threadContext
+#  define THREAD_CONTEXT_SET(WORKER) threadContext = WORKER
 #elif defined(HAS_THREADS)
-#define THREAD_CONTEXT ((worker_context_t*) tss_get(threadContextKey))
-#define THREAD_CONTEXT_SET(WORKER) tss_set(threadContextKey, WORKER)
+#  define THREAD_CONTEXT ((worker_context_t*) tss_get(threadContextKey))
+#  define THREAD_CONTEXT_SET(WORKER) tss_set(threadContextKey, WORKER)
 #else
-#error "You got to have threads man!"
+#  error "You got to have threads man!"
 #endif
 
 worker_context_t* CurrentWorker()

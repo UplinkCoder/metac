@@ -547,7 +547,7 @@ typedef struct BCEnumType
     const char* name;
 
     uint16_t nMembers;
-    BCTypeEnum baseType;
+    BCType baseType;
 } BCEnumType;
 
 typedef struct BCPointerType

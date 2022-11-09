@@ -43,6 +43,9 @@ const char** compiler_FieldNames (type T)
 const char* compiler_BuiltinName (uint32_t builtinNumber)
 {
     static const char* names[] = {"not here", "not here either"};
+    // hard code bultinNumber since it's called with the wrong
+    // prototype at the moment
+    builtinNumber = 1;
     return names[builtinNumber];
 }
 
@@ -51,6 +54,11 @@ const char* compiler_help ()
     return "Hello I am Mr. compiler. I cannot help you ...";
 }
 
+
+const char* compiler_msg ()
+{
+    return "you called compiler message, and it should not return a string";
+}
 
 
 metac_compiler_t compiler = {

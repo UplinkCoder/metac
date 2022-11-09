@@ -113,7 +113,7 @@ typedef void (*ValueCallback_cb_t)(BCValue* value, void* userCtx);
 
 #define FREE_SIZE 4294967294U
 typedef void* (*alloc_fn_t) (void* ctx, uint32_t size, void* func);
-typedef BCTypeInfo* (*get_typeinfo_fn_t) (void* ctx, BCType* type);
+typedef BCTypeInfo (*get_typeinfo_fn_t) (void* ctx, BCType* type);
 
 typedef void (*set_alloc_memory_t) (void* ctx, alloc_fn_t alloc_fn, void* userCtx);
 typedef void (*set_get_typeinfo_t) (void* ctx, get_typeinfo_fn_t get_typeinfo_fn, void* userCtx);

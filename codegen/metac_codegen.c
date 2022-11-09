@@ -170,9 +170,12 @@ void MetaCCodegen_doType(metac_bytecode_ctx_t* ctx, metac_type_index_t typeIdx)
 
 }
 
-BCTypeInfo* MetaCCodegen_GetTypeInfo(metac_bytecode_ctx_t* ctx, BCType* bcType)
+BCTypeInfo MetaCCodegen_GetTypeInfo(metac_bytecode_ctx_t* ctx, BCType* bcType)
 {
-    return 0;
+    BCTypeInfo func = {
+      BCTypeInfofKind_Function,
+    };
+    return func;
 }
 
 void MetaCCodegen_doGlobal(metac_bytecode_ctx_t* ctx, metac_sema_declaration_t* decl, uint32_t idx)
@@ -461,28 +464,23 @@ metac_bytecode_function_t MetaCCodegen_GenerateFunctionFromExp(metac_bytecode_ct
 
     const BackendInterface gen = *ctx->gen;
 
+    bool compilerInterfaceInited = false;
+
     if (expr->Kind == exp_call)
     {
         if(expr->E1->Kind == exp_function)
         {
             calledF = MetaCCodegen_GenerateFunction(ctx, expr->E1->Function);
         }
-        else
-        {
-            bool isExternal = IsExternal(expr->E1);
-            if (isExternal)
-            {
-                BCValue func =
-                    MetacCodegen_ExternalFunction(ctx, expr->E1);
-            }
-            int k = 12;
-        }
     }
 
     func.FunctionIndex =
         gen.BeginFunction(c, 0, "dummy_eval_func");
 
-    InitCompilerInterface(ctx);
+    if (!compilerInterfaceInited)
+    {
+        InitCompilerInterface(ctx);
+    }
 
     // we need to introduce all resolvable variables from the outer context here.
     // .compiler.help - .compiler
@@ -940,7 +938,7 @@ static void MetaCCodegen_doDotExpression(metac_bytecode_ctx_t* ctx,
     assert(idxKind == type_index_struct);
     assert(e2->Kind == exp_field || e2->Kind == exp_call);
 
-    if (TYPE_INDEX_KIND(e2->TypeIndex) == type_functiontype)
+    if (TYPE_INDEX_KIND(e2->TypeIndex) == type_index_functiontype)
     {
         BCType type_ = {BCTypeEnum_Function, TYPE_INDEX_INDEX(e2->TypeIndex)};
         addrType = type_;
@@ -1422,6 +1420,8 @@ static void MetaCCodegen_doExpression(metac_bytecode_ctx_t* ctx,
         case exp_call:
         {
             sema_exp_call_t call = exp->Call;
+            bool isExternal = IsExternal(call.Function);
+
             BCValue resultVal =
                 gen.GenTemporary(c, MetaCCodegen_GetBCType(ctx, exp->TypeIndex));
 
@@ -1431,7 +1431,6 @@ static void MetaCCodegen_doExpression(metac_bytecode_ctx_t* ctx,
             }
 
             BCValue fn = {BCValueType_Unknown};
-            MetaCCodegen_doExpression(ctx, call.Function, &fn, _Rvalue);
 
             STACK_ARENA_ARRAY(BCValue, args, 16, &ctx->Allocator);
             const static BCValue nullValue = {BCValueType_Unknown};
@@ -1443,8 +1442,19 @@ static void MetaCCodegen_doExpression(metac_bytecode_ctx_t* ctx,
                 BCValue* argP = &args[i];
                 MetaCCodegen_doExpression(ctx, call.Arguments[i], argP, _Rvalue);
             }
+            if (IsExternal)
+            {
+                fn =
+                    MetacCodegen_ExternalFunction(ctx, call.Function);
+                gen.Call(c, &resultVal, &fn, args, call.ArgumentCount);
+                // gen.ExternalCall(c, &resultVal, &fn, args, call.ArgumentCount);
+            }
+            else
+            {
+                MetaCCodegen_doExpression(ctx, call.Function, &fn, _Rvalue);
 
-            gen.Call(c, &resultVal, &fn, args, call.ArgumentCount);
+                gen.Call(c, &resultVal, &fn, args, call.ArgumentCount);
+            }
             *result = resultVal;
         } break;
     }

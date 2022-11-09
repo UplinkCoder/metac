@@ -222,7 +222,6 @@ void Presemantic_(repl_state_t* self)
 
     if (fCompilterInterface.FileContent0)
     {
-
         metac_lexer_t tmpLexer;
         metac_parser_t tmpParser;
 
@@ -256,11 +255,9 @@ void Presemantic_(repl_state_t* self)
             i < decls.Length;
             i++)
         {
-
-
             MetaCNode_TreeWalk_Real(METAC_NODE(decls.Ptr[i]), TranslateIdentifiers, &transIdCtx);
 
-            MetaCNode_TreeWalk_Real(cast(metac_node_t)decls.Ptr[i], Presemantic, &presemanticContext);
+            MetaCNode_TreeWalk_Real(METAC_NODE(decls.Ptr[i]), Presemantic, &presemanticContext);
         }
 
         for(uint32_t i = 0;
@@ -1176,7 +1173,6 @@ void Repl_Fiber(void)
 
     repl_state_t repl_ = {repl_mode_ee};
     repl_state_t* repl = &repl_;
-
 
     repl_ui_context_t* uiContext = g_uiContext;
     ui_interface_t uiInterface = uiContext->UiInterface;

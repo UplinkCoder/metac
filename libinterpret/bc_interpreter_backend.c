@@ -70,6 +70,12 @@ static inline void BCGen_set_alloc_memory(BCGen* self, alloc_fn_t alloc_fn, void
     self->allocCtx = userCtx;
 }
 
+static inline void BCGen_set_get_typetypeinfo(BCGen* self, get_typeinfo_fn_t get_typeinfo_fn, void* userCtx)
+{
+    self->getTypeInfoFn = get_typeinfo_fn;
+    self->getTypeInfoCtx = userCtx;
+}
+
 static inline void BCGen_Init(BCGen* self)
 {
     if (!self->allocFn)
@@ -97,8 +103,8 @@ static inline void BCGen_Init(BCGen* self)
 
     self->calls = (RetainedCall*) self->allocFn(self->allocCtx,
         sizeof(RetainedCall) * INITIAL_CALLS_CAPACITY, 0);
-    self->callCount = 0;
-    self->callCapacity = INITIAL_CALLS_CAPACITY;
+    self->callsCount = 0;
+    self->callsCapacity = INITIAL_CALLS_CAPACITY;
 
     self->functions = (BCFunction*)self->allocFn(self->allocCtx,
         sizeof(BCFunction) * INITIAL_LOCALS_CAPACITY, 0);
@@ -223,8 +229,12 @@ typedef struct BCInterpreter {
 
     uint32_t mapPtr;
     BCValue cRetval;
+
     BCExternal externals[16];
     uint16_t externalsCount;
+
+    BCFunctionType functionTypes[16];
+    uint16_t functionTypesCount;
 
     int64_t stack[LOCAL_STACK_SIZE];
     ReturnAddr returnAddrs[MAX_CALL_DEPTH];
@@ -895,10 +905,8 @@ void BCGen_PrintCode(BCGen* self, uint32_t start, uint32_t end)
 
         case LongInst_MapExternalFunc:
             {
-                printf("LongInst_MapExternal R[%d] " , opRefOffset / 4, imm32c);
-                lw = codeP[ip++];
-                hi = codeP[ip++];
-                printf("{memPtr: %p}\n", ((intptr_t) (lw | ((uint64_t) hi) << 32)));
+                printf("LongInst_MapExternalFunc R[%d] Map{ptr: R[%d], type: R[%d])\n",
+                       opRefOffset / 4, lhsOffset / 4, rhsOffset / 4);
                 //assert(0);//, "Unsupported right now: BCBuiltin");
             }
             break;
@@ -982,7 +990,7 @@ void BCGen_PrintCode(BCGen* self, uint32_t start, uint32_t end)
 
         case LongInst_Call:
             {
-                printf("LongInst_Call R[%d] = ?\n", (opRefOffset / 4));
+                printf("LongInst_Call R[%d] = Call(R[%d])\n", lhsOffset / 4, rhsOffset / 4);
             }
             break;
         case LongInst_ContextManip:
@@ -1928,6 +1936,24 @@ LendSearch2:{}
             }
             break;
 
+        case LongInst_MapExternalFunc:
+            {
+                uint32_t funcTypeIdx = (uint32_t)*rhs;
+                BCType funcType = {BCTypeEnum_Function, funcTypeIdx};
+
+                BCTypeInfo funcTypeInfo =
+                    self->getTypeInfoFn(self->getTypeInfoCtx, &funcType);
+
+                {
+                    assert(funcTypeInfo.kind == BCTypeInfofKind_Function);
+                    assert(funcTypeInfo.functionType.nParameterTypes == 0);
+                }
+                (*opRef) = *lhsRef;
+
+                //assert(0);//, "Unsupported right now: BCBuiltin");
+            }
+            break;
+
         case LongInst_BuiltinCall:
             {
                 assert(0);//, "Unsupported right now: BCBuiltin");
@@ -2019,6 +2045,9 @@ LendSearch2:{}
                     frameP[call.fn.stackAddr.addr / 4]
                 ) & UINT32_MAX;
 
+                bool isExternal =
+                    call.fn.vType == BCValueType_ExternalFunction;
+
                 state.fnIdx = fn - 1;
 
                 int64_t* newStack = state.sp;
@@ -2026,38 +2055,47 @@ LendSearch2:{}
                 if (fn == skipFn)
                     continue;
 
-                //foreach(size_t i,ref arg;call.args)
-                for(int i = 0; i < call.n_args; i++)
+                if (!isExternal)
                 {
-                    const BCValue* arg = call.args + i;
-                    const int argOffset_ = (i * 1) + 1;
-                    if(BCValue_isStackValueOrParameter(arg))
+                    //foreach(size_t i,ref arg;call.args)
+                    for(int i = 0; i < call.n_args; i++)
                     {
-                        newStack[argOffset_] = frameP[arg->stackAddr.addr / 4];
+                        const BCValue* arg = call.args + i;
+                        const int argOffset_ = (i * 1) + 1;
+                        if(BCValue_isStackValueOrParameter(arg))
+                        {
+                            newStack[argOffset_] = frameP[arg->stackAddr.addr / 4];
+                        }
+                        else if (arg->vType == BCValueType_Immediate)
+                        {
+                            newStack[argOffset_] = arg->imm64.imm64;
+                        }
+                        else
+                        {
+                            assert(0);//, "Argument " ~ itos(cast(int)i) ~" ValueType unhandeled: " ~ enumToString(arg.vType));
+                        }
                     }
-                    else if (arg->vType == BCValueType_Immediate)
+
+                    if (state.callDepth++ == max_call_depth)
                     {
-                        newStack[argOffset_] = arg->imm64.imm64;
+                        BCValue bailoutValue;
+                        bailoutValue.vType = BCValueType_Bailout;
+                        bailoutValue.imm32.imm32 = 2000;
+                        return bailoutValue;
                     }
-                    else
+
                     {
-                        assert(0);//, "Argument " ~ itos(cast(int)i) ~" ValueType unhandeled: " ~ enumToString(arg.vType));
+                        state.returnAddrs[state.n_return_addrs++] = returnAddr;
+                        state.stackTop = state.stackTop + (call.callerSp.addr / 4);
+                        BCFunction* f =  self->functions + state.fnIdx;
+                        state.ip = f->bytecode_start;
                     }
                 }
-
-                if (state.callDepth++ == max_call_depth)
+                else
                 {
-                    BCValue bailoutValue;
-                    bailoutValue.vType = BCValueType_Bailout;
-                    bailoutValue.imm32.imm32 = 2000;
-                    return bailoutValue;
-                }
-
-                {
-                    state.returnAddrs[state.n_return_addrs++] = returnAddr;
-                    state.stackTop = state.stackTop + (call.callerSp.addr / 4);
-                    BCFunction* f =  self->functions + state.fnIdx;
-                    state.ip = f->bytecode_start;
+                    // printf("Should call fnPtr: %p\n", frameP[call.fn.stackAddr.addr / 4]);
+                    const char* msg = ((const char* (*)()) frameP[call.fn.stackAddr.addr / 4])();
+                    printf("External Call returned: %s\n", msg);
                 }
             }
             break;
@@ -2406,7 +2444,7 @@ void BCGen_destroyLocal(BCGen* self, BCValue* local)
 
 static inline void BCGen_Initialize(BCGen* self, uint32_t n_args, ...)
 {
-    self->callCount = 0;
+    self->callsCount = 0;
     self->parameterCount = 0;
     self->temporaryCount = 0;
     self->localCount = 0;
@@ -2821,7 +2859,9 @@ static inline void BCGen_MapExternalFunc (BCGen* self, BCValue* result,
     BCGen_Set(self, &fnTypeIndex, &fnTypeValue);
     assert(BCValue_isStackValueOrParameter(funcP));
 
-    BCGen_emitLongInstSS(self, LongInst_MapExternalFunc, result->stackAddr, funcP->stackAddr);
+    BCGen_emitLongInstSSS(self, LongInst_MapExternalFunc,
+                          result->stackAddr,
+                          funcP->stackAddr, fnTypeIndex.stackAddr);
 }
 
 static inline void BCGen_emitFlag(BCGen* self, BCValue* lhs)
@@ -3265,7 +3305,7 @@ static inline void BCGen_Not(BCGen* self, BCValue *result, const BCValue* val)
 static inline void BCGen_Call(BCGen* self, BCValue *result, const BCValue* fn, BCValue* args, uint32_t n_args)
 {
     assert(BCValue_isStackValueOrParameter(result));
-    BCValue fnValue = imm32(self->callCount + 1);
+    BCValue fnValue = imm32(self->callsCount + 1);
     BCValue callTmp = BCGen_pushTemporary(self, &fnValue);
     StackAddr call_id = callTmp.stackAddr;
     BCValue* allocArgs = cast(BCValue*)
@@ -3273,7 +3313,7 @@ static inline void BCGen_Call(BCGen* self, BCValue *result, const BCValue* fn, B
     memcpy(allocArgs, args, n_args * sizeof(BCValue));
 
     RetainedCall rc = {*fn, allocArgs, n_args, self->functionIdx, self->ip, self->sp};
-    self->calls[self->callCount++] = rc;
+    self->calls[self->callsCount++] = rc;
 
     BCGen_emitLongInstSS(self, LongInst_Call, result->stackAddr, call_id);
 }
@@ -3477,7 +3517,7 @@ const BackendInterface BCGen_interface = {
     /*.fini_instance =*/ (fini_instance_t) BCGen_fini_instance,
 
     /*.set_alloc_memory =*/ (set_alloc_memory_t) BCGen_set_alloc_memory,
-    /*.set_get_typeinfo =*/ (set_get_typeinfo_t) 0,
+    /*.set_get_typeinfo =*/ (set_get_typeinfo_t) BCGen_set_get_typetypeinfo,
 };
 
 #endif

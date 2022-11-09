@@ -18,6 +18,7 @@ os_error_t PageAlloc(uint32_t minSize, uint32_t* allocatedSize, void** outMemory
 
     uint32_t allocated =
         (minSize + (OS.PageSize - 1)) & ~(OS.PageSize - 1);
+
 #if defined(WINDOWS)
    result = VirtualAlloc(0, allocated,
                          MEM_RESERVE | MEM_COMMIT,
