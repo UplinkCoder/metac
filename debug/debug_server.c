@@ -44,29 +44,46 @@ static int serveFile(const char* filename, const char* contentType, struct MHD_C
     int ret;
 
     fopen_s(&f, filename, "r");
-    fseek(f, 0, SEEK_END);
-    sz = ftell(f);
-    fseek(f, 0, SEEK_SET);
-    if (sz < 8192)
-        page = pageBuffer;
+    if (f)
+    {
+        fseek(f, 0, SEEK_END);
+        sz = ftell(f);
+        fseek(f, 0, SEEK_SET);
+        if (sz < 8192)
+            page = pageBuffer;
+        else
+            page = (char*)malloc(sz + 1);
+
+        fread(page, 1, sz, f);
+        page[sz] = '\0';
+        // printf("page: %s\n", page);
+        fclose(f);
+        
+        
+        response =
+            MHD_create_response_from_buffer(sz, (void*)page,
+                MHD_RESPMEM_MUST_COPY);
+        MHD_add_response_header(response, MHD_HTTP_HEADER_CONTENT_TYPE,
+            contentType);
+    }
     else
-        page = (char*)malloc(sz + 1);
-
-    fread(page, 1, sz, f);
-    page[sz] = '\0';
-    // printf("page: %s\n", page);
-    fclose(f);
-
-    response =
-        MHD_create_response_from_buffer(sz, (void*)page,
-            MHD_RESPMEM_MUST_COPY);
-    MHD_add_response_header(response, MHD_HTTP_HEADER_CONTENT_TYPE,
-        contentType);
+    {
+        char msg[512];
+        int len = 0;
+        len += snprintf(msg, 512, "File %s couldn't be loaded.", filename);
+        response =
+            MHD_create_response_from_buffer(len, (void*)msg,
+                MHD_RESPMEM_MUST_COPY);
+    }
+    
+    
     ret = MHD_queue_response(conn, MHD_HTTP_OK, response);
     MHD_destroy_response(response);
 
     return ret;
 }
+
+static uint32_t g_allocated;
 
 MHD_HANDLER (handleCurrentScope)
 {
@@ -101,6 +118,31 @@ MHD_HANDLER (handleCurrentScope)
     return send_html(connection, responseString, responseSize);
 }
 
+
+MHD_HANDLER(handleGraphJs)
+{
+    return serveFile("/home/uplink/dev/metac/debug/graph.js", "application/javascript", connection);
+}
+
+
+MHD_HANDLER(handleLc)
+{
+    return serveFile("/home/uplink/dev/metac/debug/linechart.html", "text/html", connection);
+}
+
+MHD_HANDLER(handleData)
+{
+    return serveFile("/home/uplink/dev/metac/debug/data.json", "application/json", connection);
+}
+
+
+MHD_HANDLER(handleGraphs)
+{
+    static char responseString[8192];
+    uint32_t responseSize = 0;
+    debug_server_t* debugServer = (debug_server_t*) cls;
+    
+}
 
 const char* PrintSize(uint32_t sz)
 {
@@ -326,7 +368,28 @@ static MHD_HANDLER(debugServerHandler)
     {
         return handleCurrentScope(MHD_HANDLER_PASSTHROUGH);
     }
+    
+    if (memcmp(url, "/graphs", sizeof("/graphs") - 1) == 0)
+    {
+        return handleGraphs(MHD_HANDLER_PASSTHROUGH);
+    }
+    
+    if (memcmp(url, "/graph.js", sizeof("/graph.js") - 1) == 0)
+    {
+        return handleGraphJs(MHD_HANDLER_PASSTHROUGH);
+    }
+    
+    if (memcmp(url, "/lc", sizeof("/lc") - 1) == 0)
+    {
+        return handleLc(MHD_HANDLER_PASSTHROUGH);
+    }
 
+    if (memcmp(url, "/data.json", sizeof("/data.json") - 1) == 0)
+    {
+        return handleData(MHD_HANDLER_PASSTHROUGH);
+    }
+
+    
     if (debugServer->Handler)
     {
         return debugServer->Handler(MHD_HANDLER_PASSTHROUGH);
@@ -362,6 +425,7 @@ int Debug_Init(debug_server_t* debugServer, unsigned short port) {
 
     uint32_t allocatorCapa = 64;
     uint32_t allocationCapa = 256;
+    uint32_t graphCapa = 16;
 
     debugServer->Allocators = (metac_alloc_t**)
         malloc(sizeof(metac_alloc_t*) * allocatorCapa);
@@ -373,7 +437,12 @@ int Debug_Init(debug_server_t* debugServer, unsigned short port) {
     debugServer->AllocationsCount = 0;
     debugServer->AllocationsCapacity = allocationCapa;
 
-    return 0;
+    debugServer->Graphs = (debug_graph_t*)
+        malloc(sizeof(debug_graph_t) * graphCapa);
+    debugServer->GraphsCount = 0;
+    debugServer->GraphsCapacity = graphCapa;
+
+   return 0;
 }
 
 void Debug_Allocator(debug_server_t* debugServer, metac_alloc_t* allocator)
@@ -412,11 +481,17 @@ void Debug_RemoveAllocator(debug_server_t* debugServer, metac_alloc_t* allocator
 
 void Debug_Allocation(debug_server_t* debugServer, metac_alloc_t* allocator, uint32_t sz, const char* file, uint32_t line)
 {
+    uint32_t timestamp;
     uint32_t count = debugServer->AllocationsCount++;
-
-    debugServer->Allocations[count].size = sz;
-    debugServer->Allocations[count].file = file;
-    debugServer->Allocations[count].line = line;
+    OS.GetTimeStamp(&timestamp);
+    
+    debugServer->Allocations[count].Size = sz;
+    debugServer->Allocations[count].File = file;
+    debugServer->Allocations[count].Line = line;
+    debugServer->Allocations[count].Timestamp = timestamp;
+    
+    g_allocated += sz;
+    Debug_GraphValue(debugServer, "g_allocated", g_allocated);
 }
 
 void Debug_Pump(debug_server_t* debugServer)
@@ -431,6 +506,43 @@ void Debug_CurrentIdentifierTable(debug_server_t* debugServer,
                                   metac_identifier_table_t* idTab)
 {
     debugServer->CurrentIdentifierTable = idTab;
+}
+
+const char* DebugServer_AddString(debug_server_t* debugServer, const char* name, uint32_t len)
+{
+    
+}
+
+void Debug_GraphValue(debug_server_t* debugServer, const char* name, double value)
+{
+    uint32_t timestamp;
+    //TODO use hashtable
+    debug_graph_t* graphP = 0;
+    debug_graph_value_t graphValue;
+    OS.GetTimeStamp(&timestamp);
+
+    graphValue.Timestamp = timestamp;
+    graphValue.Value = value;
+    
+    for(uint32_t i = 0; i < debugServer->GraphsCount; i++)
+    {
+        graphP = debugServer->Graphs + i;
+        if (strcmp(name, graphP->Name) == 0)
+        {
+            break;
+        }
+    }
+    
+    if (!graphP)
+    {
+        uint32_t nameLen = strlen(name);
+        debug_graph_t graph;
+        
+        graph.Name = DebugServer_AddString(debugServer, name, nameLen);
+        ARENA_ARRAY_INIT(debug_graph_value_t, graph.Values, &debugServer->Allocator);
+    }
+    
+    ARENA_ARRAY_ADD(graphP->Values, graphValue);
 }
 
 #endif

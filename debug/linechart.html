@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <title>gRaphaël Line Charts</title>
+<!--
+        <link rel="stylesheet" href="css/demo.css" type="text/css" media="screen" charset="utf-8">
+        <link rel="stylesheet" href="css/demo-print.css" type="text/css" media="print" charset="utf-8">
+-->
+        <style>
+        body {
+            background: #999
+            font: 100.01% "Fontin Sans", Fontin-Sans, "Myriad Pro", "Lucida Grande", "Lucida Sans Unicode", Lucida, Verdana, Helvetica, sans-serif;
+            color: #000;
+            margin: 10px 0 0 0;
+            padding: 0;
+            text-align: center;
+        }
+        #holder {
+            -moz-border-radius: 10px;
+            -webkit-border-radius: 10px;
+            -webkit-box-shadow: 0 1px 3px #666;
+            background: #ddd
+            margin: 0 auto;
+            width: 640px;
+            height: 480px;
+        }
+        p {
+            text-align: left;
+            margin: .5em 2em;
+        }
+        </style>
+<!--
+        <script src="../raphael-min.js" type="text/javascript" charset="utf-8"></script>
+        <script src="../g.raphael.js" type="text/javascript"></script>
+        <script src="../g.line.js" type="text/javascript" charset="utf-8"></script>
+-->
+        <script src="graph.js" type="text/javascript" charset="utf-8"></script>
+        <>
+        <script type="text/javascript" charset="utf-8">
+            window.onload = function () {
+                var r = Raphael("holder"),
+                    txtattr = { font: "12px 'Fontin Sans', Fontin-Sans, sans-serif" };
+                
+                var x = [], y = [];
+
+                var xhr = {};
+                if (window.XMLHttpRequest) {
+                    //Firefox, Opera, IE7, and other browsers will use the native object
+                    xhr.new = function () { return new XMLHttpRequest(); };
+                } else {
+                    //IE 5 and 6 will use the ActiveX control
+                    xhr.new = function () { return new ActiveXObject("Microsoft.XMLHTTP"); };
+                }
+                var req = xhr.new();
+                req.open("GET", "data.json", false);
+                req.send();
+                var jsonData = req.responseText;
+                var data = eval(jsonData);
+                var length = data.length;
+                console.log(data);
+                for (var i = 0; i < length; i++) {
+                    x[i] = data[i][0];
+                    y[i] = data[i][1];
+                }
+
+                var lines = r.linechart(25, 5, 640 - 20 , 100 - 20, 
+                    y, x,
+                    { nostroke: false, axis: "0 0 1 1", symbol: "circle", smooth: true }).hoverColumn(function () {
+                        this.tags = r.set();
+
+                        for (var i = 0, ii = this.y.length; i < ii; i++) {
+                            this.tags.push(r.tag(this.x, this.y[i], this.values[i], 160, 10).insertBefore(this).attr([{ fill: "#fff" }, { fill: this.symbols[i].attr("fill") }]));
+                        }
+                }, function () {
+                    this.tags && this.tags.remove();
+                });
+                //lines.click(function () { console.log("Clock! ... " + this.toString()) });
+                // lines.onClick);
+                lines.symbols.attr({ r: 6 })
+            };
+        </script>
+    </head>
+    <body class="raphael" id="">
+        <div id="holder"></div>
+        <p>
+            Demo of <a href="http://g.raphaeljs.com/">gRaphaël</a> JavaScript library.
+        </p>
+    </body>
+</html>

@@ -3,6 +3,7 @@
 #ifdef DEBUG_SERVER
 
 #include "microhttpd.h"
+#include "../os/os.h"
 
 #include "../os/metac_alloc.h"
 #include "../semantic/metac_scope.h"
@@ -34,15 +35,40 @@ typedef MHD_HANDLER ((*mhd_handler_t));
 
 typedef struct debug_allocation_t
 {
-    uint32_t size;
-    const char* file;
-    uint32_t line;
+    const char* File;
+    uint32_t Line;
+    uint32_t Size;
+    uint32_t Timestamp;
 } debug_allocation_t;
+
+typedef struct debug_graph_value_t
+{
+    double Value;
+    uint32_t Timestamp;
+} debug_graph_value_t;
+
+typedef struct debug_graph_t
+{
+    const char* Name;
+    ARENA_ARRAY(debug_graph_value_t, Values)
+    uint32_t Timestamp;
+} debug_graph_t;
+
+
+typedef struct debug_message_t
+{
+    const char* Message;
+    uint32_t Length;
+    uint32_t Timestamp;
+} debug_message_t;
 
 typedef struct debug_server_t
 {
     struct MHD_Daemon* Daemon;
     mhd_handler_t Handler;
+
+    metac_alloc_t Allocator;
+
     metac_alloc_t** Allocators;
     uint32_t AllocatorsCount;
     uint32_t AllocatorsCapacity;
@@ -53,6 +79,14 @@ typedef struct debug_server_t
 
     metac_scope_t* CurrentScope;
     metac_identifier_table_t* CurrentIdentifierTable;
+
+    debug_graph_t* Graphs;
+    uint32_t GraphsCount;
+    uint32_t GraphsCapacity;
+
+    debug_message_t* Messages;
+    uint32_t MessagesCount;
+    uint32_t MessagesCapacity;
 } debug_server_t;
 
 int Debug_Init(debug_server_t* debugServer, unsigned short port);
@@ -62,8 +96,11 @@ void Debug_Allocator(debug_server_t* debugServer, metac_alloc_t* allocator);
 void Debug_Allocation(debug_server_t* debugServer, metac_alloc_t* allocator, uint32_t sz, const char* file, uint32_t line);
 void Debug_RemoveAllocator(debug_server_t* debugServer, metac_alloc_t* allocator);
 
+void Debug_GraphValue(debug_server_t* debugServer, const char* name, double value);
+
 void Debug_CurrentScope(debug_server_t* debugServer, metac_scope_t* scopeP);
 void Debug_CurrentIdentifierTable(debug_server_t* debugServer, metac_identifier_table_t* scopeP);
+
 
 extern debug_server_t* g_DebugServer;
 
@@ -74,6 +111,7 @@ extern debug_server_t* g_DebugServer;
 #define Debug_Allocator(D, A)
 #define Debug_Allocation(D, A, Z, F, L)
 #define Debug_RemoveAllocator(D, A)
+#define Debug_GraphValue(D, N, V)
 #define Debug_CurrentIdentifierTable(D, IT)
 #define Debug_CurrentScope(D, SC)
 #endif
