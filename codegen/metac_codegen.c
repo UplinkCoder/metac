@@ -1052,6 +1052,18 @@ static void MetaCCodegen_doExpression(metac_bytecode_ctx_t* ctx,
             (*result) = imm32_(cast(int32_t)exp->ValueI64, true);
             goto Lret;
         }
+        else if (op == exp_char)
+        {
+            //TODO this is wrong!
+            (*result) = imm32(exp->Chars[0]);
+            goto Lret;
+        }
+        else if (op == exp_float)
+        {
+            (*result) = imm32(*(uint32_t*)&exp->ValueF23);
+            result->type.type = BCTypeEnum_f23;
+            goto Lret;
+        }
 
 
         if (result->vType == BCValueType_Unknown)

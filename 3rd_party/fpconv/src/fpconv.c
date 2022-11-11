@@ -1,3 +1,5 @@
+#ifndef FPCONV_C
+#define FPCONV_C
 #include <stdbool.h>
 #include <string.h>
 
@@ -330,3 +332,4 @@ int fpconv_dtoa(double d, char dest[24])
 
     return str_len;
 }
+#endif

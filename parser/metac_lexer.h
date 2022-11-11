@@ -1,6 +1,7 @@
 #ifndef _METAC_LEXER_H_
 #define _METAC_LEXER_H_
 #include "../os/compat.h"
+#include "../os/bsf.h"
 
 #include "metac_identifier_table.h"
 
@@ -186,6 +187,8 @@ typedef struct metac_lexer_state_t
     \
     M(tok_identifier) \
     M(tok_uint) \
+    M(tok_float) \
+    M(tok_double) \
     M(tok_string) \
     M(tok_char) \
     M(tok_char_uni) \
@@ -252,6 +255,35 @@ typedef struct metac_token_t {
         uint32_t MacroParameterIndex;
     };
 } metac_token_t;
+
+#define FOREACH_PARSE_NUMBER_FLAG(M) \
+    M(parse_number_flag_none, 0) \
+    M(parse_number_flag_hex, 1 << 0) \
+    M(parse_number_flag_float, 1 << 1)
+
+#define DEF_MEMBER(NAME, VALUE) \
+    NAME = VALUE,
+
+typedef enum parse_number_flag_t
+{
+    FOREACH_PARSE_NUMBER_FLAG(DEF_MEMBER)
+} parse_number_flag_t;
+
+#undef DEF_MEMBER(NAME, VALUE)
+
+static const char* ParseNumberFlag_toChars(parse_number_flag_t flag)
+{
+    const char* result = 0;
+
+    switch(flag)
+    {
+#define CASE(FLAG, VALUE) \
+    case FLAG: result = #FLAG; break;
+        FOREACH_PARSE_NUMBER_FLAG(CASE)
+#undef CASE
+    }
+    return result;
+}
 
 typedef struct metac_token_buffer_t
 {

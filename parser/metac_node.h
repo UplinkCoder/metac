@@ -105,6 +105,7 @@
     M(exp_string) \
     M(exp_char) \
     M(exp_signed_integer) \
+    M(exp_float) \
     M(exp_increment) \
     M(exp_decrement) \
     M(exp_post_increment) \

@@ -112,6 +112,8 @@ typedef struct metac_expression_t
         int64_t ValueI64;
         // case exp_unsigned_integer :
         uint64_t ValueU64;
+        // case exp_float:
+        float ValueF23;
     };
 } metac_expression_t;
 

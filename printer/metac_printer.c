@@ -3,6 +3,12 @@
 #include "../parser/metac_lexer.h"
 #include "../parser/metac_parser.h"
 #include "../utils/int_to_str.c"
+#include "../3rd_party/fpconv/src/fpconv.h"
+
+#ifndef FPCONV_C
+#  include "../3rd_party/fpconv/src/fpconv.c"
+#endif
+
 #include <assert.h>
 #include <string.h>
 
@@ -67,8 +73,9 @@ static inline void PrintString(metac_printer_t* self,
                  const char* string, uint32_t length)
 {
     char c;
+    uint32_t pos = 0;
 
-    while((c = *string++))
+    while((c = *string++) && (pos++ < length))
     {
         assert(c != '\n');
         self->StringMemory[self->StringMemorySize++] = c;
@@ -172,6 +179,16 @@ static inline void PrintI64(metac_printer_t* self, int64_t value)
     // assert((length > 0) && (length <= 20));
     PrintString(self, result, length);
 }
+
+static inline void PrintF23(metac_printer_t* self, float value)
+{
+    char f23Buffer[25];
+
+    int len = fpconv_dtoa(cast(double) value, f23Buffer);
+    f23Buffer[len] = 'f';
+    PrintString(self, f23Buffer, len + 1);
+}
+
 
 static inline void PrintType(metac_printer_t* self, decl_type_t* type);
 static inline void PrintParameterList(metac_printer_t* self,
@@ -988,6 +1005,10 @@ static inline void PrintExpression(metac_printer_t* self, metac_expression_t* ex
     {
         PrintI64(self, exp->ValueI64);
     }
+    else if (exp->Kind == exp_float)
+    {
+        PrintF23(self, exp->ValueF23);
+    }
     else if (exp->Kind == exp_char)
     {
         PrintChar(self, '\'');
@@ -1528,6 +1549,10 @@ static inline void PrintSemaExpression(metac_printer_t* self,
     else if (semaExp->Kind == exp_signed_integer)
     {
         PrintI64(self, semaExp->ValueI64);
+    }
+    else if (semaExp->Kind == exp_float)
+    {
+        PrintF23(self, semaExp->ValueF23);
     }
     else if (semaExp->Kind == exp_char)
     {

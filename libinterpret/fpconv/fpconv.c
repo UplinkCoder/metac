@@ -1,3 +1,6 @@
+#ifndef FPCONV_C
+#define FPCONV_C
+
 #include "../../os/compat.h"
 
 #include "fpconv.h"
@@ -339,3 +342,6 @@ int fpconv_dtoa(double d, char dest[24])
 }
 
 #undef memcpy
+#undef memset
+
+#endif

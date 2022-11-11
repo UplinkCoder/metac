@@ -130,6 +130,13 @@ EvaluateExpression(metac_semantic_state_t* sema,
 
         STACK_ARENA_ARRAY_TO_HEAP(tupleExps, &sema->TempAlloc);
     }
+    else if (TYPE_INDEX_KIND(e->TypeIndex) == type_index_basic &&
+             TYPE_INDEX_INDEX(e->TypeIndex) == (uint32_t) type_float)
+    {
+        result.Kind = exp_float;
+        result.ValueF23 = *(float*) &resultInt;
+        result.TypeIndex.v = TYPE_INDEX_V(type_index_basic, type_float);
+    }
     else
     {
         result.Kind = exp_signed_integer;
@@ -759,6 +766,11 @@ LswitchIdKey:
             hash = CRC32C_VALUE(exp_signed_integer, expr->ValueU64);
             result->TypeIndex = MetaCSemantic_GetTypeIndex(self, type_int, (decl_type_t*)emptyPointer);
         break;
+        case exp_float :
+            hash = CRC32C_VALUE(exp_float, expr->ValueF23);
+            result->TypeIndex = MetaCSemantic_GetTypeIndex(self, type_float, (decl_type_t*)emptyPointer);
+        break;
+
         case exp_assign:
             MetaCSemantic_doAssignSemantic(self, expr, result);
             result->TypeIndex = result->E1->TypeIndex;

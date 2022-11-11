@@ -148,6 +148,8 @@ typedef struct metac_sema_expression_t
         int64_t ValueI64;
         // case exp_unsigned_integer :
         uint64_t ValueU64;
+        // case exp_float :
+        float ValueF23;
 
         uint8_t _Body[METAC_MAX_EXP_BODY_SIZE];
     };

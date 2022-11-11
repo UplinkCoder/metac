@@ -605,6 +605,18 @@ bool static ParseOctal(const char** textP, uint32_t* eatenCharsP, uint64_t* valu
     return result;
 }
 
+bool static ParseFloat(const char** textP, uint32_t* eatenCharsP, float* valueP)
+{
+    char* endP = 0;
+    const char* text = *textP;
+    (*valueP) = strtof(text, &endP);
+    int32_t eaten = endP - text;
+
+    *textP = text + eaten;
+    *eatenCharsP += eaten;
+
+    return (text != endP && endP != 0);
+}
 
 
 bool static ParseHex(const char** textP, uint32_t* eatenCharsP, uint64_t* valueP)
@@ -803,7 +815,7 @@ metac_token_t* MetaCLexerLexNextToken(metac_lexer_t* self,
         }
         // printf("Not enough token storage\n");
     }
-    uint32_t eatenChars = 0;
+    int32_t eatenChars = 0;
     char c = *text++;
 LcontinueLexnig:
     {
@@ -879,12 +891,11 @@ LcontinueLexnig:
             else if (IsNumericChar(c))
             {
                 token.TokenType = tok_uint;
-                bool isHex;
+                parse_number_flag_t parseFlags = parse_number_flag_none;
                 uint64_t value;
                 uint32_t initialPos = eatenChars;
 //             LparseDigits:
                 value = 0;
-                isHex = false;
 
                 if (c == '0')
                 {
@@ -930,12 +941,40 @@ LcontinueLexnig:
                 }
             LParseNumberDone:
                 c |= 32;
-                while (c == 'u' ||  c == 'l')
+
+                if ((c == 'f') | (c == '.'))
                 {
-                    eatenChars++;
-                    c = (*text++ | 32);
+                    int32_t backwards = (eatenChars - initialPos);
+                    text = text - (backwards + 1);
+                    eatenChars -= backwards;
+                    assert(eatenChars >= 0);
+                    float fValue;
+                    if (ParseFloat(&text, &eatenChars, &fValue))
+                    {
+                        parseFlags |= parse_number_flag_float;
+                        token.ValueF23 = fValue;
+                        token.TokenType = tok_float;
+                        c = *text++;
+                        eatenChars++;
+                    }
+                    else
+                    {
+                        assert(0);
+                    }
                 }
-                token.ValueU64 = value;
+                else
+                {
+                    while (c == 'u' ||  c == 'l')
+                    {
+                        eatenChars++;
+                        c = (*text++ | 32);
+                    }
+                }
+                if ((parseFlags & parse_number_flag_float) == 0)
+                {
+                    token.ValueU64 = value;
+                }
+
                 token.ValueLength = eatenChars - initialPos;
                 state->Column += eatenChars;
             }

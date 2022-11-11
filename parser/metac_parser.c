@@ -701,6 +701,10 @@ metac_expression_kind_t ExpTypeFromTokenType(metac_token_enum_t tokenType)
     {
         return exp_signed_integer;
     }
+    else if (tokenType == tok_float)
+    {
+        return exp_float;
+    }
     else if (tokenType == tok_string)
     {
         return exp_string;
@@ -851,6 +855,7 @@ static inline uint32_t OpToPrecedence(metac_expression_kind_t exp)
     else if (exp == exp_paren
           || exp == exp_signed_integer
           || exp == exp_string
+          || exp == exp_float
           || exp == exp_identifier
           || exp == exp_char
           || exp == exp_tuple
@@ -914,6 +919,7 @@ static inline bool IsPrimaryExpressionToken(metac_token_enum_t tokenType)
     {
     case tok_lParen:
     case tok_uint:
+    case tok_float:
     case tok_string:
     case tok_char:
     case tok_identifier:
@@ -1213,6 +1219,14 @@ metac_expression_t* MetaCParser_ParsePrimaryExpression(metac_parser_t* self, par
                     CRC32C_VALUE(~0, currentToken->ValueI64);
         }
         //PushOperand(result);
+    }
+    else if (tokenType == tok_float)
+    {
+        MetaCParser_Match(self, tok_float);
+        result = AllocNewExpression(exp_float);
+        result->ValueF23 = currentToken->ValueF23;
+        int32_t val32 = *(int32_t*)&currentToken->ValueF23;
+        result->Hash = CRC32C_VALUE(~0, val32);
     }
     else if (tokenType == tok_string)
     {
