@@ -954,8 +954,12 @@ LcontinueLexnig:
                         parseFlags |= parse_number_flag_float;
                         token.ValueF23 = fValue;
                         token.TokenType = tok_float;
-                        c = *text++;
-                        eatenChars++;
+                        c = *text;
+                        if (c == 'f')
+                        {
+                            text++;
+                            eatenChars++;
+                        }
                     }
                     else
                     {
