@@ -575,9 +575,9 @@ metac_bytecode_function_t MetaCCodegen_GenerateFunction(metac_bytecode_ctx_t* ct
     uint32_t frameSize = 0;
     uint32_t functionParameterCount = functionType->ParameterTypeCount;
 
-    STACK_ARENA_ARRAY(BCValue, parameters, 16, &ctx->Allocator);
-    STACK_ARENA_ARRAY(BCValue, locals, 16, &ctx->Allocator);
-    STACK_ARENA_ARRAY(BCAddr, breaks, 32, &ctx->Allocator);
+    STACK_ARENA_ARRAY(BCValue, parameters, 16, &ctx->Allocator)
+    STACK_ARENA_ARRAY(BCValue, locals, 16, &ctx->Allocator)
+    STACK_ARENA_ARRAY(BCAddr, breaks, 32, &ctx->Allocator)
 
     const char* fName =
         IdentifierPtrToCharPtr(ctx->IdentifierTable, function->Identifier);
@@ -955,10 +955,51 @@ void MetaCCodegen_doDeref(metac_bytecode_ctx_t* ctx,
 }
 
 static void MetaCCodegen_doCastExpression(metac_bytecode_ctx_t* ctx,
-                                         metac_sema_expression_t* exp,
-                                         BCValue* result)
+                                          metac_sema_expression_t* exp,
+                                          BCValue* result)
 
 {
+    metac_type_index_t castToType = exp->CastType;
+    metac_sema_expression_t* castExpr = exp->CastExp;
+    metac_type_index_t castFromType = castExpr->TypeIndex;
+    BackendInterface gen = *ctx->gen;
+    void* c = ctx->c;
+
+    BCValue rhs = { BCValueType_Unknown };
+    MetaCCodegen_doExpression(ctx, castExpr, &rhs, _Rvalue);
+
+    assert(exp->Kind == exp_cast);
+
+    if (castToType.v == TYPE_INDEX_V(type_index_basic, type_float))
+    {
+        if (castFromType.v == TYPE_INDEX_V(type_index_basic, type_int))
+        {
+            if (rhs.vType == BCValueType_Immediate)
+            {
+                BCValue tmp = gen.GenTemporary(c, BCType_i32);
+                gen.Set(c, &tmp, &rhs);
+                rhs = tmp;
+            }
+            gen.IToF32(c, result, &rhs);
+            return;
+        }
+    }
+    else if (castToType.v == TYPE_INDEX_V(type_index_basic, type_int))
+    {
+        if (castFromType.v == TYPE_INDEX_V(type_index_basic, type_float))
+        {
+            if (rhs.vType == BCValueType_Immediate)
+            {
+                BCType BCType_f23 = {BCTypeEnum_f23};
+                BCValue tmp = gen.GenTemporary(c, BCType_f23);
+                gen.Set(c, &tmp, &rhs);
+                rhs = tmp;
+            }
+            gen.F32ToI(c, result, &rhs);
+            return;
+        }
+    }
+
     assert(!"Handling for exp_cast not implemented at the moment");
 }
 

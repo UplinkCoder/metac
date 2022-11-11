@@ -732,6 +732,7 @@ LswitchIdKey:
                 MetaCSemantic_doExprSemantic(self, expr->CastExp, 0);
             hash = CRC32C_VALUE(hash, castExp->Hash);
             result->TypeIndex = castType;
+            result->CastType = castType;
             result->CastExp = castExp;
             if (castType.v == 0 || castExp->Kind == exp_unknown_value)
                 result->Kind = exp_unknown_value;
