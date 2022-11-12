@@ -32,9 +32,6 @@ BCType MetaCCodegen_GetBCType(metac_bytecode_ctx_t* ctx, metac_type_index_t type
     BCType result = {BCTypeEnum_Undef};
     metac_type_index_kind_t typeKind = TYPE_INDEX_KIND(typeIdx);
 
-    if (typeKind == type_index_enum)
-        result.type = BCTypeEnum_i32;
-
     if (typeKind == type_index_basic)
     {
         switch(typeIdx.Index)
@@ -117,6 +114,15 @@ BCType MetaCCodegen_GetBCType(metac_bytecode_ctx_t* ctx, metac_type_index_t type
     {
         result.type = BCTypeEnum_Ptr;
         result.typeIndex = typeIdx.Index;
+    }
+    else if (typeKind == type_index_enum)
+    {
+#if 0
+        result.type = BCTypeEnum_Enum;
+        result.typeIndex = typeIdx.Index;
+#else
+        result.type = BCTypeEnum_i32;
+#endif
     }
     else
     {
@@ -535,12 +541,6 @@ metac_bytecode_function_t MetaCCodegen_GenerateFunctionFromExp(metac_bytecode_ct
     gen.Ret(c, &resultVal);
 
     gen.EndFunction(c, func.FunctionIndex);
-
-    if (ctx->gen == &Printer_interface)
-    {
-        Printer* printer = (Printer*)ctx->c;
-        printf("%s\n\n", printer->BufferStart);
-    }
 
 #ifdef PRINT_BYTECODE
     if (ctx->gen == &BCGen_interface)
@@ -997,6 +997,11 @@ static void MetaCCodegen_doCastExpression(metac_bytecode_ctx_t* ctx,
             }
             gen.F32ToI(c, result, &rhs);
             return;
+        }
+        else if (TYPE_INDEX_KIND(castFromType) == type_index_enum)
+        {
+            gen.Set(c, result, &rhs);
+            return ;
         }
     }
 

@@ -26,7 +26,7 @@ read_result_t ReadFileAndZeroTerminate(const char* path)
         size_t aligned_size =
             (((result.FileLength + 1) + 3) & ~3);
 
-        result.FileContent0 = (char*) realloc(result.FileContent0, aligned_size);
+        result.FileContent0 = (char*) malloc(aligned_size);
 
         size_t read_size = fread(result.FileContent0,
                                  1, result.FileLength, fd);

@@ -269,7 +269,7 @@ typedef enum parse_number_flag_t
     FOREACH_PARSE_NUMBER_FLAG(DEF_MEMBER)
 } parse_number_flag_t;
 
-#undef DEF_MEMBER(NAME, VALUE)
+#undef DEF_MEMBER
 
 static const char* ParseNumberFlag_toChars(parse_number_flag_t flag)
 {

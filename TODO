@@ -1,4 +1,5 @@
 - Forign langauge blocks 
+- Checking for initialisation functions before use of struct
 
 -Label variables to implement cheap local 'calls'
 -Git rid of real pointers and use indicies into the expression, statement and declaration table

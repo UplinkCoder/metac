@@ -32,7 +32,7 @@
 #define INIT_ARENA_STATE_ARRAY(SELF, TYPE_NAME, VAR) \
     SELF->VAR = (TYPE_NAME*) 0; \
     Allocator_Init(&SELF->VAR##Allocator, &(SELF->Allocator)); \
-    ARENA_ARRAY_INIT(TYPE_NAME, SELF->VAR, &(SELF->Allocator));
+    ARENA_ARRAY_INIT(TYPE_NAME, SELF->VAR, &(SELF->VAR##Allocator));
 
 noinline void _newMemRealloc(void** memP, uint32_t* capacityP, const uint32_t elementSize);
 //static uint32_t _nodeCounter = 1;

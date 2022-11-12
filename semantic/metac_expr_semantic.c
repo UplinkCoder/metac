@@ -92,7 +92,7 @@ EvaluateExpression(metac_semantic_state_t* sema,
 
     MetaCCodegen_Free(&ctx);
 
-    metac_sema_expression_t result;
+    metac_sema_expression_t result = {0};
     // BCGen_printFunction(c);
 
     if (e->TypeIndex.v == TYPE_INDEX_V(type_index_basic, type_type))
@@ -125,10 +125,10 @@ EvaluateExpression(metac_semantic_state_t* sema,
             currrentHeapOffset += MetaCCodegen_GetStorageSize(&ctx, bcType);
         }
 
+        STACK_ARENA_ARRAY_TO_HEAP(tupleExps, &sema->TempAlloc);
+
         result.TupleExpressions = tupleExps;
         result.TupleExpressionCount = count;
-
-        STACK_ARENA_ARRAY_TO_HEAP(tupleExps, &sema->TempAlloc);
     }
     else if (TYPE_INDEX_KIND(e->TypeIndex) == type_index_basic &&
              TYPE_INDEX_INDEX(e->TypeIndex) == (uint32_t) type_float)
@@ -140,6 +140,7 @@ EvaluateExpression(metac_semantic_state_t* sema,
     else
     {
         result.Kind = exp_signed_integer;
+        result.TypeIndex.v = e->TypeIndex.v;
         result.ValueI64 = resultInt;
     }
     result.LocationIdx = e->LocationIdx;
@@ -153,8 +154,9 @@ EvaluateExpression(metac_semantic_state_t* sema,
 void
 MetaCSemantic_ConstantFold(metac_semantic_state_t* self, metac_sema_expression_t* exp)
 {
-    metac_sema_expression_t resExp = EvaluateExpression(self, exp, 0);
-    (*exp) = resExp;
+    bool couldFold = false;
+
+    (*exp) = EvaluateExpression(self, exp, 0);
 }
 
 static inline int32_t GetConstI32(metac_semantic_state_t* self, metac_sema_expression_t* index, bool *errored)
@@ -1037,7 +1039,7 @@ LswitchIdKey:
             }
             else
             {
-                ResolveIdentifierToExp(self, node, result, &hash);
+                ResolveIdentifierToExp(self, node, &result, &hash);
             }
             //printf("Resolved exp_identifier to: %s\n",
             //    MetaCExpressionKind_toChars(result->Kind));

@@ -141,6 +141,29 @@ bool DeclarationIsParseFunc(metac_declaration_t* decl, metac_parser_t* parser)
         goto Lret;
 
     result = (0 == strncmp(name, "MetaCParser_Parse", (sizeof("MetaCParser_Parse") - 1)));
+    if (result) printf("name: '%s'\n", name);
+Lret:
+    return result;
+}
+
+bool DeclarationIsInitFunc(metac_declaration_t* decl, metac_parser_t* parser)
+{
+    bool result = false;
+    const char* name = 0;
+    metac_identifier_ptr_t idPtr = {0};
+    idPtr = IdentifierFromDecl(decl);
+    int len = 0;
+
+    if (!idPtr.v)
+        goto Lret;
+
+    name = IdentifierPtrToCharPtr(&parser->IdentifierTable, idPtr);
+
+    if (!name)
+        goto Lret;
+
+    len = strlen(name);
+    result = (0 == strncmp(name + len - 5, "_Init", 4));
 Lret:
     return result;
 }
@@ -175,9 +198,22 @@ int main(int argc, const char* argv[])
                           &resultAlloc, DeclarationIsParseFunc);
 
     printf("Found %d parserFuncs\n", (int)parseFunctions.Length);
+
+    DeclarationArray initFuncs =
+        FilterDeclarations(decls, &LPP.Parser,
+                          &resultAlloc, DeclarationIsInitFunc);
+
     for(uint32_t i = 0; i < parseFunctions.Length; i++)
     {
         metac_identifier_ptr_t id = IdentifierFromDecl(parseFunctions.Ptr[i]);
+        const char* s = IdentifierPtrToCharPtr(&LPP.Parser.IdentifierTable, id);
+        printf("  %s\n", s);
+    }
+
+    printf("Found %d initFuncs\n", (int)initFuncs.Length);
+    for(uint32_t i = 0; i < initFuncs.Length; i++)
+    {
+        metac_identifier_ptr_t id = IdentifierFromDecl(initFuncs.Ptr[i]);
         const char* s = IdentifierPtrToCharPtr(&LPP.Parser.IdentifierTable, id);
         printf("  %s\n", s);
     }

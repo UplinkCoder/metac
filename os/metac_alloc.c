@@ -45,6 +45,10 @@ void Allocator_Init_(metac_alloc_t* allocator, metac_alloc_t* parent,
 
     uint32_t allocated = 0;
     void* firstBlock = 0;
+#if DEBUG_MEMORY
+    allocator->ArenaCount = 0;
+    allocator->AllocatedBlocks = 0;
+#else
     OS.PageAlloc(BLOCK_SIZE, &allocated, &firstBlock);
 
     uint32_t memoryPerArena = allocated / allocator->ArenaCount;
@@ -57,13 +61,18 @@ void Allocator_Init_(metac_alloc_t* allocator, metac_alloc_t* parent,
         arena->Alloc = allocator;
         arena->File = file;
         arena->Line = line;
+#ifndef DEBUG_MEMORY
         arena->Memory = (cast(char*)firstBlock)
                       + (memoryPerArena * arenaIdx);
+#else
+        arena->Memory = cast(char*) malloc(memoryPerArena);
+#endif
         arena->Offset = 0;
         arena->SizeLeft = memoryPerArena;
     }
 
     allocator->AllocatedBlocks = allocated / BLOCK_SIZE;
+#endif
 }
 
 arena_ptr_t Allocator_AddArena(metac_alloc_t* allocator, tagged_arena_t* arena)
@@ -71,7 +80,6 @@ arena_ptr_t Allocator_AddArena(metac_alloc_t* allocator, tagged_arena_t* arena)
     arena_ptr_t result = {-1};
 
     tagged_arena_t* target = 0;
-
     if (allocator->ArenaCount < (allocator->ArenaCapacity - allocator->inuseArenaCount))
     {
 LaddArena:
@@ -115,6 +123,16 @@ arena_ptr_t Allocate_(metac_alloc_t* allocator, uint32_t size,
     if (!size)
         return result;
 
+#if DEBUG_MEMORY
+    tagged_arena_t arena = {0};
+    char* memory = (char*)malloc(size);
+
+    arena.SizeLeft = size;
+    arena.Offset = 0;
+    arena.Memory = memory;
+
+    return Allocator_AddArena(allocator, &arena);
+#else
 //    Debug_Allocation(g_DebugServer, allocator, size, file, line);
 
     assert(allocator != allocator->Parent);
@@ -214,6 +232,7 @@ LsetResult:
     }
 
     return result;
+#endif
 }
 
 void* Allocator_Calloc_(metac_alloc_t* alloc, uint32_t elemSize, uint32_t elemCount,
@@ -230,6 +249,8 @@ void* Allocator_Calloc_(metac_alloc_t* alloc, uint32_t elemSize, uint32_t elemCo
     assert(arena->SizeLeft >= elemSize * elemCount);
     arena->Offset = elemSize * elemCount;
     arena->SizeLeft -= arena->Offset;
+
+    memset(arena->Memory, 0, arena->Offset);
 
     return arena->Memory;
 }

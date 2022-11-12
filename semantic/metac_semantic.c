@@ -737,6 +737,11 @@ static inline uint32_t _mm_movemask_epi16( __m128i a )
 }
 #endif
 
+void MetaCSemantic_ClearScope(metac_semantic_state_t* self)
+{
+    
+}
+
 scope_insert_error_t MetaCSemantic_RegisterInScope(metac_semantic_state_t* self,
                                                    metac_identifier_ptr_t idPtr,
                                                    metac_node_t node)
@@ -1111,7 +1116,6 @@ metac_sema_declaration_t* MetaCSemantic_declSemantic(metac_semantic_state_t* sel
 */
         } break;
         case decl_type_typeof:
-            printf("typeof declaration seen\n");
             goto LdoTypeSemantic;
         case decl_type_enum:
             (cast(decl_type_t*)decl)->TypeKind = type_enum;
@@ -1302,8 +1306,10 @@ metac_node_t MetaCSemantic_LookupIdentifier(metac_semantic_state_t* self,
 
     metac_node_t result = emptyNode;
     uint32_t idPtrHash = crc32c_nozero(~0, &identifierPtr.v, sizeof(identifierPtr.v));
+#if 0
     printf("Looking up: %s\n",
         IdentifierPtrToCharPtr(self->ParserIdentifierTable, identifierPtr));
+#endif
     metac_scope_t *currentScope = self->CurrentScope;
     {
         while(currentScope)

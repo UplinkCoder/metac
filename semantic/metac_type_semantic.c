@@ -581,13 +581,28 @@ void MetaCSemantic_ComputeEnumValues(metac_semantic_state_t* self,
     decl_enum_member_t* member = enum_->Members;
     int64_t nextValue = 0;
     const uint32_t memberCount = enum_->MemberCount;
-    STACK_ARENA_ARRAY(metac_sema_expression_t, memberPlaceholders, 32, &self->TempAlloc);
+#if !DEBUG_MEMORY
+    STACK_ARENA_ARRAY(metac_sema_expression_t, memberPlaceholders, 32, &self->TempAlloc)
+#else
+    metac_sema_expression_t* memberPlaceholders = (metac_semantic_state_t*)
+        calloc(memberCount, sizeof(metac_sema_expression_t));
+    uint32_t memberPlaceholdersCount = 0;
+#endif
+    metac_printer_t debugPrinter;
 
     uint32_t hash = enum_key;
     hash = CRC32C_VALUE(hash, enum_->Identifier.v);
     assert(SCOPE_OWNER_KIND(self->CurrentScope->Owner) == scope_owner_enum);
+#if !DEBUG_MEMORY
     ARENA_ARRAY_ENSURE_SIZE(memberPlaceholders, memberCount);
+#endif
+    MetaCPrinter_Init(&debugPrinter,
+        self->ParserIdentifierTable, self->ParserStringTable);
+
     memberPlaceholdersCount = memberCount;
+#if DEBUG_MEMORY
+    memset(memberPlaceholders, 0, memberCount * sizeof(*memberPlaceholders));
+#endif
 
     //TODO you want to make CurrentValue a metac_sema_expression_t
     // such that you can interpret the increment operator
@@ -612,11 +627,14 @@ void MetaCSemantic_ComputeEnumValues(metac_semantic_state_t* self,
             memberIdx < memberCount;
             memberIdx++, member = member->Next)
         {
+            metac_sema_expression_t* semaMember = memberPlaceholders + memberIdx;
+
             memberPlaceholders[memberIdx].Kind = exp_unknown_value;
             memberPlaceholders[memberIdx].TypeIndex = semaEnum->BaseType;
             memberPlaceholders[memberIdx].Expression = member->Value;
 
-            MetaCSemantic_RegisterInScope(self, member->Name, memberPlaceholders + memberIdx);
+            MetaCSemantic_RegisterInScope(self, member->Name,
+                                          METAC_NODE(semaMember));
         }
     }
 
@@ -637,6 +655,10 @@ void MetaCSemantic_ComputeEnumValues(metac_semantic_state_t* self,
                     metac_sema_expression_t* semaValue =
                         MetaCSemantic_doExprSemantic(self, member->Value, 0);
                     semaEnum->Members[memberIdx].Value = semaValue;
+                    if(semaValue->Kind == 0x1c)
+                    {
+                        int k = 12;
+                    }
                     semaEnum->Members[memberIdx].Header.Kind = node_decl_enum_member;
 
                     if (IsUnresolved(METAC_NODE(semaValue)))
@@ -645,7 +667,8 @@ void MetaCSemantic_ComputeEnumValues(metac_semantic_state_t* self,
                     }
                     else
                     {
-                        MetaCSemantic_RegisterInScope(self, member->Name, semaEnum->Members + memberIdx);
+                        metac_enum_member_t* semaMember = semaEnum->Members + memberIdx;
+                        MetaCSemantic_RegisterInScope(self, member->Name, METAC_NODE(semaMember));
                     }
                 }
             }
@@ -661,7 +684,9 @@ void MetaCSemantic_ComputeEnumValues(metac_semantic_state_t* self,
                 YIELD("Yielding because we are waiting for more enum members to become resolvable");
             }
         } while (unresolvedMembers);
-
+#if DEBUG_MEMORY
+        free(memberPlaceholders);
+#endif
         member = enum_->Members;
         for(uint32_t memberIdx = 0;
             memberIdx < memberCount;
@@ -692,14 +717,16 @@ void MetaCSemantic_ComputeEnumValues(metac_semantic_state_t* self,
 
                 semaEnum->Members[memberIdx].Value =
                     MetaCSemantic_doExprSemantic(self, &Value, 0);
-                //TODO fix up the type of the value to be the enum type
-    //            semaEnum->Members[memberIdx].Value->TypeIndex =
+
             }
 
             semaEnum->Members[memberIdx].Header.LocationIdx = member->LocationIdx;
             hash = CRC32C_VALUE(hash, semaEnum->Members[memberIdx].Identifier);
             hash = CRC32C_VALUE(hash, semaEnum->Members[memberIdx].Value->ValueI64);
-            MetaCSemantic_RegisterInScope(self, member->Name, semaEnum->Members + memberIdx);
+
+            MetaCSemantic_RegisterInScope(self,
+                                          semaEnum->Members[memberIdx].Identifier,
+                                          METAC_NODE(semaEnum->Members[memberIdx].Value));
         }
     }
     semaEnum->Header.Hash = hash;
@@ -748,7 +775,9 @@ static metac_type_index_t TypeTupleSemantic(metac_semantic_state_t* self,
 
     metac_type_tuple_t key = {
         header,
-        zeroIdx, typeIndicies, typeIndiciesCount
+        zeroIdx,
+        typeIndicies,
+        typeIndiciesCount
     };
 
     result =
@@ -809,6 +838,8 @@ metac_type_index_t TypeEnumSemantic(metac_semantic_state_t* self,
     metac_type_enum_t tmpSemaEnum = {0};
 
     metac_scope_t enumScope = { scope_flag_temporary };
+    STACK_ARENA_ARRAY(metac_enum_member_t, semaMembers, 64, &self->TempAlloc)
+
     enumScope.Owner.v = SCOPE_OWNER_V(scope_owner_enum, 0);
     tmpSemaEnum.MemberCount = enm->MemberCount;
     tmpSemaEnum.Name = enm->Identifier;
@@ -817,7 +848,6 @@ metac_type_index_t TypeEnumSemantic(metac_semantic_state_t* self,
 
     MetaCSemantic_PushTemporaryScope(self, &enumScope);
     bool keepEnumScope = false;
-    STACK_ARENA_ARRAY(metac_enum_member_t, semaMembers, 64, &self->TempAlloc);
 
     ARENA_ARRAY_ENSURE_SIZE(semaMembers, tmpSemaEnum.MemberCount);
 
@@ -827,6 +857,23 @@ metac_type_index_t TypeEnumSemantic(metac_semantic_state_t* self,
     MetaCSemantic_ComputeEnumValues(self, enm, &tmpSemaEnum);
 
     MetaCSemantic_PopTemporaryScope(self);
+    {
+        metac_printer_t debugPrinter;
+        MetaCPrinter_Init(&debugPrinter, self->ParserIdentifierTable, self->ParserStringTable);
+
+/*
+        for(uint32_t i = 0; i < tmpSemaEnum.MemberCount; i++)
+        {
+            const char* valueString = MetaCPrinter_PrintSemaNode(&debugPrinter,
+                self, tmpSemaEnum.Members[i].Value);
+            printf("Member %s = %s\n", IdentifierPtrToCharPtr(self->ParserIdentifierTable,
+                                                              tmpSemaEnum.Members[i].Identifier),
+                                                              valueString
+            );
+            MetaCPrinter_Reset(&debugPrinter);
+        }
+*/
+    }
 
     enumScope.Closed = true;
 
@@ -840,6 +887,10 @@ metac_type_index_t TypeEnumSemantic(metac_semantic_state_t* self,
 
         keepEnumScope = true;
         MetaCSemantic_RegisterInScope(self, tmpSemaEnum.Name, cast(metac_node_t)EnumTypePtr(self, result.Index));
+        for(uint32_t i = 0; i < semaMembersCount; i++)
+        {
+            semaMembers[i].Value->TypeIndex.v = result.v;
+        }
     }
 
     Allocator_FreeArena(&self->TempAlloc, semaMembersArenaPtr);
@@ -1064,10 +1115,11 @@ LtryAgian: {}
         {
             const char* idChars =
                 IdentifierPtrToCharPtr(self->ParserIdentifierTable, type->TypeIdentifier);
-
+#if 0
             printf("Lookup: (%s) = %s\n", idChars, ((node != emptyNode) ?
                                        MetaCNodeKind_toChars(node->Kind) :
                                        "empty"));
+#endif
             if (node == emptyNode)
             {
                 if (self->OnResolveFailStack[self->OnResolveFailStackCount - 1] == OnResolveFail_ReturnNull)

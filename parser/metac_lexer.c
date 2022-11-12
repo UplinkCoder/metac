@@ -492,7 +492,7 @@ metac_lexer_state_t MetaCLexerStateFromBuffer(uint32_t sourceId,
 {
     assert(buffer[bufferLength] == '\0');
 
-    metac_lexer_state_t result;
+    metac_lexer_state_t result = {0};
 
     result.Text = buffer;
     result.Column = 1;
@@ -1337,7 +1337,7 @@ void test_lexer()
         "unsigned",
         "const",
         "volatile",
-        "__shared",
+        "_shared",
         "extern",
 
         "for",

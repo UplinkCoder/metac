@@ -133,7 +133,6 @@ arena_ptr_t ReallocArenaArray(tagged_arena_t* arena, metac_alloc_t* alloc, uint3
         arena_ptr_t newArenaPtr = \
             AllocateArena((ALLOC), size); \
         newArena = &((ALLOC)->Arenas[newArenaPtr.Index]); \
-        printf("[%s,%u]copying %u bytes to save stack array to heap %p\n", __FILE__, __LINE__, size, newArena->Memory); \
         memcpy(newArena->Memory, (NAME), size); \
         (*cast(void**)&(NAME)) = newArena->Memory; \
     } \

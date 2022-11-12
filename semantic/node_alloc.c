@@ -142,7 +142,7 @@ metac_sema_expression_t* AllocNewSemaExpression(metac_semantic_state_t* self, me
     metac_sema_expression_t* result = 0;
 
     {
-        metac_sema_expression_t exp;
+        metac_sema_expression_t exp = {0};
         METAC_COPY_HEADER(expr, &exp);
 
         exp.TypeIndex.v = 0;
@@ -386,7 +386,7 @@ sema_stmt_casebody_t* AllocNewSemaCasebodyStatement(metac_semantic_state_t* self
             AllocNewSemaStatement(self, stmt_casebody, &result);
 
         ARENA_ARRAY_ADD(self->Statements, *(metac_sema_statement_t*)&stmt);
-        result = self->BlockStatements + self->BlockStatementsCount - 1;
+        result = (sema_stmt_casebody_t*) self->BlockStatements + self->BlockStatementsCount - 1;
         ARENA_ARRAY_INIT_SZ(metac_sema_statement_t*, result->Statements, &self->Allocator, statementCount);
 
         result->StatementCount = statementCount;
