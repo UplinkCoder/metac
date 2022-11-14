@@ -480,6 +480,9 @@ bool IsExternal(metac_sema_expression_t* expr)
         case exp_dot:
             result = IsExternal(expr->E1);
         break;
+        case exp_function:
+            result = false;
+        break;
         default: assert(0);
     }
 

@@ -343,7 +343,7 @@ metac_sema_statement_t* AllocNewSemaStatement_(metac_semantic_state_t* self,
         // result->TypeIndex.v = 0;
         ARENA_ARRAY_ADD(self->Statements, stmt);
     }
-    result = self->Statements + self->StatementsCount;
+    result = self->Statements + self->StatementsCount - 1;
 
     *result_ptr = result;
 
