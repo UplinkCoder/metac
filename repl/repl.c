@@ -242,7 +242,7 @@ void Presemantic_(repl_state_t* self)
                     fCompilterInterface.FileLength);
 
             MetaCParser_InitFromLexer(&tmpParser, &tmpLexer, &PresemanticAlloc);
-/*
+#if 1
             {
                 identifier_callback_t cb;
                 cb.Ctx = (void*)self;
@@ -250,7 +250,7 @@ void Presemantic_(repl_state_t* self)
                 tmpParser.IdentifierCallbacks[0] = cb;
                 tmpParser.IdentifierCallbacksCount = 1;
             }
-*/
+#endif
             ParseFile(&tmpParser, "metac_compiler_interface.h", &decls);
         }
         MetaCLexer_Free(&tmpLexer);
@@ -1197,7 +1197,6 @@ completion_list_t ReplComplete (repl_state_t* repl, const char *input, uint32_t 
 
 void Repl_Fiber(void)
 {
-
     repl_state_t repl_ = {repl_mode_ee};
     repl_state_t* repl = &repl_;
 
@@ -1245,6 +1244,8 @@ void Repl_Fiber(void)
     }
 
     ERRORMSG("Repl_Loop exited this should only happen on quit\n");
+    CompletionTrie_PrintStats(&repl->CompletionTrie);
+
 #ifndef NO_FIBERS
     aco_exit1(GET_CO());
 #endif

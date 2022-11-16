@@ -12,9 +12,9 @@ typedef struct completion_trie_node_t {
 
 typedef struct completion_trie_root_t {
     ARENA_ARRAY(completion_trie_node_t, Nodes)
-    ARENA_ARRAY(char, StringMemory)
-    
+
     uint32_t WordCount;
+    uint32_t TotalNodes;
     metac_alloc_t TrieAllocator;
 } completion_trie_root_t;
 
@@ -23,5 +23,7 @@ void CompletionTrie_Init (completion_trie_root_t* self, metac_alloc_t* parentAll
 void CompletionTrie_Add (completion_trie_root_t* root, const char* word, uint32_t length);
 
 void AddIdentifierToCompletionSet (const char* idStr, uint32_t idKey, void* ctx);
+
+void CompletionTrie_PrintStats (completion_trie_root_t* root);
 
 #endif
