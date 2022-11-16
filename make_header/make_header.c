@@ -1,5 +1,8 @@
 #include <stdio.h>
 
+#define NO_FIBERS
+#define NO_SEMANTIC
+
 #include "../os/compat.h"
 #include "../driver/metac_driver.c"
 #include "../utils/read_file.c"
