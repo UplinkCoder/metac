@@ -87,8 +87,9 @@ static inline void PrintStringWithNewline(metac_printer_t* self,
                  const char* string, uint32_t length)
 {
     char c;
+    uint32_t pos = 0;
 
-    while((c = *string++))
+    while((c = *string++) && (pos++ < length))
     {
         if (c == '\n' || c == '\r')
             self->CurrentColumn = 0;
@@ -733,6 +734,7 @@ static inline void PrintStatement(metac_printer_t* self, metac_statement_t* stmt
         case stmt_comment:
         {
             stmt_comment_t* comment = (stmt_comment_t*)stmt;
+
             PrintString(self, "/*", 2);
             PrintStringWithNewline(self, comment->Text, comment->Length);
             PrintString(self, "*/", 2);
@@ -934,6 +936,27 @@ static inline void PrintDeclaration(metac_printer_t* self,
     else
     {
         PrintNewline(self);
+    }
+}
+
+void MetaCPrinter_PrintForHeader(metac_printer_t* self, metac_declaration_t* decl)
+{
+    if (!decl)
+        return;
+
+    switch (decl->Kind)
+    {
+        case decl_function:
+        {
+            decl_function_t func =
+                *cast(decl_function_t*)decl;
+
+            func.FunctionBody = emptyPointer;
+            PrintDeclaration(self, &func, 0);
+        } break;
+        default:
+            PrintDeclaration(self, decl, 0);
+
     }
 }
 
@@ -1989,6 +2012,7 @@ static inline void PrintSemaStatement(metac_printer_t* self, metac_semantic_stat
         case stmt_comment:
         {
             stmt_comment_t* comment = (stmt_comment_t*)stmt;
+
             PrintString(self, "/*", 2);
             PrintStringWithNewline(self, comment->Text, comment->Length);
             PrintString(self, "*/", 2);
