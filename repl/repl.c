@@ -201,7 +201,7 @@ metac_type_aggregate_t* g_compilerInterface;
 void SeeIdentifier(const char* idStr, uint32_t key, repl_state_t* replCtx)
 {
     CompletionTrie_Add(&replCtx->CompletionTrie, idStr, LENGTH_FROM_IDENTIFIER_KEY(key));
-    CompletionTrie_Print(&replCtx->CompletionTrie);
+    // CompletionTrie_Print(&replCtx->CompletionTrie);
 }
 
 
@@ -1229,7 +1229,7 @@ void Repl_Fiber(void)
 
     Presemantic_(repl);
 
-    CompletionTrie_Print(&repl->CompletionTrie);
+    // CompletionTrie_Print(&repl->CompletionTrie);
 
     if (uiInterface.SetCompletionCallback)
     {

@@ -150,18 +150,28 @@ void CompletionTrie_AddChild(completion_trie_root_t* root, completion_trie_node_
     assert(root->Nodes->ChildCount != 0);
 }
 
-void CompletionTrie_Print(completion_trie_root_t* root)
+void CompletionTrie_Print(completion_trie_root_t* root, uint32_t n, const char* rootPrefix)
 {
     const completion_trie_node_t const * nodes =
         root->Nodes;
     uint32_t i;
 
-    uint32_t childIdxBegin = nodes[0].ChildrenBaseIdx * 4;
-    uint32_t childIdxEnd = childIdxBegin + nodes[0].ChildCount;
+    uint32_t childIdxBegin = nodes[n].ChildrenBaseIdx * 4;
+    uint32_t childIdxEnd = childIdxBegin + nodes[n].ChildCount;
 
     for(i = childIdxBegin; i < childIdxEnd; i++)
     {
-        printf("Prefix4: %.4s\n", nodes[i].Prefix4);
+        printf("\"%d: %.4s\" -> \"%d: %.4s\"\n",
+                n, rootPrefix,
+                i, nodes[i].Prefix4);
+    }
+
+    for(i = childIdxBegin; i < childIdxEnd; i++)
+    {
+        if (nodes[i].ChildCount)
+        {
+            CompletionTrie_Print(root, i, nodes[i].Prefix4);
+        }
     }
 }
 
@@ -278,4 +288,6 @@ void CompletionTrie_PrintStats(completion_trie_root_t* self)
     printf("Words: %u\n", self->WordCount);
     printf("UsedNodesPerWord: %g\n", (float)self->TotalNodes / (float)self->WordCount);
     printf("AllocatedNodesPerWord: %g\n", (float)self->NodesCount / (float)self->WordCount);
+
+    CompletionTrie_Print(self, 0, "");
 }
