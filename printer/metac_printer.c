@@ -1133,6 +1133,18 @@ static inline void PrintExpression(metac_printer_t* self, metac_expression_t* ex
         if (!IsBinaryExp(exp->E1->Kind))
             PrintChar(self, ')');
     }
+    else if (exp->Kind == exp_outer)
+    {
+        PrintChar(self, '$');
+        PrintChar(self, '(');
+        PrintExpression(self, exp->E1);
+        PrintChar(self, ')');
+    }
+    else if (exp->Kind == exp_stringize)
+    {
+        PrintChar(self, '#');
+        PrintExpression(self, exp->E1);
+    }
     else if (exp->Kind == exp_increment || exp->Kind == exp_decrement)
     {
         const char* op = 0;
@@ -1712,6 +1724,24 @@ static inline void PrintSemaExpression(metac_printer_t* self,
            PrintChar(self, '(');
 
         PrintSemaExpression(self, sema,  semaExp->E1);
+
+        if (!IsBinaryExp(semaExp->E1->Kind))
+            PrintChar(self, ')');
+    }
+    else if (semaExp->Kind == exp_outer)
+    {
+        PrintChar(self, '$');
+        PrintChar(self, '(');
+        PrintSemaExpression(self, sema, semaExp->E1);
+        PrintChar(self, ')');
+    }
+    else if (semaExp->Kind == exp_stringize)
+    {
+        PrintChar(self, '#');
+        if (!IsBinaryExp(semaExp->E1->Kind))
+           PrintChar(self, '(');
+
+        PrintSemaExpression(self, sema, semaExp->E1);
 
         if (!IsBinaryExp(semaExp->E1->Kind))
             PrintChar(self, ')');
