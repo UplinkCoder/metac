@@ -20,7 +20,8 @@ typedef struct metac_lpp_t
     metac_preprocessor_t Preprocessor;
 #endif
 } metac_lpp_t;
-
+/// Node that the allocator parameter cannot be null
+/// while fileStorage can be.
 void MetaCLPP_Init(metac_lpp_t* lpp, metac_alloc_t* allocator, metac_file_storage_t* fileStorage);
 
 metac_expression_t* MetaCLPP_ParseExpressionFromString(metac_lpp_t* lpp, const char* exp);
@@ -34,4 +35,5 @@ metac_preprocessor_directive_t MetaCLPP_ParsePreprocFromString(metac_lpp_t* lpp,
                                                                metac_token_buffer_t* tokenBuffer);
 #endif
 
+DeclarationArray ReadLexParse(const char* filename, metac_lpp_t* lpp, metac_alloc_t* parent);
 #endif

@@ -376,7 +376,7 @@ metac_identifier_table_t ReadTable(const char* filename)
     }
 
     // assert(stringsProcessed == header.NumberOfSlots);
-    printf("stringProcessed: %d, header.NumberOfSlots\n",
+    printf("stringProcessed: %d, header.NumberOfSlots: %d\n",
         stringsProcessed, header.NumberOfSlots);
     result.SlotsUsed = header.NumberOfSlots;
     return result;

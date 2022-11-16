@@ -22,6 +22,7 @@
 #  include "../os/metac_coro.c"
 #endif
 
+#include "metac_type.c"
 #include "metac_type_semantic.c"
 #include "metac_expr_semantic.c"
 
@@ -90,6 +91,23 @@ Lret:
 #endif
 
 #include "../semantic/node_alloc.c"
+
+static const char* OnResolveFail_toChars(metac_semantic_on_resolve_fail_t onFail)
+{
+    const char* result = 0;
+
+    switch(onFail)
+    {
+#define CASE(MEMBER) \
+    case MEMBER: result = #MEMBER; break;
+    FOREACH_ON_RESOLVE_FAIL(CASE)
+#undef CASE
+    default: break;
+    }
+
+    return result;
+}
+
 
 void MetaCSemantic_Init(metac_semantic_state_t* self, metac_parser_t* parser,
                         metac_type_aggregate_t* compilerStruct)

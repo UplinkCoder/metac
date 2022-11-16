@@ -77,7 +77,7 @@ void Allocator_Init_(metac_alloc_t* allocator, metac_alloc_t* parent,
 
 arena_ptr_t Allocator_AddArena(metac_alloc_t* allocator, tagged_arena_t* arena)
 {
-    arena_ptr_t result = {-1};
+    arena_ptr_t result = {(uint32_t)-1};
 
     tagged_arena_t* target = 0;
     if (allocator->ArenaCount < (allocator->ArenaCapacity - allocator->inuseArenaCount))
@@ -214,17 +214,19 @@ LsetResult:
     LAllocNewPage:
         {
             uint32_t allocatedSize;
+            void* memory;
+            tagged_arena_t newArena = {0};
 
-            OS.PageAlloc(size, &allocatedSize, cast(void**)&arena);
-            ADD_PAGELIST(cast(void*)arena);
+            OS.PageAlloc(size, &allocatedSize, &memory);
+            ADD_PAGELIST(memory);
 
-            arena->SizeLeft = allocatedSize;
-            arena->Offset = 0;
-            arena->Memory = cast(void*) arena;
-            arena->Alloc = allocator;
-            arena->Line = line;
-            arena->File = file;
-            goto LsetResult;
+            newArena.SizeLeft = allocatedSize;
+            newArena.Offset = 0;
+            newArena.Memory = memory;
+            newArena.Alloc = allocator;
+            newArena.Line = line;
+            newArena.File = file;
+            return Allocator_AddArena(allocator, &newArena);
         }
 
         if (!forChild)

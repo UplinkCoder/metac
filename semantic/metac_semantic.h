@@ -92,22 +92,6 @@ typedef enum metac_semantic_on_resolve_fail_t
 
 #undef DEFINE_MEMBER
 
-static const char* OnResolveFail_toChars(metac_semantic_on_resolve_fail_t onFail)
-{
-    const char* result = 0;
-
-    switch(onFail)
-    {
-#define CASE(MEMBER) \
-    case MEMBER: result = #MEMBER; break;
-    FOREACH_ON_RESOLVE_FAIL(CASE)
-#undef CASE
-    default: break;
-    }
-
-    return result;
-}
-
 typedef struct metac_switch_state_t
 {
     //ARENA_ARRAY(sema_stmt_case_t*, PendingCases)

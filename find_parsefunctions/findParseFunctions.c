@@ -15,27 +15,6 @@
 #  include <unistd.h>
 #endif
 
-DeclarationArray ReadLexParse(const char* filename, metac_lpp_t* lpp)
-{
-    DeclarationArray result = {0};
-
-    read_result_t readResult =
-        ReadFileAndZeroTerminate(filename);
-
-    LexFile(&lpp->Lexer, filename,
-        readResult.FileContent0, readResult.FileLength
-    );
-
-    metac_alloc_t alloc;
-    Allocator_Init(&alloc, 0);
-
-    MetaCParser_InitFromLexer(&lpp->Parser, &lpp->Lexer, &alloc);
-
-    ParseFile(&lpp->Parser, filename, &result);
-
-    return result;
-}
-
 metac_declaration_t* FindDeclaration(DeclarationArray decls,
                                      metac_parser_t* parser, const char* name)
 {
@@ -189,7 +168,7 @@ int main(int argc, const char* argv[])
 
     MetaCLPP_Init(&LPP, &alloc, 0);
 
-    DeclarationArray decls = ReadLexParse(filename, &LPP);
+    DeclarationArray decls = ReadLexParse(filename, &LPP, 0);
     metac_alloc_t resultAlloc;
     Allocator_Init(&resultAlloc, 0, 0);
 

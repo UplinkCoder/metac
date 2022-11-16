@@ -28,11 +28,18 @@ static inline void LexString(metac_lexer_t* lexer, const char* line)
 
 void MetaCLPP_Init(metac_lpp_t* lpp, metac_alloc_t* allocator, metac_file_storage_t* fileStorage)
 {
+    if(!allocator)
+    {
+        assert(!"Allocator must not me null");
+    }
+
     MetaCLexer_Init(&lpp->Lexer, allocator);
+    MetaCParser_InitFromLexer(&lpp->Parser, &lpp->Lexer, allocator);
+
 #ifndef NO_PREPROCESSOR
     MetaCPreProcessor_Init(&lpp->Preprocessor, &lpp->Lexer, allocator, fileStorage, 0);
+    lpp->Parser.Preprocessor = &lpp->Preprocessor;
 #endif
-    MetaCParser_InitFromLexer(&lpp->Parser, &lpp->Lexer, allocator);
 }
 
 metac_expression_t* MetaCLPP_ParseExpressionFromString(metac_lpp_t* lpp, const char* exp)
@@ -74,3 +81,32 @@ metac_preprocessor_directive_t MetaCLPP_ParsePreprocFromString(metac_lpp_t* lpp,
     return dirc;
 }
 #endif
+
+#include "../utils/read_file.c"
+
+DeclarationArray ReadLexParse(const char* filename, metac_lpp_t* lpp, metac_alloc_t* parent)
+{
+    DeclarationArray result = {0};
+
+    read_result_t readResult =
+        ReadFileAndZeroTerminate(filename);
+
+    LexFile(&lpp->Lexer, filename,
+        readResult.FileContent0, readResult.FileLength
+    );
+
+    metac_alloc_t alloc;
+    Allocator_Init(&alloc, parent);
+
+    MetaCParser_InitFromLexer(&lpp->Parser, &lpp->Lexer, &alloc);
+
+#ifndef NO_PREPROCESSOR
+    MetaCPreProcessor_Init(&lpp->Preprocessor, &lpp->Lexer, &alloc, lpp->Preprocessor.FileStorage, 0);
+    lpp->Parser.Preprocessor = &lpp->Preprocessor;
+#endif
+
+    ParseFile(&lpp->Parser, filename, &result);
+
+    return result;
+}
+

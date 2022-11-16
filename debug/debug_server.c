@@ -20,7 +20,7 @@ int fopen_s (FILE ** fileP, const char *path, const char *mode)
 }
 #endif
 
-static int send_html(struct MHD_Connection* connection, const char* text, int len)
+int send_html(struct MHD_Connection* connection, const char* text, int len)
 {
     struct MHD_Response* response;
     int ret;
@@ -33,7 +33,7 @@ static int send_html(struct MHD_Connection* connection, const char* text, int le
     return ret;
 }
 
-static int serveFile(const char* filename, const char* contentType, struct MHD_Connection* conn)
+int serveFile(const char* filename, const char* contentType, struct MHD_Connection* conn)
 {
     FILE* f;
     char pageBuffer[8192];
@@ -58,8 +58,8 @@ static int serveFile(const char* filename, const char* contentType, struct MHD_C
         page[sz] = '\0';
         // printf("page: %s\n", page);
         fclose(f);
-        
-        
+
+
         response =
             MHD_create_response_from_buffer(sz, (void*)page,
                 MHD_RESPMEM_MUST_COPY);
@@ -75,8 +75,8 @@ static int serveFile(const char* filename, const char* contentType, struct MHD_C
             MHD_create_response_from_buffer(len, (void*)msg,
                 MHD_RESPMEM_MUST_COPY);
     }
-    
-    
+
+
     ret = MHD_queue_response(conn, MHD_HTTP_OK, response);
     MHD_destroy_response(response);
 
@@ -141,7 +141,7 @@ MHD_HANDLER(handleGraphs)
     static char responseString[8192];
     uint32_t responseSize = 0;
     debug_server_t* debugServer = (debug_server_t*) cls;
-    
+
 }
 
 const char* PrintSize(uint32_t sz)
@@ -172,8 +172,6 @@ void outAllocRow(char* body, uint32_t sz, uint32_t* pp, metac_alloc_t* alloc)
     uint32_t arenasUsed = 0;
 
     p += snprintf (body + p, sz - p, "<tr>");
-
-    printf("arenaCount: %u\n", alloc->ArenaCount);
 
     for(j = 0; j < alloc->ArenaCount; j++)
     {
@@ -249,10 +247,8 @@ MHD_HANDLER (handleAllocators)
         p += snprintf(body + p, ARRAYSIZE(body) - p, "<th>%s</th>", headers[i]);
     }
     p += snprintf(body + p, ARRAYSIZE(body) - p, "</tr>");
-    printf("debugServer->AllocatorsCount: %u\n", debugServer->AllocatorsCount);
     for (i = 0; i < debugServer->AllocatorsCount; i++)
     {
-        printf("i: %u ---       ", i);
         metac_alloc_t * alloc = debugServer->Allocators[i];
         if (alloc->ArenaCount > 500)
         {
@@ -368,17 +364,17 @@ static MHD_HANDLER(debugServerHandler)
     {
         return handleCurrentScope(MHD_HANDLER_PASSTHROUGH);
     }
-    
+
     if (memcmp(url, "/graphs", sizeof("/graphs") - 1) == 0)
     {
         return handleGraphs(MHD_HANDLER_PASSTHROUGH);
     }
-    
+
     if (memcmp(url, "/graph.js", sizeof("/graph.js") - 1) == 0)
     {
         return handleGraphJs(MHD_HANDLER_PASSTHROUGH);
     }
-    
+
     if (memcmp(url, "/lc", sizeof("/lc") - 1) == 0)
     {
         return handleLc(MHD_HANDLER_PASSTHROUGH);
@@ -389,7 +385,7 @@ static MHD_HANDLER(debugServerHandler)
         return handleData(MHD_HANDLER_PASSTHROUGH);
     }
 
-    
+
     if (debugServer->Handler)
     {
         return debugServer->Handler(MHD_HANDLER_PASSTHROUGH);
@@ -484,12 +480,12 @@ void Debug_Allocation(debug_server_t* debugServer, metac_alloc_t* allocator, uin
     uint32_t timestamp;
     uint32_t count = debugServer->AllocationsCount++;
     OS.GetTimeStamp(&timestamp);
-    
+
     debugServer->Allocations[count].Size = sz;
     debugServer->Allocations[count].File = file;
     debugServer->Allocations[count].Line = line;
     debugServer->Allocations[count].Timestamp = timestamp;
-    
+
     g_allocated += sz;
     Debug_GraphValue(debugServer, "g_allocated", g_allocated);
 }
@@ -510,7 +506,7 @@ void Debug_CurrentIdentifierTable(debug_server_t* debugServer,
 
 const char* DebugServer_AddString(debug_server_t* debugServer, const char* name, uint32_t len)
 {
-    
+
 }
 
 void Debug_GraphValue(debug_server_t* debugServer, const char* name, double value)
@@ -523,7 +519,7 @@ void Debug_GraphValue(debug_server_t* debugServer, const char* name, double valu
 
     graphValue.Timestamp = timestamp;
     graphValue.Value = value;
-    
+
     for(uint32_t i = 0; i < debugServer->GraphsCount; i++)
     {
         graphP = debugServer->Graphs + i;
@@ -532,16 +528,16 @@ void Debug_GraphValue(debug_server_t* debugServer, const char* name, double valu
             break;
         }
     }
-    
+
     if (!graphP)
     {
         uint32_t nameLen = strlen(name);
         debug_graph_t graph;
-        
+
         graph.Name = DebugServer_AddString(debugServer, name, nameLen);
         ARENA_ARRAY_INIT(debug_graph_value_t, graph.Values, &debugServer->Allocator);
     }
-    
+
     ARENA_ARRAY_ADD(graphP->Values, graphValue);
 }
 

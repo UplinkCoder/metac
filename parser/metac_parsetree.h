@@ -377,6 +377,8 @@ typedef enum metac_type_kind_t
 
     type_modifiers,
 
+    type_code,
+
     type_max
 } metac_type_kind_t;
 

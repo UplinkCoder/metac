@@ -96,9 +96,9 @@ const struct ui_interface_t LinenoiseUiInterface =
     Linenoise_GetFilesystem,
 } ;
 
-void doUiMessage(const char* msg)
+void doUiMessage(const char* msg, void* context)
 {
-    g_uiContext->UiInterface.Message(g_uiContext->UiState, msg);
+    g_uiContext->UiInterface->Message(g_uiContext->UiState, msg);
 }
 
 int main(int argc, const char* argv[])
@@ -118,8 +118,8 @@ int main(int argc, const char* argv[])
     Debug_Init(g_DebugServer, 8180);
 #endif
 
-    ctx.UiInterface = LinenoiseUiInterface;
-    ctx.UiState = cast(void*)&uiState;
+    ctx.UiInterface = &LinenoiseUiInterface;
+    ctx.UiState = &uiState;
 
     linenoiseHistoryLoad(".repl_history");
     printf("Please enter :h for help\n");

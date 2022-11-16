@@ -527,19 +527,20 @@ void MetaCPreProcessor_Include(metac_preprocessor_t *self, metac_parser_t* parse
     metac_token_t tokens[32];
     const char *filename;
     char filenameBuffer[4096];
-    const metac_filesystem_t fs =
-        *self->FileStorage->FS;
+    static const metac_filesystem_t nullFS  = {0};
+    const metac_filesystem_t fs = self->FileStorage && self->FileStorage->FS ?
+        *self->FileStorage->FS : nullFS;
 
     if (!quoteOrLt)
     {
         assert(!"Token expected after #include");
     }
-    printf("%s\n", MetaCTokenEnum_toChars(quoteOrLt->TokenType));
 
     if (quoteOrLt->TokenType == tok_string)
     {
         filename =
             IdentifierPtrToCharPtr(&parser->Lexer->StringTable, quoteOrLt->StringPtr);
+        MetaCParser_Match(parser, tok_string);
     }
     else if (quoteOrLt->TokenType == tok_lt)
     {
@@ -557,7 +558,6 @@ void MetaCPreProcessor_Include(metac_preprocessor_t *self, metac_parser_t* parse
                 break;
             }
             tokens[tokenCount++] = *MetaCParser_Match(parser, peek->TokenType);
-            printf("tokenType: %s\n", MetaCTokenEnum_toChars(peek->TokenType));
         } while (peek && peek->TokenType != tok_gt);
 
         for(uint32_t i = 0; i < tokenCount; i++)
@@ -602,12 +602,18 @@ Lerror:
         assert(!"< , \" or identifier expected after #include");
     }
     // MetaCParser_PushFile(self, )
-    printf("filename: %s\n", filename);
 
-    metac_filehandle_t fhandle = fs.functions->Open(fs.ctx, 0, filename);
-    metac_buffer_t fileBuffer =
-        fs.functions->ReadEntireFileAndZeroTerminate(fs.ctx, fhandle);
-    printf("Loaded %u bytes\n", fileBuffer.Length);
+    if (fs.functions)
+    {
+        metac_filehandle_t fhandle = fs.functions->Open(fs.ctx, 0, filename);
+        metac_buffer_t fileBuffer =
+            fs.functions->ReadEntireFileAndZeroTerminate(fs.ctx, fhandle);
+        printf("Loaded %u bytes\n", fileBuffer.Length);
+    }
+    else
+    {
+        fprintf(stderr, "No filesystem\n");
+    }
 }
 
 metac_preprocessor_define_ptr_t

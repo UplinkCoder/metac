@@ -87,10 +87,13 @@ void MetaCParser_Init(metac_parser_t* self, metac_alloc_t* allocator)
     MetaCLocationStorage_Init(&self->LocationStorage);
 
     InitSpecialIdentifier(self);
+
     MetaCPrinter_Init(&self->DebugPrinter,
                       &self->IdentifierTable, &self->StringTable);
 
     Allocator_Init(&self->Allocator, allocator, 0);
+
+    ARENA_ARRAY_INIT_SZ(identifier_callback_t, self->IdentifierCallbacks, allocator, 4)
 }
 
 void MetaCParser_Free(metac_parser_t* self)
@@ -130,8 +133,17 @@ metac_identifier_ptr_t RegisterIdentifier(metac_parser_t* self,
             &self->Lexer->IdentifierTable,
             token->IdentifierPtr
         );
-
     uint32_t identifierKey = token->IdentifierKey;
+
+    {
+        uint32_t i;
+        for (i = 0; i < self->IdentifierCallbacksCount; i++)
+        {
+            identifier_callback_t cb = self->IdentifierCallbacks[i];
+            cb.FuncP(identifierString, identifierKey, cb.Ctx);
+        }
+    }
+
     return GetOrAddIdentifier(&self->IdentifierTable,
                               identifierKey, identifierString);
 }
@@ -876,8 +888,10 @@ static inline bool IsTypeToken(metac_token_enum_t tokenType)
             || tokenType == tok_kw_signed
             || tokenType == tok_star
             || tokenType == tok_lBrace
+/*
             || tokenType == tok_lBracket
             || tokenType == tok_rBracket
+*/
             || tokenType == tok_kw_struct
             || tokenType == tok_kw_enum
             || tokenType == tok_kw_union
@@ -941,6 +955,15 @@ static inline bool IsPunctuationToken(metac_token_enum_t tok)
             && tok != tok_lBracket)
         ||  tok == tok_dotdot
         ||  tok == tok_comma
+/*
+        ||  tok == tok_lBracket
+*/
+        ||  tok == tok_colon
+        ||  tok == tok_question
+        ||  tok == tok_kw_sizeof
+        ||  tok == tok_equals_equals
+        ||  tok == tok_plusplus
+        ||  tok == tok_minusminus
         ||  tok == tok_semicolon
         ||  tok == tok_tilde
         ||  tok == tok_rParen);
@@ -1025,6 +1048,7 @@ static bool CouldBeCast(metac_parser_t* self, metac_token_enum_t tok)
     {
         metac_token_t* afterParen =
             MetaCParser_PeekToken(self, rParenPos + 1);
+        printf("%s\n", MetaCTokenEnum_toChars(afterParen->TokenType));
         if (!afterParen || IsPunctuationToken(afterParen->TokenType))
             return false;
     }
@@ -1060,7 +1084,7 @@ static inline bool CouldBeType(metac_parser_t* self,
     {
         U32(flags) |= TypeScan_FirstWasIdentifier;
     }
-    else if (tok == tok_star || tok == tok_uint)
+    else if (tok == tok_star || tok == tok_uint || tok == tok_float)
     {
         return false;
     }
@@ -1098,7 +1122,10 @@ static inline bool CouldBeType(metac_parser_t* self,
             metac_token_enum_t tok2 = peek2 ? peek2->TokenType : tok_eof;
 
             if ((tok2 == tok_identifier)
-             |  (tok2 == tok_uint) )
+             |  (tok2 == tok_uint)
+             |  (tok2 == tok_float)
+            /* |  ( IsPunctuationToken(tok2) &&
+                  tok != tok_rParen)*/ )
              {
                 result = false;
                 break;
@@ -1151,8 +1178,10 @@ metac_expression_t* MetaCParser_ParsePrimaryExpression(metac_parser_t* self, par
 #if !defined(NO_PREPROCESSOR)
     if (self->Preprocessor)
     {
+/*
         printf("Preproc is there -- InDefine: %u\n",
                self->Preprocessor->DefineTokenStackCount > 0);
+*/
     }
 #endif
     metac_token_enum_t tokenType =
@@ -1165,6 +1194,7 @@ metac_expression_t* MetaCParser_ParsePrimaryExpression(metac_parser_t* self, par
 
     if (tokenType == tok_lParen && CouldBeCast(self, tokenType))
     {
+        printf("going to parse cast\n");
         hash = cast_key;
         result = AllocNewExpression(exp_cast);
         //typedef unsigned int b;
@@ -1179,7 +1209,7 @@ metac_expression_t* MetaCParser_ParsePrimaryExpression(metac_parser_t* self, par
         else
         {
             AllocNewDeclaration(decl_type, &result->CastType);
-            result->CastType->TypeModifiers =  typeModifiers;
+            result->CastType->TypeModifiers = typeModifiers;
             result->CastType->TypeKind = type_modifiers;
             result->CastType->Hash = CRC32C_VALUE(~0, typeModifiers);
         }
@@ -1267,7 +1297,14 @@ metac_expression_t* MetaCParser_ParsePrimaryExpression(metac_parser_t* self, par
         result = AllocNewExpression(exp_paren);
         {
             if (!MetaCParser_PeekMatch(self, tok_rParen, 1))
+            {
                 result->E1 = MetaCParser_ParseExpression(self, expr_flags_none, 0);
+                // printf("E1: %s\n", MetaCExpressionKind_toChars(result->E1->Kind));
+            }
+            else
+            {
+                METAC_NODE(result->E1) = emptyNode;
+            }
         }
         //PushOperator(exp_paren);
         result->Hash = CRC32C_VALUE(crc32c_nozero(~0, "()", 2), result->E1->Hash);
@@ -1485,15 +1522,17 @@ static inline metac_expression_t* ParseUnaryDotExpression(metac_parser_t* self)
 #define CRC32C_MINUS 0x32176ea3
 #define CRC32C_BANG  0x7f54a173
 #define CRC32C_STAR  0xe6dd0a48
+#define CRC32C_HASH  0xe3069283
 
 metac_expression_t* MetaCParser_ParseUnaryExpression(metac_parser_t* self, parse_expression_flags_t eflags)
 {
     metac_expression_t* result = 0;
+    static const metac_location_t nullLoc = {0};
 
     metac_token_t* currentToken = MetaCParser_PeekToken(self, 1);
     metac_token_enum_t tokenType =
         (currentToken ? currentToken->TokenType : tok_eof);
-    metac_location_t loc = LocationFromToken(self, currentToken);
+    metac_location_t loc = currentToken ? LocationFromToken(self, currentToken) : nullLoc;
 
     bool isPrimaryExp = false;
 
@@ -1638,6 +1677,14 @@ metac_expression_t* MetaCParser_ParseUnaryExpression(metac_parser_t* self, parse
         result->E1 = MetaCParser_ParseExpression(self,
             cast(parse_expression_flags_t)(expr_flags_unary | (eflags & expr_flags_pp)), 0);
         result->Hash = CRC32C_VALUE(CRC32C_BANG, result->E1->Hash);
+    }
+    else if (tokenType == tok_hash)
+    {
+        MetaCParser_Match(self, tok_hash);
+        result = AllocNewExpression(exp_stringize);
+        result->E1 = MetaCParser_ParseExpression(self,
+            cast(parse_expression_flags_t)(expr_flags_unary | (eflags & expr_flags_pp)), 0);
+        result->Hash = CRC32C_VALUE(CRC32C_HASH, result->E1->Hash);
     }
     else if (tokenType == tok_tilde)
     {
@@ -1966,6 +2013,11 @@ metac_preprocessor_directive_t MetaCParser_ParsePreproc(metac_parser_t* self,
                     directive = pp_define;
                 } goto Lmatch;
 
+                case pragma_key:
+                {
+                    directive = pp_pragma;
+                } goto Lmatch;
+
                 case endif_key:
                 {
                     directive = pp_endif;
@@ -2005,7 +2057,7 @@ metac_expression_t* MetaCParser_ParseExpression(metac_parser_t* self,
                                                 metac_expression_t* prev)
 {
     metac_expression_t* result = 0;
-    metac_token_t* currentToken = MetaCParser_PeekToken(self, 1);
+    metac_token_t* currentToken = 0;
     metac_token_enum_t tokenType =
         (currentToken ? currentToken->TokenType : tok_invalid);
     metac_location_t loc =  {0};
@@ -2014,6 +2066,14 @@ metac_expression_t* MetaCParser_ParseExpression(metac_parser_t* self,
 
     // printf("ParseExpression -- currentToken: %s\n", MetaCTokenEnum_toChars(currentToken->TokenType));
     bool isDefined = false;
+
+LParseExpTop:
+    currentToken = MetaCParser_PeekToken(self, 1);
+    tokenType =
+        (currentToken ? currentToken->TokenType : tok_invalid);
+    if (currentToken)
+        loc = LocationFromToken(self, currentToken);
+
 #if !defined(NO_PREPROCESSOR)
     if (eflags & expr_flags_pp)
     {
@@ -2099,6 +2159,18 @@ metac_expression_t* MetaCParser_ParseExpression(metac_parser_t* self,
         else if (IsPostfixOperator(tokenType))
         {
             result = MetaCParser_ParsePostfixExpression(self, result);
+            if (!prev)
+            {
+                peekNext = MetaCParser_PeekToken(self, 1);
+                tokenType = (peekNext ? peekNext->TokenType : tok_eof);
+                if(IsBinaryOperator(tokenType, eflags))
+                {
+                    uint32_t prec = OpToPrecedence(result->Kind);
+                    if (prec < min_prec)
+                        return result;
+                    result = MetaCParser_ParseBinaryExpression(self, eflags, result, min_prec);
+                }
+            }
         }
         else if (peekNext->TokenType == tok_lParen)
         {
@@ -2250,6 +2322,20 @@ decl_type_t* MetaCParser_ParseTypeDeclaration(metac_parser_t* self, metac_declar
             typeTuple->Types = types;
             typeTuple->TypeCount = typesCount;
             break;
+        }
+        else if (tokenType == tok_lBracket)
+        {
+            // MetaCParser_Match(self, tok_lBracket);
+            decl_type_array_t* typeArray = AllocNewDeclaration(decl_type_array, &result);
+            if(!MetaCParser_PeekMatch(self, tok_rBracket, 1))
+            {
+                typeArray->Dim = MetaCParser_ParseExpression(self, 0, 0);
+                MetaCParser_Match(self, tok_rBracket);
+            }
+            else
+            {
+                typeArray->Dim = emptyNode;
+            }
         }
         else if (tokenType == tok_identifier)
         {
@@ -2897,20 +2983,7 @@ static metac_storageclasses_t ParseStorageClasses(metac_parser_t* self)
 
 metac_declaration_t* MetaCParser_ParseDeclaration(metac_parser_t* self, metac_declaration_t* parent)
 {
-#ifndef NO_PREPROCESSOR
-    if (MetaCParser_PeekMatch(self, tok_hash, 1))
-    {
-        metac_token_buffer_t tokenBuffer;
-        metac_preprocessor_directive_t dirc =
-            MetaCParser_ParsePreproc(self, self->Preprocessor,  &tokenBuffer);
-    }
-#endif
-
-    // get rid of attribs before declarations
-    //TODO acutally keep track of them
-    EatAttributes(self);
-
-    metac_storageclasses_t stc = ParseStorageClasses(self);
+    metac_storageclasses_t stc = storageclass_none;
 
     metac_token_t* currentToken = MetaCParser_PeekToken(self, 1);
     metac_token_enum_t tokenType =
@@ -2920,6 +2993,45 @@ metac_declaration_t* MetaCParser_ParseDeclaration(metac_parser_t* self, metac_de
     metac_declaration_t* result = 0;
 
     decl_type_t* type = 0;
+
+#ifndef NO_PREPROCESSOR
+    if (MetaCParser_PeekMatch(self, tok_hash, 1))
+    {
+        metac_token_buffer_t tokenBuffer;
+        metac_preprocessor_directive_t dirc =
+            MetaCParser_ParsePreproc(self, self->Preprocessor,  &tokenBuffer);
+        if (dirc == pp_include)
+        {
+            MetaCPreProcessor_Include(self->Preprocessor, self);
+        }
+        else if (dirc == pp_define)
+        {
+            metac_preprocessor_define_ptr_t define_ =
+            MetaCPreProcessor_ParseDefine(self->Preprocessor, self);
+        }
+        else if (dirc == pp_ifdef)
+        {
+            //TODO handle this ifdef properly!
+            MetaCParser_Match(self, tok_identifier);
+        }
+        else
+        {
+            printf("Saw preprocssor directive %s\n", Preprocessor_Directive_toChars(dirc));
+        }
+        // MetaCParser_HandlePreprocessorDirective(self, dirc);
+    }
+#endif
+    stc = ParseStorageClasses(self);
+    // get rid of attribs before declarations
+    //TODO acutally keep track of them
+    EatAttributes(self);
+
+    currentToken = MetaCParser_PeekToken(self, 1);
+    tokenType =
+        (currentToken ? currentToken->TokenType : tok_eof);
+    loc =
+        currentToken ? LocationFromToken(self, currentToken) : invalidLocation;
+
 
     if (tokenType == tok_eof)
         return (metac_declaration_t*)emptyNode;
@@ -2976,7 +3088,6 @@ metac_declaration_t* MetaCParser_ParseDeclaration(metac_parser_t* self, metac_de
         uint32_t hash = typedef_key;
 
         decl_type_typedef_t* typdef = AllocNewDeclaration(decl_type_typedef, &result);
-
         // typedefs are exactly like variables
         decl_variable_t* var = (decl_variable_t*)MetaCParser_ParseDeclaration(self, (metac_declaration_t*) typdef);
         MetaCParser_Match(self, tok_semicolon);
@@ -2989,6 +3100,10 @@ metac_declaration_t* MetaCParser_ParseDeclaration(metac_parser_t* self, metac_de
 
         result->Hash = hash;
         assert(result->Hash == HashDecl(result));
+        if (hash == 1076639080)
+        {
+            printf("loc->StartLine: %d\n", (int)loc.StartLine);
+        }
         goto LendDecl;
     }
 
@@ -3248,7 +3363,6 @@ metac_statement_t* MetaCParser_ParseStatement(metac_parser_t* self,
         stmt_for_t* for_ = AllocNewStatement(stmt_for, &result);
         MetaCParser_Match(self, tok_lParen);
 
-        //TODO FIXME forInit can be an expression as well
         if (!MetaCParser_PeekMatch(self, tok_semicolon, 1))
         {
             metac_token_t* peek = MetaCParser_PeekToken(self, 1);
@@ -3539,6 +3653,7 @@ static stmt_block_t* MetaCParser_ParseBlockStatement(metac_parser_t* self,
                                                      metac_statement_t* parent,
                                                      metac_statement_t* prev)
 {
+    static const metac_location_t nullLoc = {0};
     metac_token_t* lBrace = MetaCParser_Match(self, tok_lBrace);
     metac_location_t loc = LocationFromToken(self, lBrace);
 
@@ -3554,7 +3669,9 @@ static stmt_block_t* MetaCParser_ParseBlockStatement(metac_parser_t* self,
     for (;;)
     {
         metac_token_t* peekToken = MetaCParser_PeekToken(self, 1);
-        metac_location_t loc = LocationFromToken(self, peekToken);
+        metac_location_t loc = peekToken ?
+                               LocationFromToken(self, peekToken) :
+                               nullLoc;
 
         if (peekToken && peekToken->TokenType == tok_rBrace)
         {

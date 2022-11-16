@@ -1,3 +1,6 @@
+#ifndef READ_FILE_C
+#define READ_FILE_C
+
 #include <stdio.h>
 #include <assert.h>
 #include <stdlib.h>
@@ -42,3 +45,4 @@ read_result_t ReadFileAndZeroTerminate(const char* path)
 
     return result;
 }
+#endif

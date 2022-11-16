@@ -23,19 +23,30 @@ typedef struct metac_compiler_t
     uint32_t (*CurrentTimeStamp) ();
     uint32_t (*BuiltinCount) ();
 
-    const char* (*PrintType) (type T);
+    const char* (*PrintType) (struct metac_compiler_t* compilerP, type T);
 
     const char** (*FieldNames) (type T);
 
     const char* (*BuiltinName) (uint32_t builtinNumber);
     const char* (*Help) ();
 
-    void (*Message) (const char* str);
-    void (*Error) (const char* str);
+    void (*Message) (struct metac_compiler_t* compilerP,
+                     const char* str,
+                     void* context);
 
-    type_kind_t (*GetTypeKind) (type T);
+    void (*Error) (struct metac_compiler_t* compilerP,
+                   const char* str,
+                   void* context);
 
-    void (*RegisterLogCallback) (void (*LogCb)(const char* msg, void* context), void* context);
+    type_kind_t (*GetTypeKind) (struct metac_compiler_t* compilerP, type T);
+
+    void (*RegisterLogCallback) (struct metac_compiler_t* compilerP,
+                                 void (*LogCb)(const char* msg, void* context),
+                                 void* context);
+
+    void (*RegisterIdentifierCallback) (struct metac_compiler_t* compilerP,
+                                        void (*IdentfierCb)(const char* idChars, uint32_t idKey, void* context),
+                                        void* context);
 } metac_compiler_t;
 /*
 #endif

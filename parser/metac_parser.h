@@ -7,15 +7,15 @@
 
 #include "../os/compat.h"
 #include "../os/metac_alloc.h"
-#include "metac_lexer.h"
-#include "metac_parsetree.h"
+#include "../parser/metac_lexer.h"
+#include "../parser/metac_parsetree.h"
 #include "../printer/metac_printer.h"
 
 #if !defined(NO_PREPROCESSOR)
-#  include "metac_preproc.h"
+#  include "../parser/metac_preproc.h"
 #endif
 
-#include "metac_identifier_table.h"
+#include "../parser/metac_identifier_table.h"
 
 /*    M(exp_bin_invalid) \*/
 
@@ -43,6 +43,14 @@ typedef struct metac_define_t
     uint32_t NumberOfParameters;
 } metac_define_t;
 
+typedef void (*identifier_cb_t) (const char* idString, uint32_t idKey, void* userCtx);
+
+typedef struct identifier_callback_t
+{
+    void (*FuncP)(const char* idString, uint32_t idKey, void* ctx);
+    void* Ctx;
+} identifier_callback_t;
+
 typedef struct metac_parser_t
 {
     metac_lexer_t* Lexer;
@@ -56,6 +64,7 @@ typedef struct metac_parser_t
     metac_preprocessor_t* Preprocessor;
 #endif
     metac_location_t LastLocation;
+    ARENA_ARRAY(identifier_callback_t, IdentifierCallbacks)
     metac_alloc_t Allocator;
 
     stmt_block_t* CurrentBlockStatement;

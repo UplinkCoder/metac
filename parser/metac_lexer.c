@@ -575,13 +575,13 @@ static void MetaCLexerMatchKeywordIdentifier(metac_token_t* tok,
 #include "../generated/metac_match_keyword.inl"
 }
 
-bool static ParseOctal(const char** textP, uint32_t* eatenCharsP, uint64_t* valueP)
+bool static ParseOctal(const char** textP, int32_t* eatenCharsP, uint64_t* valueP)
 {
     bool result = true;
 
     uint64_t value = 0;
     const char* text = *textP;
-    uint32_t eatenChars = *eatenCharsP;
+    int32_t eatenChars = *eatenCharsP;
 
     char c = *text++;
 
@@ -605,7 +605,7 @@ bool static ParseOctal(const char** textP, uint32_t* eatenCharsP, uint64_t* valu
     return result;
 }
 
-bool static ParseFloat(const char** textP, uint32_t* eatenCharsP, float* valueP)
+bool static ParseFloat(const char** textP, int32_t* eatenCharsP, float* valueP)
 {
     char* endP = 0;
     const char* text = *textP;
@@ -619,13 +619,13 @@ bool static ParseFloat(const char** textP, uint32_t* eatenCharsP, float* valueP)
 }
 
 
-bool static ParseHex(const char** textP, uint32_t* eatenCharsP, uint64_t* valueP)
+bool static ParseHex(const char** textP, int32_t* eatenCharsP, uint64_t* valueP)
 {
     bool result = true;
 
     uint64_t value = 0;
     const char* text = *textP;
-    uint32_t eatenChars = *eatenCharsP;
+    int32_t eatenChars = *eatenCharsP;
 
     char c = *text++;
 
@@ -951,7 +951,7 @@ LcontinueLexnig:
                     float fValue;
                     if (ParseFloat(&text, &eatenChars, &fValue))
                     {
-                        parseFlags |= parse_number_flag_float;
+                        (*(uint32_t*)&parseFlags) |= (uint32_t)parse_number_flag_float;
                         token.ValueF23 = fValue;
                         token.TokenType = tok_float;
                         c = *text;

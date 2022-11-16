@@ -94,7 +94,7 @@ metac_type_index_t MetaCTypeTable_AddImpl(metac_type_table_t* self,
                                           const metac_type_table_slot_t *entry,
                                           const uint32_t trailingSize,
                                           const bool (*cmpSlot)(const metac_type_table_slot_t*,
-                                                          const metac_type_table_slot_t*))
+                                                                const metac_type_table_slot_t*))
 {
     metac_type_index_t result = {0};
 

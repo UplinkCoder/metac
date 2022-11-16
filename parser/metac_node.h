@@ -116,6 +116,7 @@
     M(exp_eject) \
     M(exp_assert) \
     M(exp_outer) \
+    M(exp_stringize) \
     M(exp_unary_dot) \
     M(exp_addr) \
     M(exp_deref) \

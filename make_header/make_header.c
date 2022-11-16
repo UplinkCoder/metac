@@ -4,9 +4,9 @@
 #include "../driver/metac_driver.c"
 #include "../utils/read_file.c"
 #include "../parser/metac_parser_obj.c"
-#include "../semantic/metac_semantic_obj.c"
+// #include "../semantic/metac_semantic_obj.c"
 #include "../driver/metac_lpp.c"
-#include "../codegen/metac_codegen.c"
+// #include "../codegen/metac_codegen.c"
 
 #ifdef DEBUG_SERVER
 #  include "../debug/debug_server.c"

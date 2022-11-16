@@ -71,6 +71,24 @@ const char* compiler_msg ()
 }
 
 
+metac_parser_t* GetCurrentParser(metac_compiler_t* compilerP)
+{
+
+}
+
+void compiler_RegisterIdentifierCallback (metac_compiler_t* compilerP,
+                                          void (*IdentifierCb)(const char* idChars, uint32_t idKey, void* userCtx),
+                                          void* userContext)
+{
+    metac_parser_t* parser = GetCurrentParser(compilerP);
+    identifier_callback_t idCallback;
+
+    idCallback.FuncP = IdentifierCb;
+    idCallback.Ctx = userContext;
+
+    ARENA_ARRAY_ADD(parser->IdentifierCallbacks, idCallback);
+}
+
 metac_compiler_t compiler = {
     0,
     0,
@@ -88,5 +106,7 @@ metac_compiler_t compiler = {
     compiler_Error,
 
     0,
+
+    compiler_RegisterIdentifierCallback,
 };
 

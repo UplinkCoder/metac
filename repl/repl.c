@@ -205,7 +205,7 @@ void Presemantic_(repl_state_t* self)
     Allocator_Init(&PresemanticAlloc, 0);
 
     repl_ui_context_t* uiContext = g_uiContext;
-    ui_interface_t uiInterface = uiContext->UiInterface;
+    ui_interface_t uiInterface = *uiContext->UiInterface;
     struct ui_state_t* uiState = uiContext->UiState;
 
     read_result_t fCompilterInterface =
@@ -318,9 +318,11 @@ void Presemantic_(repl_state_t* self)
                     g_compilerInterface = self->SemanticState.CompilerInterface;
                     {
                         sema_decl_variable_t fakeDotStruct = {};
+
                         metac_type_index_t compilerTypeIndex = self->SemanticState.CompilerInterface->TypeIndex;
                         fakeDotStruct.Kind = decl_variable;
-                        fakeDotStruct.TypeIndex = compilerTypeIndex;
+                        metac_type_index_t compilerPtrTypeIndex = MetaCSemantic_GetPtrTypeOf(&self->SemanticState, compilerTypeIndex);
+                        fakeDotStruct.TypeIndex = compilerPtrTypeIndex;
                         //fakeDotStruct.VarIdentifier = expr->E1->IdentifierPtr;
                         //TODO implement metaCCodegen_RegisterExternal
                         fakeDotStruct.Storage.v = STORAGE_V(storage_external, 0);
@@ -522,7 +524,7 @@ bool Repl_Loop(repl_state_t* repl, repl_ui_context_t* context)
 #ifndef NO_FIBERS
     worker_context_t* worker = CurrentWorker();
 #endif
-    const ui_interface_t uiInterface = context->UiInterface;
+    const ui_interface_t uiInterface = *context->UiInterface;
     struct ui_state_t* uiState = context->UiState;
 
 LswitchMode:
@@ -553,7 +555,7 @@ LswitchMode:
 
                     repl->ParseMode = repl_mode_lex_file;
                     const char* filename = repl->Line + 3;
-                    MSG("querying fileStorage\n");
+                       MSG("querying fileStorage\n");
                     // metac_file_storage_t* fs = Global_GetFileStorage(worker);
                     // metac_file_ptr_t f = MetaCFileStorage_LoadFile(fs, filename);
                 }
@@ -818,13 +820,16 @@ LswitchMode:
                 }
                 else if (directive == pp_define)
                 {
-
                     metac_preprocessor_define_ptr_t define =
                         MetaCPreProcessor_ParseDefine(&repl->LPP.Preprocessor, &repl->LPP.Parser);
                 }
                 else if (directive == pp_include)
                 {
                     MetaCPreProcessor_Include(&repl->LPP.Preprocessor, &repl->LPP.Parser);
+                }
+                else if (directive == pp_pragma)
+                {
+                    printf("got a pragma\n");
                 }
 
                 goto LnextLine;
@@ -1168,6 +1173,12 @@ completion_list_t ReplComplete (repl_state_t* repl, const char *input, uint32_t 
     return result;
 }
 
+void SeeIdentifier(const char* idStr, uint32_t key, repl_state_t* replCtx)
+{
+    // just a placeholder until we have a prefix tree
+}
+
+
 void Repl_Fiber(void)
 {
 
@@ -1175,7 +1186,7 @@ void Repl_Fiber(void)
     repl_state_t* repl = &repl_;
 
     repl_ui_context_t* uiContext = g_uiContext;
-    ui_interface_t uiInterface = uiContext->UiInterface;
+    ui_interface_t uiInterface = *uiContext->UiInterface;
     struct ui_state_t* uiState = uiContext->UiState;
 
     metac_filesystem_t* fs = 0;
@@ -1190,6 +1201,15 @@ void Repl_Fiber(void)
     MetaCFileStorage_Init(&repl->FileStorage, fs, &repl->FileAllocator);
 
     Repl_Init(repl);
+
+    {
+        identifier_callback_t cb;
+        cb.Ctx = (void*)repl;
+        cb.FuncP = cast(identifier_cb_t)&SeeIdentifier;
+        repl->LPP.Parser.IdentifierCallbacks[0] = cb;
+        repl->LPP.Parser.IdentifierCallbacksCount = 1;
+    }
+
 
 
     Presemantic_(repl);

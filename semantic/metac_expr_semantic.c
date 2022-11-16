@@ -574,19 +574,39 @@ LswitchIdKey:
 
         case exp_arrow:
         {
-            result->E1 = MetaCSemantic_doExprSemantic(self, expr->E1, 0);
-            result->E2 = MetaCSemantic_doExprSemantic(self, expr->E2, 0);
+            metac_type_index_t elementType = {0};
+            metac_type_aggregate_t* e1AggType = 0;
+            metac_type_ptr_t* ptrType = 0;
+            metac_type_index_t e1type;
 
-            metac_type_index_t e1type = result->E1->TypeIndex;
+            result->E1 = MetaCSemantic_doExprSemantic(self, expr->E1, 0);
+            e1type = result->E1->TypeIndex;
+
             if (TYPE_INDEX_KIND(e1type) == type_index_ptr)
             {
-                metac_type_index_t elemType =
+                elementType =
                     PtrTypePtr(self, TYPE_INDEX_INDEX(e1type))->ElementType;
                 metac_sema_expression_t* e1 = UnwrapParen(result->E1);
-                printf("ExpKind: %s\n", MetaCExpressionKind_toChars(e1->Kind));
                 e1 = ExtractCastExp(e1);
-                printf("ExpKind: %s\n", MetaCExpressionKind_toChars(e1->Kind));
-                printf("E2->Kind: %s\n", MetaCExpressionKind_toChars(result->E2->Kind));
+
+                if (TYPE_INDEX_KIND(elementType) != type_index_struct)
+                {
+                    assert(!"not a struct");
+                    // SemanticError(e1->LocationIndex)
+                }
+
+                {
+                    e1AggType = StructPtr(self, TYPE_INDEX_INDEX(elementType));
+                    MetaCSemantic_MountScope(self, e1AggType->Scope);
+                    result->E2 = MetaCSemantic_doExprSemantic(self, expr->E2, 0);
+                    MetaCSemantic_UnmountScope(self);
+
+                    if (result->E2->Kind == exp_field)
+                    {
+                        // printf("e2.offset: %d\n", result->E2->Field->Offset);
+                    }
+                }
+                int k = 12;
             }
             else
             {
@@ -878,6 +898,10 @@ LswitchIdKey:
             }
         }
         break;
+        case exp_inject:
+        {
+            result->TypeIndex.v = TYPE_INDEX_V(type_index_basic, type_code);
+        } break;
         case exp_dot_compiler:
         {
             if (expr->E1->Kind != exp_call)

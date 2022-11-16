@@ -6,7 +6,7 @@
 #define ifndef_key  0x634e0c
 #define endif_key   0x506843
 #define line_key    0x4c4ac5
-#define pargma_key  0x6a6e5b
+#define pragma_key  0x6a6e5b
 #define include_key 0x7e87f0
 #define define_key  0x6a491b
 
@@ -14,13 +14,15 @@
 #define eval_key    0x45758c
 #define va_args_key 0xbc18fc
 
+#define pack_key 0x4b121c
+#define push_key 0x42c9f9
+
 #ifndef _METAC_PREPROC_H_
 #define _METAC_PREPROC_H_
 
 #include "../os/compat.h"
 #include "metac_identifier_table.h"
 #include "../os/metac_file.h"
-#include "metac_parser.h"
 #include "metac_array.h"
 
 #define FOREACH_PREPROC_DIRECTIVE(M) \
@@ -56,6 +58,21 @@ typedef enum metac_preprocessor_directive_t
 } metac_preprocessor_directive_t;
 
 #undef WITH_COMMA
+
+static const char* Preprocessor_Directive_toChars(metac_preprocessor_directive_t directive)
+{
+    const char* result = 0;
+
+    switch(directive)
+    {
+#define CASE(DIRC) \
+        case DIRC: result = #DIRC; break;
+    FOREACH_PREPROC_DIRECTIVE(CASE)
+#undef CASE
+    }
+
+    return result;
+}
 
 typedef struct metac_preprocessor_define_ptr_t
 {
@@ -130,13 +147,20 @@ typedef struct metac_preprocessor_t
     metac_alloc_t Allocator;
 } metac_preprocessor_t;
 
+struct metac_parser_t;
+
 void MetaCPreProcessor_Init(metac_preprocessor_t *self, metac_lexer_t* lexer,
                             metac_alloc_t* alloc,
                             metac_file_storage_t* fs, const char* filepath);
 
+metac_preprocessor_define_ptr_t
+MetaCPreProcessor_ParseDefine(metac_preprocessor_t *self, struct metac_parser_t* parser);
+
 metac_preprocessor_define_ptr_t MetaCPreProcessor_GetDefine(metac_preprocessor_t* self,
                                                             uint32_t identifierKey,
                                                             const char* identifier);
+
+void MetaCPreProcessor_Include(metac_preprocessor_t *self, struct metac_parser_t* parser);
 
 uint32_t MetaCPreProcessor_PushDefine(metac_preprocessor_t* self,
                                       metac_preprocessor_define_t* define,

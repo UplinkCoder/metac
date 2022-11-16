@@ -1,6 +1,8 @@
 #ifndef _METAC_REPL_H_
 #define _METAC_REPL_H_
 
+#include "completion_trie.h"
+
 typedef enum repl_mode_t
 {
     repl_mode_token = 0,
@@ -21,6 +23,12 @@ typedef enum repl_mode_t
     repl_mode_max
 } repl_mode_t;
 
+typedef struct repl_ui_context_t
+{
+    const struct ui_interface_t* UiInterface;
+    struct ui_state_t* UiState;
+} repl_ui_context_t;
+
 typedef struct repl_state_t
 {
     repl_mode_t ParseMode;
@@ -29,6 +37,10 @@ typedef struct repl_state_t
 
 //    metac_type_aggregate_t* CompilerInterface;
     metac_semantic_state_t SemanticState;
+
+    repl_ui_context_t UiContext;
+
+    completion_trie_root_t CompletionTrie;
 
     BCHeap Heap;
 
@@ -95,11 +107,6 @@ typedef struct ui_interface_t
                                            completion_cache_entry_t* entries, uint32_t nEntries);
 } ui_interface_t;
 
-typedef struct repl_ui_context_t
-{
-    ui_interface_t UiInterface;
-    struct ui_state_t* UiState;
-} repl_ui_context_t;
 
 
 // Initializes the repl state
