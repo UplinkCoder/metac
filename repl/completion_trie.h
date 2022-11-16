@@ -13,6 +13,11 @@ typedef struct completion_trie_node_t {
 typedef struct completion_trie_root_t {
     ARENA_ARRAY(completion_trie_node_t, Nodes)
 
+    // How many nodes are currently allocated for the root
+    // The root get's trated specially ebcayse it has the most children typically
+    // requireing us to use a diffrent growth strategy
+    uint32_t RootCapacity;
+
     uint32_t WordCount;
     uint32_t TotalNodes;
     metac_alloc_t TrieAllocator;

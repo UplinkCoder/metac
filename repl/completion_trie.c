@@ -1,15 +1,18 @@
 #include "../repl/completion_trie.h"
-
+#define BASE_IDX_SCALE 4
 void CompletionTrie_Init(completion_trie_root_t* self, metac_alloc_t* parentAlloc)
 {
     Allocator_Init(&self->TrieAllocator, parentAlloc);
 
     ARENA_ARRAY_INIT_SZ(completion_trie_node_t, self->Nodes, &self->TrieAllocator, 512)
-    self->NodesCount = 4;
+    self->NodesCount = 64;
 
     self->Nodes[0].ChildCount = 0;
-    self->Nodes[0].ChildrenBaseIdx = 0;
+    self->Nodes[0].ChildrenBaseIdx = 1;
     self->Nodes[0].Prefix4[0] = 0;
+    self->RootCapacity =
+        self->NodesCount -
+        self->Nodes[0].ChildrenBaseIdx * BASE_IDX_SCALE;
 
     self->WordCount = 0;
     self->TotalNodes = 1;
@@ -43,9 +46,9 @@ completion_trie_node_t* CompletionTrie_FindLongestMatchingPrefix(completion_trie
         char c = word[0];
         assert(PrefixLen(nodes->Prefix4) == 0);
 
-        const uint32_t childNodeIdx = (current->ChildrenBaseIdx * 4);
+        const uint32_t childNodeIdx = (current->ChildrenBaseIdx * BASE_IDX_SCALE);
         const uint32_t lastChildNodeIdx =
-            (current->ChildrenBaseIdx * 4) + current->ChildCount;
+            (current->ChildrenBaseIdx * BASE_IDX_SCALE) + current->ChildCount;
 
         int bestPrefixLength = 0;
         int bestChild = 0;
@@ -93,41 +96,51 @@ void CompletionTrie_AddChild(completion_trie_root_t* root, completion_trie_node_
 {
     completion_trie_node_t* child = 0;
 
+    printf("Going to add %.*s\n", (int)length, word);
+    INC(root->WordCount);
+#if 1
     if (root->Nodes == PrefNode)
     {
         // printf("Starting at root\n");
+        if (PrefNode->ChildCount < root->RootCapacity)
+        {
+            child = root->Nodes +
+                (PrefNode->ChildrenBaseIdx
+               + INC(PrefNode->ChildCount));
+            goto LGotChild;
+        }
     }
+#endif
 
-    printf("Going to add %.*s\n", (int)length, word);
-    INC(root->WordCount);
 
     while(length)
     {
         if (PrefNode->ChildCount == 0)
         {
-            assert(PrefNode->ChildrenBaseIdx == 0);
+            assert(PrefNode->ChildrenBaseIdx == 0 || PrefNode == root->Nodes);
             ARENA_ARRAY_ENSURE_SIZE(root->Nodes, root->NodesCount + 4);
-            PrefNode->ChildrenBaseIdx = (POST_ADD(root->NodesCount, 4)) / 4;
+            PrefNode->ChildrenBaseIdx = (POST_ADD(root->NodesCount, BASE_IDX_SCALE)) / BASE_IDX_SCALE;
         }
 
         uint32_t newChildCount = INC(PrefNode->ChildCount) + 1;
         printf("newChildCount: %u -- (newChildCount & 3): %u\n", newChildCount,
         (newChildCount & 3));
-        if ((newChildCount & 3) == 0)
+        if ((newChildCount % BASE_IDX_SCALE) == 0)
         {
             uint32_t oldChildBaseIdx = PrefNode->ChildrenBaseIdx;
             uint32_t newChildBaseIdx;
-            uint32_t newChildCapacity = newChildCount + 3;
+            uint32_t newChildCapacity = newChildCount + (BASE_IDX_SCALE - 1);
             const uint32_t endI = newChildCount - 1;
             ARENA_ARRAY_ENSURE_SIZE(root->Nodes, root->NodesCount + newChildCapacity);
-            newChildBaseIdx = POST_ADD(root->NodesCount, newChildCapacity) / 4;
-            memcpy(root->Nodes + (newChildBaseIdx * 4),
-                   root->Nodes + (oldChildBaseIdx * 4),
+            newChildBaseIdx = POST_ADD(root->NodesCount, newChildCapacity) / BASE_IDX_SCALE;
+            memcpy(root->Nodes + (newChildBaseIdx * BASE_IDX_SCALE),
+                   root->Nodes + (oldChildBaseIdx * BASE_IDX_SCALE),
                    sizeof(*root->Nodes) * (newChildCount - 1));
             PrefNode->ChildrenBaseIdx = newChildBaseIdx;
         }
 
-        child = root->Nodes + ((PrefNode->ChildrenBaseIdx * 4) + newChildCount - 1);
+        child = root->Nodes + ((PrefNode->ChildrenBaseIdx * BASE_IDX_SCALE) + newChildCount - 1);
+LGotChild:
         {
             // printf("newChild at node: %u\n", child - root->Nodes);
             INC(root->TotalNodes);
@@ -156,7 +169,7 @@ void CompletionTrie_Print(completion_trie_root_t* root, uint32_t n, const char* 
         root->Nodes;
     uint32_t i;
 
-    uint32_t childIdxBegin = nodes[n].ChildrenBaseIdx * 4;
+    uint32_t childIdxBegin = nodes[n].ChildrenBaseIdx * BASE_IDX_SCALE;
     uint32_t childIdxEnd = childIdxBegin + nodes[n].ChildCount;
 
     for(i = childIdxBegin; i < childIdxEnd; i++)
