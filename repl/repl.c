@@ -15,6 +15,7 @@
 #include "../utils/int_to_str.c"
 #include "../codegen/metac_codegen.c"
 #include "../semantic/metac_type_table.h"
+#include "../repl/completion_trie.c"
 #include "repl.h"
 
 #include <stdio.h>
@@ -197,6 +198,13 @@ static inline int Presemantic(metac_node_t node, void* ctx)
 extern repl_ui_context_t* g_uiContext;
 metac_type_aggregate_t* g_compilerInterface;
 
+void SeeIdentifier(const char* idStr, uint32_t key, repl_state_t* replCtx)
+{
+    CompletionTrie_Add(&replCtx->CompletionTrie, idStr, LENGTH_FROM_IDENTIFIER_KEY(key));
+    CompletionTrie_Print(&replCtx->CompletionTrie);
+}
+
+
 void Presemantic_(repl_state_t* self)
 {
     metac_type_aggregate_t* compilerStruct = 0;
@@ -234,6 +242,15 @@ void Presemantic_(repl_state_t* self)
                     fCompilterInterface.FileLength);
 
             MetaCParser_InitFromLexer(&tmpParser, &tmpLexer, &PresemanticAlloc);
+/*
+            {
+                identifier_callback_t cb;
+                cb.Ctx = (void*)self;
+                cb.FuncP = cast(identifier_cb_t)&SeeIdentifier;
+                tmpParser.IdentifierCallbacks[0] = cb;
+                tmpParser.IdentifierCallbacksCount = 1;
+            }
+*/
             ParseFile(&tmpParser, "metac_compiler_interface.h", &decls);
         }
         MetaCLexer_Free(&tmpLexer);
@@ -424,6 +441,9 @@ void Repl_Init(repl_state_t* self)
 
     Debug_CurrentIdentifierTable(g_DebugServer, self->SemanticState.ParserIdentifierTable);
     Debug_CurrentScope(g_DebugServer, self->SemanticState.CurrentScope);
+
+    Allocator_Init(&self->CompletionAlloc, 0);
+    CompletionTrie_Init(&self->CompletionTrie, &self->CompletionAlloc);
     //VariableStore_Init(&self->vstore, &LPP->Parser.IdentifierTable);
 }
 
@@ -1173,10 +1193,6 @@ completion_list_t ReplComplete (repl_state_t* repl, const char *input, uint32_t 
     return result;
 }
 
-void SeeIdentifier(const char* idStr, uint32_t key, repl_state_t* replCtx)
-{
-    // just a placeholder until we have a prefix tree
-}
 
 
 void Repl_Fiber(void)
@@ -1213,6 +1229,8 @@ void Repl_Fiber(void)
 
 
     Presemantic_(repl);
+
+    CompletionTrie_Print(&repl->CompletionTrie);
 
     if (uiInterface.SetCompletionCallback)
     {
