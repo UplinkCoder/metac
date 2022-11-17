@@ -1,10 +1,11 @@
 #include "../repl/completion_trie.h"
-#define BASE_IDX_SCALE 4
+#define BASE_IDX_SCALE 1
 void CompletionTrie_Init(completion_trie_root_t* self, metac_alloc_t* parentAlloc)
 {
     Allocator_Init(&self->TrieAllocator, parentAlloc);
 
-    ARENA_ARRAY_INIT_SZ(completion_trie_node_t, self->Nodes, &self->TrieAllocator, 512)
+    ARENA_ARRAY_INIT_SZ(completion_trie_node_t, self->Nodes, &self->TrieAllocator, 786)
+    ARENA_ARRAY_INIT_SZ(node_range_t, self->NodeRanges, parentAlloc, 512)
     self->NodesCount = 64;
 
     self->Nodes[0].ChildCount = 0;
@@ -16,6 +17,11 @@ void CompletionTrie_Init(completion_trie_root_t* self, metac_alloc_t* parentAllo
 
     self->WordCount = 0;
     self->TotalNodes = 1;
+
+    {
+        node_range_t range = {0, self->NodesCount, 1};
+        ARENA_ARRAY_ADD(self->NodeRanges, range);
+    }
 }
 
 static int PrefixLen(char prefix4[4])
@@ -117,9 +123,22 @@ void CompletionTrie_AddChild(completion_trie_root_t* root, completion_trie_node_
     {
         if (PrefNode->ChildCount == 0)
         {
-            assert(PrefNode->ChildrenBaseIdx == 0 || PrefNode == root->Nodes);
-            ARENA_ARRAY_ENSURE_SIZE(root->Nodes, root->NodesCount + BASE_IDX_SCALE);
-            PrefNode->ChildrenBaseIdx = (POST_ADD(root->NodesCount, BASE_IDX_SCALE)) / BASE_IDX_SCALE;
+            assert(PrefNode->ChildrenBaseIdx == 0 || PrefNode == root->Nodes + 0);
+            if (PrefNode != root->Nodes + 0)
+            {
+                ARENA_ARRAY_ENSURE_SIZE(root->Nodes, root->NodesCount + BASE_IDX_SCALE);
+                PrefNode->ChildrenBaseIdx = (POST_ADD(root->NodesCount, BASE_IDX_SCALE)) / BASE_IDX_SCALE;
+                {
+                    uint32_t NodeRangestart = PrefNode->ChildrenBaseIdx * BASE_IDX_SCALE;
+                    node_range_t range = {NodeRangestart, NodeRangestart + BASE_IDX_SCALE, 1};
+                    ARENA_ARRAY_ADD(root->NodeRanges, range);
+                    PrefNode->Range = root->NodeRanges + root->NodeRangesCount - 1;
+                }
+            }
+            else
+            {
+                assert(!"root node grows via standart method .. shouln't happen");
+            }
         }
 
         uint32_t newChildCount = INC(PrefNode->ChildCount) + 1;
@@ -129,8 +148,16 @@ void CompletionTrie_AddChild(completion_trie_root_t* root, completion_trie_node_
             uint32_t newChildBaseIdx;
             uint32_t newChildCapacity = newChildCount + (BASE_IDX_SCALE - 1);
             const uint32_t endI = newChildCount - 1;
+
+            PrefNode->Range->IsValid = 0;
             ARENA_ARRAY_ENSURE_SIZE(root->Nodes, root->NodesCount + newChildCapacity);
             newChildBaseIdx = POST_ADD(root->NodesCount, newChildCapacity) / BASE_IDX_SCALE;
+            {
+                uint32_t NodeRangestart = newChildBaseIdx * BASE_IDX_SCALE;
+                node_range_t range = {NodeRangestart, NodeRangestart + newChildCapacity, 1};
+                ARENA_ARRAY_ADD(root->NodeRanges, range);
+                PrefNode->Range = root->NodeRanges + root->NodeRangesCount - 1;
+            }
             memcpy(root->Nodes + (newChildBaseIdx * BASE_IDX_SCALE),
                    root->Nodes + (oldChildBaseIdx * BASE_IDX_SCALE),
                    sizeof(*root->Nodes) * (newChildCount - 1));
@@ -160,6 +187,7 @@ LGotChild:
 
     if (root->Nodes[0].ChildCount == 0)
     {
+        CompletionTrie_PrintRanges(root);
         assert(0);
     }
 }
@@ -175,10 +203,17 @@ void CompletionTrie_Print(completion_trie_root_t* root, uint32_t n, const char* 
 
     for(i = childIdxBegin; i < childIdxEnd; i++)
     {
-        fprintf(f, "\"%d: %.4s\" -> \"%d: %.4s\"\n",
+        fprintf(f, "  \"%d: %.4s\" -> \"%d: %.4s\"\n",
                 n, rootPrefix,
                 i, nodes[i].Prefix4);
     }
+
+    fprintf(f, "{ rank = same; ");
+    for(i = childIdxBegin; i < childIdxEnd; i++)
+    {
+        fprintf(f, "\"%d: %.4s\" ", i, nodes[i].Prefix4);
+    }
+    fprintf(f, "}\n");
 
     for(i = childIdxBegin; i < childIdxEnd; i++)
     {
@@ -295,11 +330,25 @@ void testCompletionTrie(void)
     CompletionTrie_Init(&root, &rootAlloc);
 }
 
+void CompletionTrie_PrintRanges(completion_trie_root_t* self)
+{
+    FILE* f = fopen("ranges.txt", "w");
+    const uint32_t nodeRangesCount =  self->NodeRangesCount;
+    for(uint32_t i = 0; i < nodeRangesCount; i++)
+    {
+        node_range_t range = self->NodeRanges[i];
+        fprintf(f, "%sRange:{%d, %d}\n",
+                   (range.IsValid ? "" : "- "), range.Begin, range.End);
+    }
+    fclose(f);
+}
+
 void CompletionTrie_PrintStats(completion_trie_root_t* self)
 {
     {
         FILE* f = fopen("g.dot", "w");
         fprintf(f, "digraph G {\n");
+        fprintf(f, "  node [shape=record headport=n]\n");
 
         CompletionTrie_Print(self, 0, "", f);
 
@@ -311,4 +360,6 @@ void CompletionTrie_PrintStats(completion_trie_root_t* self)
     printf("Words: %u\n", self->WordCount);
     printf("UsedNodesPerWord: %g\n", (float)self->TotalNodes / (float)self->WordCount);
     printf("AllocatedNodesPerWord: %g\n", (float)self->NodesCount / (float)self->WordCount);
+
+    CompletionTrie_PrintRanges(self);
 }
