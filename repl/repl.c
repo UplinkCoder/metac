@@ -201,7 +201,8 @@ metac_type_aggregate_t* g_compilerInterface;
 void SeeIdentifier(const char* idStr, uint32_t key, repl_state_t* replCtx)
 {
     CompletionTrie_Add(&replCtx->CompletionTrie, idStr, LENGTH_FROM_IDENTIFIER_KEY(key));
-    // CompletionTrie_Print(&replCtx->CompletionTrie);
+    // printf("WordCount: %d\n", replCtx->CompletionTrie.WordCount);
+//    CompletionTrie_Print(&replCtx->CompletionTrie);
 }
 
 
@@ -1169,26 +1170,50 @@ completion_list_t CompleteCommand (repl_state_t* repl, const char *input, uint32
 
 completion_list_t ReplComplete (repl_state_t* repl, const char *input, uint32_t inputLength)
 {
-    metac_lexer_t completionLexer = {0};
-    metac_parser_t completionParser = {0};
     completion_list_t result = {0};
-
-    MetaCLexer_Init(&completionLexer, &repl->CompletionAlloc);
-
     char* lastWord = 0;
-    char* completions[] =  {(char*)"1337", (char*)"0xF13"};
+    uint32_t lastWordLength = 0;
+
+    if (!inputLength)
+        return result;
 
     if (input[0] == ':')
     {
         return CompleteCommand(repl, input, inputLength);
     }
 
+    char* completions[] = {"fak1", "fak2"};
+    {
+        uint32_t i;
+        for(i = inputLength - 1; i > 0; i--)
+        {
+            char c = input[i];
+            if (!IsIdentifierChar(c))
+            {
+                i++;
+                break;
+            }
+        }
+
+        lastWordLength = inputLength - i;
+        lastWord = input + i;
+    }
+
+    completion_trie_node_t* PrefixNode =
+        CompletionTrie_FindLongestMatchingPrefix(&repl->CompletionTrie, lastWord, &lastWordLength);
+
+    if (PrefixNode)
+    {
+        int k = 12;
+    }
+    uint32_t n = PrefixNode - repl->CompletionTrie.Nodes;
+    CompletionTrie_Print(&repl->CompletionTrie, n, lastWord, stdout);
+    fflush(stdout);
+
     result.CompletionsLength = 2;
     result.Completions = Allocator_Calloc(&repl->Allocator, char*, result.CompletionsLength);
 
     memcpy(result.Completions, completions, result.CompletionsLength * sizeof(char*));
-
-    MetaCLexer_Free(&completionLexer);
 
     return result;
 }
@@ -1197,6 +1222,7 @@ completion_list_t ReplComplete (repl_state_t* repl, const char *input, uint32_t 
 
 void Repl_Fiber(void)
 {
+
     repl_state_t repl_ = {repl_mode_ee};
     repl_state_t* repl = &repl_;
 
@@ -1229,7 +1255,7 @@ void Repl_Fiber(void)
 
     Presemantic_(repl);
 
-    // CompletionTrie_Print(&repl->CompletionTrie);
+    //CompletionTrie_Print(&repl->CompletionTrie);
 
     if (uiInterface.SetCompletionCallback)
     {
@@ -1243,9 +1269,8 @@ void Repl_Fiber(void)
 #endif
     }
 
-    ERRORMSG("Repl_Loop exited this should only happen on quit\n");
     CompletionTrie_PrintStats(&repl->CompletionTrie);
-
+    ERRORMSG("Repl_Loop exited this should only happen on quit\n");
 #ifndef NO_FIBERS
     aco_exit1(GET_CO());
 #endif

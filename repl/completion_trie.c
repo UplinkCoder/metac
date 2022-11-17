@@ -95,8 +95,6 @@ completion_trie_node_t* CompletionTrie_FindLongestMatchingPrefix(completion_trie
     return 0;
 }
 
-// CompletionTrie_AllocateChild
-
 void CompletionTrie_AddChild(completion_trie_root_t* root, completion_trie_node_t* PrefNode,
                              const char* word, uint32_t length)
 {
@@ -235,6 +233,11 @@ void CompletionTrie_Add(completion_trie_root_t* root, const char* word, uint32_t
         int posWord = length - remaning_length;
         CompletionTrie_AddChild(root, PrefNode, word + posWord, remaning_length);
     }
+    // If the node has children we need to insert a Terminal node
+    else if (PrefNode->ChildCount)
+    {
+        CompletionTrie_AddChild(root, PrefNode, "", 0);
+    }
 
 /*
 #define MINIMUM(A, B) \
@@ -355,11 +358,16 @@ void CompletionTrie_PrintStats(completion_trie_root_t* self)
         fprintf(f, "}\n");
         fclose(f);
     }
+
     printf("UsedNodes: %u\n", self->TotalNodes);
     printf("AllocatedNodes: %u\n", self->NodesCount);
     printf("Words: %u\n", self->WordCount);
-    printf("UsedNodesPerWord: %g\n", (float)self->TotalNodes / (float)self->WordCount);
-    printf("AllocatedNodesPerWord: %g\n", (float)self->NodesCount / (float)self->WordCount);
+
+    int AllocatedNodesPerWord = ((float)self->NodesCount / (float)self->WordCount) * 100.0f;
+    int UsedNodesPerWord = ((float)self->TotalNodes / (float)self->WordCount) * 100.0f;
+
+    printf("UsedNodesPerWord: %d.%d\n", UsedNodesPerWord / 100, UsedNodesPerWord % 100);
+    printf("AllocatedNodesPerWord: %d.%d\n", AllocatedNodesPerWord / 100, AllocatedNodesPerWord % 100);
 
     CompletionTrie_PrintRanges(self);
 }
