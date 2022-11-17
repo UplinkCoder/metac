@@ -44,7 +44,7 @@ completion_trie_node_t* CompletionTrie_FindLongestMatchingPrefix(completion_trie
     for(;;)
     {
         char c = word[0];
-        assert(PrefixLen(nodes->Prefix4) == 0);
+        assert(PrefixLen(nodes[0].Prefix4) == 0);
 
         const uint32_t childNodeIdx = (current->ChildrenBaseIdx * BASE_IDX_SCALE);
         const uint32_t lastChildNodeIdx =
@@ -118,13 +118,11 @@ void CompletionTrie_AddChild(completion_trie_root_t* root, completion_trie_node_
         if (PrefNode->ChildCount == 0)
         {
             assert(PrefNode->ChildrenBaseIdx == 0 || PrefNode == root->Nodes);
-            ARENA_ARRAY_ENSURE_SIZE(root->Nodes, root->NodesCount + 4);
+            ARENA_ARRAY_ENSURE_SIZE(root->Nodes, root->NodesCount + BASE_IDX_SCALE);
             PrefNode->ChildrenBaseIdx = (POST_ADD(root->NodesCount, BASE_IDX_SCALE)) / BASE_IDX_SCALE;
         }
 
         uint32_t newChildCount = INC(PrefNode->ChildCount) + 1;
-        printf("newChildCount: %u -- (newChildCount & 3): %u\n", newChildCount,
-        (newChildCount & 3));
         if ((newChildCount % BASE_IDX_SCALE) == 0)
         {
             uint32_t oldChildBaseIdx = PrefNode->ChildrenBaseIdx;
@@ -160,10 +158,13 @@ LGotChild:
         }
     }
 
-    assert(root->Nodes->ChildCount != 0);
+    if (root->Nodes[0].ChildCount == 0)
+    {
+        assert(0);
+    }
 }
 
-void CompletionTrie_Print(completion_trie_root_t* root, uint32_t n, const char* rootPrefix)
+void CompletionTrie_Print(completion_trie_root_t* root, uint32_t n, const char* rootPrefix, FILE* f)
 {
     const completion_trie_node_t const * nodes =
         root->Nodes;
@@ -174,7 +175,7 @@ void CompletionTrie_Print(completion_trie_root_t* root, uint32_t n, const char* 
 
     for(i = childIdxBegin; i < childIdxEnd; i++)
     {
-        printf("\"%d: %.4s\" -> \"%d: %.4s\"\n",
+        fprintf(f, "\"%d: %.4s\" -> \"%d: %.4s\"\n",
                 n, rootPrefix,
                 i, nodes[i].Prefix4);
     }
@@ -183,7 +184,7 @@ void CompletionTrie_Print(completion_trie_root_t* root, uint32_t n, const char* 
     {
         if (nodes[i].ChildCount)
         {
-            CompletionTrie_Print(root, i, nodes[i].Prefix4);
+            CompletionTrie_Print(root, i, nodes[i].Prefix4, f);
         }
     }
 }
@@ -296,11 +297,18 @@ void testCompletionTrie(void)
 
 void CompletionTrie_PrintStats(completion_trie_root_t* self)
 {
+    {
+        FILE* f = fopen("g.dot", "w");
+        fprintf(f, "digraph G {\n");
+
+        CompletionTrie_Print(self, 0, "", f);
+
+        fprintf(f, "}\n");
+        fclose(f);
+    }
     printf("UsedNodes: %u\n", self->TotalNodes);
     printf("AllocatedNodes: %u\n", self->NodesCount);
     printf("Words: %u\n", self->WordCount);
     printf("UsedNodesPerWord: %g\n", (float)self->TotalNodes / (float)self->WordCount);
     printf("AllocatedNodesPerWord: %g\n", (float)self->NodesCount / (float)self->WordCount);
-
-    CompletionTrie_Print(self, 0, "");
 }
