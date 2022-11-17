@@ -39,6 +39,84 @@ static int PrefixLen(char prefix4[4])
 }
 
 
+// calls the provided callback with all the completion suggestions
+// please not that the string passed into the callback will not be valid after the callback as returned
+void CompletionTrie_Collect(completion_trie_root_t* root,
+                            uint32_t startNodeIdx,
+                            const char* prefix, uint32_t matchedUntil,
+                            void (*collectCb) (const char* completionString, uint32_t length, void* ctx),
+                            void* userCtx)
+{
+    uint32_t parentStack[128];
+    uint16_t childIndexStack[128];
+    uint16_t completionLengthAddStack[128];
+
+    const completion_trie_node_t* nodes = root->Nodes;
+    const uint32_t completionLengthBase = matchedUntil;
+
+    char completionString[512];
+    uint32_t completionLength = completionLengthBase;
+    uint32_t currentNodeIdx = startNodeIdx;
+    uint32_t currentChildIndex = 0;
+    uint32_t currentStackIndex = 0;
+
+    const uint32_t unmatchedPrefixLength = strlen(prefix) - matchedUntil;
+
+    memcpy(completionString + completionLength, prefix, matchedUntil);
+
+    for (;;) // until we are back at the root and there are not children left
+LSetCurrent:
+    {
+        completion_trie_node_t* current = nodes + currentNodeIdx;
+        uint32_t childBeginIdx = current->ChildrenBaseIdx * BASE_IDX_SCALE;
+        uint32_t childEndIdx = childBeginIdx + current->ChildCount;
+        uint32_t prefixLen = PrefixLen(current->Prefix4);
+        memcpy(completionString + completionLength, current->Prefix4, prefixLen);
+        completionLength += prefixLen;
+
+        for(uint32_t i = childBeginIdx + currentChildIndex; i < childEndIdx; i++)
+        {
+            completion_trie_node_t* child = nodes + i;
+
+            if (unmatchedPrefixLength &&
+                (0 != memcmp(matchedUntil + prefix, child->Prefix4, unmatchedPrefixLength))
+            )
+            {
+                // prefix didn't match, keep going
+                continue;
+            }
+            // we are good to go
+            {
+                // if this node has no children then we have a completion
+                if (child->ChildCount == 0)
+                {
+                    collectCb(completionString, completionLength, userCtx);
+                }
+                else
+                {
+                    // Push Completion stacks
+                    {
+                        parentStack[currentStackIndex] = currentNodeIdx;
+                        childIndexStack[currentStackIndex] = i - childBeginIdx;
+                        completionLengthAddStack[currentStackIndex] = completionLength - completionLengthBase;
+                        ++currentStackIndex;
+                    }
+                    // change relevant iteration state
+                    currentNodeIdx = i;
+                    currentChildIndex = 0;
+                    goto LSetCurrent;
+                }
+            }
+            // The for loop is over ... time to pop the state
+            {
+                --currentStackIndex;
+                currentNodeIdx = parentStack[currentStackIndex];
+                currentChildIndex = childIndexStack[currentStackIndex];
+                completionLength = completionLengthBase - completionLengthAddStack[currentStackIndex];
+            }
+        }
+    }
+}
 completion_trie_node_t* CompletionTrie_FindLongestMatchingPrefix(completion_trie_root_t* root,
                                                                  const char* word,
                                                                  uint32_t* lengthP)

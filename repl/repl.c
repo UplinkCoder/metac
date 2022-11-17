@@ -1167,6 +1167,19 @@ completion_list_t CompleteCommand (repl_state_t* repl, const char *input, uint32
 
     return result;
 }
+/*
+typedef struct completion_collection_state_t
+{
+    const char CurrentPrefix[256];
+    uint32_t CurrentPrefixLength;
+}  completion_collection_state_t;
+
+void CollectCompletionsCb(const char* completion,
+                          completion_list_t* completionList)
+{
+    
+}
+*/
 
 completion_list_t ReplComplete (repl_state_t* repl, const char *input, uint32_t inputLength)
 {
@@ -1182,7 +1195,8 @@ completion_list_t ReplComplete (repl_state_t* repl, const char *input, uint32_t 
         return CompleteCommand(repl, input, inputLength);
     }
 
-    char* completions[] = {"fak1", "fak2"};
+    // let's collect a maximum of 512 Completions.
+
     {
         uint32_t i;
         for(i = inputLength - 1; i > 0; i--)
@@ -1199,21 +1213,24 @@ completion_list_t ReplComplete (repl_state_t* repl, const char *input, uint32_t 
         lastWord = input + i;
     }
 
-    completion_trie_node_t* PrefixNode =
-        CompletionTrie_FindLongestMatchingPrefix(&repl->CompletionTrie, lastWord, &lastWordLength);
-
-    if (PrefixNode)
     {
-        int k = 12;
+        uint32_t originalLastWordLength = lastWordLength;
+        completion_trie_node_t* PrefixNode =
+            CompletionTrie_FindLongestMatchingPrefix(&repl->CompletionTrie, lastWord, &lastWordLength);
+        uint32_t matchedPrefixLength = originalLastWordLength - lastWordLength;
+
+        uint32_t n = PrefixNode - repl->CompletionTrie.Nodes;
+
+        STACK_ARENA_ARRAY(const char*, completions, 64, &repl->CompletionAlloc);
+
+        //CompletionTrie_Print(&repl->CompletionTrie, n, lastWord, stdout);
+        fflush(stdout);
+
+        result.CompletionsLength = completionsCount;
+        result.Completions = Allocator_Calloc(&repl->Allocator, char*, result.CompletionsLength);
+
+        memcpy(result.Completions, completions, result.CompletionsLength * sizeof(char*));
     }
-    uint32_t n = PrefixNode - repl->CompletionTrie.Nodes;
-    CompletionTrie_Print(&repl->CompletionTrie, n, lastWord, stdout);
-    fflush(stdout);
-
-    result.CompletionsLength = 2;
-    result.Completions = Allocator_Calloc(&repl->Allocator, char*, result.CompletionsLength);
-
-    memcpy(result.Completions, completions, result.CompletionsLength * sizeof(char*));
 
     return result;
 }
