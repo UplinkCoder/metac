@@ -1,12 +1,18 @@
+
+
+
+
 name: meta-c CI
 
 on:
   status:
-    branches: [ $default-branch ]
+    branches: [ $default-branch, main ]
+  push:
+    branches: [ $default-branch, main ]
   pull_request:
-    branches: [ $default-branch ]
+    branches: [ $default-branch, main ]
   workflow_dispatch:
-  
+
 jobs:
   build_linux:
     runs-on: ubuntu-latest
