@@ -40,7 +40,7 @@ static int PrefixLen(char prefix4[4])
 
 
 // calls the provided callback with all the completion suggestions
-// please not that the string passed into the callback will not be valid after the callback as returned
+// please note: the string passed into the callback will not be valid after the callback has returned
 void CompletionTrie_Collect(completion_trie_root_t* root,
                             uint32_t startNodeIdx,
                             const char* prefix, uint32_t matchedUntil,
@@ -52,7 +52,8 @@ void CompletionTrie_Collect(completion_trie_root_t* root,
     uint16_t completionLengthAddStack[128];
 
     const completion_trie_node_t* nodes = root->Nodes;
-    const uint32_t completionLengthBase = matchedUntil;
+    const uint32_t completionLengthBase = matchedUntil
+                                        - PrefixLen(nodes[startNodeIdx].Prefix4);
 
     char completionString[512];
     uint32_t completionLength = completionLengthBase;
@@ -90,7 +91,13 @@ LSetCurrent:
                 // if this node has no children then we have a completion
                 if (child->ChildCount == 0)
                 {
+                    uint32_t toCopy = PrefixLen(child->Prefix4);
+                    memcpy(completionString + completionLength,
+                           child->Prefix4, toCopy);
+                    completionLength += toCopy;
                     collectCb(completionString, completionLength, userCtx);
+                    // do we have to substract to toCopy now?
+                    completionLength -= toCopy;
                 }
                 else
                 {
@@ -107,14 +114,21 @@ LSetCurrent:
                     goto LSetCurrent;
                 }
             }
-            // The for loop is over ... time to pop the state
-            {
-                --currentStackIndex;
-                currentNodeIdx = parentStack[currentStackIndex];
-                currentChildIndex = childIndexStack[currentStackIndex];
-                completionLength = completionLengthBase - completionLengthAddStack[currentStackIndex];
-            }
         }
+        // The for loop is over ... time to pop the state
+        {
+            if (!currentStackIndex)
+            {
+                assert(currentNodeIdx == startNodeIdx);
+                break;
+            }
+            --currentStackIndex;
+            currentNodeIdx = parentStack[currentStackIndex];
+            currentChildIndex = childIndexStack[currentStackIndex];
+            completionLength = completionLengthBase + completionLengthAddStack[currentStackIndex];
+        }
+        if (!currentStackIndex)
+            break;
     }
 }
 completion_trie_node_t* CompletionTrie_FindLongestMatchingPrefix(completion_trie_root_t* root,

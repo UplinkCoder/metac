@@ -1173,12 +1173,20 @@ typedef struct completion_collection_state_t
     const char CurrentPrefix[256];
     uint32_t CurrentPrefixLength;
 }  completion_collection_state_t;
-
-void CollectCompletionsCb(const char* completion,
-                          completion_list_t* completionList)
+*/
+void CollectCompletionsCb(const char* completionString, uint32_t length,
+                          void* userCtx)
 {
-    
+    printf("%.*s\n", (int) length, completionString);
 }
+
+
+/*
+void  CompletionTrie_Collect(completion_trie_root_t* root,
+                            uint32_t startNodeIdx,
+                            const char* prefix, uint32_t matchedUntil,
+                            void (*collectCb) (const char* completionString, uint32_t length, void* ctx),
+                            void* userCtx)
 */
 
 completion_list_t ReplComplete (repl_state_t* repl, const char *input, uint32_t inputLength)
@@ -1225,6 +1233,10 @@ completion_list_t ReplComplete (repl_state_t* repl, const char *input, uint32_t 
 
         //CompletionTrie_Print(&repl->CompletionTrie, n, lastWord, stdout);
         fflush(stdout);
+
+        CompletionTrie_Collect(&repl->CompletionTrie, n,
+                               lastWord, matchedPrefixLength,
+                               CollectCompletionsCb, 0);
 
         result.CompletionsLength = completionsCount;
         result.Completions = Allocator_Calloc(&repl->Allocator, char*, result.CompletionsLength);
