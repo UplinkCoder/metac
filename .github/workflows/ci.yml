@@ -1,0 +1,35 @@
+name: meta-c CI
+
+on:
+  push:
+    branches: [ $default-branch ]
+  pull_request:
+    branches: [ $default-branch ]
+
+jobs:
+  build_linux:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: GenBoilerplate
+      run: ./gen_code.sh
+
+    - name: Run tests
+      run: ./run_tests.sh
+
+    - name: Build REPL
+      run: cd repl && ./build.sh
+
+  build_windows:
+    runs-on: windows-2019
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: GenBoilerplate
+      run: ./gen_code.bat
+
+    - name: Run tests
+      run: ./run_tests.bat
