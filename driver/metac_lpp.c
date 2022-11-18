@@ -1,5 +1,8 @@
+#include <stdlib.h>
+#include <stdio.h>
+#include <string.h>
+#include "../hash/crc32c.h"
 #include "metac_lpp.h"
-#include "string.h"
 
 #ifndef ALIGN4
 #  define ALIGN4(N) (((N) + 3) & ~3)

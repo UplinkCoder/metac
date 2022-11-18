@@ -1,10 +1,12 @@
-#include "metac_identifier_table.c"
-#include "metac_lexer.h"
-#include "../os/compat.h"
+// include all the headers because of freaking MSVC 2019
 #include <assert.h>
 #include <string.h>
 #include <stdio.h>
+#include <stdlib.h>
 
+#include "metac_identifier_table.c"
+#include "metac_lexer.h"
+#include "../os/compat.h"
 #include "../hash/crc32c.h"
 
 static inline metac_token_enum_t MetaCLexFixedLengthToken(const char _chrs[3])

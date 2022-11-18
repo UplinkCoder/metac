@@ -14,7 +14,7 @@
 #  define noinline __declspec(noinline)
 #endif
 
-#if (defined(_MSC_VER) && _MSC_VER < 1800)
+#if (defined(_MSC_VER) && (_MSC_VER < 1800) )
 #  define snprintf _snprintf
 #endif
 
