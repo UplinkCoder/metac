@@ -19,6 +19,8 @@ typedef struct completion_trie_node_t {
     node_range_t* Range;
 } completion_trie_node_t;
 
+typedef void (*collect_cb_t) (const char* completionString, uint32_t length, void* ctx);
+
 typedef struct completion_trie_root_t {
     ARENA_ARRAY(completion_trie_node_t, Nodes)
     ARENA_ARRAY(node_range_t, NodeRanges)

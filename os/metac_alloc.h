@@ -101,6 +101,14 @@ arena_ptr_t ReallocArenaArray(tagged_arena_t* arena, metac_alloc_t* alloc, uint3
     }; \
     TYPE* NAME = NAME##Stack;
 
+#define ARENA_ARRAY_REFCOPY(SRC, DST) do { \
+    (DST) = (SRC); \
+    (DST##Count) = (SRC##Count); \
+    (DST##Alloc) = (SRC##Alloc); \
+    (DST##Arena) = (SRC##Arena); \
+    (DST##ArenaPtr) = (SRC##ArenaPtr); \
+} while (0)
+
 #define ARENA_ARRAY_ENSURE_SIZE(NAME, COUNT) do { \
     assert((NAME##Arena).Offset == 0); \
     uint32_t newCapa = (COUNT) * sizeof(*NAME); \

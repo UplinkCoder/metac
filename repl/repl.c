@@ -1166,17 +1166,20 @@ completion_list_t CompleteCommand (repl_state_t* repl, const char *input, uint32
 
     return result;
 }
-/*
-typedef struct completion_collection_state_t
+
+typedef struct completion_state_t
 {
-    const char CurrentPrefix[256];
-    uint32_t CurrentPrefixLength;
-}  completion_collection_state_t;
-*/
+    ARENA_ARRAY(const char*, Completions)
+}  completion_state_t;
+
 void CollectCompletionsCb(const char* completionString, uint32_t length,
-                          void* userCtx)
+                          completion_state_t* userCtx)
 {
-    printf("%.*s\n", (int) length, completionString);
+    char* entry = Allocator_Calloc(userCtx->CompletionsAlloc, char, length + 1);
+    memcpy(entry, completionString, length);
+    entry[length] = '\0';
+    ARENA_ARRAY_ADD(userCtx->Completions, entry);
+    //printf("%.*s\n", (int) length, completionString);
 }
 
 
@@ -1228,16 +1231,20 @@ completion_list_t ReplComplete (repl_state_t* repl, const char *input, uint32_t 
 
         uint32_t n = PrefixNode - repl->CompletionTrie.Nodes;
 
-        STACK_ARENA_ARRAY(const char*, completions, 64, &repl->CompletionAlloc);
+        completion_state_t completionState;
+
+        STACK_ARENA_ARRAY(const char*, completions, 64, &repl->CompletionAlloc)
 
         //CompletionTrie_Print(&repl->CompletionTrie, n, lastWord, stdout);
         fflush(stdout);
 
+        ARENA_ARRAY_REFCOPY(completions, completionState.Completions);
+
         CompletionTrie_Collect(&repl->CompletionTrie, n,
                                lastWord, matchedPrefixLength,
-                               CollectCompletionsCb, 0);
+                               (collect_cb_t)CollectCompletionsCb, &completionState);
 
-        result.CompletionsLength = completionsCount;
+        result.CompletionsLength = completionState.CompletionsCount;
         result.Completions = Allocator_Calloc(&repl->Allocator, char*, result.CompletionsLength);
 
         memcpy(result.Completions, completions, result.CompletionsLength * sizeof(char*));
