@@ -1,5 +1,6 @@
 #include "metac_lpp.h"
 #include "string.h"
+#include "../driver/metac_driver.c"
 
 static inline void LexString(metac_lexer_t* lexer, const char* line)
 {

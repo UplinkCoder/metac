@@ -3,8 +3,8 @@
 #ifndef _METAC_LPP_H_
 #define _METAC_LPP_H_
 
-#include "../parser/metac_lexer.h"
-#include "../parser/metac_parser.h"
+#include <assert.h>
+#include "../driver/metac_driver.h"
 #include "../os/metac_file.h"
 
 #ifndef NO_PREPROCESSOR
