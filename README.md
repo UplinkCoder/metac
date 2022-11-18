@@ -7,6 +7,8 @@ You can use a project written in C99 and you should be able to compile it with t
 
 It improves on C by providing more extensive meta programming capabilites than C.
 
+![Build Status](https://github.com/UplinkCoder/metac/actions/workflows/ci.yml/badge.svg)
+
 ## Note
 
 This project is not currently finished and some items below described below might not be functional.
