@@ -8,7 +8,6 @@
 #include "../parser/metac_parser_obj.c"
 #include "../semantic/metac_semantic_obj.c"
 #include "../driver/metac_driver.c"
-#include "../driver/metac_lpp.c"
 #include "../os/bsr.h"
 #include "../hash/crc32c.h"
 #include "../semantic/handoff.c"
