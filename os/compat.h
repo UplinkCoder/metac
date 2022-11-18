@@ -14,11 +14,16 @@
 #  define noinline __declspec(noinline)
 #endif
 
+
+#if (defined(_MSC_VER) && (_MSC_VER < 1800) )
+    pragma(lib, "legacy_stdio_definitions.lib");
+#endif
+
 #if (defined(_MSC_VER) && (_MSC_VER < 1800) )
 #  define snprintf _snprintf
 #endif
 
-#if defined(_MSC_VER)
+#if (defined(_MSC_VER) && (_MSC_VER < 1600) )
 #  include "../3rd_party/stdint_msvc.h"
 #elif defined(HAVE_STDINT_H)
 #  include <stdint.h>
