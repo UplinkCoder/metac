@@ -951,8 +951,8 @@ void MetaCPrinter_PrintForHeader(metac_printer_t* self, metac_declaration_t* dec
             decl_function_t func =
                 *cast(decl_function_t*)decl;
 
-            func.FunctionBody = emptyPointer;
-            PrintDeclaration(self, &func, 0);
+            METAC_NODE(func.FunctionBody) = emptyNode;
+            PrintDeclaration(self, decl, 0);
         } break;
         default:
             PrintDeclaration(self, decl, 0);

@@ -9,15 +9,11 @@
 #endif
 
 #if !defined(_MSC_VER)
-#  define noinline __attribute__ ((noinline))
+#  define metac_noinline __attribute__ ((noinline))
 #else
-#  define noinline __declspec(noinline)
+#  define metac_noinline __declspec(noinline)
 #endif
 
-
-#if (defined(_MSC_VER) && (_MSC_VER < 1800) )
-    pragma(lib, "legacy_stdio_definitions.lib");
-#endif
 
 #if (defined(_MSC_VER) && (_MSC_VER < 1800) )
 #  define snprintf _snprintf

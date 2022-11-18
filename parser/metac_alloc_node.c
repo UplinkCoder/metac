@@ -65,7 +65,7 @@ typedef struct chunk_ptr_t
 } chunk_ptr_t;
 */
 
-noinline void _newMemRealloc(void** memP, uint32_t* capacityP, const uint32_t elementSize)
+metac_noinline void _newMemRealloc(void** memP, uint32_t* capacityP, const uint32_t elementSize)
 {
     uint32_t capacity;
     if (!*memP)

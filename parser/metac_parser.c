@@ -2329,12 +2329,12 @@ decl_type_t* MetaCParser_ParseTypeDeclaration(metac_parser_t* self, metac_declar
             decl_type_array_t* typeArray = AllocNewDeclaration(decl_type_array, &result);
             if(!MetaCParser_PeekMatch(self, tok_rBracket, 1))
             {
-                typeArray->Dim = MetaCParser_ParseExpression(self, 0, 0);
+                typeArray->Dim = MetaCParser_ParseExpression(self, expr_flags_none, 0);
                 MetaCParser_Match(self, tok_rBracket);
             }
             else
             {
-                typeArray->Dim = emptyNode;
+                METAC_NODE(typeArray->Dim) = emptyNode;
             }
         }
         else if (tokenType == tok_identifier)
