@@ -62,6 +62,8 @@ void CompletionTrie_Collect(completion_trie_root_t* root,
     uint32_t currentStackIndex = 0;
 
     const uint32_t unmatchedPrefixLength = strlen(prefix) - matchedUntil;
+    uint32_t currentUnmatchedPrefixLength = unmatchedPrefixLength;
+    bool decend = true;
 
     memcpy(completionString + completionLength, prefix, matchedUntil);
 
@@ -72,19 +74,43 @@ LSetCurrent:
         uint32_t childBeginIdx = current->ChildrenBaseIdx * BASE_IDX_SCALE;
         uint32_t childEndIdx = childBeginIdx + current->ChildCount;
         uint32_t prefixLen = PrefixLen(current->Prefix4);
-        memcpy(completionString + completionLength, current->Prefix4, prefixLen);
-        completionLength += prefixLen;
+        if (decend)
+        {
+            memcpy(completionString + completionLength, current->Prefix4, prefixLen);
+            completionLength += prefixLen;
+        }
+        else
+        {
+            if (currentChildIndex + childBeginIdx < childEndIdx)
+            {
+                decend = true;
+                currentChildIndex++;
+            }
+        }
 
         for(uint32_t i = childBeginIdx + currentChildIndex; i < childEndIdx; i++)
         {
             completion_trie_node_t* child = nodes + i;
 
-            if (unmatchedPrefixLength &&
-                (0 != memcmp(matchedUntil + prefix, child->Prefix4, unmatchedPrefixLength))
-            )
+            if (currentUnmatchedPrefixLength)
             {
-                // prefix didn't match, keep going
-                continue;
+                uint32_t checkLength = currentUnmatchedPrefixLength;
+                uint32_t prefixLen = PrefixLen(child->Prefix4);
+                if (prefixLen < checkLength)
+                {
+                    checkLength = prefixLen;
+                }
+                if (0 != memcmp(matchedUntil + prefix, child->Prefix4, checkLength))
+                {
+                    // prefix didn't match, keep going
+                   continue;
+                }
+                currentUnmatchedPrefixLength -= checkLength;
+                // TODO keep an unmatchedPrefixLength stack
+                // Since we could in theory have multiple nodes with 1 char prefixes
+                // directly after each other the assert will make sure we don't forget
+                if(currentUnmatchedPrefixLength != 0)
+                    assert(!"Not implemented");
             }
             // we are good to go
             {
@@ -98,8 +124,14 @@ LSetCurrent:
                     collectCb(completionString, completionLength, userCtx);
                     // do we have to substract to toCopy now?
                     completionLength -= toCopy;
+                    // in case he are at a child directly blow where we started
+                    // we want to reset the unmatched prefix such that
+                    // when we acend to the start node we will not match the next node randomly
+                    // due to the prefix check being a memcmp with size 0
+                    if (currentNodeIdx == startNodeIdx)
+                        currentUnmatchedPrefixLength = unmatchedPrefixLength;
                 }
-                else
+                else if (decend)
                 {
                     // Push Completion stacks
                     {
@@ -116,19 +148,23 @@ LSetCurrent:
             }
         }
         // The for loop is over ... time to pop the state
+        // but we must only pop if we are not decending
         {
             if (!currentStackIndex)
-            {
-                assert(currentNodeIdx == startNodeIdx);
                 break;
-            }
             --currentStackIndex;
             currentNodeIdx = parentStack[currentStackIndex];
             currentChildIndex = childIndexStack[currentStackIndex];
-            completionLength = completionLengthBase + completionLengthAddStack[currentStackIndex];
+            completionLength = completionLengthBase
+                             + completionLengthAddStack[currentStackIndex];
+            // we are going up the tree now so decend is false
+            if (currentNodeIdx == startNodeIdx)
+            {
+                // TODO this should be stacked
+                currentUnmatchedPrefixLength = unmatchedPrefixLength;
+            }
+            decend = false;
         }
-        if (!currentStackIndex)
-            break;
     }
 }
 completion_trie_node_t* CompletionTrie_FindLongestMatchingPrefix(completion_trie_root_t* root,
