@@ -1,6 +1,5 @@
 #ifndef FPCONV_C
 #define FPCONV_C
-#include <stdbool.h>
 #include <string.h>
 
 #include "fpconv.h"

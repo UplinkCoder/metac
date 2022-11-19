@@ -1,4 +1,8 @@
-#include <stdint.h>
+#if (!defined(_MSC_VER) || _MSC_VER > 1600)
+#  include <stdint.h>
+#else
+#  include "../3rd_party/stdint_msvc.h"
+#endif
 
 #define npowers     87
 #define steppowers  8

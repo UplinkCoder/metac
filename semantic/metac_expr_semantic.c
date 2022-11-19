@@ -92,7 +92,7 @@ EvaluateExpression(metac_semantic_state_t* sema,
 
     MetaCCodegen_Free(&ctx);
 
-    metac_sema_expression_t result = {0};
+    metac_sema_expression_t result = {(metac_expression_kind_t)0};
     // BCGen_printFunction(c);
 
     if (e->TypeIndex.v == TYPE_INDEX_V(type_index_basic, type_type))

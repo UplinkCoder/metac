@@ -2,6 +2,7 @@
 #define _BSF_H_
 
 #if defined(_MSC_VER)
+#  include <intrin.h>
     static unsigned long BSF(uint32_t x)
     {
         unsigned long result;

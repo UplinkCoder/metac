@@ -142,7 +142,7 @@ metac_sema_expression_t* AllocNewSemaExpression(metac_semantic_state_t* self, me
     metac_sema_expression_t* result = 0;
 
     {
-        metac_sema_expression_t exp = {0};
+        metac_sema_expression_t exp = {(metac_expression_kind_t)0};
         METAC_COPY_HEADER(expr, &exp);
 
         exp.TypeIndex.v = 0;
@@ -206,7 +206,7 @@ metac_sema_expression_t* AllocNewSemaExpression(metac_semantic_state_t* self, me
 metac_scope_t* AllocNewScope(metac_semantic_state_t* self,
                              metac_scope_t* parent, metac_scope_owner_t owner)
 {
-    metac_scope_t scope_ = {0};
+    metac_scope_t scope_ = {(metac_scope_flags_t)0};
     metac_scope_t* result = 0;
 
     {
@@ -226,7 +226,7 @@ sema_decl_function_t* AllocNewSemaFunction(metac_semantic_state_t* self,
                                            decl_function_t* declFunc)
 {
     sema_decl_function_t* result = 0;
-    sema_decl_function_t func = {0};
+    sema_decl_function_t func = {(metac_declaration_kind_t)0};
 
     {
         func.Serial = INC(_nodeCounter);
@@ -244,7 +244,7 @@ sema_decl_variable_t* AllocNewSemaVariable(metac_semantic_state_t* self,
                                            metac_sema_declaration_t** result_ptr)
 {
     sema_decl_variable_t* result = 0;
-    sema_decl_variable_t variable = {0};
+    sema_decl_variable_t variable = {(metac_declaration_kind_t)0};
 
     variable.Kind = decl_variable;
     variable.Serial = INC(_nodeCounter);
@@ -334,7 +334,7 @@ metac_sema_statement_t* AllocNewSemaStatement_(metac_semantic_state_t* self,
                                                size_t nodeSize, void** result_ptr)
 {
     metac_sema_statement_t* result = 0;
-    metac_sema_statement_t stmt = {0};
+    metac_sema_statement_t stmt = {(metac_statement_kind_t)0};
 
     {
         // result->Parent = 0;
@@ -358,7 +358,7 @@ sema_stmt_block_t* AllocNewSemaBlockStatement(metac_semantic_state_t* self,
                                               void** result_ptr)
 {
     sema_stmt_block_t* result = 0;
-    sema_stmt_block_t stmt = {0};
+    sema_stmt_block_t stmt = {(metac_statement_kind_t)0};
 
     {
         stmt.Kind = stmt_block;
@@ -379,7 +379,7 @@ sema_stmt_casebody_t* AllocNewSemaCasebodyStatement(metac_semantic_state_t* self
                                                     void** result_ptr)
 {
     sema_stmt_casebody_t* result;
-    sema_stmt_casebody_t stmt = {0};
+    sema_stmt_casebody_t stmt = {(metac_statement_kind_t)0};
 
     {
         result = cast(sema_stmt_casebody_t*)

@@ -611,7 +611,7 @@ bool static ParseFloat(const char** textP, int32_t* eatenCharsP, float* valueP)
 {
     char* endP = 0;
     const char* text = *textP;
-    (*valueP) = strtof(text, &endP);
+    (*valueP) = (float)strtod(text, &endP);
     int32_t eaten = endP - text;
 
     *textP = text + eaten;
