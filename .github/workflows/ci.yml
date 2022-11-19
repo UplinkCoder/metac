@@ -31,3 +31,6 @@ jobs:
 
     - name: Gen code and Run tests
       run: ./gen_code.bat && ./run_tests.bat
+
+    - name: Build REPL
+      run:  cd repl && ./build.bat 
