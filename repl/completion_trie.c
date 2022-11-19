@@ -1,5 +1,7 @@
 #include "../repl/completion_trie.h"
 #define BASE_IDX_SCALE 1
+#define TRACK_RANGES 0
+
 void CompletionTrie_Init(completion_trie_root_t* self, metac_alloc_t* parentAlloc)
 {
     Allocator_Init(&self->TrieAllocator, parentAlloc);
@@ -167,6 +169,7 @@ LSetCurrent:
         }
     }
 }
+
 completion_trie_node_t* CompletionTrie_FindLongestMatchingPrefix(completion_trie_root_t* root,
                                                                  const char* word,
                                                                  uint32_t* lengthP)
@@ -206,44 +209,53 @@ completion_trie_node_t* CompletionTrie_FindLongestMatchingPrefix(completion_trie
             }
         }
 
-        if (bestChild == 0)
-        {
-            (*lengthP) = length;
-            return (completion_trie_node_t*)current;
-        }
-        else
+        if (bestChild != 0)
         {
             current = nodes + bestChild;
             length -= bestPrefixLength;
             word += bestPrefixLength;
+            continue;
         }
+        break;
     }
 
-    assert(0);
-    return (completion_trie_node_t*)0;
+    (*lengthP) = length;
+    return (completion_trie_node_t*)current;
 }
 
 void CompletionTrie_AddChild(completion_trie_root_t* root, completion_trie_node_t* PrefNode,
                              const char* word, uint32_t length)
 {
+    completion_trie_node_t const * nodes = root->Nodes;
     completion_trie_node_t* child = 0;
 
-    printf("Going to add %.*s\n", (int)length, word);
     INC(root->WordCount);
 #if 1
     if (root->Nodes == PrefNode)
     {
-        // printf("Starting at root\n");
         if (PrefNode->ChildCount < root->RootCapacity)
         {
-            child = root->Nodes +
+            child = (completion_trie_node_t*)
+                nodes +
                 (PrefNode->ChildrenBaseIdx
                + INC(PrefNode->ChildCount));
             goto LGotChild;
         }
     }
 #endif
-
+    // check for 0 length to insert a terminal node
+    if (!length)
+    {
+        // check if the node already contains a terminal node
+        const uint32_t baseIdx = PrefNode->ChildrenBaseIdx * BASE_IDX_SCALE;
+        const uint32_t endIdx = baseIdx + PrefNode->ChildCount;
+        for(uint32_t i = baseIdx; i < endIdx; i++)
+        {
+            if (nodes[i].Prefix4[0] == '\0')
+                return ;
+        }
+        goto LinsertNode;
+    }
 
     while(length)
     {
@@ -266,7 +278,7 @@ void CompletionTrie_AddChild(completion_trie_root_t* root, completion_trie_node_
                 assert(!"root node grows via standart method .. shouln't happen");
             }
         }
-
+LinsertNode: {}
         uint32_t newChildCount = INC(PrefNode->ChildCount) + 1;
         if ((newChildCount % BASE_IDX_SCALE) == 0)
         {
@@ -274,16 +286,19 @@ void CompletionTrie_AddChild(completion_trie_root_t* root, completion_trie_node_
             uint32_t newChildBaseIdx;
             uint32_t newChildCapacity = newChildCount + (BASE_IDX_SCALE - 1);
             const uint32_t endI = newChildCount - 1;
-
+#if TRACK_RANGES
             PrefNode->Range->IsValid = 0;
+#endif
             ARENA_ARRAY_ENSURE_SIZE(root->Nodes, root->NodesCount + newChildCapacity);
             newChildBaseIdx = POST_ADD(root->NodesCount, newChildCapacity) / BASE_IDX_SCALE;
-            {
+#if TRACK_RANGES
+           {
                 uint32_t NodeRangestart = newChildBaseIdx * BASE_IDX_SCALE;
                 node_range_t range = {NodeRangestart, NodeRangestart + newChildCapacity, 1};
                 ARENA_ARRAY_ADD(root->NodeRanges, range);
                 PrefNode->Range = root->NodeRanges + root->NodeRangesCount - 1;
             }
+#endif
             memcpy(root->Nodes + (newChildBaseIdx * BASE_IDX_SCALE),
                    root->Nodes + (oldChildBaseIdx * BASE_IDX_SCALE),
                    sizeof(*root->Nodes) * (newChildCount - 1));
@@ -311,11 +326,7 @@ LGotChild:
         }
     }
 
-    if (root->Nodes[0].ChildCount == 0)
-    {
-        CompletionTrie_PrintRanges(root);
-        assert(0);
-    }
+    assert (root->Nodes[0].ChildCount != 0);
 }
 
 void CompletionTrie_Print(completion_trie_root_t* root, uint32_t n, const char* rootPrefix, FILE* f)
@@ -366,14 +377,6 @@ void CompletionTrie_Add(completion_trie_root_t* root, const char* word, uint32_t
     {
         CompletionTrie_AddChild(root, PrefNode, "", 0);
     }
-
-}
-
-void AddIdentifierToCompletionSet(const char* idStr, uint32_t idKey, void* ctx)
-{
-    completion_trie_node_t* Trie = (completion_trie_node_t*) ctx;
-
-    uint32_t length = LENGTH_FROM_IDENTIFIER_KEY(idKey);
 }
 
 void testCompletionTrie(void)
@@ -385,7 +388,7 @@ void testCompletionTrie(void)
 
     CompletionTrie_Init(&root, &rootAlloc);
 }
-
+#if TRACK_RANGES
 void CompletionTrie_PrintRanges(completion_trie_root_t* self)
 {
     FILE* f = fopen("ranges.txt", "w");
@@ -398,7 +401,7 @@ void CompletionTrie_PrintRanges(completion_trie_root_t* self)
     }
     fclose(f);
 }
-
+#endif
 void CompletionTrie_PrintStats(completion_trie_root_t* self)
 {
     {
@@ -421,6 +424,7 @@ void CompletionTrie_PrintStats(completion_trie_root_t* self)
 
     printf("UsedNodesPerWord: %d.%d\n", UsedNodesPerWord / 100, UsedNodesPerWord % 100);
     printf("AllocatedNodesPerWord: %d.%d\n", AllocatedNodesPerWord / 100, AllocatedNodesPerWord % 100);
-
+#if TRACK_RANGES
     CompletionTrie_PrintRanges(self);
+#endif
 }
