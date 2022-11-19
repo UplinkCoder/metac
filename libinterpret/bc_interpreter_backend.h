@@ -4,8 +4,6 @@
 #ifndef _BC_INTERPRETER_BACKEND_H_
 #define _BC_INTERPRETER_BACKEND_H_
 
-#  include <ffi.h>
-
 typedef struct RetainedCall
 {
     BCValue fn;

@@ -24,7 +24,7 @@ void CompletionTrie_Init(completion_trie_root_t* self, metac_alloc_t* parentAllo
     }
 }
 
-static int PrefixLen(char prefix4[4])
+static int PrefixLen(const char prefix4[])
 {
          if (prefix4[0] == '\0')
         return 0;
@@ -51,7 +51,7 @@ void CompletionTrie_Collect(completion_trie_root_t* root,
     uint16_t childIndexStack[128];
     uint16_t completionLengthAddStack[128];
 
-    const completion_trie_node_t* nodes = root->Nodes;
+    const completion_trie_node_t const * nodes = root->Nodes;
     const uint32_t completionLengthBase = matchedUntil
                                         - PrefixLen(nodes[startNodeIdx].Prefix4);
 
@@ -70,7 +70,7 @@ void CompletionTrie_Collect(completion_trie_root_t* root,
     for (;;) // until we are back at the root and there are not children left
 LSetCurrent:
     {
-        completion_trie_node_t* current = nodes + currentNodeIdx;
+        const completion_trie_node_t* current = nodes + currentNodeIdx;
         uint32_t childBeginIdx = current->ChildrenBaseIdx * BASE_IDX_SCALE;
         uint32_t childEndIdx = childBeginIdx + current->ChildCount;
         uint32_t prefixLen = PrefixLen(current->Prefix4);
@@ -90,7 +90,7 @@ LSetCurrent:
 
         for(uint32_t i = childBeginIdx + currentChildIndex; i < childEndIdx; i++)
         {
-            completion_trie_node_t* child = nodes + i;
+            const completion_trie_node_t* child = nodes + i;
 
             if (currentUnmatchedPrefixLength)
             {
@@ -209,7 +209,7 @@ completion_trie_node_t* CompletionTrie_FindLongestMatchingPrefix(completion_trie
         if (bestChild == 0)
         {
             (*lengthP) = length;
-            return current;
+            return (completion_trie_node_t*)current;
         }
         else
         {
@@ -220,7 +220,7 @@ completion_trie_node_t* CompletionTrie_FindLongestMatchingPrefix(completion_trie
     }
 
     assert(0);
-    return 0;
+    return (completion_trie_node_t*)0;
 }
 
 void CompletionTrie_AddChild(completion_trie_root_t* root, completion_trie_node_t* PrefNode,

@@ -75,7 +75,7 @@ int main(int argc, const char* argv[])
 
     repl_ui_context_t ctx;
 
-    ctx.UiInterface = LinenoiseUiInterface;
+    ctx.UiInterface = &LinenoiseUiInterface;
     ctx.UiState = &uiState;
 
     g_uiContext = &ctx;

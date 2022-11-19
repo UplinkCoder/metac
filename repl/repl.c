@@ -1194,7 +1194,7 @@ void  CompletionTrie_Collect(completion_trie_root_t* root,
 completion_list_t ReplComplete (repl_state_t* repl, const char *input, uint32_t inputLength)
 {
     completion_list_t result = {0};
-    char* lastWord = 0;
+    const char* lastWord = 0;
     uint32_t lastWordLength = 0;
 
     if (!inputLength)

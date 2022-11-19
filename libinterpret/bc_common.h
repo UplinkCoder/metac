@@ -581,7 +581,7 @@ typedef enum BCTypeInfoKind
 
 typedef struct BCTypeInfo
 {
-    BCTypeEnum kind;
+    BCTypeInfoKind kind;
     union
     {
         struct BCEnumType enumType;

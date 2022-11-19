@@ -918,7 +918,7 @@ static void MetaCCodegen_ComputeAddress(metac_bytecode_ctx_t* ctx,
         } break;
         case storage_global:
         {
-            *result = PtrValue(ctx, ctx->GlobalsArena.Memory + var->Storage.Offset);
+            *result = PtrValue(ctx, (char*)ctx->GlobalsArena.Memory + var->Storage.Offset);
         } break;
         default: assert(!"this type of storage is not supported");
     }

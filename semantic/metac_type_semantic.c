@@ -659,7 +659,7 @@ void MetaCSemantic_ComputeEnumValues(metac_semantic_state_t* self,
                     {
                         int k = 12;
                     }
-                    semaEnum->Members[memberIdx].Header.Kind = node_decl_enum_member;
+                    semaEnum->Members[memberIdx].Header.Kind = decl_enum_member;
 
                     if (IsUnresolved(METAC_NODE(semaValue)))
                     {
@@ -835,7 +835,7 @@ metac_type_index_t TypeEnumSemantic(metac_semantic_state_t* self,
 
     decl_type_enum_t* enm = cast(decl_type_enum_t*) type_;
 
-    metac_type_enum_t tmpSemaEnum = {0};
+    metac_type_enum_t tmpSemaEnum = {(metac_declaration_kind_t)0};
 
     metac_scope_t enumScope = { scope_flag_temporary };
     STACK_ARENA_ARRAY(metac_enum_member_t, semaMembers, 64, &self->TempAlloc)

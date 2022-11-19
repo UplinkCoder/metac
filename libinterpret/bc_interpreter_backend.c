@@ -1782,7 +1782,7 @@ BCValue BCGen_interpret(BCGen* self, uint32_t fnIdx, BCValue* args, uint32_t n_a
                         if (canidate.mapAddr <= addr && canidate.mapAddr + canidate.size > addr)
                         {
                             uint32_t offset = (addr & (~externalAddrMask));
-                            (*lhsRef) = loadu32(canidate.addr + offset);
+                            (*lhsRef) = loadu32((uint8_t*)canidate.addr + offset);
                             goto LendSearch;
                         }
                     }
@@ -1823,7 +1823,7 @@ LendSearch:{}
                         if (canidate.mapAddr <= addr && canidate.mapAddr + canidate.size > addr)
                         {
                             uint32_t offset = (addr & (~externalAddrMask));
-                            basePtr = canidate.addr + offset;
+                            basePtr = (uint8_t*)canidate.addr + offset;
                             goto LendSearch2;
                         }
                     }
