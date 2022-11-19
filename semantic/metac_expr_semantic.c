@@ -774,6 +774,7 @@ LswitchIdKey:
                 result->Kind = exp_unknown_value;
             result->TypeIndex = result->E1->TypeIndex;
         break;
+#undef CASE
         case exp_index:
             result = MetaCSemantic_doIndexSemantic(self, expr);
         break;
