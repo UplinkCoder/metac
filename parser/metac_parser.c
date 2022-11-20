@@ -1963,7 +1963,7 @@ metac_preprocessor_directive_t MetaCParser_ParsePreproc(metac_parser_t* self,
                                                         metac_preprocessor_t* preproc,
                                                         metac_token_buffer_t* buffer)
 {
-    metac_token_t* result= buffer->Ptr;
+    metac_token_t* result = buffer->Ptr;
 
     MetaCParser_Match(self, tok_hash);
     metac_token_t* peek = MetaCParser_PeekToken(self, 1);
@@ -1975,11 +1975,11 @@ metac_preprocessor_directive_t MetaCParser_ParsePreproc(metac_parser_t* self,
         case tok_kw_if:
         {
             directive = pp_if;
-        } break;
+        } goto Lmatch;
         case tok_kw_else:
         {
             directive = pp_else;
-        } break;
+        } goto Lmatch;
         case tok_identifier: {
             switch(peek->IdentifierKey)
             {
@@ -2028,24 +2028,24 @@ metac_preprocessor_directive_t MetaCParser_ParsePreproc(metac_parser_t* self,
                     directive = pp_undef;
                 } goto Lmatch;
                 default:
-                    printf("couldn't match directive\n");
+                    printf("couldn't match identifier to directive\n");
                 break;
-
-                Lmatch:
-                {
-                    printf("CurrentTokenIndex before match: %u\n", self->CurrentTokenIndex);
-                    MetaCParser_Match(self, tok_identifier);
-                    //if (directive == pp_eval)
-                    //    asm ("int $3;");
-                    printf("CurrentTokenIndex after match: %u\n", self->CurrentTokenIndex);
-                }
             }
         } break;
+
+        Lmatch:
+        {
+            printf("CurrentTokenIndex before match: %u\n", self->CurrentTokenIndex);
+            MetaCParser_Match(self, tokenType);
+            //if (directive == pp_eval)
+            //    asm ("int $3;");
+            printf("CurrentTokenIndex after match: %u\n", self->CurrentTokenIndex);
+        } break;
+
         case tok_uint:
         {
             directive = pp_source_indicator;
         } break;
-
     }
 
     return directive;
@@ -2509,7 +2509,6 @@ decl_type_t* MetaCParser_ParseTypeDeclaration(metac_parser_t* self, metac_declar
             else
             {
                 struct_->Fields = cast(decl_field_t*)emptyPointer;
-                printf("We just have a decl\n");
             }
             break;
         }
@@ -3011,8 +3010,23 @@ metac_declaration_t* MetaCParser_ParseDeclaration(metac_parser_t* self, metac_de
         }
         else if (dirc == pp_ifdef)
         {
-            //TODO handle this ifdef properly!
+            //TODO handle this #ifdef properly!
             MetaCParser_Match(self, tok_identifier);
+        }
+        else if (dirc == pp_if)
+        {
+            //TODO handle this #if properly!
+            MetaCParser_ParseExpression(self, expr_flags_pp, 0);
+        }
+        else if (dirc == pp_elif)
+        {
+            //TODO handle this #elif properly!
+            MetaCParser_ParseExpression(self, expr_flags_pp, 0);
+        }
+        else if (dirc == pp_else)
+        {
+            //TODO handle this #else properly!
+            // MetaCParser_ParseExpression(self, expr_flags_pp, 0);
         }
         else
         {
