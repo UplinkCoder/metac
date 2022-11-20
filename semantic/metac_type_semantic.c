@@ -1442,8 +1442,8 @@ bool MetaCSemantic_ComputeStructLayout(metac_semantic_state_t* self,
     semaAgg->Size = currentFieldOffset;
     semaAgg->Alignment = maxAlignment;
 
-    fprintf(stderr, "sizeof(struct) = %u\n", semaAgg->Size);//DEBUG
-    fprintf(stderr, "Alignof(struct) = %u\n", semaAgg->Alignment);//DEBUG
+    //fprintf(stderr, "sizeof(struct) = %u\n", semaAgg->Size);//DEBUG
+    //fprintf(stderr, "Alignof(struct) = %u\n", semaAgg->Alignment);//DEBUG
 
     return result;
 }
