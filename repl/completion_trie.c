@@ -1,13 +1,15 @@
 #include "../repl/completion_trie.h"
 #define BASE_IDX_SCALE 1
-#define TRACK_RANGES 0
+#define TRACK_RANGES 1
 
 void CompletionTrie_Init(completion_trie_root_t* self, metac_alloc_t* parentAlloc)
 {
     Allocator_Init(&self->TrieAllocator, parentAlloc);
 
     ARENA_ARRAY_INIT_SZ(completion_trie_node_t, self->Nodes, &self->TrieAllocator, 786)
+#if TRACK_RANGES
     ARENA_ARRAY_INIT_SZ(node_range_t, self->NodeRanges, parentAlloc, 512)
+#endif
     self->NodesCount = 64;
 
     self->Nodes[0].ChildCount = 0;
@@ -83,6 +85,8 @@ LSetCurrent:
         }
         else
         {
+            // in the case where there are children left in the node
+            // we just ascended to we need to decent again
             if (currentChildIndex + childBeginIdx < childEndIdx)
             {
                 decend = true;
@@ -229,7 +233,6 @@ void CompletionTrie_AddChild(completion_trie_root_t* root, completion_trie_node_
     completion_trie_node_t const * nodes = root->Nodes;
     completion_trie_node_t* child = 0;
 
-    INC(root->WordCount);
 #if 1
     if (root->Nodes == PrefNode)
     {
@@ -239,6 +242,7 @@ void CompletionTrie_AddChild(completion_trie_root_t* root, completion_trie_node_
                 nodes +
                 (PrefNode->ChildrenBaseIdx
                + INC(PrefNode->ChildCount));
+            INC(root->WordCount);
             goto LGotChild;
         }
     }
@@ -254,8 +258,11 @@ void CompletionTrie_AddChild(completion_trie_root_t* root, completion_trie_node_
             if (nodes[i].Prefix4[0] == '\0')
                 return ;
         }
+        INC(root->WordCount);
         goto LinsertNode;
     }
+
+    INC(root->WordCount);
 
     while(length)
     {
