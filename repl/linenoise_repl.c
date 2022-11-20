@@ -57,11 +57,18 @@ static repl_state_t* s_repl;
 void linenoiseCompletionCallbackFn(const char *input, linenoiseCompletions * resultP)
 {
     completion_list_t list = s_completionCb(s_repl, input, strlen(input));
+    uint32_t beforeLen = list.BeforeCompletionLength;
+    char LineBuffer[512];
+    // the completion will take the whole line
+    // so we have to assemble the previous line with the completion
     linenoiseCompletions result = {0};
+
+    memcpy(LineBuffer, list.BeforeCompletion, beforeLen);
 
     for(uint32_t i = 0; i < list.CompletionsLength; i++)
     {
-        linenoiseAddCompletion(&result, list.Completions[i]);
+        strcpy(LineBuffer + beforeLen, list.Completions[i]);
+        linenoiseAddCompletion(&result, LineBuffer);
     }
 
     (*resultP) = result;

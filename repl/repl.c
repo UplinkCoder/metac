@@ -1170,29 +1170,18 @@ completion_list_t CompleteCommand (repl_state_t* repl, const char *input, uint32
 typedef struct completion_state_t
 {
     ARENA_ARRAY(const char*, Completions)
-    const char* InputBeforeCompletion;
-    uint32_t InputBeforeCompletionLength;
 }  completion_state_t;
 
 void CollectCompletionsCb(const char* completionString, uint32_t length,
                           completion_state_t* userCtx)
 {
-    char* entry = Allocator_Calloc(userCtx->CompletionsAlloc, char, userCtx->InputBeforeCompletionLength + length + 1);
-    memcpy(entry, userCtx->InputBeforeCompletion, userCtx->InputBeforeCompletionLength);
-    memcpy(entry + userCtx->InputBeforeCompletionLength, completionString, length);
-    entry[userCtx->InputBeforeCompletionLength + length] = '\0';
+    char* entry = Allocator_Calloc(userCtx->CompletionsAlloc, char, length + 1);
+    memcpy(entry, completionString, length);
+    entry[length] = '\0';
     ARENA_ARRAY_ADD(userCtx->Completions, entry);
     //printf("%.*s\n", (int) length, completionString);
 }
 
-
-/*
-void  CompletionTrie_Collect(completion_trie_root_t* root,
-                            uint32_t startNodeIdx,
-                            const char* prefix, uint32_t matchedUntil,
-                            void (*collectCb) (const char* completionString, uint32_t length, void* ctx),
-                            void* userCtx)
-*/
 
 completion_list_t ReplComplete (repl_state_t* repl, const char *input, uint32_t inputLength)
 {
@@ -1224,6 +1213,9 @@ completion_list_t ReplComplete (repl_state_t* repl, const char *input, uint32_t 
 
         lastWordLength = inputLength - i;
         lastWord = input + i;
+
+        result.BeforeCompletion = input;
+        result.BeforeCompletionLength = lastWord - input;
     }
 
     {
@@ -1237,9 +1229,6 @@ completion_list_t ReplComplete (repl_state_t* repl, const char *input, uint32_t 
         completion_state_t completionState;
 
         STACK_ARENA_ARRAY(const char*, completions, 64, &repl->CompletionAlloc)
-
-        completionState.InputBeforeCompletion = input;
-        completionState.InputBeforeCompletionLength = lastWord - input;
 
         //CompletionTrie_Print(&repl->CompletionTrie, n, lastWord, stdout);
 

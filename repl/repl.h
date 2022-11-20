@@ -78,7 +78,9 @@ typedef struct completion_cache_entry_t
 typedef struct completion_list_t
 {
     char** Completions;
+    const char* BeforeCompletion;
     uint32_t CompletionsLength;
+    uint32_t BeforeCompletionLength;
 } completion_list_t;
 
 typedef completion_list_t (*completion_cb_t) (repl_state_t* repl, const char *input, uint32_t inputLength);
