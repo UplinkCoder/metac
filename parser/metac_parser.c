@@ -122,6 +122,10 @@ void MetaCParser_InitFromLexer(metac_parser_t* self, metac_lexer_t* lexer, metac
 static inline metac_location_t LocationFromToken(metac_parser_t* self,
                                                  metac_token_t* tok)
 {
+    static const metac_location_t nullLocation = {0};
+    if (tok->TokenType == tok_newline)
+        return nullLocation;
+
     return self->Lexer->LocationStorage.Locations[tok->LocationId - 4];
 }
 
@@ -192,6 +196,9 @@ void AddDefine(metac_parser_t* self, metac_token_t* token, uint32_t nParameters)
     }
 }
 */
+/// checks if the next token is expectedType
+/// returns true if it is
+/// the token remains in the queue
 static inline bool MetaCParser_PeekMatch(metac_parser_t* self,
                                          metac_token_enum_t expectedType,
                                          bool optional)
@@ -524,6 +531,10 @@ metac_token_t* MetaCParser_NextToken(metac_parser_t* self)
                 MetaCParser_Advance(self);
             }
         }
+        else if (result->TokenType == tok_newline)
+        {
+             goto LnextToken;
+        }
     }
     else
     {
@@ -578,9 +589,11 @@ LpeekDefine:
     {
 Lpeek:
         result = self->Lexer->Tokens + self->CurrentTokenIndex + (p - 1);
-        self->LastLocation =
-            self->Lexer->LocationStorage.Locations[result->LocationId - 4];
-
+        if (result->TokenType != tok_newline)
+        {
+            self->LastLocation =
+                self->Lexer->LocationStorage.Locations[result->LocationId - 4];
+        }
 #if !defined(NO_PREPROCESSOR)
         if(result)
         {
@@ -1048,7 +1061,7 @@ static bool CouldBeCast(metac_parser_t* self, metac_token_enum_t tok)
     {
         metac_token_t* afterParen =
             MetaCParser_PeekToken(self, rParenPos + 1);
-        printf("%s\n", MetaCTokenEnum_toChars(afterParen->TokenType));
+        // printf("%s\n", MetaCTokenEnum_toChars(afterParen->TokenType));
         if (!afterParen || IsPunctuationToken(afterParen->TokenType))
             return false;
     }
@@ -1194,7 +1207,7 @@ metac_expression_t* MetaCParser_ParsePrimaryExpression(metac_parser_t* self, par
 
     if (tokenType == tok_lParen && CouldBeCast(self, tokenType))
     {
-        printf("going to parse cast\n");
+        // printf("going to parse cast\n");
         hash = cast_key;
         result = AllocNewExpression(exp_cast);
         //typedef unsigned int b;
@@ -2746,6 +2759,14 @@ decl_parameter_list_t ParseParameterList(metac_parser_t* self,
 static stmt_block_t* MetaCParser_ParseBlockStatement(metac_parser_t* self,
                                                      metac_statement_t* parent,
                                                      metac_statement_t* prev);
+static void EatNewlines(metac_parser_t* self)
+{
+    while(MetaCParser_PeekMatch(self, tok_newline, 1))
+    {
+        MetaCParser_Match(self, tok_newline);
+    }
+}
+
 static void EatAttributes(metac_parser_t* self)
 {
     int32_t parenDepth = 0;
@@ -3038,6 +3059,7 @@ metac_declaration_t* MetaCParser_ParseDeclaration(metac_parser_t* self, metac_de
     stc = ParseStorageClasses(self);
     // get rid of attribs before declarations
     //TODO acutally keep track of them
+    EatNewlines(self);
     EatAttributes(self);
 
     currentToken = MetaCParser_PeekToken(self, 1);
@@ -3114,10 +3136,6 @@ metac_declaration_t* MetaCParser_ParseDeclaration(metac_parser_t* self, metac_de
 
         result->Hash = hash;
         assert(result->Hash == HashDecl(result));
-        if (hash == 1076639080)
-        {
-            printf("loc->StartLine: %d\n", (int)loc.StartLine);
-        }
         goto LendDecl;
     }
 

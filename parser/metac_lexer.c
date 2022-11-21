@@ -6,6 +6,9 @@
 
 #include "metac_identifier_table.c"
 #include "metac_lexer.h"
+#if !defined(NO_PREPROCESSOR)
+#  include "../parser/metac_preproc.h"
+#endif
 #include "../os/compat.h"
 #include "../hash/crc32c.h"
 
@@ -464,6 +467,9 @@ void MetaCLexer_Init(metac_lexer_t* self, metac_alloc_t* allocator)
     IdentifierTable_Init(&self->StringTable, STRING_LENGTH_SHIFT, 13, allocator);
 
     self->Allocator = allocator;
+#if !defined(NO_PREPROCESSOR)
+    self->InDefine = false;
+#endif
 }
 
 void MetaCLexer_Free(metac_lexer_t* self)
@@ -777,6 +783,7 @@ metac_token_t* MetaCLexerLexNextToken(metac_lexer_t* self,
 {
     static metac_token_t stop_token = {tok_eof};
     static metac_token_t err_token = {tok_error};
+
     metac_token_t token = {tok_invalid};
     if (text[len] != '\0')
     {
@@ -784,7 +791,7 @@ metac_token_t* MetaCLexerLexNextToken(metac_lexer_t* self,
     }
     metac_token_t* result = 0;
 
-    if (self->TokenCount >= self->TokenCapacity)
+    if (self->TokenCount >= (self->TokenCapacity - 1))
     {
         uint32_t newCapa = 32;
 
@@ -822,24 +829,45 @@ metac_token_t* MetaCLexerLexNextToken(metac_lexer_t* self,
 LcontinueLexnig:
     {
         uint32_t column = state->Column;
+        uint32_t line = state->Line;
+        bool seen_r = false;
         // ignore all the invisible ascii codes
         while (c && c <= 32)
         {
             if (c == '\n')
             {
+                if (!seen_r)
+                    state->Line++;
+                column = 0;
+            }
+
+            if (c == '\r')
+            {
+                seen_r = true;
                 state->Line++;
                 column = 0;
             }
-            if (c == '\r')
+            else
             {
-                column = 0;
+                seen_r = false;
             }
             column++;
             eatenChars++;
             c = *text++;
         }
+
         state->Column = column;
+#if !defined(NO_PREPROCESSOR)
+        if (line != state->Line && self->InDefine)
+        {
+            token.TokenType = tok_newline;
+            token.LocationId = 0;
+            token.Position = state->Position - 1;
+            self->Tokens[self->TokenCount++] = token;
+        }
+#endif
     }
+
     if (c)
     {
         text -= 1;
@@ -888,6 +916,15 @@ LcontinueLexnig:
                 {
                     token.IdentifierPtr =
                         GetOrAddIdentifier(&self->IdentifierTable, token.IdentifierKey, identifierBegin);
+#if !defined(NO_PREPROCESSOR)
+                    if (token.IdentifierKey == define_key)
+                    {
+                        if (self->TokenCount && self->Tokens[self->TokenCount - 1].TokenType == tok_hash)
+                        {
+                            self->InDefine = true;
+                        }
+                    }
+#endif
                 }
             }
             else if (IsNumericChar(c))
@@ -1228,7 +1265,10 @@ LcontinueLexnig:
     MetaCLocationStorage_EndLoc(&self->LocationStorage,
         token.LocationId, state->Line, state->Column);
 Lreturn:
-    if (token.TokenType)
+    {
+        // printf("{%d,%d}token: %s\n", state->Line, state->Column, MetaCTokenEnum_toChars(token.TokenType));
+    }
+    if (token.TokenType && token.TokenType != tok_newline)
     {
         result = self->Tokens + self->TokenCount++;
         *result = token;

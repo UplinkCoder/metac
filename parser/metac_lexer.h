@@ -332,6 +332,9 @@ typedef struct metac_lexer_t {
     metac_identifier_table_t StringTable;
 
     metac_alloc_t* Allocator;
+#if !defined(NO_PREPROCESSOR)
+    bool InDefine;
+#endif
 } metac_lexer_t;
 
 

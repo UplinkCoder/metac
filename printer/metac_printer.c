@@ -920,6 +920,7 @@ static inline void PrintDeclaration(metac_printer_t* self,
         {
             decl_comment_t* comment = (decl_comment_t*) decl;
             PrintComment(self, comment->Text, comment->Length);
+            printSemicolon = false;
         } break;
         case decl_label:
         {
@@ -952,7 +953,7 @@ void MetaCPrinter_PrintForHeader(metac_printer_t* self, metac_declaration_t* dec
                 *cast(decl_function_t*)decl;
 
             METAC_NODE(func.FunctionBody) = emptyNode;
-            PrintDeclaration(self, decl, 0);
+            PrintDeclaration(self, (metac_declaration_t*)&func, 0);
         } break;
         default:
             PrintDeclaration(self, decl, 0);
