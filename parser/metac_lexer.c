@@ -1447,7 +1447,7 @@ void test_lexer()
             metac_lexer_t lexer;
 
             lexer.Tokens = &t1;
-            lexer.TokenCapacity = 1;
+            lexer.TokenCapacity = 2;
             lexer.TokenCount = 0;
 
             metac_location_t l1;
