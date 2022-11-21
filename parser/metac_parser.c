@@ -3027,11 +3027,16 @@ metac_declaration_t* MetaCParser_ParseDeclaration(metac_parser_t* self, metac_de
         else if (dirc == pp_define)
         {
             metac_preprocessor_define_ptr_t define_ =
-            MetaCPreProcessor_ParseDefine(self->Preprocessor, self);
+                MetaCPreProcessor_ParseDefine(self->Preprocessor, self);
         }
         else if (dirc == pp_ifdef)
         {
             //TODO handle this #ifdef properly!
+            MetaCParser_Match(self, tok_identifier);
+        }
+        else if (dirc == pp_ifndef)
+        {
+            //TODO handle this #ifndef properly!
             MetaCParser_Match(self, tok_identifier);
         }
         else if (dirc == pp_if)
@@ -3049,17 +3054,22 @@ metac_declaration_t* MetaCParser_ParseDeclaration(metac_parser_t* self, metac_de
             //TODO handle this #else properly!
             // MetaCParser_ParseExpression(self, expr_flags_pp, 0);
         }
+        else if (dirc == pp_endif)
+        {
+            //TODO handle this #endif properly!
+        }
         else
         {
             printf("Saw preprocssor directive %s\n", Preprocessor_Directive_toChars(dirc));
         }
+
+        return (metac_declaration_t*) emptyPointer;
         // MetaCParser_HandlePreprocessorDirective(self, dirc);
     }
 #endif
     stc = ParseStorageClasses(self);
     // get rid of attribs before declarations
     //TODO acutally keep track of them
-    EatNewlines(self);
     EatAttributes(self);
 
     currentToken = MetaCParser_PeekToken(self, 1);

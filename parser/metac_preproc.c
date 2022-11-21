@@ -619,6 +619,7 @@ Lerror:
 metac_preprocessor_define_ptr_t
 MetaCPreProcessor_ParseDefine(metac_preprocessor_t *self, metac_parser_t* parser)
 {
+    assert(self);
     metac_token_t* defineName = MetaCParser_Match(parser, tok_identifier);
     bool isMacro = MetaCParser_PeekMatch(parser, tok_lParen, 1);
 
@@ -653,7 +654,7 @@ MetaCPreProcessor_ParseDefine(metac_preprocessor_t *self, metac_parser_t* parser
 
     }
 
-    uint32_t definedNameLength = defineName->IdentifierKey >> IDENTIFIER_LENGTH_SHIFT;
+    uint32_t definedNameLength = LENGTH_FROM_IDENTIFIER_KEY(defineName->IdentifierKey);
 
     const char* defineNameChars =
         IdentifierPtrToCharPtr(&parser->Lexer->IdentifierTable,
@@ -665,6 +666,7 @@ MetaCPreProcessor_ParseDefine(metac_preprocessor_t *self, metac_parser_t* parser
 
     uint32_t hash = crc32c(~0, defineNameChars, definedNameLength);
     uint32_t defineKey = IDENTIFIER_KEY(hash, definedNameLength);
+    uint32_t lnx = LENGTH_FROM_IDENTIFIER_KEY(defineKey);
 
     metac_identifier_ptr_t defineIdPtr =
         GetOrAddIdentifier(&self->DefineIdentifierTable, defineKey, defineNameChars);
@@ -677,7 +679,8 @@ MetaCPreProcessor_ParseDefine(metac_preprocessor_t *self, metac_parser_t* parser
         const char* s = 0;
 
         currentToken = MetaCParser_PeekToken(parser, peek1++);
-        if (!currentToken) break;
+        if (!currentToken || currentToken->TokenType == tok_newline)
+            break;
 
         if (currentToken->TokenType == tok_identifier)
         {
@@ -713,6 +716,9 @@ MetaCPreProcessor_ParseDefine(metac_preprocessor_t *self, metac_parser_t* parser
         }
         MetaCPrinter_Reset(&parser->DebugPrinter);
     }
+
+    if (currentToken->TokenType == tok_newline)
+        MetaCParser_Advance(parser);
 
     metac_preprocessor_define_t define;
     define.loc = LocationFromToken(parser, defineName);

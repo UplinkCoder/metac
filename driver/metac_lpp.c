@@ -9,6 +9,10 @@
 #  define HAD_NO_ALIGN4
 #endif
 
+#ifndef emptyNode
+# define emptyNode ((metac_node_t) 0x1)
+#endif
+
 bool errored = false;
 
 static inline uint32_t EstimateNumberOfTokens(uint32_t length)
@@ -98,7 +102,14 @@ void ParseFile(metac_parser_t* parser,
 
     while(parser->CurrentTokenIndex < parser->Lexer->TokenCount)
     {
-        declarations[declarationSize++] = MetaCParser_ParseDeclaration(parser, 0);
+        metac_declaration_t* decl =
+            MetaCParser_ParseDeclaration(parser, 0);
+        assert(decl);
+        if (METAC_NODE(decl) == emptyNode)
+        {
+            continue;
+        }
+        declarations[declarationSize++] = decl;
         metac_token_t* afterDecl = MetaCParser_PeekToken(parser, 1);
         if (afterDecl && afterDecl->TokenType == tok_semicolon)
             MetaCParser_Match(parser, tok_semicolon);

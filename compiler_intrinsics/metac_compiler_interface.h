@@ -1,7 +1,6 @@
-/*
 #ifndef _METAC_COMPILER_INTERFACE_H_
 #define _METAC_COMPILER_INTERFACE_H_
-*/
+
 typedef unsigned int uint32_t;
 typedef unsigned long int uint64_t;
 
@@ -48,6 +47,6 @@ typedef struct metac_compiler_t
                                         void (*IdentfierCb)(const char* idChars, uint32_t idKey, void* context),
                                         void* context);
 } metac_compiler_t;
-/*
+
 #endif
-*/
+

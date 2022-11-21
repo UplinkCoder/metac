@@ -864,6 +864,7 @@ LcontinueLexnig:
             token.LocationId = 0;
             token.Position = state->Position - 1;
             self->Tokens[self->TokenCount++] = token;
+            self->InDefine = false;
         }
 #endif
     }

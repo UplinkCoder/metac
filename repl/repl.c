@@ -232,7 +232,7 @@ void Presemantic_(repl_state_t* self)
     {
         metac_lexer_t tmpLexer;
         metac_parser_t tmpParser;
-
+        metac_preprocessor_t preProc;
         DeclarationArray decls = {0};
         {
             MetaCLexer_Init(&tmpLexer, &PresemanticAlloc);
@@ -241,7 +241,9 @@ void Presemantic_(repl_state_t* self)
                     fCompilterInterface.FileContent0,
                     fCompilterInterface.FileLength);
 
+            MetaCPreProcessor_Init(&preProc, &tmpLexer, &PresemanticAlloc, 0, 0);
             MetaCParser_InitFromLexer(&tmpParser, &tmpLexer, &PresemanticAlloc);
+            tmpParser.Preprocessor = &preProc;
 #if 1
             {
                 identifier_callback_t cb;
