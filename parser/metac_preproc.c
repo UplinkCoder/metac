@@ -717,7 +717,7 @@ MetaCPreProcessor_ParseDefine(metac_preprocessor_t *self, metac_parser_t* parser
         MetaCPrinter_Reset(&parser->DebugPrinter);
     }
 
-    if (currentToken->TokenType == tok_newline)
+    if (currentToken && currentToken->TokenType == tok_newline)
         MetaCParser_Advance(parser);
 
     metac_preprocessor_define_t define;

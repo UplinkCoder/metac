@@ -460,7 +460,7 @@ metac_token_t* MetaCParser_HandleIdentifier(metac_parser_t* self,
             // the fllowing NextToken skips over the rParen
             NextToken();
 
-            printf("define.TokenCount: %u\n", define.TokenCount);
+            // printf("define.TokenCount: %u\n", define.TokenCount);
             MetaCPreProcessor_PushDefine(preProc, &define, paramArrays);
             result =
                 &preProc->DefineTokenStack[preProc->DefineTokenStackCount - 1].Ptr[
@@ -468,13 +468,12 @@ metac_token_t* MetaCParser_HandleIdentifier(metac_parser_t* self,
         }
         else
         {
-			metac_token_t_array_array emptyParams = {0};
-			MetaCPreProcessor_PushDefine(preProc, &define,  emptyParams);
+            metac_token_t_array_array emptyParams = {0};
+            MetaCPreProcessor_PushDefine(preProc, &define,  emptyParams);
             assert(preProc->DefineTokenStackCount);
             uint32_t stackIdx = preProc->DefineTokenStackCount - 1;
             result = &preProc->DefineTokenStack[stackIdx].Ptr[
-                preProc->DefineTokenIndexStack[stackIdx - 1]];
-            printf("result: %s\n", MetaCTokenEnum_toChars(result->TokenType));
+                preProc->DefineTokenIndexStack[stackIdx]];
         }
     }
 
@@ -1717,7 +1716,7 @@ metac_expression_t* MetaCParser_ParseUnaryExpression(metac_parser_t* self, parse
     }
     else
     {
-        if (tokenType != tok_eof)
+        if (tokenType != tok_eof && tokenType != tok_newline)
         {
             metac_location_t location =
                 self->Lexer->LocationStorage.Locations[currentToken->LocationId - 4];
@@ -1970,14 +1969,10 @@ bool IsBinaryAssignExp(metac_expression_kind_t kind)
    return (kind >= exp_add_ass && kind <= exp_rsh_ass);
 }
 #ifndef NO_PREPROCESSOR
-/// returns the directive and places the tokens which follow it into
-/// the token buffer,
-metac_preprocessor_directive_t MetaCParser_ParsePreproc(metac_parser_t* self,
-                                                        metac_preprocessor_t* preproc,
-                                                        metac_token_buffer_t* buffer)
+/// only matches the directive handling by preproc required
+metac_preprocessor_directive_t MetaCParser_ParsePreprocDirective(metac_parser_t* self,
+                                                                 metac_preprocessor_t* preproc)
 {
-    metac_token_t* result = buffer->Ptr;
-
     MetaCParser_Match(self, tok_hash);
     metac_token_t* peek = MetaCParser_PeekToken(self, 1);
     metac_token_enum_t tokenType = (peek ? peek->TokenType : tok_eof);
@@ -2048,11 +2043,11 @@ metac_preprocessor_directive_t MetaCParser_ParsePreproc(metac_parser_t* self,
 
         Lmatch:
         {
-            printf("CurrentTokenIndex before match: %u\n", self->CurrentTokenIndex);
+            // printf("CurrentTokenIndex before match: %u\n", self->CurrentTokenIndex);
             MetaCParser_Match(self, tokenType);
             //if (directive == pp_eval)
             //    asm ("int $3;");
-            printf("CurrentTokenIndex after match: %u\n", self->CurrentTokenIndex);
+            // printf("CurrentTokenIndex after match: %u\n", self->CurrentTokenIndex);
         } break;
 
         case tok_uint:
@@ -3017,9 +3012,8 @@ metac_declaration_t* MetaCParser_ParseDeclaration(metac_parser_t* self, metac_de
 #ifndef NO_PREPROCESSOR
     if (MetaCParser_PeekMatch(self, tok_hash, 1))
     {
-        metac_token_buffer_t tokenBuffer;
         metac_preprocessor_directive_t dirc =
-            MetaCParser_ParsePreproc(self, self->Preprocessor,  &tokenBuffer);
+            MetaCParser_ParsePreprocDirective(self, self->Preprocessor);
         if (dirc == pp_include)
         {
             MetaCPreProcessor_Include(self->Preprocessor, self);

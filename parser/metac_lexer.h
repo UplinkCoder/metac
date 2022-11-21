@@ -208,6 +208,7 @@ typedef struct metac_lexer_state_t
 typedef enum metac_token_enum_t
 {
     FOREACH_TOKEN(WITH_COMMA)
+    tok_max
 } metac_token_enum_t;
 
 #undef WITH_COMMA

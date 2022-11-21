@@ -218,7 +218,8 @@ metac_preprocessor_directive_t MetaCLPP_ParsePreprocFromString(metac_lpp_t* lpp,
 {
     LexString(&lpp->Lexer, line);
 
-    metac_preprocessor_directive_t dirc = MetaCParser_ParsePreproc(&lpp->Parser, &lpp->Preprocessor, tokenBuffer);
+    metac_preprocessor_directive_t dirc =
+        MetaCParser_ParsePreprocDirective(&lpp->Parser, &lpp->Preprocessor);
     return dirc;
 }
 #endif

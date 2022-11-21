@@ -119,9 +119,8 @@ metac_declaration_t* MetaCParser_ParseDeclaration(metac_parser_t* self, metac_de
 metac_statement_t* MetaCParser_ParseStatement(metac_parser_t* self, metac_statement_t* parent, metac_statement_t* prev);
 
 #if !defined(NO_PREPROCESSOR)
-metac_preprocessor_directive_t MetaCParser_ParsePreproc(metac_parser_t* self,
-                                                        metac_preprocessor_t* preproc,
-                                                        metac_token_buffer_t* buffer);
+metac_preprocessor_directive_t MetaCParser_ParsePreprocDirective(metac_parser_t* self,
+                                                                 metac_preprocessor_t* preproc);
 #endif
 
 #define MetaCParser_Match(SELF, TYPE) \
