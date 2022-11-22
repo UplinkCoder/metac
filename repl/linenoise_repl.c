@@ -129,7 +129,6 @@ int main(int argc, const char* argv[])
     ctx.UiState = &uiState;
 
     linenoiseHistoryLoad(".repl_history");
-    printf("Please enter :h for help\n");
 
 #ifdef METAC_COMPILER_INTERFACE
     OS.GetTimeStamp(&compiler.StartTimeStamp);

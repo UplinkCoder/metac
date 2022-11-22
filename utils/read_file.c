@@ -14,12 +14,12 @@ read_result_t ReadFileAndZeroTerminate(const char* path)
 {
     read_result_t result = {(char*)0, 0};
 
-    printf("Trying to open %s ... \n", path);
+    // printf("Trying to open %s ... \n", path);
     FILE* fd = fopen(path, "rb");
 
     if(!fd)
     {
-        perror("Error Reading File: ");
+        // perror("Error Reading File: ");
     }
     else
     {

@@ -40,8 +40,11 @@ void HelpMessage(ui_interface_t uiInterface, struct ui_state_t* uiState)
        "      :ss for statement semantic mode\n"
        "      :t for token mode\n"
        "      :l Load and lex file\n"
+       "      :heap to see the first 128 bytes of the heap\n"
        "      :p for preprocessor mode\n"
-       "      :q to quit\n");
+       "      :q to quit\n"
+       "Pressing the Tab key auto-completes the the last word typed\n"
+    );
 }
 
 #include "../utils/read_file.c"
@@ -1292,6 +1295,8 @@ void Repl_Fiber(void)
     {
         uiInterface.SetCompletionCallback(uiState, repl, ReplComplete);
     }
+
+    MSG("Press enter :h to display some help text\n");
 
     while (Repl_Loop(repl, uiContext) != false)
     {
