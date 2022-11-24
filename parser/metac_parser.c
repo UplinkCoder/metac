@@ -2296,12 +2296,11 @@ decl_type_t* MetaCParser_ParseTypeDeclaration(metac_parser_t* self, metac_declar
 
     //TODO maybe get rid of this type variable since we need to re-allocate it anyway?
     decl_type_t* type = AllocNewDeclaration(decl_type, &result);
-    metac_token_t* currentToken = 0;
+    metac_token_t* currentToken = MetaCParser_PeekToken(self, 1);
     metac_location_t loc =
-        LocationFromToken(self, MetaCParser_PeekToken(self, 1));
+        LocationFromToken(self, currentToken);
     uint32_t hash = type_key;
 
-    currentToken = MetaCParser_NextToken(self);
     metac_token_enum_t tokenType =
         (currentToken ? currentToken->TokenType : tok_invalid);
 
@@ -2310,7 +2309,7 @@ decl_type_t* MetaCParser_ParseTypeDeclaration(metac_parser_t* self, metac_declar
     {
         if (tokenType == tok_lBrace)
         {
-            // MetaCParser_Match(self, tok_lBrace);
+            MetaCParser_Match(self, tok_lBrace);
             STACK_ARENA_ARRAY(decl_type_t*, types, 16, &self->Allocator)
             decl_type_tuple_t* typeTuple = AllocNewDeclaration(decl_type_tuple, &result);
             type = (decl_type_t*) typeTuple;
@@ -2333,7 +2332,7 @@ decl_type_t* MetaCParser_ParseTypeDeclaration(metac_parser_t* self, metac_declar
         }
         else if (tokenType == tok_lBracket)
         {
-            // MetaCParser_Match(self, tok_lBracket);
+            MetaCParser_Match(self, tok_lBracket);
             decl_type_array_t* typeArray = AllocNewDeclaration(decl_type_array, &result);
             if(!MetaCParser_PeekMatch(self, tok_rBracket, 1))
             {
@@ -2347,20 +2346,41 @@ decl_type_t* MetaCParser_ParseTypeDeclaration(metac_parser_t* self, metac_declar
         }
         else if (tokenType == tok_identifier)
         {
-            type->TypeKind = type_identifier;
-            type->TypeIdentifier = RegisterIdentifier(self, currentToken);
             U32(type->TypeModifiers) |= typeModifiers;
+
+
             if (type->TypeIdentifier.v == self->SpecialNamePtr_Type.v)
             {
+                //TODO what to do about the hash
+                MetaCParser_Match(self, tok_identifier);
+                assert((typeModifiers & (typemod_unsigned | typemod_signed)) == 0);
                 type->TypeKind = type_type;
             }
-            hash = CRC32C_VALUE(hash, type->TypeIdentifier);
-            assert((typeModifiers & typemod_unsigned) == 0);
+            else if ((typeModifiers & typemod_unsigned) == typemod_unsigned)
+            {
+                //TODO what to do about the hash
+                type->TypeKind = type_unsigned_int;
+                U32(type->TypeModifiers) = (typeModifiers & (~typemod_unsigned));
+            }
+            else if ((typeModifiers & typemod_signed) == typemod_signed)
+            {
+                //TODO what to do about the hash
+                type->TypeKind = type_int;
+            }
+            else
+            {
+                type->TypeKind = type_identifier;
+                type->TypeIdentifier = RegisterIdentifier(self, currentToken);
+                hash = CRC32C_VALUE(hash, type->TypeIdentifier);
+                MetaCParser_Match(self, tok_identifier);
+            }
             break;
         }
 
         if (tokenType >= tok_kw_auto && tokenType <= tok_kw_double)
         {
+            MetaCParser_Match(self, tokenType);
+
             type->TypeKind = (metac_type_kind_t)(type_auto + (tokenType - tok_kw_auto));
             U32(type->TypeModifiers) |= typeModifiers;
             if (tokenType == tok_kw_long)
@@ -2397,12 +2417,14 @@ decl_type_t* MetaCParser_ParseTypeDeclaration(metac_parser_t* self, metac_declar
         }
         else if (tokenType == tok_kw_struct || tokenType == tok_kw_union)
         {
+
             bool isStruct = tokenType == tok_kw_struct;
 
             bool isPredeclated = true;
 
             decl_type_struct_t* struct_ = AllocNewDeclaration(decl_type_struct, &result);
             type = (decl_type_t*)struct_;
+            MetaCParser_Match(self, tokenType);
 
             if (isStruct)
             {
@@ -2523,6 +2545,7 @@ decl_type_t* MetaCParser_ParseTypeDeclaration(metac_parser_t* self, metac_declar
         else if (tokenType == tok_kw_enum)
         {
             decl_type_enum_t* enum_ = AllocNewDeclaration(decl_type_enum, &result);
+            MetaCParser_Match(self, tok_kw_enum);
 
             if (MetaCParser_PeekMatch(self, tok_identifier, 1))
             {
@@ -2591,7 +2614,7 @@ decl_type_t* MetaCParser_ParseTypeDeclaration(metac_parser_t* self, metac_declar
         }
         else if (tokenType == tok_kw_typeof)
         {
-            // MetaCParser_Match(self, tok_kw_typeof);
+            MetaCParser_Match(self, tok_kw_typeof);
             bool hasParens = false;
 
             MetaCParser_Match(self, tok_lParen);
@@ -2709,7 +2732,7 @@ decl_parameter_list_t ParseParameterList(metac_parser_t* self,
         (*nextParam) = param;
 
         metac_declaration_t* paramDecl =
-			MetaCParser_ParseDeclaration(self, (metac_declaration_t*)parent);
+            MetaCParser_ParseDeclaration(self, (metac_declaration_t*)parent);
         if (paramDecl->Kind == decl_variable)
         {
             param->Parameter = (decl_variable_t*)
@@ -3893,13 +3916,23 @@ void TestParseDeclaration(void)
     );
     metac_expression_t* expr;
 
-    metac_declaration_t* decl = MetaCLPP_ParseDeclarationFromString(&LPP, "int f(double x);");
-    // assert(!strcmp(PrintDeclaration(&g_lineParser, decl, 0, 0), "int f(double x);"));
+    metac_declaration_t* decl = MetaCLPP_ParseDeclarationFromString(&LPP, "int f(double x)");
+    //TODO the test above should work wtih a semicolon at the end as well
+    const char* str =  MetaCPrinter_PrintDeclaration(&printer, decl);
+    assert(!strcmp(str, "int f (double x);\n"));
+
+    decl = MetaCLPP_ParseDeclarationFromString(&LPP, "unsigned x");
+    assert(!strcmp(MetaCPrinter_PrintDeclaration(&printer, decl), "unsigned int x;\n"));
+
+    decl = MetaCLPP_ParseDeclarationFromString(&LPP, "signed y");
+    assert(!strcmp(MetaCPrinter_PrintDeclaration(&printer, decl), "signed int y;\n"));
+
 }
 
 int main(int argc, char* argv[])
 {
     TestParseExprssion();
+    TestParseDeclaration();
 }
 
 #  endif
