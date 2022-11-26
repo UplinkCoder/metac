@@ -359,8 +359,8 @@ sema_stmt_casebody_t* MetaCSemantic_doCaseBodySemantic(metac_semantic_state_t* s
 {
     sema_stmt_casebody_t* result = 0;
 
-    STACK_ARENA_ARRAY(metac_statement_t*, caseBodyStatements, 16, &self->Allocator);
-    metac_statement_t* currentStatement = caseStmt->CaseBody;
+    STACK_ARENA_ARRAY(metac_stmt_t*, caseBodyStatements, 16, &self->Allocator);
+    metac_stmt_t* currentStatement = caseStmt->CaseBody;
     while (METAC_NODE(currentStatement) != emptyNode)
     {
         ARENA_ARRAY_ADD(caseBodyStatements, currentStatement);
@@ -410,7 +410,7 @@ metac_type_index_t MetaCSemantic_GetType(metac_semantic_state_t* self, metac_nod
 }
 
 metac_sema_statement_t* MetaCSemantic_doStatementSemantic_(metac_semantic_state_t* self,
-                                                           metac_statement_t* stmt,
+                                                           metac_stmt_t* stmt,
                                                            const char* callFile,
                                                            uint32_t callLine)
 {
@@ -581,7 +581,7 @@ metac_sema_statement_t* MetaCSemantic_doStatementSemantic_(metac_semantic_state_
                                        scope_owner_block,
                                        (metac_node_t)semaBlockStatement);
 
-            metac_statement_t* currentStatement = blockStatement->Body;
+            metac_stmt_t* currentStatement = blockStatement->Body;
             for(uint32_t i = 0;
                 i < statementCount;
                 i++)
@@ -757,7 +757,7 @@ static inline uint32_t _mm_movemask_epi16( __m128i a )
 
 void MetaCSemantic_ClearScope(metac_semantic_state_t* self)
 {
-    
+
 }
 
 scope_insert_error_t MetaCSemantic_RegisterInScope(metac_semantic_state_t* self,

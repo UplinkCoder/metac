@@ -468,7 +468,7 @@ static inline void PrintComment(metac_printer_t* self,
     PrintString(self, "*/", 2);
 
 }
-static inline void PrintStatement(metac_printer_t* self, metac_statement_t* stmt)
+static inline void PrintStatement(metac_printer_t* self, metac_stmt_t* stmt)
 {
     // printf("Kind: %s\n", StatementKind_toChars(stmt->Kind));
     switch(stmt->Kind)
@@ -502,7 +502,7 @@ static inline void PrintStatement(metac_printer_t* self, metac_statement_t* stmt
             PrintNewline(self);
             PrintIndent(self);
 
-            for(metac_statement_t* nextStmt = stmt_block->Body;
+            for(metac_stmt_t* nextStmt = stmt_block->Body;
                 nextStmt != emptyPointer;
                 nextStmt = nextStmt->Next)
             {
@@ -617,7 +617,7 @@ static inline void PrintStatement(metac_printer_t* self, metac_statement_t* stmt
             PrintChar(self, ')');
             PrintNewline(self);
             PrintIndent(self);
-            if (stmt_for->ForBody != (metac_statement_t*) emptyPointer)
+            if (stmt_for->ForBody != (metac_stmt_t*) emptyPointer)
             {
                 PrintStatement(self, stmt_for->ForBody);
             }
@@ -646,7 +646,7 @@ static inline void PrintStatement(metac_printer_t* self, metac_statement_t* stmt
                 PrintExpression(self, caseStatement->CaseExp);
             }
             PrintChar(self, ':');
-            if (caseStatement->CaseBody != cast(metac_statement_t*) emptyPointer)
+            if (caseStatement->CaseBody != cast(metac_stmt_t*) emptyPointer)
             {
                 if (caseStatement->CaseBody->Kind == stmt_block)
                 {
@@ -663,7 +663,7 @@ static inline void PrintStatement(metac_printer_t* self, metac_statement_t* stmt
                     ++self->IndentLevel;
                     PrintNewline(self);
                     PrintIndent(self);
-                    metac_statement_t* stmt = caseStatement->CaseBody;
+                    metac_stmt_t* stmt = caseStatement->CaseBody;
                     while(stmt && stmt != emptyPointer)
                     {
                         PrintStatement(self, stmt);
@@ -705,7 +705,7 @@ static inline void PrintStatement(metac_printer_t* self, metac_statement_t* stmt
             PrintChar(self, ')');
             PrintNewline(self);
             PrintIndent(self);
-            PrintStatement(self, cast(metac_statement_t*)stmt_switch->SwitchBody);
+            PrintStatement(self, cast(metac_stmt_t*)stmt_switch->SwitchBody);
         } break;
         case stmt_while:
         {
@@ -912,7 +912,7 @@ static inline void PrintDeclaration(metac_printer_t* self,
             {
                 PrintNewline(self);
                 PrintIndent(self);
-                PrintStatement(self, (metac_statement_t*)function_->FunctionBody);
+                PrintStatement(self, (metac_stmt_t*)function_->FunctionBody);
                 printSemicolon = false;
             }
         } break;
@@ -2166,7 +2166,7 @@ const char* MetaCPrinter_PrintDeclaration(metac_printer_t* self, metac_declarati
     return result;
 }
 
-const char* MetaCPrinter_PrintStatement(metac_printer_t* self, metac_statement_t* exp)
+const char* MetaCPrinter_PrintStatement(metac_printer_t* self, metac_stmt_t* exp)
 {
     const char* result = self->StringMemory + self->StringMemorySize;
     uint32_t posBegin = self->StringMemorySize;
@@ -2189,7 +2189,7 @@ const char* MetaCPrinter_PrintNode(metac_printer_t* self, metac_node_t node, uin
     }
     else if (node->Kind > stmt_min && node->Kind < stmt_max)
     {
-        PrintStatement(self, (metac_statement_t*) node);
+        PrintStatement(self, (metac_stmt_t*) node);
     }
     else if (node->Kind > decl_min && node->Kind < decl_max)
     {

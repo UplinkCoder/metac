@@ -128,7 +128,7 @@ typedef struct metac_expression_t
     uint32_t LocationIdx; \
     uint32_t Hash; \
     uint32_t Serial; \
-    struct metac_statement_t* Next;
+    struct metac_stmt_t* Next;
 
 typedef struct statement_header_t
 {
@@ -139,7 +139,7 @@ typedef struct stmt_block_t
 {
     STATEMENT_HEADER
 
-    struct metac_statement_t* Body;
+    struct metac_stmt_t* Body;
     uint32_t StatementCount;
 } stmt_block_t;
 
@@ -165,14 +165,14 @@ typedef struct stmt_scope_t
     STATEMENT_HEADER
 
     scope_kind_t ScopeKind;
-    struct metac_statement_t* Stmt;
+    struct metac_stmt_t* Stmt;
 } stmt_scope_t;
 
 typedef struct stmt_defer_t
 {
     STATEMENT_HEADER
 
-    struct metac_statement_t* Stmt;
+    struct metac_stmt_t* Stmt;
 } stmt_defer_t;
 
 typedef struct stmt_for_t
@@ -184,7 +184,7 @@ typedef struct stmt_for_t
     metac_expression_t* ForCond;
     metac_expression_t* ForPostLoop;
 
-    struct metac_statement_t* ForBody;
+    struct metac_stmt_t* ForBody;
 } stmt_for_t;
 
 typedef struct stmt_while_t
@@ -192,7 +192,7 @@ typedef struct stmt_while_t
     STATEMENT_HEADER
 
     metac_expression_t* WhileExp;
-    struct metac_statement_t* WhileBody;
+    struct metac_stmt_t* WhileBody;
 } stmt_while_t;
 
 typedef struct stmt_case_t
@@ -200,7 +200,7 @@ typedef struct stmt_case_t
     STATEMENT_HEADER
 
     metac_expression_t* CaseExp;
-    struct metac_statement_t* CaseBody;
+    struct metac_stmt_t* CaseBody;
 } stmt_case_t;
 
 typedef struct stmt_goto_t
@@ -229,8 +229,8 @@ typedef struct stmt_if_t
     STATEMENT_HEADER
 
     struct metac_expression_t* IfCond;
-    struct metac_statement_t* IfBody;
-    struct metac_statement_t* ElseBody;
+    struct metac_stmt_t* IfBody;
+    struct metac_stmt_t* ElseBody;
 } stmt_if_t;
 
 typedef struct stmt_label_t
@@ -260,7 +260,7 @@ typedef struct stmt_do_while_t
     STATEMENT_HEADER
 
     metac_expression_t* DoWhileExp;
-    struct metac_statement_t* DoWhileBody;
+    struct metac_stmt_t* DoWhileBody;
 } stmt_do_while_t;
 
 typedef struct stmt_casebody_t
@@ -286,7 +286,7 @@ typedef struct stmt_comment_t
 
 typedef struct decl_type_tuple_t decl_type_tuple_t;
 
-typedef struct metac_statement_t
+typedef struct metac_stmt_t
 {
     union // switch(Kind)
     {
@@ -296,7 +296,7 @@ typedef struct metac_statement_t
 
         FOREACH_STMT_KIND(MEMBER)
     };
-} metac_statement_t;
+} metac_stmt_t;
 
 #define DECLARATION_HEADER \
     metac_declaration_kind_t Kind; \

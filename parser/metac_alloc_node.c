@@ -89,7 +89,7 @@ metac_noinline void _newMemRealloc(void** memP, uint32_t* capacityP, const uint3
 #define FOREACH_ALLOCATED_PARSER_TYPE(M) \
     M(metac_expression_t, _newExp) \
     M(metac_declaration_t, _newDecl) \
-    M(metac_statement_t, _newStmt)
+    M(metac_stmt_t, _newStmt)
 
 #define FREELIST(PREFIX) \
     struct PREFIX ## _freelist_t
@@ -183,9 +183,9 @@ metac_declaration_t* AllocNewDeclaration_(metac_declaration_kind_t kind, uint32_
     return result;
 }
 
-metac_statement_t* AllocNewStatement_(metac_statement_kind_t kind, uint32_t nodeSize, void** result_ptr)
+metac_stmt_t* AllocNewStatement_(metac_statement_kind_t kind, uint32_t nodeSize, void** result_ptr)
 {
-    metac_statement_t* result = 0;
+    metac_stmt_t* result = 0;
 
     REALLOC_BOILERPLATE(_newStmt)
 
@@ -193,7 +193,7 @@ metac_statement_t* AllocNewStatement_(metac_statement_kind_t kind, uint32_t node
         (*result_ptr) = result = _newStmt_mem + INC(_newStmt_size);
         result->Kind = kind;
         result->Serial = INC(_nodeCounter);
-        result->Next = (metac_statement_t*)EMPTY_POINTER_VALUE;
+        result->Next = (metac_stmt_t*)EMPTY_POINTER_VALUE;
     }
 
     return result;

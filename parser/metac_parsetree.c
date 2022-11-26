@@ -177,10 +177,10 @@ int MetaCNode_TreeWalk_Real(metac_node_t node, walker_function_t walker_fn, void
         {
             stmt_block_t* stmt_block = cast(stmt_block_t*) node;
             const uint32_t statementCount = stmt_block->StatementCount;
-            metac_statement_t* firstStatement = stmt_block->Body;
+            metac_stmt_t* firstStatement = stmt_block->Body;
             for(uint32_t i = 0; i < statementCount; i++)
             {
-                metac_statement_t* stmt = firstStatement + i;
+                metac_stmt_t* stmt = firstStatement + i;
                 result = MetaCNode_TreeWalk_Real(stmt, walker_fn, ctx);
                 if (result)
                     break;

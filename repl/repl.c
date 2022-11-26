@@ -810,7 +810,7 @@ LswitchMode:
             metac_token_t token;
 
             metac_expression_t* exp;
-            metac_statement_t* stmt;
+            metac_stmt_t* stmt;
             metac_declaration_t* decl;
 
             uint32_t initalPosition = repl->LPP.LexerState.Position;

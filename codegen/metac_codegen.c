@@ -1728,7 +1728,7 @@ static inline void MetaCCodegen_doCaseStmt(metac_bytecode_ctx_t* ctx,
     }
 }
 
-static inline bool IsEmpty(metac_statement_t* stmt)
+static inline bool IsEmpty(metac_stmt_t* stmt)
 {
     return false;
 }

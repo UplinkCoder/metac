@@ -178,11 +178,11 @@ metac_sema_expression_t* MetaCSemantic_doIndexSemantic_(metac_semantic_state_t* 
                                                         const char* callFile,
                                                         uint32_t callLine);
 #define MetaCSemantic_doStatementSemantic(SELF, NODE) \
-    MetaCSemantic_doStatementSemantic_(SELF, ((metac_statement_t*)(NODE)), \
+    MetaCSemantic_doStatementSemantic_(SELF, ((metac_stmt_t*)(NODE)), \
                                        __FILE__, __LINE__)
 
 metac_sema_statement_t* MetaCSemantic_doStatementSemantic_(metac_semantic_state_t* self,
-                                                           metac_statement_t* stmt,
+                                                           metac_stmt_t* stmt,
                                                            const char* callFile,
                                                            uint32_t callLine);
 
