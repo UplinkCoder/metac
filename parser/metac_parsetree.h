@@ -130,10 +130,10 @@ typedef struct metac_expression_t
     uint32_t Serial; \
     struct metac_stmt_t* Next;
 
-typedef struct statement_header_t
+typedef struct stmt_header_t
 {
     STATEMENT_HEADER
-} statement_header_t;
+} stmt_header_t;
 
 typedef struct stmt_block_t
 {

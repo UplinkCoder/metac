@@ -167,10 +167,10 @@ _Static_assert(sizeof(metac_sema_expression_t) - sizeof(metac_sema_expression_he
     uint32_t Serial;
 
 
-typedef struct sema_statement_header_t
+typedef struct sema_stmt_header_t
 {
     SEMA_STATEMENT_HEADER
-} sema_statement_header_t;
+} sema_stmt_header_t;
 
 typedef struct sema_stmt_block_t
 {
