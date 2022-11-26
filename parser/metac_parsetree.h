@@ -124,7 +124,7 @@ typedef struct metac_expression_t
 
 //_Static_assert((sizeof(metac_expression_t) - sizeof(metac_expression_header_t)) <= METAC_MAX_EXP_BODY_SIZE, "Dumb");
 #define STATEMENT_HEADER \
-    metac_statement_kind_t Kind; \
+    metac_stmt_kind_t Kind; \
     uint32_t LocationIdx; \
     uint32_t Hash; \
     uint32_t Serial; \

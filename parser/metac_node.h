@@ -223,14 +223,14 @@ typedef enum metac_expression_kind_t
     FOREACH_EXP(DEFINE_MEMBERS)
 } metac_expression_kind_t;
 
-typedef enum metac_statement_kind_t
+typedef enum metac_stmt_kind_t
 {
     stmt_min = exp_max + 1,
 
     FOREACH_STMT_KIND(DEFINE_MEMBERS)
 
     stmt_max
-} metac_statement_kind_t;
+} metac_stmt_kind_t;
 
 typedef enum metac_declaration_kind_t
 {

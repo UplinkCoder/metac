@@ -161,7 +161,7 @@ _Static_assert(sizeof(metac_sema_expression_t) - sizeof(metac_sema_expression_he
 #endif
 
 #define SEMA_STATEMENT_HEADER \
-    metac_statement_kind_t Kind; \
+    metac_stmt_kind_t Kind; \
     uint32_t LocationIdx; \
     uint32_t Hash; \
     uint32_t Serial;

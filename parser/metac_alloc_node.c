@@ -183,7 +183,7 @@ metac_declaration_t* AllocNewDeclaration_(metac_declaration_kind_t kind, uint32_
     return result;
 }
 
-metac_stmt_t* AllocNewStatement_(metac_statement_kind_t kind, uint32_t nodeSize, void** result_ptr)
+metac_stmt_t* AllocNewStatement_(metac_stmt_kind_t kind, uint32_t nodeSize, void** result_ptr)
 {
     metac_stmt_t* result = 0;
 

@@ -445,7 +445,7 @@ static inline void PrintType(metac_printer_t* self, decl_type_t* type)
 #define CASE_MACRO(EXP_TYPE) \
     case EXP_TYPE : {result = #EXP_TYPE;} break;
 
-const char* StatementKind_toChars(metac_statement_kind_t kind)
+const char* StatementKind_toChars(metac_stmt_kind_t kind)
 {
     const char* result = 0;
 

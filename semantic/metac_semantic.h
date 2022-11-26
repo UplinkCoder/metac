@@ -240,7 +240,7 @@ metac_type_aggregate_field_t* AllocAggregateFields(metac_semantic_state_t* self,
     (sema_ ## KIND ## _t*) AllocNewSemaStatement_(SELF, KIND, sizeof(sema_ ## KIND ##_t), ((void**)(RESULT_PTR)))
 
 metac_sema_statement_t* AllocNewSemaStatement_(metac_semantic_state_t* self,
-                                               metac_statement_kind_t kind,
+                                               metac_stmt_kind_t kind,
                                                size_t nodeSize, void** result_ptr);
 
 sema_stmt_block_t* AllocNewSemaBlockStatement(metac_semantic_state_t* self,
