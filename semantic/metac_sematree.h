@@ -160,7 +160,7 @@ _Static_assert(sizeof(metac_sema_expression_t) - sizeof(metac_sema_expression_he
     "METAC_MAX_EXP_BODY_SIZE is less than the actual expression body size");
 #endif
 
-#define SEMA_STATEMENT_HEADER \
+#define SEMA_STMT_HEADER \
     metac_stmt_kind_t Kind; \
     uint32_t LocationIdx; \
     uint32_t Hash; \
@@ -169,12 +169,12 @@ _Static_assert(sizeof(metac_sema_expression_t) - sizeof(metac_sema_expression_he
 
 typedef struct sema_stmt_header_t
 {
-    SEMA_STATEMENT_HEADER
+    SEMA_STMT_HEADER
 } sema_stmt_header_t;
 
 typedef struct sema_stmt_block_t
 {
-    SEMA_STATEMENT_HEADER
+    SEMA_STMT_HEADER
 
     ARENA_ARRAY(struct metac_sema_stmt_t*, Body)
     uint32_t StatementCount;
@@ -182,24 +182,24 @@ typedef struct sema_stmt_block_t
 
 typedef struct sema_stmt_break_t
 {
-    SEMA_STATEMENT_HEADER
+    SEMA_STMT_HEADER
 } sema_stmt_break_t;
 
 typedef struct sema_stmt_continue_t
 {
-    SEMA_STATEMENT_HEADER
+    SEMA_STMT_HEADER
 } sema_stmt_continue_t;
 
 typedef struct sema_stmt_yield_t
 {
-    SEMA_STATEMENT_HEADER
+    SEMA_STMT_HEADER
 
     metac_sema_expression_t* YieldExp;
 } sema_stmt_yield_t;
 
 typedef struct sema_stmt_scope_t
 {
-    SEMA_STATEMENT_HEADER
+    SEMA_STMT_HEADER
 
     scope_kind_t ScopeKind;
     struct metac_sema_stmt_t* Stmt;
@@ -207,14 +207,14 @@ typedef struct sema_stmt_scope_t
 
 typedef struct sema_stmt_defer_t
 {
-    SEMA_STATEMENT_HEADER
+    SEMA_STMT_HEADER
 
     struct metac_sema_stmt_t* DeferStmt;
 } sema_stmt_defer_t;
 
 typedef struct sema_stmt_for_t
 {
-    SEMA_STATEMENT_HEADER
+    SEMA_STMT_HEADER
 
     metac_node_t ForInit;
     metac_sema_expression_t* ForCond;
@@ -227,7 +227,7 @@ typedef struct sema_stmt_for_t
 
 typedef struct sema_stmt_while_t
 {
-    SEMA_STATEMENT_HEADER
+    SEMA_STMT_HEADER
 
     metac_sema_expression_t* WhileExp;
 
@@ -236,7 +236,7 @@ typedef struct sema_stmt_while_t
 
 typedef struct sema_stmt_casebody_t
 {
-    SEMA_STATEMENT_HEADER
+    SEMA_STMT_HEADER
 
     ARENA_ARRAY(struct metac_sema_stmt_t*, Statements)
 
@@ -245,7 +245,7 @@ typedef struct sema_stmt_casebody_t
 
 typedef struct sema_stmt_case_t
 {
-    SEMA_STATEMENT_HEADER
+    SEMA_STMT_HEADER
 
     metac_sema_expression_t* CaseExp;
 
@@ -254,28 +254,28 @@ typedef struct sema_stmt_case_t
 
 typedef struct sema_stmt_goto_t
 {
-    SEMA_STATEMENT_HEADER
+    SEMA_STMT_HEADER
 
     metac_identifier_ptr_t GotoLabel;
 } sema_stmt_goto_t;
 
 typedef struct sema_stmt_exp_t
 {
-    SEMA_STATEMENT_HEADER
+    SEMA_STMT_HEADER
 
     metac_sema_expression_t* Expression;
 } sema_stmt_exp_t;
 
 typedef struct sema_stmt_decl_t
 {
-    SEMA_STATEMENT_HEADER
+    SEMA_STMT_HEADER
 
     struct metac_sema_declaration_t* Declaration;
 } sema_stmt_decl_t;
 
 typedef struct sema_stmt_if_t
 {
-    SEMA_STATEMENT_HEADER
+    SEMA_STMT_HEADER
 
     struct metac_sema_expression_t* IfCond;
     struct metac_sema_stmt_t* IfBody;
@@ -284,21 +284,21 @@ typedef struct sema_stmt_if_t
 
 typedef struct sema_stmt_label_t
 {
-    SEMA_STATEMENT_HEADER
+    SEMA_STMT_HEADER
 
     metac_identifier_ptr_t Label;
 } sema_stmt_label_t;
 
 typedef struct sema_stmt_return_t
 {
-    SEMA_STATEMENT_HEADER
+    SEMA_STMT_HEADER
 
     metac_sema_expression_t* ReturnExp;
 } sema_stmt_return_t;
 
 typedef struct sema_stmt_switch_t
 {
-    SEMA_STATEMENT_HEADER
+    SEMA_STMT_HEADER
 
     metac_sema_expression_t* SwitchExp;
     struct sema_stmt_block_t* SwitchBody;
@@ -306,7 +306,7 @@ typedef struct sema_stmt_switch_t
 
 typedef struct sema_stmt_do_while_t
 {
-    SEMA_STATEMENT_HEADER
+    SEMA_STMT_HEADER
 
     metac_sema_expression_t* WhileExp;
     struct metac_sema_stmt_t* WhileBody;
@@ -317,7 +317,7 @@ typedef struct metac_sema_stmt_t
     union // switch(Kind)
     {
         struct {
-            SEMA_STATEMENT_HEADER
+            SEMA_STMT_HEADER
         };
 
         // invalid case stmt_max, stmt_invalid :

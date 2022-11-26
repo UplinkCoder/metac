@@ -123,7 +123,7 @@ typedef struct metac_expression_t
 } while (0);
 
 //_Static_assert((sizeof(metac_expression_t) - sizeof(metac_expression_header_t)) <= METAC_MAX_EXP_BODY_SIZE, "Dumb");
-#define STATEMENT_HEADER \
+#define STMT_HEADER \
     metac_stmt_kind_t Kind; \
     uint32_t LocationIdx; \
     uint32_t Hash; \
@@ -132,12 +132,12 @@ typedef struct metac_expression_t
 
 typedef struct stmt_header_t
 {
-    STATEMENT_HEADER
+    STMT_HEADER
 } stmt_header_t;
 
 typedef struct stmt_block_t
 {
-    STATEMENT_HEADER
+    STMT_HEADER
 
     struct metac_stmt_t* Body;
     uint32_t StatementCount;
@@ -145,24 +145,24 @@ typedef struct stmt_block_t
 
 typedef struct stmt_break_t
 {
-    STATEMENT_HEADER
+    STMT_HEADER
 } stmt_break_t;
 
 typedef struct stmt_continue_t
 {
-    STATEMENT_HEADER
+    STMT_HEADER
 } stmt_continue_t;
 
 typedef struct stmt_yield_t
 {
-    STATEMENT_HEADER
+    STMT_HEADER
 
     metac_expression_t* YieldExp;
 } stmt_yield_t;
 
 typedef struct stmt_scope_t
 {
-    STATEMENT_HEADER
+    STMT_HEADER
 
     scope_kind_t ScopeKind;
     struct metac_stmt_t* Stmt;
@@ -170,14 +170,14 @@ typedef struct stmt_scope_t
 
 typedef struct stmt_defer_t
 {
-    STATEMENT_HEADER
+    STMT_HEADER
 
     struct metac_stmt_t* Stmt;
 } stmt_defer_t;
 
 typedef struct stmt_for_t
 {
-    STATEMENT_HEADER
+    STMT_HEADER
 
     /// can be either an expression or a declaration
     metac_node_t ForInit;
@@ -189,7 +189,7 @@ typedef struct stmt_for_t
 
 typedef struct stmt_while_t
 {
-    STATEMENT_HEADER
+    STMT_HEADER
 
     metac_expression_t* WhileExp;
     struct metac_stmt_t* WhileBody;
@@ -197,7 +197,7 @@ typedef struct stmt_while_t
 
 typedef struct stmt_case_t
 {
-    STATEMENT_HEADER
+    STMT_HEADER
 
     metac_expression_t* CaseExp;
     struct metac_stmt_t* CaseBody;
@@ -205,28 +205,28 @@ typedef struct stmt_case_t
 
 typedef struct stmt_goto_t
 {
-    STATEMENT_HEADER
+    STMT_HEADER
 
     metac_identifier_ptr_t GotoLabel;
 } stmt_goto_t;
 
 typedef struct stmt_exp_t
 {
-    STATEMENT_HEADER
+    STMT_HEADER
 
     metac_expression_t* Expression;
 } stmt_exp_t;
 
 typedef struct stmt_decl_t
 {
-    STATEMENT_HEADER
+    STMT_HEADER
 
     struct metac_declaration_t* Declaration;
 } stmt_decl_t;
 
 typedef struct stmt_if_t
 {
-    STATEMENT_HEADER
+    STMT_HEADER
 
     struct metac_expression_t* IfCond;
     struct metac_stmt_t* IfBody;
@@ -235,21 +235,21 @@ typedef struct stmt_if_t
 
 typedef struct stmt_label_t
 {
-    STATEMENT_HEADER
+    STMT_HEADER
 
     metac_identifier_ptr_t Label;
 } stmt_label_t;
 
 typedef struct stmt_return_t
 {
-    STATEMENT_HEADER
+    STMT_HEADER
 
     metac_expression_t* ReturnExp;
 } stmt_return_t;
 
 typedef struct stmt_switch_t
 {
-    STATEMENT_HEADER
+    STMT_HEADER
 
     metac_expression_t* SwitchExp;
     struct stmt_block_t* SwitchBody;
@@ -257,7 +257,7 @@ typedef struct stmt_switch_t
 
 typedef struct stmt_do_while_t
 {
-    STATEMENT_HEADER
+    STMT_HEADER
 
     metac_expression_t* DoWhileExp;
     struct metac_stmt_t* DoWhileBody;
@@ -270,12 +270,12 @@ typedef struct stmt_casebody_t
 
 typedef struct stmt_empty_t
 {
-    STATEMENT_HEADER
+    STMT_HEADER
 } stmt_empty_t;
 
 typedef struct stmt_comment_t
 {
-    STATEMENT_HEADER
+    STMT_HEADER
 
     const char* Text;
     uint32_t Length;
@@ -291,7 +291,7 @@ typedef struct metac_stmt_t
     union // switch(Kind)
     {
         struct {
-            STATEMENT_HEADER
+            STMT_HEADER
         };
 
         FOREACH_STMT_KIND(MEMBER)
