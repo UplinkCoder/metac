@@ -208,7 +208,7 @@ metac_scope_owner_t ScopeParent(metac_semantic_state_t* sema,
         scopeParentIndex = StructIndex(sema, (metac_type_aggregate_t*)parentNode);
     break;
     case scope_owner_statement :
-        scopeParentIndex = StatementIndex(sema, (metac_sema_statement_t*)parentNode);
+        scopeParentIndex = StatementIndex(sema, (metac_sema_stmt_t*)parentNode);
     break;
     case scope_owner_block :
         scopeParentIndex = BlockStatementIndex(sema, (sema_stmt_block_t*)parentNode);
@@ -409,12 +409,12 @@ metac_type_index_t MetaCSemantic_GetType(metac_semantic_state_t* self, metac_nod
     return typeIdx;
 }
 
-metac_sema_statement_t* MetaCSemantic_doStatementSemantic_(metac_semantic_state_t* self,
+metac_sema_stmt_t* MetaCSemantic_doStatementSemantic_(metac_semantic_state_t* self,
                                                            metac_stmt_t* stmt,
                                                            const char* callFile,
                                                            uint32_t callLine)
 {
-    metac_sema_statement_t* result = 0;
+    metac_sema_stmt_t* result = 0;
 
     // metac_printer_t printer;
     // MetaCPrinter_Init(&printer, self->ParserIdentifierTable, self->ParserStringTable);
@@ -467,7 +467,7 @@ metac_sema_statement_t* MetaCSemantic_doStatementSemantic_(metac_semantic_state_
         {
             hash ^= stmt_comment;
              //TODO it's funky to have statements which don't change in sema
-            result = cast(metac_sema_statement_t*) stmt;
+            result = cast(metac_sema_stmt_t*) stmt;
             assert(stmt->Hash != 0);
             hash = CRC32C_VALUE(hash, stmt->Hash);
         } break;
@@ -658,7 +658,7 @@ metac_sema_statement_t* MetaCSemantic_doStatementSemantic_(metac_semantic_state_
 
             if (METAC_NODE(for_->ForBody) != emptyNode)
             {
-                metac_sema_statement_t* forBody =
+                metac_sema_stmt_t* forBody =
                     MetaCSemantic_doStatementSemantic(self, for_->ForBody);
                 semaFor->ForBody = forBody;
                 hash = CRC32C_VALUE(hash, semaFor->ForBody->Hash);
@@ -714,7 +714,7 @@ metac_sema_statement_t* MetaCSemantic_doStatementSemantic_(metac_semantic_state_
         {
             stmt_switch_t* switchStatement = cast(stmt_switch_t*) stmt;
 
-            result = cast(metac_sema_statement_t*)
+            result = cast(metac_sema_stmt_t*)
                 MetaCSemantic_doSwitchSemantic(self, switchStatement);
             hash = CRC32C_VALUE(hash, result->Hash);
         } break;

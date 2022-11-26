@@ -176,7 +176,7 @@ typedef struct sema_stmt_block_t
 {
     SEMA_STATEMENT_HEADER
 
-    ARENA_ARRAY(struct metac_sema_statement_t*, Body)
+    ARENA_ARRAY(struct metac_sema_stmt_t*, Body)
     uint32_t StatementCount;
 } sema_stmt_block_t;
 
@@ -202,14 +202,14 @@ typedef struct sema_stmt_scope_t
     SEMA_STATEMENT_HEADER
 
     scope_kind_t ScopeKind;
-    struct metac_sema_statement_t* Stmt;
+    struct metac_sema_stmt_t* Stmt;
 } sema_stmt_scope_t;
 
 typedef struct sema_stmt_defer_t
 {
     SEMA_STATEMENT_HEADER
 
-    struct metac_sema_statement_t* DeferStmt;
+    struct metac_sema_stmt_t* DeferStmt;
 } sema_stmt_defer_t;
 
 typedef struct sema_stmt_for_t
@@ -220,7 +220,7 @@ typedef struct sema_stmt_for_t
     metac_sema_expression_t* ForCond;
     metac_sema_expression_t* ForPostLoop;
 
-    struct metac_sema_statement_t* ForBody;
+    struct metac_sema_stmt_t* ForBody;
 
     metac_scope_t* Scope;
 } sema_stmt_for_t;
@@ -231,14 +231,14 @@ typedef struct sema_stmt_while_t
 
     metac_sema_expression_t* WhileExp;
 
-    struct metac_sema_statement_t* WhileBody;
+    struct metac_sema_stmt_t* WhileBody;
 } sema_stmt_while_t;
 
 typedef struct sema_stmt_casebody_t
 {
     SEMA_STATEMENT_HEADER
 
-    ARENA_ARRAY(struct metac_sema_statement_t*, Statements)
+    ARENA_ARRAY(struct metac_sema_stmt_t*, Statements)
 
     uint32_t StatementCount;
 } sema_stmt_casebody_t;
@@ -278,8 +278,8 @@ typedef struct sema_stmt_if_t
     SEMA_STATEMENT_HEADER
 
     struct metac_sema_expression_t* IfCond;
-    struct metac_sema_statement_t* IfBody;
-    struct metac_sema_statement_t* ElseBody;
+    struct metac_sema_stmt_t* IfBody;
+    struct metac_sema_stmt_t* ElseBody;
 } sema_stmt_if_t;
 
 typedef struct sema_stmt_label_t
@@ -309,10 +309,10 @@ typedef struct sema_stmt_do_while_t
     SEMA_STATEMENT_HEADER
 
     metac_sema_expression_t* WhileExp;
-    struct metac_sema_statement_t* WhileBody;
+    struct metac_sema_stmt_t* WhileBody;
 } sema_stmt_do_while_t;
 
-typedef struct metac_sema_statement_t
+typedef struct metac_sema_stmt_t
 {
     union // switch(Kind)
     {
@@ -348,7 +348,7 @@ typedef struct metac_sema_statement_t
         // case stmt_for :
         sema_stmt_for_t sema_stmt_for;
     };
-} metac_sema_statement_t;
+} metac_sema_stmt_t;
 
 
 #define SEMA_DECLARATION_HEADER \

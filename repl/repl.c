@@ -1013,7 +1013,7 @@ LswitchMode:
                 */
                 if (stmt)
                 {
-                    metac_sema_statement_t* semaStmt =
+                    metac_sema_stmt_t* semaStmt =
                         MetaCSemantic_doStatementSemantic(&repl->SemanticState, stmt);
                     MSGF("stmt = %s\n",
                         MetaCPrinter_PrintSemaNode(&repl->printer, &repl->SemanticState, METAC_NODE(semaStmt)));

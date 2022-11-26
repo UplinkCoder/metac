@@ -46,7 +46,7 @@ typedef struct metac_bytecode_switch_t
 
     /// if non-null this goes at the of the switch
     /// such that we fall through to it
-    metac_sema_statement_t* DefaultBody;
+    metac_sema_stmt_t* DefaultBody;
 } metac_bytecode_switch_t;
 
 typedef struct metac_external_entry_t

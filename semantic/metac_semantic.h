@@ -23,7 +23,7 @@
     M(SELF, sema_decl_function_t, Functions) \
     M(SELF, metac_scope_t, Scopes) \
     M(SELF, sema_stmt_block_t, BlockStatements) \
-    M(SELF, metac_sema_statement_t, Statements)
+    M(SELF, metac_sema_stmt_t, Statements)
 
 #define DECLARE_ARENA_STATE_ARRAY(UNUSED, TYPE_NAME, VAR) \
     metac_alloc_t VAR##Allocator; \
@@ -181,7 +181,7 @@ metac_sema_expression_t* MetaCSemantic_doIndexSemantic_(metac_semantic_state_t* 
     MetaCSemantic_doStatementSemantic_(SELF, ((metac_stmt_t*)(NODE)), \
                                        __FILE__, __LINE__)
 
-metac_sema_statement_t* MetaCSemantic_doStatementSemantic_(metac_semantic_state_t* self,
+metac_sema_stmt_t* MetaCSemantic_doStatementSemantic_(metac_semantic_state_t* self,
                                                            metac_stmt_t* stmt,
                                                            const char* callFile,
                                                            uint32_t callLine);
@@ -239,7 +239,7 @@ metac_type_aggregate_field_t* AllocAggregateFields(metac_semantic_state_t* self,
 #define AllocNewSemaStatement(SELF, KIND, RESULT_PTR) \
     (sema_ ## KIND ## _t*) AllocNewSemaStatement_(SELF, KIND, sizeof(sema_ ## KIND ##_t), ((void**)(RESULT_PTR)))
 
-metac_sema_statement_t* AllocNewSemaStatement_(metac_semantic_state_t* self,
+metac_sema_stmt_t* AllocNewSemaStatement_(metac_semantic_state_t* self,
                                                metac_stmt_kind_t kind,
                                                size_t nodeSize, void** result_ptr);
 
@@ -263,8 +263,8 @@ metac_type_t NodeFromTypeIndex(metac_semantic_state_t* sema,
 
 uint32_t FunctionIndex(metac_semantic_state_t* self, sema_decl_function_t* func);
 uint32_t StructIndex(metac_semantic_state_t* self, metac_type_aggregate_t* struct_);
-#define StatementIndex(SEMA, STMT) StatementIndex_(SEMA, (metac_sema_statement_t*)STMT)
-uint32_t StatementIndex_(metac_semantic_state_t* self, metac_sema_statement_t* stmt);
+#define StatementIndex(SEMA, STMT) StatementIndex_(SEMA, (metac_sema_stmt_t*)STMT)
+uint32_t StatementIndex_(metac_semantic_state_t* self, metac_sema_stmt_t* stmt);
 uint32_t BlockStatementIndex(metac_semantic_state_t* self, sema_stmt_block_t* blockstmt);
 uint32_t UnionIndex(metac_semantic_state_t* self, metac_type_aggregate_t* union_);
 uint32_t TypedefIndex(metac_semantic_state_t* self, metac_type_typedef_t* typedef_);
@@ -276,7 +276,7 @@ uint32_t TupleTypeIndex(metac_semantic_state_t* self, metac_type_tuple_t* typeTy
 
 sema_decl_function_t* FunctionPtr(metac_semantic_state_t* self, uint32_t index);
 metac_type_aggregate_t* StructPtr(metac_semantic_state_t* self, uint32_t index);
-metac_sema_statement_t* StatementPtr(metac_semantic_state_t* self, uint32_t index);
+metac_sema_stmt_t* StatementPtr(metac_semantic_state_t* self, uint32_t index);
 sema_stmt_block_t* BlockStatementPtr(metac_semantic_state_t* self, uint32_t index);
 metac_type_aggregate_t* UnionPtr(metac_semantic_state_t* self, uint32_t index);
 metac_type_typedef_t* TypedefPtr(metac_semantic_state_t* self, uint32_t index);

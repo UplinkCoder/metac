@@ -556,7 +556,7 @@ metac_bytecode_function_t MetaCCodegen_GenerateFunctionFromExp(metac_bytecode_ct
 }
 
 void MetaCCodegen_doStatement(metac_bytecode_ctx_t* ctx,
-                              metac_sema_statement_t* stmt);
+                              metac_sema_stmt_t* stmt);
 
 metac_bytecode_function_t MetaCCodegen_GenerateFunction(metac_bytecode_ctx_t* ctx,
                                                         sema_decl_function_t* function)
@@ -1645,7 +1645,7 @@ static inline void MetaCCodegen_doCaseStmt(metac_bytecode_ctx_t* ctx,
 
     metac_bytecode_switch_t* swtch = &ctx->SwitchStack[ctx->SwitchStackCount - 1];
     metac_sema_expression_t* caseExp = caseStmt->CaseExp;
-    metac_sema_statement_t*  caseBody = cast(metac_sema_statement_t*)caseStmt->CaseBody;
+    metac_sema_stmt_t*  caseBody = cast(metac_sema_stmt_t*)caseStmt->CaseBody;
 
     // if there's no exp it's the default case
     if (METAC_NODE(caseExp) == emptyNode)
@@ -1706,7 +1706,7 @@ static inline void MetaCCodegen_doCaseStmt(metac_bytecode_ctx_t* ctx,
         }
         else
         {
-            MetaCCodegen_doStatement(ctx, cast(metac_sema_statement_t*)caseStmt->CaseBody);
+            MetaCCodegen_doStatement(ctx, cast(metac_sema_stmt_t*)caseStmt->CaseBody);
         }
         BCAddr nextCaseJmp = gen.BeginJmp(c);
         metac_bytecode_casejmp_t caseJmp;
@@ -1754,7 +1754,7 @@ void MetaCCodegen_doLocalVar(metac_bytecode_ctx_t* ctx,
 }
 
 void MetaCCodegen_doStatement(metac_bytecode_ctx_t* ctx,
-                              metac_sema_statement_t* stmt)
+                              metac_sema_stmt_t* stmt)
 {
     const BackendInterface gen = *ctx->gen;
     void* c = ctx->c;
