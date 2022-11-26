@@ -135,16 +135,16 @@ static inline int TranslateIdentifiers(metac_node_t node, void* ctx)
 }
 
 #if 0
-typedef struct find_statement_context_t
+typedef struct find_stmt_context_t
 {
     metac_printer_t* Printer;
     metac_stmt_kind_t Kind;
-} find_statement_context_t;
+} find_stmt_context_t;
 
 static inline int FindStatementCb(metac_node_t node, void* ctx)
 {
-    find_statement_context_t* context =
-        (find_statement_context_t*) ctx;
+    find_stmt_context_t* context =
+        (find_stmt_context_t*) ctx;
     switch(cast(metac_stmt_kind_t)node->Kind)
     {
         case stmt_if:
