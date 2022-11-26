@@ -112,7 +112,7 @@ typedef struct metac_enum_member_t
     metac_type_index_t Type;
     metac_identifier_ptr_t Identifier;
 
-    struct metac_sema_expression_t* Value;
+    struct metac_sema_expr_t* Value;
 } metac_enum_member_t;
 
 typedef struct metac_type_enum_t

@@ -9,7 +9,7 @@
 
 #define ERROR_PARENT_INDEX_V -1
 
-#define SEMA_EXPRESSION_HEADER \
+#define SEMA_EXPR_HEADER \
     EXPRESSION_HEADER \
     metac_type_index_t TypeIndex;
 
@@ -56,27 +56,27 @@ typedef struct metac_storage_location_t
 
 typedef struct sema_exp_argument_list_t
 {
-    struct metac_sema_expression_t** Arguments;
+    struct metac_sema_expr_t** Arguments;
     uint32_t ArgumentCount;
 } sema_exp_argument_list_t;
 
-typedef struct metac_sema_expression_header_t
+typedef struct metac_sema_expr_header_t
 {
-    SEMA_EXPRESSION_HEADER
-} metac_sema_expression_header_t;
+    SEMA_EXPR_HEADER
+} metac_sema_expr_header_t;
 
 #pragma pack(push, 1)
 typedef struct sema_exp_call_t
 {
-    struct metac_sema_expression_t* Function;
-    struct metac_sema_expression_t** Arguments;
+    struct metac_sema_expr_t* Function;
+    struct metac_sema_expr_t** Arguments;
     uint32_t ArgumentCount;
 } sema_exp_call_t;
 
 
-typedef struct metac_sema_expression_t
+typedef struct metac_sema_expr_t
 {
-    SEMA_EXPRESSION_HEADER
+    SEMA_EXPR_HEADER
 
     union // switch(Kind)
     {
@@ -85,34 +85,34 @@ typedef struct metac_sema_expression_t
         // case exp_add, exp_sub, exp_mul, exp_div, exp_cat, exp_catAss, exp_assign,
         // exp_lt, exp_gt, exp_le, exp_ge, exp_spaceShip :
         struct {
-            struct metac_sema_expression_t* _E1;
-            struct metac_sema_expression_t* E2;
+            struct metac_sema_expr_t* _E1;
+            struct metac_sema_expr_t* E2;
         };
         // case exp_ternary:
         struct {
-            struct metac_sema_expression_t* _E1_;
-            struct metac_sema_expression_t* _E2;
-            struct metac_sema_expression_t* Econd;
+            struct metac_sema_expr_t* _E1_;
+            struct metac_sema_expr_t* _E2;
+            struct metac_sema_expr_t* Econd;
         };
         // case exp_sizeof:
         // case  exp_inject, exp_eject, exp_assert, exp_outerParen, exp_outer :
-        struct metac_sema_expression_t* E1;
+        struct metac_sema_expr_t* E1;
         // case exp_cast:
         struct {
-            struct metac_sema_expression_t* CastExp;
+            struct metac_sema_expr_t* CastExp;
             struct metac_type_index_t CastType;
         };
         // case exp_dot, exp_arrow:
         struct {
-            struct metac_sema_expression_t* AggExp;
+            struct metac_sema_expr_t* AggExp;
             uint32_t AggMemberIndex;
-            struct metac_sema_expression_t* DotE2;
+            struct metac_sema_expr_t* DotE2;
         };
         // case exp_type
         struct metac_type_index_t TypeExp;
         // case exp_tuple
         struct {
-            struct metac_sema_expression_t** TupleExpressions;
+            struct metac_sema_expr_t** TupleExpressions;
             uint32_t TupleExpressionCount;
         };
         // case exp_argument:
@@ -123,7 +123,7 @@ typedef struct metac_sema_expression_t
         struct sema_exp_call_t Call;
 
         // case unknown_value_exp:
-        metac_expression_t* Expression;
+        metac_expr_t* Expression;
         // case variable_exp:
         struct sema_decl_variable_t* Variable;
         // case field_exp:
@@ -153,10 +153,10 @@ typedef struct metac_sema_expression_t
 
         uint8_t _Body[METAC_MAX_EXP_BODY_SIZE];
     };
-} metac_sema_expression_t;
+} metac_sema_expr_t;
 
 #ifndef _MSC_VER
-_Static_assert(sizeof(metac_sema_expression_t) - sizeof(metac_sema_expression_header_t) <= METAC_MAX_EXP_BODY_SIZE,
+_Static_assert(sizeof(metac_sema_expr_t) - sizeof(metac_sema_expr_header_t) <= METAC_MAX_EXP_BODY_SIZE,
     "METAC_MAX_EXP_BODY_SIZE is less than the actual expression body size");
 #endif
 
@@ -194,7 +194,7 @@ typedef struct sema_stmt_yield_t
 {
     SEMA_STMT_HEADER
 
-    metac_sema_expression_t* YieldExp;
+    metac_sema_expr_t* YieldExp;
 } sema_stmt_yield_t;
 
 typedef struct sema_stmt_scope_t
@@ -217,8 +217,8 @@ typedef struct sema_stmt_for_t
     SEMA_STMT_HEADER
 
     metac_node_t ForInit;
-    metac_sema_expression_t* ForCond;
-    metac_sema_expression_t* ForPostLoop;
+    metac_sema_expr_t* ForCond;
+    metac_sema_expr_t* ForPostLoop;
 
     struct metac_sema_stmt_t* ForBody;
 
@@ -229,7 +229,7 @@ typedef struct sema_stmt_while_t
 {
     SEMA_STMT_HEADER
 
-    metac_sema_expression_t* WhileExp;
+    metac_sema_expr_t* WhileExp;
 
     struct metac_sema_stmt_t* WhileBody;
 } sema_stmt_while_t;
@@ -247,7 +247,7 @@ typedef struct sema_stmt_case_t
 {
     SEMA_STMT_HEADER
 
-    metac_sema_expression_t* CaseExp;
+    metac_sema_expr_t* CaseExp;
 
     sema_stmt_casebody_t* CaseBody;
 } sema_stmt_case_t;
@@ -263,7 +263,7 @@ typedef struct sema_stmt_exp_t
 {
     SEMA_STMT_HEADER
 
-    metac_sema_expression_t* Expression;
+    metac_sema_expr_t* Expression;
 } sema_stmt_exp_t;
 
 typedef struct sema_stmt_decl_t
@@ -277,7 +277,7 @@ typedef struct sema_stmt_if_t
 {
     SEMA_STMT_HEADER
 
-    struct metac_sema_expression_t* IfCond;
+    struct metac_sema_expr_t* IfCond;
     struct metac_sema_stmt_t* IfBody;
     struct metac_sema_stmt_t* ElseBody;
 } sema_stmt_if_t;
@@ -293,14 +293,14 @@ typedef struct sema_stmt_return_t
 {
     SEMA_STMT_HEADER
 
-    metac_sema_expression_t* ReturnExp;
+    metac_sema_expr_t* ReturnExp;
 } sema_stmt_return_t;
 
 typedef struct sema_stmt_switch_t
 {
     SEMA_STMT_HEADER
 
-    metac_sema_expression_t* SwitchExp;
+    metac_sema_expr_t* SwitchExp;
     struct sema_stmt_block_t* SwitchBody;
 } sema_stmt_switch_t;
 
@@ -308,7 +308,7 @@ typedef struct sema_stmt_do_while_t
 {
     SEMA_STMT_HEADER
 
-    metac_sema_expression_t* WhileExp;
+    metac_sema_expr_t* WhileExp;
     struct metac_sema_stmt_t* WhileBody;
 } sema_stmt_do_while_t;
 
@@ -390,7 +390,7 @@ typedef struct sema_decl_variable_t
 
     metac_identifier_ptr_t VarIdentifier;
 
-    metac_sema_expression_t* VarInitExpression;
+    metac_sema_expr_t* VarInitExpression;
 
     metac_storage_location_t Storage;
 } sema_decl_variable_t;
@@ -430,7 +430,7 @@ typedef struct sema_decl_enum_member_t
 
     metac_identifier_ptr_t Name;
 
-    metac_sema_expression_t* Value;
+    metac_sema_expr_t* Value;
 } sema_decl_enum_member_t;
 
 typedef struct sema_decl_type_enum_t
@@ -467,7 +467,7 @@ typedef struct sema_decl_type_array_t
 
     metac_type_index_t* ElementType;
 
-    metac_sema_expression_t* Dim;
+    metac_sema_expr_t* Dim;
 } sema_decl_type_array_t;
 
 /*

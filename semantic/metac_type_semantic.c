@@ -582,10 +582,10 @@ void MetaCSemantic_ComputeEnumValues(metac_semantic_state_t* self,
     int64_t nextValue = 0;
     const uint32_t memberCount = enum_->MemberCount;
 #if !DEBUG_MEMORY
-    STACK_ARENA_ARRAY(metac_sema_expression_t, memberPlaceholders, 32, &self->TempAlloc)
+    STACK_ARENA_ARRAY(metac_sema_expr_t, memberPlaceholders, 32, &self->TempAlloc)
 #else
-    metac_sema_expression_t* memberPlaceholders = (metac_semantic_state_t*)
-        calloc(memberCount, sizeof(metac_sema_expression_t));
+    metac_sema_expr_t* memberPlaceholders = (metac_semantic_state_t*)
+        calloc(memberCount, sizeof(metac_sema_expr_t));
     uint32_t memberPlaceholdersCount = 0;
 #endif
     metac_printer_t debugPrinter;
@@ -604,7 +604,7 @@ void MetaCSemantic_ComputeEnumValues(metac_semantic_state_t* self,
     memset(memberPlaceholders, 0, memberCount * sizeof(*memberPlaceholders));
 #endif
 
-    //TODO you want to make CurrentValue a metac_sema_expression_t
+    //TODO you want to make CurrentValue a metac_sema_expr_t
     // such that you can interpret the increment operator
     //SetInProgress(semaEnum, "Members");
     // semaEnum->Name = MetaCSemantic_RegisterIdentifier(self, enum->Identifier);
@@ -627,7 +627,7 @@ void MetaCSemantic_ComputeEnumValues(metac_semantic_state_t* self,
             memberIdx < memberCount;
             memberIdx++, member = member->Next)
         {
-            metac_sema_expression_t* semaMember = memberPlaceholders + memberIdx;
+            metac_sema_expr_t* semaMember = memberPlaceholders + memberIdx;
 
             memberPlaceholders[memberIdx].Kind = exp_unknown_value;
             memberPlaceholders[memberIdx].TypeIndex = semaEnum->BaseType;
@@ -652,7 +652,7 @@ void MetaCSemantic_ComputeEnumValues(metac_semantic_state_t* self,
             {
                 if (METAC_NODE(member->Value) != emptyNode)
                 {
-                    metac_sema_expression_t* semaValue =
+                    metac_sema_expr_t* semaValue =
                         MetaCSemantic_doExprSemantic(self, member->Value, 0);
                     semaEnum->Members[memberIdx].Value = semaValue;
                     if(semaValue->Kind == 0x1c)
@@ -696,9 +696,9 @@ void MetaCSemantic_ComputeEnumValues(metac_semantic_state_t* self,
             semaEnum->Members[memberIdx].Identifier = member->Name;
             semaEnum->Members[memberIdx].Header.Kind = decl_enum_member;
 
-            if (member->Value != cast(metac_expression_t*)emptyPointer)
+            if (member->Value != cast(metac_expr_t*)emptyPointer)
             {
-                metac_sema_expression_t* semaValue =
+                metac_sema_expr_t* semaValue =
                     semaEnum->Members[memberIdx].Value;
                 assert(member->Value);
                 if (semaValue->Kind != exp_signed_integer)
@@ -712,7 +712,7 @@ void MetaCSemantic_ComputeEnumValues(metac_semantic_state_t* self,
             else
             {
                 // let's construct a metac_expression from currentValue
-                metac_expression_t Value = {exp_signed_integer, member->LocationIdx, 0, 0};
+                metac_expr_t Value = {exp_signed_integer, member->LocationIdx, 0, 0};
                 Value.ValueI64 = nextValue++;
 
                 semaEnum->Members[memberIdx].Value =
@@ -805,8 +805,8 @@ metac_type_index_t TypeArraySemantic(metac_semantic_state_t* self,
     // it could be an array win inferred dimensions in which case
     // arrayType->Dim is the empty pointer
 
-    metac_sema_expression_t* dim = (METAC_NODE(arrayType->Dim) == emptyNode ?
-        cast(metac_sema_expression_t*)emptyNode :
+    metac_sema_expr_t* dim = (METAC_NODE(arrayType->Dim) == emptyNode ?
+        cast(metac_sema_expr_t*)emptyNode :
         MetaCSemantic_doExprSemantic(self, arrayType->Dim, 0)
     );
 
@@ -980,7 +980,7 @@ metac_type_index_t MetaCSemantic_TypeSemantic(metac_semantic_state_t* self,
     {
         decl_type_typeof_t* type_typeof = cast(decl_type_typeof_t*) type;
 
-        metac_sema_expression_t* se =
+        metac_sema_expr_t* se =
             MetaCSemantic_doExprSemantic(self, type_typeof->Exp, 0);
         result = se->TypeIndex;
     }

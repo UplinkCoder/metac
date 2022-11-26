@@ -26,8 +26,8 @@ typedef struct  metac_type_table_t
 #define Expression_IsEqual(A, B) \
     (A == B ? true : Expression_IsEqual_(A, B))
 
-bool Expression_IsEqual_(const struct metac_sema_expression_t* a,
-                         const struct metac_sema_expression_t* b);
+bool Expression_IsEqual_(const struct metac_sema_expr_t* a,
+                         const struct metac_sema_expr_t* b);
 
 static inline const bool EnumSlotsEqual(const metac_type_table_slot_t* a,
                                         const metac_type_table_slot_t* b)

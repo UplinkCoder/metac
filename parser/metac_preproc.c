@@ -90,12 +90,12 @@ Lret:
     return result;
 }
 
-metac_expression_t* MetaCPreProcessor_ResolveDefineToExp(metac_preprocessor_t* self,
+metac_expr_t* MetaCPreProcessor_ResolveDefineToExp(metac_preprocessor_t* self,
                                                          metac_preprocessor_define_ptr_t definePtr,
                                                          metac_token_t_array_array parameters)
 {
     assert(definePtr.v >= 4);
-    metac_expression_t* result = 0;
+    metac_expr_t* result = 0;
     metac_alloc_t tmpDefineParserAlloc;
     metac_lexer_t DefineLexer = { 0 };
     metac_lexer_state_t LexerState = { 0 };
@@ -252,7 +252,7 @@ static inline metac_token_t_array ResolveDefine()
 }
 
 static inline int32_t MetaCPreProcessor_EvalExp(metac_preprocessor_t* self,
-                                                metac_expression_t* e,
+                                                metac_expr_t* e,
                                                 metac_parser_t* parser)
 {
 
@@ -260,7 +260,7 @@ static inline int32_t MetaCPreProcessor_EvalExp(metac_preprocessor_t* self,
     int32_t e1;
     int32_t e2;
 
-    metac_expression_kind_t op = e->Kind;
+    metac_expr_kind_t op = e->Kind;
 
     if (IsBinaryExp(op))
     {
@@ -367,7 +367,7 @@ static inline int32_t MetaCPreProcessor_EvalExp(metac_preprocessor_t* self,
             metac_preprocessor_define_ptr_t definePtr;
             definePtr =
                 MetaCPreProcessor_GetDefine(self, e->IdentifierKey, identifierChars);
-            metac_expression_t* resolved = 0;
+            metac_expr_t* resolved = 0;
             if (definePtr.v)
             {
                 metac_token_t_array_array emptyArray = {};
@@ -414,7 +414,7 @@ static inline int32_t MetaCPreProcessor_EvalExp(metac_preprocessor_t* self,
                 if (e->E1->IdentifierKey == defined_key)
                 {
                     exp_argument_t* args = (exp_argument_t*)e->E2;
-                    metac_expression_t* e2 = args->Expression;
+                    metac_expr_t* e2 = args->Expression;
                     // this if makes sure there is only one "argument" to defiend()
                     if (args->Next != emptyPointer || e2->Kind != exp_identifier)
                     {
@@ -812,7 +812,7 @@ uint32_t MetaCPreProcessor_Eval(metac_preprocessor_t* self, struct metac_parser_
         if (!tok || tok->TokenType == tok_eof)
             return result;
 
-        metac_expression_t* exp = MetaCParser_ParseExpression(parser, expr_flags_pp, 0);
+        metac_expr_t* exp = MetaCParser_ParseExpression(parser, expr_flags_pp, 0);
         MetaCPrinter_Reset(&parser->DebugPrinter);
         const char* exp_string = MetaCPrinter_PrintExpression(&parser->DebugPrinter, exp);
         printf("#eval '%s'\n", exp_string);

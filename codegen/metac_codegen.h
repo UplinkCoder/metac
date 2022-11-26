@@ -104,7 +104,7 @@ typedef struct metac_function_bytecode_t metac_function_bytecode_t;
 void MetaCCodegen_Init(metac_bytecode_ctx_t* self, metac_alloc_t* parentAlloc);
 
 metac_bytecode_function_t MetaCCodegen_GenerateFunctionFromExp(metac_bytecode_ctx_t* ctx,
-                                                               metac_sema_expression_t* expr);
+                                                               metac_sema_expr_t* expr);
 
 
 void MetaCCodegen_Begin(metac_bytecode_ctx_t* self, metac_identifier_table_t* idTable, metac_semantic_state_t* sema);
@@ -128,7 +128,7 @@ typedef enum metac_value_type_t
 void MetaCCodegen_doGlobal(metac_bytecode_ctx_t* ctx, metac_sema_declaration_t* decl, uint32_t idx);
 
 static void MetaCCodegen_doExpression(metac_bytecode_ctx_t* ctx,
-                                      metac_sema_expression_t* exp,
+                                      metac_sema_expr_t* exp,
                                       BCValue* result,
                                       metac_value_type_t lValue);
 

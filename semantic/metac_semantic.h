@@ -18,7 +18,7 @@
 #endif
 
 #define FOREACH_SEMA_STATE_ARRAY(SELF, M) \
-    M(SELF, metac_sema_expression_t, Expressions) \
+    M(SELF, metac_sema_expr_t, Expressions) \
     M(SELF, sema_decl_variable_t, Variables) \
     M(SELF, sema_decl_function_t, Functions) \
     M(SELF, metac_scope_t, Scopes) \
@@ -96,7 +96,7 @@ typedef struct metac_switch_state_t
 {
     //ARENA_ARRAY(sema_stmt_case_t*, PendingCases)
 
-    metac_sema_expression_t* SwitchExp;
+    metac_sema_expr_t* SwitchExp;
 } metac_switch_state_t;
 
 typedef struct metac_semantic_state_t
@@ -130,7 +130,7 @@ typedef struct metac_semantic_state_t
 
     AT(TaskLocal) AT(transient) metac_scope_t* MountParent;
 
-    AT(transient) metac_sema_expression_t* ExpressionStack;
+    AT(transient) metac_sema_expr_t* ExpressionStack;
     AT(transient) uint32_t ExpressionStackSize;
     AT(transient) uint32_t ExpressionStackCapacity;
 
@@ -173,8 +173,8 @@ void MetaCSemantic_Init(metac_semantic_state_t* self,
     MetaCSemantic_doIndexSemantic_(SELF, EXPR, \
                                    __FILE__, __LINE__)
 
-metac_sema_expression_t* MetaCSemantic_doIndexSemantic_(metac_semantic_state_t* self,
-                                                        metac_expression_t* expr,
+metac_sema_expr_t* MetaCSemantic_doIndexSemantic_(metac_semantic_state_t* self,
+                                                        metac_expr_t* expr,
                                                         const char* callFile,
                                                         uint32_t callLine);
 #define MetaCSemantic_doStatementSemantic(SELF, NODE) \
@@ -210,14 +210,14 @@ metac_node_header_t* MetaCSemantic_LookupIdentifier(metac_semantic_state_t* self
 #ifndef Expression_IsEqual
 #define Expression_IsEqual(A, B) \
     ((A == B) ? true : Expression_IsEqual_( \
-    ((const metac_sema_expression_t*)(A)), ((const metac_sema_expression_t*)(B)))
+    ((const metac_sema_expr_t*)(A)), ((const metac_sema_expr_t*)(B)))
 #endif
 
-bool Expression_IsEqual_(const metac_sema_expression_t* a,
-                         const metac_sema_expression_t* b);
+bool Expression_IsEqual_(const metac_sema_expr_t* a,
+                         const metac_sema_expr_t* b);
 
 
-metac_sema_expression_t* AllocNewSemaExpression(metac_semantic_state_t* self, metac_expression_t* expr);
+metac_sema_expr_t* AllocNewSemaExpression(metac_semantic_state_t* self, metac_expr_t* expr);
 
 sema_decl_function_t* AllocNewSemaFunction(metac_semantic_state_t* self,decl_function_t* func);
 
@@ -313,6 +313,6 @@ void MetaCSemantic_PopTemporaryScope_(metac_semantic_state_t* self,
 //                                      metac_scope_t* tmpScope,
                                       uint32_t line,
                                       const char* file);
-void MetaCSemantic_ConstantFold(metac_semantic_state_t* self, metac_sema_expression_t* exp);
+void MetaCSemantic_ConstantFold(metac_semantic_state_t* self, metac_sema_expr_t* exp);
 
 #endif

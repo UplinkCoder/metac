@@ -456,7 +456,7 @@ void Repl_Init(repl_state_t* self)
 typedef struct MetaCRepl_ExprSemantic_context_t
 {
     repl_state_t* Repl;
-    metac_expression_t* Exp;
+    metac_expr_t* Exp;
 } MetaCRepl_ExprSemantic_context_t;
 
 void MetaCRepl_ExprSemantic_Task(task_t* task)
@@ -465,7 +465,7 @@ void MetaCRepl_ExprSemantic_Task(task_t* task)
         (MetaCRepl_ExprSemantic_context_t*)
             task->Context;
 
-    metac_sema_expression_t* result = 0;
+    metac_sema_expr_t* result = 0;
 
     ENQUEUE_TASK(result, MetaCSemantic_doExprSemantic_,
                  (&ctx->Repl->SemanticState), ctx->Exp, 0);
@@ -671,7 +671,7 @@ LswitchMode:
                         if (global->Kind == decl_variable)
                         {
                             sema_decl_variable_t var = global->sema_decl_variable;
-                            metac_sema_expression_t* value = var.VarInitExpression;
+                            metac_sema_expr_t* value = var.VarInitExpression;
                             metac_printer_t debugPrinter;
                             const char* typeString;
                             const char* valueString = "NULL";
@@ -809,7 +809,7 @@ LswitchMode:
         {
             metac_token_t token;
 
-            metac_expression_t* exp;
+            metac_expr_t* exp;
             metac_stmt_t* stmt;
             metac_declaration_t* decl;
 
@@ -867,13 +867,13 @@ LswitchMode:
 
                 const char* str = MetaCPrinter_PrintExpression(&repl->printer, exp);
 
-                metac_sema_expression_t* result =
+                metac_sema_expr_t* result =
                     MetaCSemantic_doExprSemantic(&repl->SemanticState, exp, 0);
 
                 if (!result)
                     goto LnextLine;
 
-                metac_sema_expression_t eval_exp = EvaluateExpression(&repl->SemanticState, result, &repl->Heap);
+                metac_sema_expr_t eval_exp = EvaluateExpression(&repl->SemanticState, result, &repl->Heap);
                 result = &eval_exp;
 
                 const char* result_str;
@@ -897,7 +897,7 @@ LswitchMode:
                     MetaCLPP_ParseExpressionFromString(&repl->LPP, repl->Line);
 
                 const char* str = MetaCPrinter_PrintExpression(&repl->printer, exp);
-                metac_sema_expression_t* result =
+                metac_sema_expr_t* result =
                     MetaCSemantic_doExprSemantic(&repl->SemanticState, exp, 0);
 
             Lcontinuation:
@@ -955,7 +955,7 @@ LswitchMode:
                 }
                 else
                 {
-                    metac_expression_t* assignExp = MetaCLPP_ParseExpressionFromString(&repl->LPP, repl->Line);
+                    metac_expr_t* assignExp = MetaCLPP_ParseExpressionFromString(&repl->LPP, repl->Line);
                     if (assignExp)
                     {
                         if (assignExp->Kind != exp_assign)
@@ -964,7 +964,7 @@ LswitchMode:
                             goto LnextLine;
                         }
 
-                        metac_sema_expression_t* ae =
+                        metac_sema_expr_t* ae =
                             MetaCSemantic_doExprSemantic(&repl->SemanticState, assignExp, 0);
                         if (ae)
                         {

@@ -183,12 +183,12 @@ void MetaCLPP_Init(metac_lpp_t* lpp, metac_alloc_t* allocator, metac_file_storag
 #endif
 }
 
-metac_expression_t* MetaCLPP_ParseExpressionFromString(metac_lpp_t* lpp, const char* exp)
+metac_expr_t* MetaCLPP_ParseExpressionFromString(metac_lpp_t* lpp, const char* exp)
 {
     // assert(g_lineLexer.TokenCapacity == ARRAY_SIZE(g_lineLexer.inlineTokens));
     LexString(&lpp->Lexer, exp);
 
-    metac_expression_t* result = MetaCParser_ParseExpression(&lpp->Parser, expr_flags_none, 0);
+    metac_expr_t* result = MetaCParser_ParseExpression(&lpp->Parser, expr_flags_none, 0);
 
     return result;
 }

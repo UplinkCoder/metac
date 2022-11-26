@@ -87,7 +87,7 @@ metac_noinline void _newMemRealloc(void** memP, uint32_t* capacityP, const uint3
 
 
 #define FOREACH_ALLOCATED_PARSER_TYPE(M) \
-    M(metac_expression_t, _newExp) \
+    M(metac_expr_t, _newExp) \
     M(metac_declaration_t, _newDecl) \
     M(metac_stmt_t, _newStmt)
 
@@ -104,7 +104,7 @@ metac_noinline void _newMemRealloc(void** memP, uint32_t* capacityP, const uint3
 /** makes code of the form
 static uint32_t _newExp_size = 0;
 static uint32_t _newExp_capacity = 0;
-static metac_expression_t* _newExp_mem = 0;
+static metac_expr_t* _newExp_mem = 0;
 */
 
 #define DECLARE_STATIC_ARRAY(TYPE_NAME, PREFIX) \
@@ -150,9 +150,9 @@ if (PREFIX ## _capacity <= (PREFIX ## _size + (N))) \
             sizeof(* PREFIX ## _mem) \
         ); \
     }
-metac_expression_t* AllocNewExpression(metac_expression_kind_t kind)
+metac_expr_t* AllocNewExpression(metac_expr_kind_t kind)
 {
-    metac_expression_t* result = 0;
+    metac_expr_t* result = 0;
 
     REALLOC_BOILERPLATE(_newExp)
 

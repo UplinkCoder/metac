@@ -27,10 +27,10 @@ void main()
 #define PRINT_SIZE(NODE_KIND) \
     printf("sizeof("  #NODE_KIND  "): %d\n", (int) sizeof(NODE_KIND ## _t));
 
-    printf("sizeof(metac_expression_t): %d\n", (int) sizeof(metac_expression_t));
-    printf("sizeof(metac_expression_header_t) %d\n", (int) sizeof(metac_expression_header_t));
-    printf("sizeof(metac_sema_expression_t): %d\n", (int) sizeof(metac_sema_expression_t));
-    printf("sizeof(metac_sema_expression_header_t) %d\n", (int) sizeof(metac_sema_expression_header_t));
+    printf("sizeof(metac_expr_t): %d\n", (int) sizeof(metac_expr_t));
+    printf("sizeof(metac_expr_header_t) %d\n", (int) sizeof(metac_expr_header_t));
+    printf("sizeof(metac_sema_expr_t): %d\n", (int) sizeof(metac_sema_expr_t));
+    printf("sizeof(metac_sema_expr_header_t) %d\n", (int) sizeof(metac_sema_expr_header_t));
 
     printf("sizeof(metac_declaration_t): %d\n", (int) sizeof(metac_declaration_t));
     FOREACH_DECL_KIND(PRINT_SIZE);

@@ -26,11 +26,11 @@
 #include "metac_type_semantic.c"
 #include "metac_expr_semantic.c"
 
-const char* MetaCExpressionKind_toChars(metac_expression_kind_t);
+const char* MetaCExpressionKind_toChars(metac_expr_kind_t);
 bool IsExpressionNode(metac_node_kind_t);
 
-bool Expression_IsEqual_(const metac_sema_expression_t* a,
-                         const metac_sema_expression_t* b)
+bool Expression_IsEqual_(const metac_sema_expr_t* a,
+                         const metac_sema_expr_t* b)
 {
     bool result = true;
     if (a == b)
@@ -52,9 +52,9 @@ bool Expression_IsEqual_(const metac_sema_expression_t* a,
                 {
                     const uint32_t ArgumentCount =
                         a->ArgumentList->ArgumentCount;
-                    metac_sema_expression_t** ExpsA
+                    metac_sema_expr_t** ExpsA
                             = a->ArgumentList->Arguments;
-                    metac_sema_expression_t** ExpsB
+                    metac_sema_expr_t** ExpsB
                             = b->ArgumentList->Arguments;
 
                     for(uint32_t i = 0;
@@ -139,8 +139,8 @@ void MetaCSemantic_Init(metac_semantic_state_t* self, metac_parser_t* parser,
 
     self->ExpressionStackCapacity = 64;
     self->ExpressionStackSize = 0;
-    self->ExpressionStack = (metac_sema_expression_t*)
-        calloc(sizeof(metac_sema_expression_t), self->ExpressionStackCapacity);
+    self->ExpressionStack = (metac_sema_expr_t*)
+        calloc(sizeof(metac_sema_expr_t), self->ExpressionStackCapacity);
 
     self->SwitchStackCapacity = 4;
     self->SwitchStackSize = 0;
@@ -556,7 +556,7 @@ metac_sema_stmt_t* MetaCSemantic_doStatementSemantic_(metac_semantic_state_t* se
             }
             else
             {
-                semaCaseStatement->CaseExp = (metac_sema_expression_t*)emptyNode;
+                semaCaseStatement->CaseExp = (metac_sema_expr_t*)emptyNode;
             }
             semaCaseStatement->CaseBody =
                 MetaCSemantic_doCaseBodySemantic(self, caseStatement);
@@ -623,7 +623,7 @@ metac_sema_stmt_t* MetaCSemantic_doStatementSemantic_(metac_semantic_state_t* se
 
                     semaFor->ForInit = cast(metac_node_t)
                         MetaCSemantic_doExprSemantic(self,
-                            (cast(metac_expression_t*)for_->ForInit), 0);
+                            (cast(metac_expr_t*)for_->ForInit), 0);
                 }
                 else
                 {
@@ -682,7 +682,7 @@ metac_sema_stmt_t* MetaCSemantic_doStatementSemantic_(metac_semantic_state_t* se
             sema_stmt_yield_t* semaYieldStatement =
                 AllocNewSemaStatement(self, stmt_yield, &result);
 
-            metac_sema_expression_t* yieldValue =
+            metac_sema_expr_t* yieldValue =
                 MetaCSemantic_doExprSemantic(self, yieldStatement->YieldExp, 0);
             semaYieldStatement->YieldExp = yieldValue;
 
@@ -700,7 +700,7 @@ metac_sema_stmt_t* MetaCSemantic_doStatementSemantic_(metac_semantic_state_t* se
             sema_stmt_return_t* semaReturnStatement =
                 AllocNewSemaStatement(self, stmt_return, &result);
 
-            metac_sema_expression_t* returnValue =
+            metac_sema_expr_t* returnValue =
                 MetaCSemantic_doExprSemantic(self, returnStatement->ReturnExp, 0);
             semaReturnStatement->ReturnExp = returnValue;
 

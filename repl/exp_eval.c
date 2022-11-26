@@ -7,9 +7,9 @@
 #include "../libinterpret/bc_interpreter_backend.c"
 #include <stdio.h>
 
-bool IsBinaryExp(metac_expression_kind_t k);
+bool IsBinaryExp(metac_expr_kind_t k);
 
-const char* MetaCExpressionKind_toChars(metac_expression_kind_t k);
+const char* MetaCExpressionKind_toChars(metac_expr_kind_t k);
 
 metac_identifier_ptr_t FindMatchingIdentifier(metac_identifier_table_t* searchTable,
                                               metac_identifier_table_t* sourceTable,
@@ -103,7 +103,7 @@ void VariableStore_RemoveVariable(variable_store_t* vstore, void* value)
 
 
 void VariableStore_SetValueI32(variable_store_t* vstore,
-                               metac_sema_expression_t* varExp,
+                               metac_sema_expr_t* varExp,
                                int32_t value)
 {
     assert(varExp->Kind == exp_variable);
@@ -151,17 +151,17 @@ uint32_t _ReadContextCapacity;
 */
 
 static inline void TupleToValue(void* c, BCValue* result,
-                                metac_sema_expression_t* e)
+                                metac_sema_expr_t* e)
 {
 
 }
 extern const BackendInterface* bc;
 
 void WalkTree(void* c, BCValue* result,
-              metac_sema_expression_t* e,
+              metac_sema_expr_t* e,
               variable_store_t* vstore)
 {
-    metac_expression_kind_t op = e->Kind;
+    metac_expr_kind_t op = e->Kind;
 
     if (op == exp_signed_integer)
     {
@@ -411,7 +411,7 @@ void WalkTree(void* c, BCValue* result,
         bc->DestroyTemporary(c, lhs);
 }
 
-metac_sema_expression_t evalWithVariables(metac_sema_expression_t* e,
+metac_sema_expr_t evalWithVariables(metac_sema_expr_t* e,
                                           variable_store_t* vstore)
 {
     void* c;
@@ -437,7 +437,7 @@ metac_sema_expression_t evalWithVariables(metac_sema_expression_t* e,
 
     BCValue res = bc->Run(c, fIdx, 0, 0);
 
-    metac_sema_expression_t result;
+    metac_sema_expr_t result;
 
     if (e->TypeIndex.v == TYPE_INDEX_V(type_index_basic, type_type))
     {

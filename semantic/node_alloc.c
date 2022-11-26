@@ -137,12 +137,12 @@ metac_scope_t* MetaCScope_PushNewScope(metac_semantic_state_t* sema,
         for(uint32_t i = 0; i < cast(exp_tuple_t)) \
     \ }
 
-metac_sema_expression_t* AllocNewSemaExpression(metac_semantic_state_t* self, metac_expression_t* expr)
+metac_sema_expr_t* AllocNewSemaExpression(metac_semantic_state_t* self, metac_expr_t* expr)
 {
-    metac_sema_expression_t* result = 0;
+    metac_sema_expr_t* result = 0;
 
     {
-        metac_sema_expression_t exp = {(metac_expression_kind_t)0};
+        metac_sema_expr_t exp = {(metac_expr_kind_t)0};
         METAC_COPY_HEADER(expr, &exp);
 
         exp.TypeIndex.v = 0;
@@ -158,26 +158,26 @@ metac_sema_expression_t* AllocNewSemaExpression(metac_semantic_state_t* self, me
         ARENA_ARRAY_ENSURE_SIZE(self->Expressions, tupleExpCount);
 
         uint32_t allocPos = POST_ADD(self->ExpressionsCount, tupleExpCount);
-        metac_sema_expression_t* elements =
+        metac_sema_expr_t* elements =
             self->Expressions + allocPos;
-        metac_sema_expression_t** elemArray =
-            Allocator_Calloc(&self->Allocator, metac_sema_expression_t*, tupleExpCount);
+        metac_sema_expr_t** elemArray =
+            Allocator_Calloc(&self->Allocator, metac_sema_expr_t*, tupleExpCount);
         exp_tuple_t* expList = expr->TupleExpressionList;
 
-        metac_expression_t* elemExpr;
+        metac_expr_t* elemExpr;
         for(uint32_t i = 0;
             i < tupleExpCount;
             i++)
         {
             elemExpr = expList->Expression;
-            metac_sema_expression_t* semaElem = elements + i;
+            metac_sema_expr_t* semaElem = elements + i;
             semaElem->Serial = INC(_nodeCounter);
             METAC_COPY_HEADER(elemExpr, semaElem);
 
             memcpy(
-                ((char*)semaElem) + sizeof(metac_sema_expression_header_t),
-                ((char*)elemExpr) + sizeof(metac_expression_header_t),
-                sizeof(metac_expression_t) - sizeof(metac_expression_header_t)
+                ((char*)semaElem) + sizeof(metac_sema_expr_header_t),
+                ((char*)elemExpr) + sizeof(metac_expr_header_t),
+                sizeof(metac_expr_t) - sizeof(metac_expr_header_t)
             );
 
             elemArray[i] = semaElem;
@@ -189,9 +189,9 @@ metac_sema_expression_t* AllocNewSemaExpression(metac_semantic_state_t* self, me
     else
     {
         memcpy(
-            ((char*)result) + sizeof(metac_sema_expression_header_t),
-            ((char*)expr) + sizeof(metac_expression_header_t),
-            sizeof(metac_expression_t) - sizeof(metac_expression_header_t)
+            ((char*)result) + sizeof(metac_sema_expr_header_t),
+            ((char*)expr) + sizeof(metac_expr_header_t),
+            sizeof(metac_expr_t) - sizeof(metac_expr_header_t)
         );
     }
 #if 0
