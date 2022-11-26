@@ -132,7 +132,7 @@ void MetaCSemantic_Init(metac_semantic_state_t* self, metac_parser_t* parser,
 
     ARENA_ARRAY_INIT(metac_scope_t*, self->DeclStatementScope, &self->Allocator);
 
-    ARENA_ARRAY_INIT(metac_sema_declaration_t*, self->Globals, &self->Allocator);
+    ARENA_ARRAY_INIT(metac_sema_decl_t*, self->Globals, &self->Allocator);
     ARENA_ARRAY_INIT(metac_scope_t, self->Scopes, &self->Allocator);
 
     self->TemporaryScopeDepth = 0;
@@ -629,7 +629,7 @@ metac_sema_stmt_t* MetaCSemantic_doStatementSemantic_(metac_semantic_state_t* se
                 {
                     semaFor->ForInit = cast(metac_node_t)
                         MetaCSemantic_doDeclSemantic(self,
-                            (cast(metac_declaration_t*)for_->ForInit));
+                            (cast(metac_decl_t*)for_->ForInit));
                 }
                 hash = CRC32C_VALUE(hash, semaFor->ForInit->Hash);
             }
@@ -1050,8 +1050,8 @@ metac_type_t NodeFromTypeIndex(metac_semantic_state_t* sema,
 typedef struct MetaCSemantic_doDeclSemantic_task_context_t
 {
     metac_semantic_state_t* Sema;
-    metac_declaration_t* Decl;
-    metac_sema_declaration_t* Result;
+    metac_decl_t* Decl;
+    metac_sema_decl_t* Result;
 } MetaCSemantic_doDeclSemantic_task_context_t;
 
 const char* doDeclSemantic_PrintFunction(task_t* task)
@@ -1072,10 +1072,10 @@ const char* doDeclSemantic_PrintFunction(task_t* task)
 }
 #endif
 
-metac_sema_declaration_t* MetaCSemantic_declSemantic(metac_semantic_state_t* self,
-                                                     metac_declaration_t* decl)
+metac_sema_decl_t* MetaCSemantic_declSemantic(metac_semantic_state_t* self,
+                                                     metac_decl_t* decl)
 {
-    metac_sema_declaration_t* result = cast(metac_sema_declaration_t*)0xFEFEFEFE;
+    metac_sema_decl_t* result = cast(metac_sema_decl_t*)0xFEFEFEFE;
     metac_identifier_ptr_t declId = {0};
 
     switch(decl->Kind)
@@ -1083,7 +1083,7 @@ metac_sema_declaration_t* MetaCSemantic_declSemantic(metac_semantic_state_t* sel
         case decl_function:
         {
             decl_function_t* f = cast(decl_function_t*) decl;
-            result = cast(metac_sema_declaration_t*)
+            result = cast(metac_sema_decl_t*)
                 MetaCSemantic_doFunctionSemantic(self, f);
 
         } break;
@@ -1091,7 +1091,7 @@ metac_sema_declaration_t* MetaCSemantic_declSemantic(metac_semantic_state_t* sel
             assert(0);
         case decl_comment:
         {
-            result = cast(metac_sema_declaration_t*)decl;
+            result = cast(metac_sema_decl_t*)decl;
         } break;
         case decl_variable:
         {
@@ -1124,7 +1124,7 @@ metac_sema_declaration_t* MetaCSemantic_declSemantic(metac_semantic_state_t* sel
             {
                 var->Storage.v = STORAGE_V(storage_global, self->GlobalsCount);
                 // TODO maybe we have to mark the global as having been inserted.
-                ARENA_ARRAY_ADD(self->Globals, cast(metac_sema_declaration_t*)var);
+                ARENA_ARRAY_ADD(self->Globals, cast(metac_sema_decl_t*)var);
             }
 
             MetaCSemantic_RegisterInScope(self, var->VarIdentifier, METAC_NODE(var));
@@ -1164,7 +1164,7 @@ metac_sema_declaration_t* MetaCSemantic_declSemantic(metac_semantic_state_t* sel
                 MetaCSemantic_doTypeSemantic(self, (decl_type_t*)decl);
             metac_type_t typeNode =
                 NodeFromTypeIndex(self, type_index);
-            result = cast(metac_sema_declaration_t*)typeNode;
+            result = cast(metac_sema_decl_t*)typeNode;
             SetTypeIndex(typeNode, type_index);
 
             if (declId.v != 0 && declId.v != -1)
@@ -1173,7 +1173,7 @@ metac_sema_declaration_t* MetaCSemantic_declSemantic(metac_semantic_state_t* sel
             }
         } break;
     }
-    assert(result != cast(metac_sema_declaration_t*)0xFEFEFEFE);
+    assert(result != cast(metac_sema_decl_t*)0xFEFEFEFE);
     return result;
 }
 #ifndef NO_FIBERS
@@ -1193,12 +1193,12 @@ void MetaCSemantic_doDeclSemantic_Task(task_t* task)
 #endif
 #define TracyMessage(MSG) \
     TracyCMessage(MSG, sizeof(MSG) - 1)
-metac_sema_declaration_t* MetaCSemantic_doDeclSemantic_(metac_semantic_state_t* self,
-                                                        metac_declaration_t* decl,
+metac_sema_decl_t* MetaCSemantic_doDeclSemantic_(metac_semantic_state_t* self,
+                                                        metac_decl_t* decl,
                                                         const char* callFile,
                                                         uint32_t callLine)
 {
-    metac_sema_declaration_t* result = 0;
+    metac_sema_decl_t* result = 0;
     result = MetaCSemantic_declSemantic(self, decl);
     if (!result)
     {

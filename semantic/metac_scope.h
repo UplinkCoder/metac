@@ -5,7 +5,7 @@
 #include "../parser/metac_node.h"
 #include "../os/metac_alloc.h"
 
-struct metac_sema_declaration_t;
+struct metac_sema_decl_t;
 
 typedef enum metac_scope_owner_kind_t
 {

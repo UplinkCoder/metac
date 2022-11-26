@@ -288,7 +288,7 @@ void Presemantic_(repl_state_t* self)
         {
             metac_identifier_ptr_t printIdentifier = {0};
 
-            metac_declaration_t* decl = decls.Ptr[i];
+            metac_decl_t* decl = decls.Ptr[i];
 
             if (METAC_NODE(decl) == emptyNode)
                 continue;
@@ -303,7 +303,7 @@ void Presemantic_(repl_state_t* self)
                     {
                         printIdentifier = typedef_->Identifier;
                     }
-                    decl = (metac_declaration_t*)typedef_->Type;
+                    decl = (metac_decl_t*)typedef_->Type;
                 }
             }
 
@@ -482,7 +482,7 @@ void MetaCRepl_ExprSemantic_Task(task_t* task)
 }
 #endif
 
-metac_identifier_ptr_t IdentifierPtrFromDecl(metac_declaration_t* decl)
+metac_identifier_ptr_t IdentifierPtrFromDecl(metac_decl_t* decl)
 {
     metac_identifier_ptr_t idPtr = {0};
 
@@ -507,7 +507,7 @@ metac_identifier_ptr_t IdentifierPtrFromDecl(metac_declaration_t* decl)
 
 }
 
-metac_identifier_ptr_t IdentifierPtrFromSemaDecl(metac_sema_declaration_t* decl)
+metac_identifier_ptr_t IdentifierPtrFromSemaDecl(metac_sema_decl_t* decl)
 {
     metac_identifier_ptr_t idPtr = {0};
 
@@ -667,7 +667,7 @@ LswitchMode:
                 {
                     for(uint32_t i = 0; i < repl->SemanticState.GlobalsCount; i++)
                     {
-                        metac_sema_declaration_t* global = repl->SemanticState.Globals[i];
+                        metac_sema_decl_t* global = repl->SemanticState.Globals[i];
                         if (global->Kind == decl_variable)
                         {
                             sema_decl_variable_t var = global->sema_decl_variable;
@@ -697,7 +697,7 @@ LswitchMode:
                             }
                             {
                                 metac_identifier_ptr_t idPtr =
-                                    IdentifierPtrFromSemaDecl(cast(metac_sema_declaration_t*)&var);
+                                    IdentifierPtrFromSemaDecl(cast(metac_sema_decl_t*)&var);
                                 const char* nameString =
                                     IdentifierPtrToCharPtr(repl->SemanticState.ParserIdentifierTable, idPtr);
                                 MSGF ("Global %s %s = %s\n", typeString, nameString, valueString);
@@ -811,7 +811,7 @@ LswitchMode:
 
             metac_expr_t* exp;
             metac_stmt_t* stmt;
-            metac_declaration_t* decl;
+            metac_decl_t* decl;
 
             uint32_t initalPosition = repl->LPP.LexerState.Position;
             switch(repl->ParseMode)
@@ -933,7 +933,7 @@ LswitchMode:
             case repl_mode_setvars :
             {
 #if 0
-                metac_declaration_t* decl = MetaCLPP_ParseDeclarationFromString(&repl->LPP, repl->Line);
+                metac_decl_t* decl = MetaCLPP_ParseDeclarationFromString(&repl->LPP, repl->Line);
                 if (decl)
                 {
                     metac_identifier_ptr_t idPtr = {0};
@@ -1039,7 +1039,7 @@ LswitchMode:
 
             case repl_mode_ds :
             {
-                metac_sema_declaration_t* ds;
+                metac_sema_decl_t* ds;
                 decl = MetaCLPP_ParseDeclarationFromString(&repl->LPP, repl->Line);
                 if (decl)
                     MSGF("decl = %s\n", MetaCPrinter_PrintDeclaration(&repl->printer, decl));

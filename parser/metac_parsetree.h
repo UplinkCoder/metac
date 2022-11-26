@@ -221,7 +221,7 @@ typedef struct stmt_decl_t
 {
     STMT_HEADER
 
-    struct metac_declaration_t* Declaration;
+    struct metac_decl_t* Declaration;
 } stmt_decl_t;
 
 typedef struct stmt_if_t
@@ -298,8 +298,8 @@ typedef struct metac_stmt_t
     };
 } metac_stmt_t;
 
-#define DECLARATION_HEADER \
-    metac_declaration_kind_t Kind; \
+#define DECL_HEADER \
+    metac_decl_kind_t Kind; \
     uint32_t LocationIdx; \
     uint32_t Hash; \
     uint32_t Serial; \
@@ -392,7 +392,7 @@ typedef struct decl_type_t
 {
     union {
         struct {
-            DECLARATION_HEADER
+            DECL_HEADER
         };
         // metac_type_header_t TypeHeader;
     };
@@ -404,7 +404,7 @@ typedef struct decl_type_t
 
 typedef struct decl_comment_t
 {
-    DECLARATION_HEADER
+    DECL_HEADER
 
     const char* Text;
     uint32_t Length;
@@ -412,16 +412,16 @@ typedef struct decl_comment_t
 
 typedef struct decl_label_t
 {
-    DECLARATION_HEADER
+    DECL_HEADER
 
     metac_identifier_ptr_t Identifier;
 
-    struct metac_declaration_t* Decl;
+    struct metac_decl_t* Decl;
 } decl_label_t;
 
 typedef struct decl_variable_t
 {
-    DECLARATION_HEADER
+    DECL_HEADER
 
     decl_type_t* VarType;
 
@@ -434,7 +434,7 @@ typedef struct decl_variable_t
 
 typedef struct decl_field_t
 {
-    DECLARATION_HEADER
+    DECL_HEADER
 
     decl_variable_t* Field;
 
@@ -444,7 +444,7 @@ typedef struct decl_field_t
 
 typedef struct decl_parameter_t
 {
-    DECLARATION_HEADER
+    DECL_HEADER
 
     decl_variable_t* Parameter;
 
@@ -461,7 +461,7 @@ typedef struct decl_parameter_list_t
 
 typedef struct decl_function_t
 {
-    DECLARATION_HEADER
+    DECL_HEADER
 
     decl_type_t* ReturnType;
 
@@ -475,7 +475,7 @@ typedef struct decl_function_t
 
 typedef struct decl_type_ptr_t
 {
-    DECLARATION_HEADER
+    DECL_HEADER
 
     TYPE_HEADER
 
@@ -484,7 +484,7 @@ typedef struct decl_type_ptr_t
 
 typedef struct decl_enum_member_t
 {
-    DECLARATION_HEADER
+    DECL_HEADER
 
     metac_identifier_ptr_t Name;
 
@@ -495,7 +495,7 @@ typedef struct decl_enum_member_t
 
 typedef struct decl_type_enum_t
 {
-    DECLARATION_HEADER
+    DECL_HEADER
 
     TYPE_HEADER
 
@@ -511,7 +511,7 @@ typedef struct decl_type_enum_t
 
 typedef struct decl_type_functiontype_t
 {
-    DECLARATION_HEADER
+    DECL_HEADER
 
     TYPE_HEADER
 
@@ -527,7 +527,7 @@ typedef struct decl_type_functiontype_t
 
 typedef struct decl_type_array_t
 {
-    DECLARATION_HEADER
+    DECL_HEADER
 
     TYPE_HEADER
 
@@ -538,7 +538,7 @@ typedef struct decl_type_array_t
 
 typedef struct decl_type_struct_t
 {
-    DECLARATION_HEADER
+    DECL_HEADER
 
     TYPE_HEADER
 
@@ -555,7 +555,7 @@ typedef struct decl_type_struct_t
 /// for tooling purposes
 typedef struct decl_type_union_t
 {
-    DECLARATION_HEADER
+    DECL_HEADER
 
     TYPE_HEADER
 
@@ -570,7 +570,7 @@ typedef struct decl_type_union_t
 
 typedef struct decl_type_typedef_t
 {
-    DECLARATION_HEADER
+    DECL_HEADER
 
     TYPE_HEADER
 
@@ -582,7 +582,7 @@ typedef struct decl_type_typedef_t
 
 typedef struct decl_type_typeof_t
 {
-    DECLARATION_HEADER
+    DECL_HEADER
 
     TYPE_HEADER
 
@@ -593,7 +593,7 @@ typedef struct decl_type_typeof_t
 
 typedef struct decl_type_tuple_t
 {
-    DECLARATION_HEADER
+    DECL_HEADER
 
     TYPE_HEADER
 
@@ -603,22 +603,22 @@ typedef struct decl_type_tuple_t
 
 typedef struct decl_type_modifier_t
 {
-    DECLARATION_HEADER
+    DECL_HEADER
 
     TYPE_HEADER
 } decl_type_modifies_t;
 
-typedef struct metac_declaration_t
+typedef struct metac_decl_t
 {
     union {
         struct {
-            DECLARATION_HEADER
+            DECL_HEADER
         };
 
         FOREACH_DECL_KIND(MEMBER)
     };
 #undef MEMBER
-} metac_declaration_t;
+} metac_decl_t;
 #pragma pack(pop)
 
 typedef int (*walker_function_t) (metac_node_t node, void * ctx);
@@ -627,10 +627,10 @@ typedef int (*walker_function_t) (metac_node_t node, void * ctx);
 #  define MetaCDeclaration_Walk(DECL, FUNC, CTX) \
       MetaCDeclaration_Walk_Real(DECL, FUNC, (void*)CTX)
 #else
-  int MetaCDeclaration_Walk_Debug(metac_declaration_t* decl, const char* fn_name, walker_function_t walker_fn, void* ctx);
+  int MetaCDeclaration_Walk_Debug(metac_decl_t* decl, const char* fn_name, walker_function_t walker_fn, void* ctx);
 #  define MetaCDeclaration_Walk(DECL, FUNC, CTX) \
       MetaCDeclaration_Walk_Debug(DECL, #FUNC, FUNC, (void*)CTX)
 #endif
-int MetaCDeclaration_Walk_Real(metac_declaration_t* decl, walker_function_t walker_fn, void* ctx);
+int MetaCDeclaration_Walk_Real(metac_decl_t* decl, walker_function_t walker_fn, void* ctx);
 
 #endif

@@ -230,7 +230,7 @@ BCTypeInfo MetaCCodegen_GetTypeInfo(metac_bytecode_ctx_t* ctx, BCType* bcType)
     return func;
 }
 
-void MetaCCodegen_doGlobal(metac_bytecode_ctx_t* ctx, metac_sema_declaration_t* decl, uint32_t idx)
+void MetaCCodegen_doGlobal(metac_bytecode_ctx_t* ctx, metac_sema_decl_t* decl, uint32_t idx)
 {
     BCValue result = {BCValueType_HeapValue};
 

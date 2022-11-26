@@ -125,7 +125,7 @@ typedef enum metac_value_type_t
 } metac_value_type_t;
 
 
-void MetaCCodegen_doGlobal(metac_bytecode_ctx_t* ctx, metac_sema_declaration_t* decl, uint32_t idx);
+void MetaCCodegen_doGlobal(metac_bytecode_ctx_t* ctx, metac_sema_decl_t* decl, uint32_t idx);
 
 static void MetaCCodegen_doExpression(metac_bytecode_ctx_t* ctx,
                                       metac_sema_expr_t* exp,

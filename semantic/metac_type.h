@@ -61,7 +61,7 @@ typedef struct metac_type_index_t
 #define ERROR_TYPE_INDEX_V -1
 
 #define METAC_TYPE_HEADER \
-    metac_declaration_kind_t Kind; \
+    metac_decl_kind_t Kind; \
     uint32_t LocationIdx; \
     uint32_t Hash; \
     uint32_t Serial;

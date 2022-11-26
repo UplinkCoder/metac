@@ -32,7 +32,7 @@ void main()
     printf("sizeof(metac_sema_expr_t): %d\n", (int) sizeof(metac_sema_expr_t));
     printf("sizeof(metac_sema_expr_header_t) %d\n", (int) sizeof(metac_sema_expr_header_t));
 
-    printf("sizeof(metac_declaration_t): %d\n", (int) sizeof(metac_declaration_t));
+    printf("sizeof(metac_decl_t): %d\n", (int) sizeof(metac_decl_t));
     FOREACH_DECL_KIND(PRINT_SIZE);
 
     printf("sizeof(metac_stmt_t): %d\n", (int) sizeof(metac_stmt_t));

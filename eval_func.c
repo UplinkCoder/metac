@@ -29,7 +29,7 @@ DeclarationArray ReadLexParse(const char* filename, metac_lpp_t* lpp)
     return result;
 }
 
-metac_declaration_t* FindDeclaration(DeclarationArray decls,
+metac_decl_t* FindDeclaration(DeclarationArray decls,
                                      metac_parser_t* parser, const char* name)
 {
     const uint32_t len = cast(uint32_t) strlen(name);
@@ -46,7 +46,7 @@ metac_declaration_t* FindDeclaration(DeclarationArray decls,
         idx < decls.Length;
         idx++)
     {
-        metac_declaration_t* decl = decls.Ptr[idx];
+        metac_decl_t* decl = decls.Ptr[idx];
         // printf("decl: %s\n",
         //    MetaCPrinter_PrintDeclaration(&parser->DebugPrinter, decl));
         metac_identifier_ptr_t idPtr = {0};
@@ -62,7 +62,7 @@ metac_declaration_t* FindDeclaration(DeclarationArray decls,
         {
             decl_type_typedef_t* typdef = cast(decl_type_typedef_t*) decl;
             idPtr = typdef->Identifier;
-            decl = cast(metac_declaration_t*) typdef->Type;
+            decl = cast(metac_decl_t*) typdef->Type;
         }
 
         if (idPtr.v == NameId.v)

@@ -7,7 +7,7 @@
 
 typedef struct DeclarationArray
 {
-    metac_declaration_t** Ptr;
+    metac_decl_t** Ptr;
     uint32_t Length;
     uint32_t Capacity;
 } DeclarationArray;

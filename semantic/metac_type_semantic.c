@@ -96,7 +96,7 @@ metac_type_index_t MetaCSemantic_GetTypeIndex(metac_semantic_state_t* state,
     return result;
 }
 
-static inline bool IsAggregateTypeDecl(metac_declaration_kind_t declKind)
+static inline bool IsAggregateTypeDecl(metac_decl_kind_t declKind)
 {
     if (declKind == decl_type_struct || declKind == decl_type_union)
     {
@@ -105,7 +105,7 @@ static inline bool IsAggregateTypeDecl(metac_declaration_kind_t declKind)
     return false;
 }
 
-static inline bool IsPointerType(metac_declaration_kind_t declKind)
+static inline bool IsPointerType(metac_decl_kind_t declKind)
 {
     if (declKind == decl_type_ptr)
     {
@@ -835,7 +835,7 @@ metac_type_index_t TypeEnumSemantic(metac_semantic_state_t* self,
 
     decl_type_enum_t* enm = cast(decl_type_enum_t*) type_;
 
-    metac_type_enum_t tmpSemaEnum = {(metac_declaration_kind_t)0};
+    metac_type_enum_t tmpSemaEnum = {(metac_decl_kind_t)0};
 
     metac_scope_t enumScope = { scope_flag_temporary };
     STACK_ARENA_ARRAY(metac_enum_member_t, semaMembers, 64, &self->TempAlloc)
@@ -1001,7 +1001,7 @@ metac_type_index_t MetaCSemantic_TypeSemantic(metac_semantic_state_t* self,
         STACK_ARENA_ARRAY(metac_type_aggregate_field_t, tmpFields, 128, &self->TempAlloc);
         ARENA_ARRAY_ENSURE_SIZE(tmpFields, agg->FieldCount);
 
-        metac_type_aggregate_t tmpSemaAggMem = {(metac_declaration_kind_t)0};
+        metac_type_aggregate_t tmpSemaAggMem = {(metac_decl_kind_t)0};
         metac_type_aggregate_t* tmpSemaAgg = &tmpSemaAggMem;
         tmpSemaAgg->Header.Kind = agg->Kind;
         tmpSemaAgg->Identifier = agg->Identifier;

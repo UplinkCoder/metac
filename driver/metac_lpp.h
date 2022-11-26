@@ -28,7 +28,7 @@ metac_expr_t* MetaCLPP_ParseExpressionFromString(metac_lpp_t* lpp, const char* e
 
 metac_stmt_t* MetaCLPP_ParseStatementFromString(metac_lpp_t* lpp, const char* stmt);
 
-metac_declaration_t* MetaCLPP_ParseDeclarationFromString(metac_lpp_t* lpp, const char* decl);
+metac_decl_t* MetaCLPP_ParseDeclarationFromString(metac_lpp_t* lpp, const char* decl);
 
 #ifndef NO_PREPROCESSOR
 metac_preprocessor_directive_t MetaCLPP_ParsePreprocFromString(metac_lpp_t* lpp, const char* line,

@@ -4,7 +4,7 @@ typedef struct handoff_walker_context_t
 
     const metac_semantic_state_t* Origin;
     metac_semantic_state_t* NewOwner;
-    metac_sema_declaration_t* decl;
+    metac_sema_decl_t* decl;
     metac_node_t result;
 } handoff_walker_context_t;
 
@@ -226,10 +226,10 @@ static inline int HandoffWalker(metac_node_t node, void* ctx)
 }
 
 /// transfers ownership of decl and all it's dependents from self to newOwner
-void MetaCSemantic_Handoff(metac_semantic_state_t* self, metac_sema_declaration_t** declP,
+void MetaCSemantic_Handoff(metac_semantic_state_t* self, metac_sema_decl_t** declP,
                            metac_semantic_state_t* newOwner)
 {
-    metac_sema_declaration_t* decl = *declP;
+    metac_sema_decl_t* decl = *declP;
 
     handoff_walker_context_t handoff_context = {
         crc32c_nozero(~0, "HandoffWalker", sizeof("HandoffWalker") -1),
@@ -238,5 +238,5 @@ void MetaCSemantic_Handoff(metac_semantic_state_t* self, metac_sema_declaration_
 
     MetaCNode_TreeWalk_Real(METAC_NODE(decl), HandoffWalker, &handoff_context);
 
-    *declP = (metac_sema_declaration_t*)handoff_context.result;
+    *declP = (metac_sema_decl_t*)handoff_context.result;
 }

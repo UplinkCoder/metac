@@ -3,7 +3,7 @@
 #include "crc32c.h"
 #undef walker_fn
 
-int MetaCSemaTree_Walk_Debug(metac_sema_declaration_t* decl, struct metac_sema_decl_state_t* sema,
+int MetaCSemaTree_Walk_Debug(metac_sema_decl_t* decl, struct metac_sema_decl_state_t* sema,
                              const char* fn_name, walker_function_t walker_fn, void* ctx)
 {
     // make sure the context confusion cookie is set
@@ -52,7 +52,7 @@ metac_type_t TypePtrToNode(metac_type_index_t typeIdx,metac_semantic_state_t* se
     return result;
 }
 
-int MetaCSemaTree_Walk_Real(metac_sema_declaration_t* decl, struct metac_semantic_state_t* sema,
+int MetaCSemaTree_Walk_Real(metac_sema_decl_t* decl, struct metac_semantic_state_t* sema,
                             walker_function_t walker_fn, void* ctx)
 {
 
@@ -60,7 +60,7 @@ int MetaCSemaTree_Walk_Real(metac_sema_declaration_t* decl, struct metac_semanti
     walker_fn((metac_node_t) DECL, CTX)
 
 #define MetaCSemaTree_Walk_Real(DECL, SEMA, FN, CTX) \
-    MetaCSemaTree_Walk_Real((metac_sema_declaration_t*) DECL, SEMA, FN, CTX)
+    MetaCSemaTree_Walk_Real((metac_sema_decl_t*) DECL, SEMA, FN, CTX)
 
 #define emptyNode \
     ((metac_node_t) 0x1)
@@ -203,7 +203,7 @@ int MetaCSemaTree_Walk_Real(metac_sema_declaration_t* decl, struct metac_semanti
 #  define MetaCSemaTree_Walk(DECL, FUNC, CTX) \
       MetaCSemaTree_Walk_Real(DECL, FUNC, (void*)CTX)
 #else
-  int MetaCSemaTree_Debug(metac_sema_declaration_t* decl, const char* fn_name, walker_function_t walker_fn, void* ctx);
+  int MetaCSemaTree_Debug(metac_sema_decl_t* decl, const char* fn_name, walker_function_t walker_fn, void* ctx);
 #  define MetaCSemaTree_Walk(DECL, FUNC, CTX) \
       MetaCSemaTree_Walk_Debug(DECL, #FUNC, FUNC, (void*)CTX)
 #endif

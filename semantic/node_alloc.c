@@ -226,7 +226,7 @@ sema_decl_function_t* AllocNewSemaFunction(metac_semantic_state_t* self,
                                            decl_function_t* declFunc)
 {
     sema_decl_function_t* result = 0;
-    sema_decl_function_t func = {(metac_declaration_kind_t)0};
+    sema_decl_function_t func = {(metac_decl_kind_t)0};
 
     {
         func.Serial = INC(_nodeCounter);
@@ -241,17 +241,17 @@ sema_decl_function_t* AllocNewSemaFunction(metac_semantic_state_t* self,
 
 sema_decl_variable_t* AllocNewSemaVariable(metac_semantic_state_t* self,
                                            decl_variable_t* declVar,
-                                           metac_sema_declaration_t** result_ptr)
+                                           metac_sema_decl_t** result_ptr)
 {
     sema_decl_variable_t* result = 0;
-    sema_decl_variable_t variable = {(metac_declaration_kind_t)0};
+    sema_decl_variable_t variable = {(metac_decl_kind_t)0};
 
     variable.Kind = decl_variable;
     variable.Serial = INC(_nodeCounter);
 
     result = self->Variables + INC(self->VariablesCount) - 1;
     (*result) = variable;
-    (*result_ptr) = (metac_sema_declaration_t*)result;
+    (*result_ptr) = (metac_sema_decl_t*)result;
 
     return result;
 }
@@ -283,7 +283,7 @@ sema_decl_variable_t* AllocFunctionParameters(metac_semantic_state_t* self,
 #if 0
 metac_type_aggregate_field_t* AllocAggregateFields(metac_semantic_state_t* self,
                                                    metac_type_aggregate_t* aggregate,
-                                                   metac_declaration_kind_t kind,
+                                                   metac_decl_kind_t kind,
                                                    uint32_t fieldCount)
 {
     uint32_t aggregateIndex = 0;

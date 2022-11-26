@@ -232,14 +232,14 @@ typedef enum metac_stmt_kind_t
     stmt_max
 } metac_stmt_kind_t;
 
-typedef enum metac_declaration_kind_t
+typedef enum metac_decl_kind_t
 {
     decl_min = stmt_max + 1,
 
     FOREACH_DECL_KIND(DEFINE_MEMBERS)
 
     decl_max
-} metac_declaration_kind_t;
+} metac_decl_kind_t;
 
 typedef enum metac_node_kind_t
 {

@@ -270,7 +270,7 @@ typedef struct sema_stmt_decl_t
 {
     SEMA_STMT_HEADER
 
-    struct metac_sema_declaration_t* Declaration;
+    struct metac_sema_decl_t* Declaration;
 } sema_stmt_decl_t;
 
 typedef struct sema_stmt_if_t
@@ -351,14 +351,14 @@ typedef struct metac_sema_stmt_t
 } metac_sema_stmt_t;
 
 
-#define SEMA_DECLARATION_HEADER \
-    DECLARATION_HEADER \
+#define SEMA_DECL_HEADER \
+    DECL_HEADER \
     metac_node_header_t* Parent;
 
-typedef struct sema_declaration_header_t
+typedef struct sema_decl_header_t
 {
-    SEMA_DECLARATION_HEADER
-} sema_declaration_header_t;
+    SEMA_DECL_HEADER
+} sema_decl_header_t;
 
 #define SEMA_TYPE_HEADER \
     TYPE_HEADER \
@@ -366,7 +366,7 @@ typedef struct sema_declaration_header_t
 
 typedef struct sema_decl_type_t
 {
-    SEMA_DECLARATION_HEADER
+    SEMA_DECL_HEADER
 
     // only set if TypeKind == type_identifier
     metac_type_index_t typeIndex;
@@ -382,7 +382,7 @@ enum metac_variable_flags_t
 
 typedef struct sema_decl_variable_t
 {
-    SEMA_DECLARATION_HEADER
+    SEMA_DECL_HEADER
 
     uint32_t VarFlags;
 
@@ -398,7 +398,7 @@ typedef struct sema_decl_variable_t
 /// ParameterCount is gotten from TypeIndex;
 typedef struct sema_decl_function_t
 {
-    SEMA_DECLARATION_HEADER
+    SEMA_DECL_HEADER
 
     metac_type_index_t TypeIndex;
 
@@ -417,7 +417,7 @@ typedef struct sema_decl_function_t
 
 typedef struct sema_decl_type_ptr_t
 {
-    SEMA_DECLARATION_HEADER
+    SEMA_DECL_HEADER
 
     SEMA_TYPE_HEADER
 
@@ -426,7 +426,7 @@ typedef struct sema_decl_type_ptr_t
 
 typedef struct sema_decl_enum_member_t
 {
-    SEMA_DECLARATION_HEADER
+    SEMA_DECL_HEADER
 
     metac_identifier_ptr_t Name;
 
@@ -435,7 +435,7 @@ typedef struct sema_decl_enum_member_t
 
 typedef struct sema_decl_type_enum_t
 {
-    SEMA_DECLARATION_HEADER
+    SEMA_DECL_HEADER
 
     SEMA_TYPE_HEADER
 
@@ -448,7 +448,7 @@ typedef struct sema_decl_type_enum_t
 
 typedef struct sema_decl_type_functiontype_t
 {
-    SEMA_DECLARATION_HEADER
+    SEMA_DECL_HEADER
 
     SEMA_TYPE_HEADER
 
@@ -461,7 +461,7 @@ typedef struct sema_decl_type_functiontype_t
 
 typedef struct sema_decl_type_array_t
 {
-    SEMA_DECLARATION_HEADER
+    SEMA_DECL_HEADER
 
     SEMA_TYPE_HEADER
 
@@ -473,7 +473,7 @@ typedef struct sema_decl_type_array_t
 /*
 typedef struct sema_type_aggregate_t
 {
-    SEMA_DECLARATION_HEADER
+    SEMA_DECL_HEADER
 
     SEMA_TYPE_HEADER
 
@@ -492,7 +492,7 @@ typedef struct sema_type_aggregate_t
 */
 typedef struct sema_decl_type_union_t
 {
-    SEMA_DECLARATION_HEADER
+    SEMA_DECL_HEADER
 
     SEMA_TYPE_HEADER
 
@@ -505,18 +505,18 @@ typedef struct sema_decl_type_union_t
 
 typedef struct sema_decl_type_typedef_t
 {
-    SEMA_DECLARATION_HEADER
+    SEMA_DECL_HEADER
 
     metac_type_index_t Type;
 
     metac_identifier_ptr_t Identifier;
 } sema_decl_type_typedef_t;
 
-typedef struct metac_sema_declaration_t
+typedef struct metac_sema_decl_t
 {
     union {
         struct {
-            SEMA_DECLARATION_HEADER
+            SEMA_DECL_HEADER
         };
         sema_decl_variable_t sema_decl_variable;
         metac_type_typedef_t sema_decl_typedef;
@@ -529,7 +529,7 @@ typedef struct metac_sema_declaration_t
         metac_type_aggregate_t sema_type_aggergate;
     };
 
-} metac_sema_declaration_t;
+} metac_sema_decl_t;
 #pragma pack(pop)
 
 #endif // _METAC_SEMATREE_H_

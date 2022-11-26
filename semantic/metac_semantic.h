@@ -143,7 +143,7 @@ typedef struct metac_semantic_state_t
     metac_type_aggregate_t* CompilerInterface;
     sema_decl_variable_t CompilerVariable;
 
-    ARENA_ARRAY(metac_sema_declaration_t*, Globals)
+    ARENA_ARRAY(metac_sema_decl_t*, Globals)
     ARENA_ARRAY(metac_semantic_on_resolve_fail_t, OnResolveFailStack)
 } metac_semantic_state_t;
 
@@ -187,11 +187,11 @@ metac_sema_stmt_t* MetaCSemantic_doStatementSemantic_(metac_semantic_state_t* se
                                                            uint32_t callLine);
 
 #define MetaCSemantic_doDeclSemantic(SELF, NODE) \
-    MetaCSemantic_doDeclSemantic_(SELF, ((metac_declaration_t*)(NODE)), \
+    MetaCSemantic_doDeclSemantic_(SELF, ((metac_decl_t*)(NODE)), \
                                   __FILE__, __LINE__)
 
-metac_sema_declaration_t* MetaCSemantic_doDeclSemantic_(metac_semantic_state_t* self,
-                                                        metac_declaration_t* decl,
+metac_sema_decl_t* MetaCSemantic_doDeclSemantic_(metac_semantic_state_t* self,
+                                                        metac_decl_t* decl,
                                                         const char* callFile,
                                                         uint32_t callLine);
 
@@ -221,7 +221,7 @@ metac_sema_expr_t* AllocNewSemaExpression(metac_semantic_state_t* self, metac_ex
 
 sema_decl_function_t* AllocNewSemaFunction(metac_semantic_state_t* self,decl_function_t* func);
 
-sema_decl_variable_t* AllocNewSemaVariable(metac_semantic_state_t* self, decl_variable_t *decl, metac_sema_declaration_t ** result_ptr);
+sema_decl_variable_t* AllocNewSemaVariable(metac_semantic_state_t* self, decl_variable_t *decl, metac_sema_decl_t ** result_ptr);
 
 sema_decl_variable_t* AllocFunctionParameters(metac_semantic_state_t* self, sema_decl_function_t* func,
                                               uint32_t parameterCount);
@@ -230,11 +230,11 @@ sema_decl_type_t* AllocNewSemaType(metac_semantic_state_t* self, metac_type_inde
 
 #define AllocNewAggregate(SELF, KIND) \
     (AllocNewAggregate_(SELF, KIND, __LINE__, __FILE__))
-metac_type_aggregate_t* AllocNewAggregate_(metac_semantic_state_t* self, metac_declaration_kind_t kind, uint32_t line, const char* file);
+metac_type_aggregate_t* AllocNewAggregate_(metac_semantic_state_t* self, metac_decl_kind_t kind, uint32_t line, const char* file);
 
 metac_type_aggregate_field_t* AllocAggregateFields(metac_semantic_state_t* self,
                                                    metac_type_aggregate_t* aggregate,
-                                                   metac_declaration_kind_t kind,
+                                                   metac_decl_kind_t kind,
                                                    uint32_t fieldCount);
 #define AllocNewSemaStatement(SELF, KIND, RESULT_PTR) \
     (sema_ ## KIND ## _t*) AllocNewSemaStatement_(SELF, KIND, sizeof(sema_ ## KIND ##_t), ((void**)(RESULT_PTR)))
@@ -254,7 +254,7 @@ sema_stmt_casebody_t* AllocNewSemaCasebodyStatement(metac_semantic_state_t* self
 metac_scope_t* AllocNewScope(metac_semantic_state_t* self, metac_scope_t* parent, metac_scope_owner_t owner);
 metac_type_array_t* AllocNewSemaArrayType(metac_semantic_state_t* self, metac_type_index_t elementTypeIndex, uint32_t dim);
 
-void MetaCSemantic_Handoff(metac_semantic_state_t* self, metac_sema_declaration_t** declP,
+void MetaCSemantic_Handoff(metac_semantic_state_t* self, metac_sema_decl_t** declP,
                            metac_semantic_state_t* newOwner);
 
 metac_type_t NodeFromTypeIndex(metac_semantic_state_t* sema,
