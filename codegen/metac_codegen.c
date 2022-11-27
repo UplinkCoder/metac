@@ -478,6 +478,7 @@ bool IsExternal(metac_sema_expression_t* expr)
             result = (STORAGE_KIND(expr->Variable->Storage) == storage_external);
         break;
         case exp_dot:
+        case exp_arrow:
             result = IsExternal(expr->E1);
         break;
         case exp_function:
@@ -1057,6 +1058,55 @@ static void MetaCCodegen_doDotExpression(metac_bytecode_ctx_t* ctx,
     MetaCCodegen_doDeref(ctx, &addr, field->Type, result);
 }
 
+static void MetaCCodegen_doArrowExpression(metac_bytecode_ctx_t* ctx,
+                                           metac_sema_expression_t* exp,
+                                           BCValue* result)
+{
+    const BackendInterface gen = *ctx->gen;
+    void* c = ctx->c;
+
+    metac_sema_expression_t* e1 = exp->E1;
+    metac_sema_expression_t* e2 = exp->DotE2;
+
+    metac_type_index_t expTypeIndex = e1->TypeIndex;
+    metac_type_index_kind_t idxKind = TYPE_INDEX_KIND(expTypeIndex);
+    metac_type_index_kind_t aggKind = type_index_invalid;
+    metac_type_aggregate_field_t* field = 0;
+    metac_type_index_t aggTypeIndex;
+    BCType addrType = {BCTypeEnum_Ptr};
+    BCValue addr;
+    BCValue e1Value = {BCValueType_Unknown};
+    BCValue offsetVal = {BCValueType_Unknown};
+
+    assert(exp->Kind == exp_arrow);
+    assert(idxKind == type_index_ptr);
+    assert(e2->Kind == exp_field || e2->Kind == exp_call);
+
+    if (TYPE_INDEX_KIND(e2->TypeIndex) == type_index_functiontype)
+    {
+        BCType type_ = {BCTypeEnum_Function, TYPE_INDEX_INDEX(e2->TypeIndex)};
+        addrType = type_;
+    }
+
+    addr = gen.GenTemporary(c, addrType);
+    MetaCCodegen_doExpression(ctx, e1, &e1Value, _Rvalue);
+
+    field = e2->Field;
+    offsetVal = imm32(field->Offset);
+
+    // HACK remove!
+/*
+    if (e1Value.vType == BCValueType_HeapValue || e1Value.vType == BCValueType_External)
+    {
+        e1Value.vType = BCValueType_StackValue;
+    }
+*/
+    gen.Add3(c, &addr, &e1Value, &offsetVal);
+
+    MetaCCodegen_doDeref(ctx, &addr, field->Type, result);
+}
+
+
 static void MetaCCodegen_doExpression(metac_bytecode_ctx_t* ctx,
                                       metac_sema_expression_t* exp,
                                       BCValue* result,
@@ -1140,6 +1190,9 @@ static void MetaCCodegen_doExpression(metac_bytecode_ctx_t* ctx,
     else if (op == exp_dot)
     {
     }
+    else if (op == exp_arrow)
+    {
+    }
     else if (IsUnaryExp(op))
     {
         if (exp->E1->Kind == exp_signed_integer
@@ -1213,6 +1266,11 @@ static void MetaCCodegen_doExpression(metac_bytecode_ctx_t* ctx,
         case exp_dot:
         {
             MetaCCodegen_doDotExpression(ctx, exp, result);
+        } break;
+
+        case exp_arrow:
+        {
+            MetaCCodegen_doArrowExpression(ctx, exp, result);
         } break;
 
         case exp_function:
@@ -1549,7 +1607,8 @@ static void MetaCCodegen_doExpression(metac_bytecode_ctx_t* ctx,
                 BCValue* argP = &args[i];
                 MetaCCodegen_doExpression(ctx, call.Arguments[i], argP, _Rvalue);
             }
-            if (IsExternal)
+
+            if (isExternal)
             {
                 fn =
                     MetacCodegen_ExternalFunction(ctx, call.Function);

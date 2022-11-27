@@ -592,8 +592,8 @@ LswitchMode:
             } break;
             case 'c' :
             {
-
-            } break;
+                uiInterface.Clear(uiState);
+            } goto LnextLine;
             case 'l' :
             {
                 repl->ParseMode = repl_mode_lex_file;

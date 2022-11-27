@@ -20,12 +20,13 @@
     void (*RegisterLogCallback) (void (*LogCb)(const char* msg, void* context), void* context);
 */
 
-uint32_t compiler_CurrentTimeStamp ()
+uint32_t* compiler_CurrentTimeStamp (uint32_t* ts)
 {
-
+    OS.GetTimeStamp(ts);
+    return ts;
 }
 
-uint32_t compiler_Message ()
+uint32_t compiler_Message (const char* msg)
 {
 
 }

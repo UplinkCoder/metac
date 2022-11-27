@@ -2094,6 +2094,33 @@ LendSearch2:{}
                 else
                 {
                     // printf("Should call fnPtr: %p\n", frameP[call.fn.stackAddr.addr / 4]);
+                    uint32_t nParams = 0;
+                    void* result = 0;
+                    uint32_t unrealAddresses[3];
+                    unrealAddresses[0] = frameP[args[0].stackAddr.addr / 4];
+                    unrealAddresses[1] = frameP[args[1].stackAddr.addr / 4];
+                    unrealAddresses[2] = frameP[args[2].stackAddr.addr / 4];
+
+                    void* arg0 = (void*) BCInterpreter_toRealPointer(self, heapPtr, unrealAddresses[0]);
+                    void* arg1 = (void*) BCInterpreter_toRealPointer(self, heapPtr, unrealAddresses[1]);
+                    void* arg2 = (void*) BCInterpreter_toRealPointer(self, heapPtr, unrealAddresses[2]);
+
+                    switch(call.n_args)
+                    {
+                        case 0:
+                            result = ((void* (*)()) frameP[call.fn.stackAddr.addr / 4])();
+                        break;
+                        case 1:
+                            result = ((void* (*)(void*)) frameP[call.fn.stackAddr.addr / 4])(arg0);
+                        break;
+                        case 2:
+                            result = ((void* (*)(void*, void*)) frameP[call.fn.stackAddr.addr / 4])(arg0, arg1);
+                        break;
+                        case 3:
+                            result = ((void* (*)(void*, void*, void*)) frameP[call.fn.stackAddr.addr / 4])(arg0, arg1, arg2);
+                        break;
+                        default: assert(0);
+                    }
                     const char* msg = ((const char* (*)()) frameP[call.fn.stackAddr.addr / 4])();
                     printf("External Call returned: %s\n", msg);
                 }

@@ -95,6 +95,9 @@ typedef struct ui_interface_t
     /// Query current mode for the repl;
     repl_mode_t (*QueryMode) (struct ui_state_t* state);
 
+    /// Clear output and input areas
+    void (*Clear) (struct ui_state_t* state);
+
     /// [Optional] Extra information that'll go to a diffrent area if possible
     void (*Info) (struct ui_state_t* state, const char* fmt, ...);
     /// [Optional] Sets our repl Completion function as the completion provider

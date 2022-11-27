@@ -56,6 +56,7 @@ static repl_state_t* s_repl;
 
 void linenoiseCompletionCallbackFn(const char *input, linenoiseCompletions * resultP)
 {
+    uint32_t cursorPos = getCursorPosition;
     completion_list_t list = s_completionCb(s_repl, input, strlen(input));
     uint32_t beforeLen = list.BeforeCompletionLength;
     char LineBuffer[512];
@@ -88,6 +89,12 @@ repl_mode_t Linenoise_QueryMode(ui_state_t* uiState)
 
 }
 
+void Linenoise_Clear(ui_state_t* uiState)
+{
+    linenoiseClearScreen();
+}
+
+
 metac_filesystem_t* Linenoise_GetFilesystem(ui_state_t* uiState)
 {
     return (metac_filesystem_t*)&NativeFileSystem;
@@ -98,6 +105,7 @@ const struct ui_interface_t LinenoiseUiInterface =
     Linenoise_GetInputLine,
     Linenoise_Message,
     Linenoise_QueryMode,
+    Linenoise_Clear,
     Linenoise_Info,
     Linenoise_SetCompletionCallback,
     Linenoise_GetFilesystem,

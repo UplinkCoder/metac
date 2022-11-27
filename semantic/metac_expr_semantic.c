@@ -573,59 +573,41 @@ LswitchIdKey:
         } break;
 
         case exp_arrow:
+        case exp_dot:
         {
+            // for the semantic of E2 we need to do the lookup in the scope of
+            // the type of E1
+            metac_type_index_t e1Type = {0};
+            uint32_t typeIndexIndex = 0;
+
+            bool isArrow = expr->Kind == exp_arrow;
             metac_type_index_t elementType = {0};
             metac_type_aggregate_t* e1AggType = 0;
             metac_type_ptr_t* ptrType = 0;
-            metac_type_index_t e1type;
 
             result->E1 = MetaCSemantic_doExprSemantic(self, expr->E1, 0);
-            e1type = result->E1->TypeIndex;
+            e1Type = result->E1->TypeIndex;
+            typeIndexIndex = TYPE_INDEX_INDEX(e1Type);
 
-            if (TYPE_INDEX_KIND(e1type) == type_index_ptr)
+            // first make the arrowExp into a dot exp essentailly
+            if (isArrow)
             {
-                elementType =
-                    PtrTypePtr(self, TYPE_INDEX_INDEX(e1type))->ElementType;
-                metac_sema_expression_t* e1 = UnwrapParen(result->E1);
-                e1 = ExtractCastExp(e1);
-
-                if (TYPE_INDEX_KIND(elementType) != type_index_struct)
+                if (TYPE_INDEX_KIND(e1Type) != type_index_ptr)
                 {
-                    assert(!"not a struct");
-                    // SemanticError(e1->LocationIndex)
+                    SemanticError(expr->LocationIndex,
+                        "lhs of -> is supposed to be a pointer but it is: %s\n",
+                        TypeToChars(self, e1Type));
+                    return emptyNode;
                 }
 
-                {
-                    e1AggType = StructPtr(self, TYPE_INDEX_INDEX(elementType));
-                    MetaCSemantic_MountScope(self, e1AggType->Scope);
-                    result->E2 = MetaCSemantic_doExprSemantic(self, expr->E2, 0);
-                    MetaCSemantic_UnmountScope(self);
-
-                    if (result->E2->Kind == exp_field)
-                    {
-                        // printf("e2.offset: %d\n", result->E2->Field->Offset);
-                    }
-                }
-                int k = 12;
+                e1Type = PtrTypePtr(self, TYPE_INDEX_INDEX(e1Type))->ElementType;
+                typeIndexIndex = TYPE_INDEX_INDEX(e1Type);
             }
-            else
-            {
-                assert(!"lhs of -> doesn't seem to be a pointer");
-            }
-        } break;
-        case exp_dot:
-        {
-            result->E1 = MetaCSemantic_doExprSemantic(self, expr->E1, 0);
-            // for the semantic of E2 we need to do the lookup in the scope of
-            // the type of E1
-            const metac_type_index_kind_t typeIndexKind
-                = TYPE_INDEX_KIND(result->E1->TypeIndex);
-            uint32_t typeIndexIndex = TYPE_INDEX_INDEX(result->E1->TypeIndex);
 
-            if (IsAggregateType(typeIndexKind))
+            if (IsAggregateType(TYPE_INDEX_KIND(e1Type)))
             {
                 metac_type_aggregate_t* agg = 0;
-                switch(typeIndexKind)
+                switch(TYPE_INDEX_KIND(e1Type))
                 {
                 case type_index_struct:
                     agg = StructPtr(self, typeIndexIndex);
