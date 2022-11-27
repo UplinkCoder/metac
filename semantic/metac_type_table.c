@@ -174,7 +174,7 @@ FOREACH_TABLE_MEMBER(ADD_TYPE_DEF)
             uint32_t idx = ~0;
             switch(table->Kind)
             {
-                metac_declaration_kind_t declKind;
+                metac_decl_kind_t declKind;
 
                 case type_index_struct:
                 { declKind = decl_type_struct; } goto Lagg;

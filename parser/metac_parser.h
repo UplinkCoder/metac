@@ -19,7 +19,7 @@
 
 /*    M(exp_bin_invalid) \*/
 
-typedef enum parse_expression_flags_t
+typedef enum parse_expr_flags_t
 {
     expr_flags_none   = 0,
     expr_flags_call   = (1 << 0),
@@ -29,7 +29,7 @@ typedef enum parse_expression_flags_t
     expr_flags_addr   = (1 << 4),
     expr_flags_sizeof = (1 << 5),
     expr_flags_pp     = (1 << 6),
-} parse_expression_flags_t;
+} parse_expr_flags_t;
 
 typedef struct metac_define_t
 {
@@ -67,15 +67,15 @@ typedef struct metac_parser_t
     ARENA_ARRAY(identifier_callback_t, IdentifierCallbacks)
     metac_alloc_t Allocator;
 
-    stmt_block_t* CurrentBlockStatement;
+    stmt_block_t* CurrentBlockStmt;
 
     uint16_t* PackStack;
     /// -1 means empty
     int32_t  PackStackTop;
 
-    stmt_block_t** BlockStatementStack;
-    uint32_t BlockStatementStackCount;
-    uint32_t BlockStatementStackCapacity;
+    stmt_block_t** BlockStmtStack;
+    uint32_t BlockStmtStackCount;
+    uint32_t BlockStmtStackCapacity;
 
     uint32_t OpenParens;
     uint32_t PackStackCapacity;
@@ -97,11 +97,11 @@ typedef struct metac_parser_t
     metac_identifier_ptr_t SpecialNamePtr_Defined;
 } metac_parser_t;
 
-bool IsExpressionNode(metac_node_kind_t Kind);
+bool IsExprNode(metac_node_kind_t Kind);
 
 extern metac_parser_t g_lineParser;
-bool IsBinaryAssignExp(metac_expression_kind_t exp_kind);
-bool IsBinaryExp(metac_expression_kind_t exp_kind);
+bool IsBinaryAssignExp(metac_expr_kind_t exp_kind);
+bool IsBinaryExp(metac_expr_kind_t exp_kind);
 
 void MetaCParser_Init(metac_parser_t* self, metac_alloc_t* allocator);
 void MetaCParser_InitFromLexer(metac_parser_t* self, metac_lexer_t* lexer, metac_alloc_t* allocator);
@@ -113,10 +113,10 @@ void MetaCParser_InitFromLexer(metac_parser_t* self, metac_lexer_t* lexer, metac
 /// negative offsets allow you to look back
 metac_token_t* MetaCParser_PeekToken_(metac_parser_t* self, int32_t p, uint32_t line);
 uint32_t MetaCParser_HowMuchLookahead(metac_parser_t* self);
-metac_expression_t* MetaCParser_ParseExpression(metac_parser_t* self, parse_expression_flags_t flags, metac_expression_t* prev);
-metac_expression_t* MetaCParser_ParseExpressionFromString(const char* exp);
-metac_declaration_t* MetaCParser_ParseDeclaration(metac_parser_t* self, metac_declaration_t* parent);
-metac_statement_t* MetaCParser_ParseStatement(metac_parser_t* self, metac_statement_t* parent, metac_statement_t* prev);
+metac_expr_t* MetaCParser_ParseExpr(metac_parser_t* self, parse_expr_flags_t flags, metac_expr_t* prev);
+metac_expr_t* MetaCParser_ParseExprFromString(const char* exp);
+metac_decl_t* MetaCParser_ParseDecl(metac_parser_t* self, metac_decl_t* parent);
+metac_stmt_t* MetaCParser_ParseStmt(metac_parser_t* self, metac_stmt_t* parent, metac_stmt_t* prev);
 
 #if !defined(NO_PREPROCESSOR)
 metac_preprocessor_directive_t MetaCParser_ParsePreprocDirective(metac_parser_t* self,

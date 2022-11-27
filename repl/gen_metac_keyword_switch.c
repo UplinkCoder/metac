@@ -15,7 +15,7 @@ typedef struct keyword_t
 
 #include <stdlib.h>
 
-void GenerateSwitchStatements(char* outP, keyword_t* keywords, uint32_t n_keywords)
+void GenerateSwitchStmts(char* outP, keyword_t* keywords, uint32_t n_keywords)
 {
     char* out = outP;
     char* caseByStartingLetter[256] = {0};
@@ -91,7 +91,7 @@ int main(int argc, char* argv[])
 
     FOREACH_KEYWORD_TOKEN(FILL_KEYWORD);
 
-    GenerateSwitchStatements(out_str, keywords, n_keywords);
+    GenerateSwitchStmts(out_str, keywords, n_keywords);
 
     printf("//cases to insert into switch\n%s", out_str);
 }

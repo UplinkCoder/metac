@@ -230,7 +230,7 @@ BCTypeInfo MetaCCodegen_GetTypeInfo(metac_bytecode_ctx_t* ctx, BCType* bcType)
     return func;
 }
 
-void MetaCCodegen_doGlobal(metac_bytecode_ctx_t* ctx, metac_sema_declaration_t* decl, uint32_t idx)
+void MetaCCodegen_doGlobal(metac_bytecode_ctx_t* ctx, metac_sema_decl_t* decl, uint32_t idx)
 {
     BCValue result = {BCValueType_HeapValue};
 
@@ -251,10 +251,10 @@ void MetaCCodegen_doGlobal(metac_bytecode_ctx_t* ctx, metac_sema_declaration_t* 
         if (decl->Kind == decl_variable)
         {
             sema_decl_variable_t var = decl->sema_decl_variable;
-            if (METAC_NODE(var.VarInitExpression) != emptyNode)
+            if (METAC_NODE(var.VarInitExpr) != emptyNode)
             {
                 BCValue initVal;
-                MetaCCodegen_doExpression(ctx, var.VarInitExpression, &initVal, _Rvalue);
+                MetaCCodegen_doExpr(ctx, var.VarInitExpr, &initVal, _Rvalue);
             }
             ctx->GlobalMemoryOffset += sz;
         }
@@ -432,7 +432,7 @@ void MetaCCodegen_Free(metac_bytecode_ctx_t* self)
     Debug_RemoveAllocator(g_DebugServer, &self->Allocator);
 }
 
-void MetaCCodegen_Begin(metac_bytecode_ctx_t* self, metac_identifier_table_t* idTable, metac_semantic_state_t* sema)
+void MetaCCodegen_Begin(metac_bytecode_ctx_t* self, metac_identifier_table_t* idTable, metac_sema_state_t* sema)
 {
     assert(self->c != 0);
     self->IdentifierTable = idTable;
@@ -468,7 +468,7 @@ static void InitCompilerInterface(metac_bytecode_ctx_t* ctx)
 #endif
 }
 
-bool IsExternal(metac_sema_expression_t* expr)
+bool IsExternal(metac_sema_expr_t* expr)
 {
     bool result = false;
 
@@ -491,7 +491,7 @@ bool IsExternal(metac_sema_expression_t* expr)
 }
 
 BCValue
-MetacCodegen_ExternalFunction(metac_bytecode_ctx_t* ctx, metac_sema_expression_t* func)
+MetacCodegen_ExternalFunction(metac_bytecode_ctx_t* ctx, metac_sema_expr_t* func)
 {
     void* c = ctx->c;
     const BackendInterface gen = *ctx->gen;
@@ -501,7 +501,7 @@ MetacCodegen_ExternalFunction(metac_bytecode_ctx_t* ctx, metac_sema_expression_t
 
     assert(TYPE_INDEX_KIND(func->TypeIndex) == type_index_functiontype);
 
-    MetaCCodegen_doExpression(ctx, func, &funcPtr, _Rvalue);
+    MetaCCodegen_doExpr(ctx, func, &funcPtr, _Rvalue);
 
     gen.MapExternalFunc(c, &extValue, &funcPtr);
 
@@ -510,7 +510,7 @@ MetacCodegen_ExternalFunction(metac_bytecode_ctx_t* ctx, metac_sema_expression_t
 
 
 metac_bytecode_function_t MetaCCodegen_GenerateFunctionFromExp(metac_bytecode_ctx_t* ctx,
-                                                               metac_sema_expression_t* expr)
+                                                               metac_sema_expr_t* expr)
 {
     void* c = ctx->c;
     BCValue resultVal = {BCValueType_Unknown};
@@ -540,7 +540,7 @@ metac_bytecode_function_t MetaCCodegen_GenerateFunctionFromExp(metac_bytecode_ct
 
     // we need to introduce all resolvable variables from the outer context here.
     // .compiler.help - .compiler
-    MetaCCodegen_doExpression(ctx, expr, &resultVal, _Rvalue);
+    MetaCCodegen_doExpr(ctx, expr, &resultVal, _Rvalue);
 
     gen.Ret(c, &resultVal);
 
@@ -556,8 +556,8 @@ metac_bytecode_function_t MetaCCodegen_GenerateFunctionFromExp(metac_bytecode_ct
     return func;
 }
 
-void MetaCCodegen_doStatement(metac_bytecode_ctx_t* ctx,
-                              metac_sema_statement_t* stmt);
+void MetaCCodegen_doStmt(metac_bytecode_ctx_t* ctx,
+                              metac_sema_stmt_t* stmt);
 
 metac_bytecode_function_t MetaCCodegen_GenerateFunction(metac_bytecode_ctx_t* ctx,
                                                         sema_decl_function_t* function)
@@ -648,10 +648,10 @@ metac_bytecode_function_t MetaCCodegen_GenerateFunction(metac_bytecode_ctx_t* ct
     ctx->BreaksCount = breaksCount;
 
     for (uint32_t i = 0;
-         i < function->FunctionBody->StatementCount;
+         i < function->FunctionBody->StmtCount;
          i++)
     {
-        MetaCCodegen_doStatement(ctx, function->FunctionBody->Body[i]);
+        MetaCCodegen_doStmt(ctx, function->FunctionBody->Body[i]);
     }
 
     // gen.Comment(c, "Function body end");
@@ -677,7 +677,7 @@ metac_bytecode_function_t MetaCCodegen_GenerateFunction(metac_bytecode_ctx_t* ct
 }
 
 
-static bool IsUnaryExp(metac_expression_kind_t kind)
+static bool IsUnaryExp(metac_expr_kind_t kind)
 {
     switch(kind)
     {
@@ -879,14 +879,14 @@ static void StoreToHeapRef(metac_bytecode_ctx_t* ctx, BCValue* hrv, uint32_t abi
 }
 
 static void doArithExp(metac_bytecode_ctx_t* ctx,
-                       metac_sema_expression_t* result,
-                       metac_sema_expression_t* lhs,
-                       metac_sema_expression_t* rhs)
+                       metac_sema_expr_t* result,
+                       metac_sema_expr_t* lhs,
+                       metac_sema_expr_t* rhs)
 {
 
 }
 
-static bool HasSideEffect(metac_sema_expression_t* exp)
+static bool HasSideEffect(metac_sema_expr_t* exp)
 {
     return exp->Kind != exp_signed_integer;
 }
@@ -906,7 +906,7 @@ static BCValue PtrValue(metac_bytecode_ctx_t* ctx, void* ptrV)
 }
 
 static void MetaCCodegen_ComputeAddress(metac_bytecode_ctx_t* ctx,
-                                        metac_sema_expression_t* exp,
+                                        metac_sema_expr_t* exp,
                                         BCValue* result)
 {
     sema_decl_variable_t* var = exp->Variable;
@@ -958,19 +958,19 @@ void MetaCCodegen_doDeref(metac_bytecode_ctx_t* ctx,
     }
 }
 
-static void MetaCCodegen_doCastExpression(metac_bytecode_ctx_t* ctx,
-                                          metac_sema_expression_t* exp,
+static void MetaCCodegen_doCastExpr(metac_bytecode_ctx_t* ctx,
+                                          metac_sema_expr_t* exp,
                                           BCValue* result)
 
 {
     metac_type_index_t castToType = exp->CastType;
-    metac_sema_expression_t* castExpr = exp->CastExp;
+    metac_sema_expr_t* castExpr = exp->CastExp;
     metac_type_index_t castFromType = castExpr->TypeIndex;
     BackendInterface gen = *ctx->gen;
     void* c = ctx->c;
 
     BCValue rhs = { BCValueType_Unknown };
-    MetaCCodegen_doExpression(ctx, castExpr, &rhs, _Rvalue);
+    MetaCCodegen_doExpr(ctx, castExpr, &rhs, _Rvalue);
 
     assert(exp->Kind == exp_cast);
 
@@ -1012,15 +1012,15 @@ static void MetaCCodegen_doCastExpression(metac_bytecode_ctx_t* ctx,
     assert(!"Handling for exp_cast not implemented at the moment");
 }
 
-static void MetaCCodegen_doDotExpression(metac_bytecode_ctx_t* ctx,
-                                         metac_sema_expression_t* exp,
+static void MetaCCodegen_doDotExpr(metac_bytecode_ctx_t* ctx,
+                                         metac_sema_expr_t* exp,
                                          BCValue* result)
 {
     const BackendInterface gen = *ctx->gen;
     void* c = ctx->c;
 
-    metac_sema_expression_t* e1 = exp->E1;
-    metac_sema_expression_t* e2 = exp->DotE2;
+    metac_sema_expr_t* e1 = exp->E1;
+    metac_sema_expr_t* e2 = exp->DotE2;
 
     metac_type_index_t expTypeIndex = e1->TypeIndex;
     metac_type_index_kind_t idxKind = TYPE_INDEX_KIND(expTypeIndex);
@@ -1041,7 +1041,7 @@ static void MetaCCodegen_doDotExpression(metac_bytecode_ctx_t* ctx,
     }
 
     addr = gen.GenTemporary(c, addrType);
-    MetaCCodegen_doExpression(ctx, e1, &e1Value, _Rvalue);
+    MetaCCodegen_doExpr(ctx, e1, &e1Value, _Rvalue);
 
     field = e2->Field;
     offsetVal = imm32(field->Offset);
@@ -1058,15 +1058,15 @@ static void MetaCCodegen_doDotExpression(metac_bytecode_ctx_t* ctx,
     MetaCCodegen_doDeref(ctx, &addr, field->Type, result);
 }
 
-static void MetaCCodegen_doArrowExpression(metac_bytecode_ctx_t* ctx,
-                                           metac_sema_expression_t* exp,
+static void MetaCCodegen_doArrowExpr(metac_bytecode_ctx_t* ctx,
+                                           metac_sema_expr_t* exp,
                                            BCValue* result)
 {
     const BackendInterface gen = *ctx->gen;
     void* c = ctx->c;
 
-    metac_sema_expression_t* e1 = exp->E1;
-    metac_sema_expression_t* e2 = exp->DotE2;
+    metac_sema_expr_t* e1 = exp->E1;
+    metac_sema_expr_t* e2 = exp->DotE2;
 
     metac_type_index_t expTypeIndex = e1->TypeIndex;
     metac_type_index_kind_t idxKind = TYPE_INDEX_KIND(expTypeIndex);
@@ -1089,7 +1089,7 @@ static void MetaCCodegen_doArrowExpression(metac_bytecode_ctx_t* ctx,
     }
 
     addr = gen.GenTemporary(c, addrType);
-    MetaCCodegen_doExpression(ctx, e1, &e1Value, _Rvalue);
+    MetaCCodegen_doExpr(ctx, e1, &e1Value, _Rvalue);
 
     field = e2->Field;
     offsetVal = imm32(field->Offset);
@@ -1106,9 +1106,8 @@ static void MetaCCodegen_doArrowExpression(metac_bytecode_ctx_t* ctx,
     MetaCCodegen_doDeref(ctx, &addr, field->Type, result);
 }
 
-
-static void MetaCCodegen_doExpression(metac_bytecode_ctx_t* ctx,
-                                      metac_sema_expression_t* exp,
+static void MetaCCodegen_doExpr(metac_bytecode_ctx_t* ctx,
+                                      metac_sema_expr_t* exp,
                                       BCValue* result,
                                       metac_value_type_t lValue)
 {
@@ -1121,7 +1120,7 @@ static void MetaCCodegen_doExpression(metac_bytecode_ctx_t* ctx,
     metac_printer_t printer;
     MetaCPrinter_Init(&printer, ctx->Sema->ParserIdentifierTable, ctx->Sema->ParserStringTable);
 
-    metac_expression_kind_t op = exp->Kind;
+    metac_expr_kind_t op = exp->Kind;
     BCType expType = MetaCCodegen_GetBCType(ctx, exp->TypeIndex);
 
     if (lValue == _Discard && !HasSideEffect(exp))
@@ -1181,8 +1180,8 @@ static void MetaCCodegen_doExpression(metac_bytecode_ctx_t* ctx,
 
     if (op == exp_assign)
     {
-        MetaCCodegen_doExpression(ctx, exp->E1, result, _Lvalue);
-        MetaCCodegen_doExpression(ctx, exp->E2, &rhs, _Rvalue);
+        MetaCCodegen_doExpr(ctx, exp->E1, result, _Lvalue);
+        MetaCCodegen_doExpr(ctx, exp->E2, &rhs, _Rvalue);
     }
     else if (op == exp_addr)
     {
@@ -1205,7 +1204,7 @@ static void MetaCCodegen_doExpression(metac_bytecode_ctx_t* ctx,
             bool opIsPostIncDec =
                 (op == exp_post_decrement || op == exp_post_increment);
             lhs = gen.GenTemporary(c, expType);
-            MetaCCodegen_doExpression(ctx, exp->E1, &lhs, (opIsPostIncDec ? _Lvalue : _Rvalue));
+            MetaCCodegen_doExpr(ctx, exp->E1, &lhs, (opIsPostIncDec ? _Lvalue : _Rvalue));
         }
     }
     else if (IsBinaryExp(op) && op != exp_comma)
@@ -1217,12 +1216,12 @@ static void MetaCCodegen_doExpression(metac_bytecode_ctx_t* ctx,
 
         if (doBinAss)
         {
-            MetaCCodegen_doExpression(ctx, exp->E1, result, _Lvalue);
+            MetaCCodegen_doExpr(ctx, exp->E1, result, _Lvalue);
             lhs = *result;
         }
         else
         {
-            MetaCCodegen_doExpression(ctx, exp->E1, &lhs, _Rvalue);
+            MetaCCodegen_doExpr(ctx, exp->E1, &lhs, _Rvalue);
         }
 
         if (exp->E2->Kind == exp_signed_integer
@@ -1233,7 +1232,7 @@ static void MetaCCodegen_doExpression(metac_bytecode_ctx_t* ctx,
         else
         {
             rhs = gen.GenTemporary(c, expType);
-            MetaCCodegen_doExpression(ctx, exp->E2, &rhs, _Rvalue);
+            MetaCCodegen_doExpr(ctx, exp->E2, &rhs, _Rvalue);
         }
     }
 
@@ -1246,7 +1245,7 @@ static void MetaCCodegen_doExpression(metac_bytecode_ctx_t* ctx,
         default : {
             fprintf(stderr,
                 "Evaluator doesn't know how to eval: %s\n",
-                MetaCExpressionKind_toChars(exp->Kind)
+                MetaCExprKind_toChars(exp->Kind)
             );
             assert(0);
         } break;
@@ -1260,17 +1259,17 @@ static void MetaCCodegen_doExpression(metac_bytecode_ctx_t* ctx,
 
         case exp_cast:
         {
-            MetaCCodegen_doCastExpression(ctx, exp, result);
+            MetaCCodegen_doCastExpr(ctx, exp, result);
         } break;
 
         case exp_dot:
         {
-            MetaCCodegen_doDotExpression(ctx, exp, result);
+            MetaCCodegen_doDotExpr(ctx, exp, result);
         } break;
 
         case exp_arrow:
         {
-            MetaCCodegen_doArrowExpression(ctx, exp, result);
+            MetaCCodegen_doArrowExpr(ctx, exp, result);
         } break;
 
         case exp_function:
@@ -1281,16 +1280,16 @@ static void MetaCCodegen_doExpression(metac_bytecode_ctx_t* ctx,
         case decl_enum_member:
         {
             metac_enum_member_t* enumMember = cast(metac_enum_member_t*) exp;
-            MetaCCodegen_doExpression(ctx, enumMember->Value, result, _Rvalue);
+            MetaCCodegen_doExpr(ctx, enumMember->Value, result, _Rvalue);
         } break;
 
         case exp_ternary:
         {
             BCValue cond = gen.GenTemporary(c, BCType_i32);
 
-            MetaCCodegen_doExpression(ctx, exp->E1, &lhs, _Rvalue);
-            MetaCCodegen_doExpression(ctx, exp->E2, &rhs, _Rvalue);
-            MetaCCodegen_doExpression(ctx, exp->Econd, &cond, _Cond);
+            MetaCCodegen_doExpr(ctx, exp->E1, &lhs, _Rvalue);
+            MetaCCodegen_doExpr(ctx, exp->E2, &rhs, _Rvalue);
+            MetaCCodegen_doExpr(ctx, exp->Econd, &cond, _Cond);
 
             CndJmpBegin condExpJmp = gen.BeginCndJmp(c, &cond, false);
             gen.Set(c, result, &lhs);
@@ -1304,17 +1303,17 @@ static void MetaCCodegen_doExpression(metac_bytecode_ctx_t* ctx,
 
         case exp_comma:
         {
-            metac_sema_expression_t* r = exp;
+            metac_sema_expr_t* r = exp;
             while(r->Kind == exp_comma)
             {
                 // skip the generation of integers we'll never see
                 if (r->E1->Kind != exp_signed_integer)
                 {
-                    MetaCCodegen_doExpression(ctx, r->E1, 0, _Discard);
+                    MetaCCodegen_doExpr(ctx, r->E1, 0, _Discard);
                 }
                 r = r->E2;
             }
-            MetaCCodegen_doExpression(ctx, r, result, lValue);
+            MetaCCodegen_doExpr(ctx, r, result, lValue);
         } break;
 
         case exp_addr:
@@ -1382,14 +1381,14 @@ static void MetaCCodegen_doExpression(metac_bytecode_ctx_t* ctx,
                 BCValue sz;
 
 
-                for(uint32_t i = 0; i < exp->TupleExpressionCount; i++)
+                for(uint32_t i = 0; i < exp->TupleExprCount; i++)
                 {
-                    metac_sema_expression_t te = *exp->TupleExpressions[i];
+                    metac_sema_expr_t te = *exp->TupleExprs[i];
                     metac_type_index_t typeIdx = te.TypeIndex;
                     BCType bcType = MetaCCodegen_GetBCType(ctx, typeIdx);
                     BCValue bcValue = {BCValueType_Unknown};
 
-                    MetaCCodegen_doExpression(ctx, exp->TupleExpressions[i], &bcValue, _Rvalue);
+                    MetaCCodegen_doExpr(ctx, exp->TupleExprs[i], &bcValue, _Rvalue);
                     ARENA_ARRAY_ADD(types, typeIdx);
                     ARENA_ARRAY_ADD(offsets, currentOffset);
                     ARENA_ARRAY_ADD(bcTypes, bcType);
@@ -1402,9 +1401,9 @@ static void MetaCCodegen_doExpression(metac_bytecode_ctx_t* ctx,
                 gen.Alloc(c, result, &sz);
                 BCValue address = gen.GenTemporary(c, BCType_i32);
                 gen.Set(c, &address, result);
-                for(uint32_t i = 0; i < exp->TupleExpressionCount; i++)
+                for(uint32_t i = 0; i < exp->TupleExprCount; i++)
                 {
-                    metac_sema_expression_t te = *exp->TupleExpressions[i];
+                    metac_sema_expr_t te = *exp->TupleExprs[i];
                     uint32_t memberSz = MetaCCodegen_GetStorageSize(ctx, bcTypes[i]);
 
                     if (te.Kind == exp_signed_integer)
@@ -1547,7 +1546,7 @@ static void MetaCCodegen_doExpression(metac_bytecode_ctx_t* ctx,
         } break;
         case exp_paren:
         {
-            MetaCCodegen_doExpression(ctx, exp->E1, result, lValue);
+            MetaCCodegen_doExpr(ctx, exp->E1, result, lValue);
         } break;
         case exp_compl:
         {
@@ -1605,7 +1604,7 @@ static void MetaCCodegen_doExpression(metac_bytecode_ctx_t* ctx,
             {
                 ARENA_ARRAY_ADD(args, nullValue);
                 BCValue* argP = &args[i];
-                MetaCCodegen_doExpression(ctx, call.Arguments[i], argP, _Rvalue);
+                MetaCCodegen_doExpr(ctx, call.Arguments[i], argP, _Rvalue);
             }
 
             if (isExternal)
@@ -1617,7 +1616,7 @@ static void MetaCCodegen_doExpression(metac_bytecode_ctx_t* ctx,
             }
             else
             {
-                MetaCCodegen_doExpression(ctx, call.Function, &fn, _Rvalue);
+                MetaCCodegen_doExpr(ctx, call.Function, &fn, _Rvalue);
 
                 gen.Call(c, &resultVal, &fn, args, call.ArgumentCount);
             }
@@ -1688,9 +1687,9 @@ static void MetaCCodegen_doBlockStmt(metac_bytecode_ctx_t* ctx,
                                      sema_stmt_block_t* stmt)
 {
     assert(stmt->Kind == stmt_block);
-    for(uint32_t i = 0; i < stmt->StatementCount; i++)
+    for(uint32_t i = 0; i < stmt->StmtCount; i++)
     {
-        MetaCCodegen_doStatement(ctx, stmt->Body[i]);
+        MetaCCodegen_doStmt(ctx, stmt->Body[i]);
     }
 }
 
@@ -1703,8 +1702,8 @@ static inline void MetaCCodegen_doCaseStmt(metac_bytecode_ctx_t* ctx,
     assert(ctx->SwitchStackCount > 0);
 
     metac_bytecode_switch_t* swtch = &ctx->SwitchStack[ctx->SwitchStackCount - 1];
-    metac_sema_expression_t* caseExp = caseStmt->CaseExp;
-    metac_sema_statement_t*  caseBody = cast(metac_sema_statement_t*)caseStmt->CaseBody;
+    metac_sema_expr_t* caseExp = caseStmt->CaseExp;
+    metac_sema_stmt_t*  caseBody = cast(metac_sema_stmt_t*)caseStmt->CaseBody;
 
     // if there's no exp it's the default case
     if (METAC_NODE(caseExp) == emptyNode)
@@ -1716,7 +1715,7 @@ static inline void MetaCCodegen_doCaseStmt(metac_bytecode_ctx_t* ctx,
     }
     BCValue* switchExp = &swtch->Exp;
     BCValue caseExpr;
-    MetaCCodegen_doExpression(ctx, caseExp, &caseExpr, _Lvalue);
+    MetaCCodegen_doExpr(ctx, caseExp, &caseExpr, _Lvalue);
     gen.Eq3(c, 0, switchExp, &caseExpr);
 
     bool hasBody =
@@ -1754,18 +1753,18 @@ static inline void MetaCCodegen_doCaseStmt(metac_bytecode_ctx_t* ctx,
         if (caseStmt->CaseBody->Kind == stmt_casebody)
         {
             const uint32_t stmtCount =
-                caseStmt->CaseBody->StatementCount;
+                caseStmt->CaseBody->StmtCount;
 
             for(uint32_t i = 0;
                 i < stmtCount;
                 i++)
             {
-                MetaCCodegen_doStatement(ctx, caseStmt->CaseBody->Statements[i]);
+                MetaCCodegen_doStmt(ctx, caseStmt->CaseBody->Stmts[i]);
             }
         }
         else
         {
-            MetaCCodegen_doStatement(ctx, cast(metac_sema_statement_t*)caseStmt->CaseBody);
+            MetaCCodegen_doStmt(ctx, cast(metac_sema_stmt_t*)caseStmt->CaseBody);
         }
         BCAddr nextCaseJmp = gen.BeginJmp(c);
         metac_bytecode_casejmp_t caseJmp;
@@ -1783,11 +1782,11 @@ static inline void MetaCCodegen_doCaseStmt(metac_bytecode_ctx_t* ctx,
 
         ARENA_ARRAY_ADD(swtch->PrevCaseJumps, caseJmp);
         if (caseBody)
-            MetaCCodegen_doStatement(ctx, caseBody);
+            MetaCCodegen_doStmt(ctx, caseBody);
     }
 }
 
-static inline bool IsEmpty(metac_statement_t* stmt)
+static inline bool IsEmpty(metac_stmt_t* stmt)
 {
     return false;
 }
@@ -1804,16 +1803,16 @@ void MetaCCodegen_doLocalVar(metac_bytecode_ctx_t* ctx,
     BCValue local = gen.GenLocal(c, localType, localName);
     ARENA_ARRAY_ADD(ctx->Locals, local);
     VariableStore_AddVariable(&ctx->Vstore, localVar, &ctx->Locals[(ctx->LocalsCount) - 1]);
-    if (METAC_NODE(localVar->VarInitExpression) != emptyNode)
+    if (METAC_NODE(localVar->VarInitExpr) != emptyNode)
     {
         BCValue initVal;
-        MetaCCodegen_doExpression(ctx, localVar->VarInitExpression, &initVal, _Rvalue);
+        MetaCCodegen_doExpr(ctx, localVar->VarInitExpr, &initVal, _Rvalue);
         gen.Set(ctx->c, &local, &initVal);
     }
 }
 
-void MetaCCodegen_doStatement(metac_bytecode_ctx_t* ctx,
-                              metac_sema_statement_t* stmt)
+void MetaCCodegen_doStmt(metac_bytecode_ctx_t* ctx,
+                              metac_sema_stmt_t* stmt)
 {
     const BackendInterface gen = *ctx->gen;
     void* c = ctx->c;
@@ -1824,16 +1823,16 @@ void MetaCCodegen_doStatement(metac_bytecode_ctx_t* ctx,
         {
             uint32_t currentBreakCount = ctx->BreaksCount;
 
-            sema_stmt_switch_t* switchStatement = cast(sema_stmt_switch_t*) stmt;
+            sema_stmt_switch_t* switchStmt = cast(sema_stmt_switch_t*) stmt;
             BCValue switchExp;
-            MetaCCodegen_doExpression(ctx, switchStatement->SwitchExp, &switchExp, _Rvalue);
+            MetaCCodegen_doExpr(ctx, switchStmt->SwitchExp, &switchExp, _Rvalue);
             metac_bytecode_switch_t* swtch =
                 MetaCCodegen_PushSwitch(ctx, switchExp);
-            MetaCCodegen_doBlockStmt(ctx, switchStatement->SwitchBody);
+            MetaCCodegen_doBlockStmt(ctx, switchStmt->SwitchBody);
             // gen default case if there is one.
             if (METAC_NODE(swtch->DefaultBody) != emptyPointer)
             {
-                MetaCCodegen_doStatement(ctx, swtch->DefaultBody);
+                MetaCCodegen_doStmt(ctx, swtch->DefaultBody);
             }
             MetaCCodegen_PopSwitch(ctx, switchExp);
             BCLabel breakLabel = gen.GenLabel(c);
@@ -1853,9 +1852,9 @@ void MetaCCodegen_doStatement(metac_bytecode_ctx_t* ctx,
         case stmt_decl:
         {
             sema_stmt_decl_t* declStmt = cast(sema_stmt_decl_t*) stmt;
-            sema_decl_variable_t* localVar = (sema_decl_variable_t*) declStmt->Declaration;
+            sema_decl_variable_t* localVar = (sema_decl_variable_t*) declStmt->Decl;
             MetaCCodegen_doLocalVar(ctx, localVar);
-            // MetaCCodegen_doStatement(ctx, decl)
+            // MetaCCodegen_doStmt(ctx, decl)
         } break;
 
         case stmt_case:
@@ -1869,7 +1868,7 @@ void MetaCCodegen_doStatement(metac_bytecode_ctx_t* ctx,
         {
             sema_stmt_return_t* returnStmt = cast(sema_stmt_return_t*) stmt;
             BCValue retVal = {BCValueType_Unknown};
-            MetaCCodegen_doExpression(ctx, returnStmt->ReturnExp, &retVal, _Rvalue);
+            MetaCCodegen_doExpr(ctx, returnStmt->ReturnExp, &retVal, _Rvalue);
             gen.Ret(c, &retVal);
         } break;
 
@@ -1877,7 +1876,7 @@ void MetaCCodegen_doStatement(metac_bytecode_ctx_t* ctx,
         {
             sema_stmt_exp_t* expStmt = cast(sema_stmt_exp_t*) stmt;
             BCValue dontCare = {BCValueType_Unknown};
-            MetaCCodegen_doExpression(ctx, expStmt->Expression, &dontCare, _Discard);
+            MetaCCodegen_doExpr(ctx, expStmt->Expr, &dontCare, _Discard);
         } break;
 
         case stmt_if:
@@ -1885,10 +1884,10 @@ void MetaCCodegen_doStatement(metac_bytecode_ctx_t* ctx,
             sema_stmt_if_t* ifStmt = cast(sema_stmt_if_t*) stmt;
 
             BCValue cond = {BCValueType_Unknown};
-            MetaCCodegen_doExpression(ctx, ifStmt->IfCond, &cond, _Cond);
+            MetaCCodegen_doExpr(ctx, ifStmt->IfCond, &cond, _Cond);
             CndJmpBegin cj = gen.BeginCndJmp(c, &cond, false);
             {
-                MetaCCodegen_doStatement(ctx, ifStmt->IfBody);
+                MetaCCodegen_doStmt(ctx, ifStmt->IfBody);
             }
             BCAddr skipElse;
             if (METAC_NODE(ifStmt->ElseBody) != emptyNode)
@@ -1898,7 +1897,7 @@ void MetaCCodegen_doStatement(metac_bytecode_ctx_t* ctx,
             if (METAC_NODE(ifStmt->ElseBody) != emptyNode)
             {
                 {
-                    MetaCCodegen_doStatement(ctx, ifStmt->ElseBody);
+                    MetaCCodegen_doStmt(ctx, ifStmt->ElseBody);
                 }
                 gen.EndJmp(c, skipElse, gen.GenLabel(c));
             }
@@ -1906,64 +1905,64 @@ void MetaCCodegen_doStatement(metac_bytecode_ctx_t* ctx,
 
         case stmt_do_while:
         {
-            sema_stmt_while_t* whileStatement = cast(sema_stmt_while_t*) stmt;
+            sema_stmt_while_t* whileStmt = cast(sema_stmt_while_t*) stmt;
             BCLabel beginLoop = gen.GenLabel(c);
 
-            MetaCCodegen_doStatement(ctx, whileStatement->WhileBody);
+            MetaCCodegen_doStmt(ctx, whileStmt->WhileBody);
 
             // BCLabel evalCond = gen.GenLabel(c);
             BCValue cond = {BCValueType_Unknown};
-            MetaCCodegen_doExpression(ctx, whileStatement->WhileExp, &cond, _Cond);
+            MetaCCodegen_doExpr(ctx, whileStmt->WhileExp, &cond, _Cond);
             CndJmpBegin condExpJmp = gen.BeginCndJmp(c, &cond, true);
             gen.EndCndJmp(c, &condExpJmp, beginLoop);
         } break;
 
         case stmt_while:
         {
-            sema_stmt_while_t* whileStatement = cast(sema_stmt_while_t*) stmt;
+            sema_stmt_while_t* whileStmt = cast(sema_stmt_while_t*) stmt;
             BCLabel evalCond = gen.GenLabel(c);
             BCValue cond = {BCValueType_Unknown};
-            MetaCCodegen_doExpression(ctx, whileStatement->WhileExp, &cond, _Cond);
+            MetaCCodegen_doExpr(ctx, whileStmt->WhileExp, &cond, _Cond);
 
             CndJmpBegin condExpJmp = gen.BeginCndJmp(c, &cond, false);
-            MetaCCodegen_doStatement(ctx, whileStatement->WhileBody);
+            MetaCCodegen_doStmt(ctx, whileStmt->WhileBody);
             gen.Jmp(c, evalCond);
             gen.EndCndJmp(c, &condExpJmp, gen.GenLabel(c));
         } break;
 
         case stmt_for:
         {
-            sema_stmt_for_t* forStatement = cast(sema_stmt_for_t*) stmt;
+            sema_stmt_for_t* forStmt = cast(sema_stmt_for_t*) stmt;
 
-            if (forStatement->ForInit != emptyNode)
+            if (forStmt->ForInit != emptyNode)
             {
-                if (IsExpressionNode(forStatement->ForInit->Kind))
+                if (IsExprNode(forStmt->ForInit->Kind))
                 {
                     BCValue dontCare;
-                    MetaCCodegen_doExpression(ctx,
-                        (metac_sema_expression_t*)forStatement->ForInit, &dontCare, _Discard);
+                    MetaCCodegen_doExpr(ctx,
+                        (metac_sema_expr_t*)forStmt->ForInit, &dontCare, _Discard);
                 }
                 else
                 {
                     MetaCCodegen_doLocalVar(ctx,
-                        (sema_decl_variable_t*)forStatement->ForInit);
+                        (sema_decl_variable_t*)forStmt->ForInit);
                 }
             }
 
             CndJmpBegin cndJmpToCondEval;
             BCLabel loopBegin = gen.GenLabel(c);
 
-            if (METAC_NODE(forStatement->ForCond) != emptyNode)
+            if (METAC_NODE(forStmt->ForCond) != emptyNode)
             {
                 BCValue cond = {BCValueType_Unknown};
-                MetaCCodegen_doExpression(ctx, forStatement->ForCond, &cond, _Cond);
+                MetaCCodegen_doExpr(ctx, forStmt->ForCond, &cond, _Cond);
                 cndJmpToCondEval = gen.BeginCndJmp(c, &cond, false);
             }
 
-            MetaCCodegen_doStatement(ctx, forStatement->ForBody);
+            MetaCCodegen_doStmt(ctx, forStmt->ForBody);
             gen.Jmp(c, loopBegin);
 
-            if (METAC_NODE(forStatement->ForCond) != emptyNode)
+            if (METAC_NODE(forStmt->ForCond) != emptyNode)
             {
                 gen.EndCndJmp(c, &cndJmpToCondEval, gen.GenLabel(c));
             }
@@ -1978,7 +1977,7 @@ void MetaCCodegen_doStatement(metac_bytecode_ctx_t* ctx,
 
         default:
         {
-            printf("Statement unsupported %s\n", StatementKind_toChars(stmt->Kind));
+            printf("Stmt unsupported %s\n", StmtKind_toChars(stmt->Kind));
             assert(0);
         } break;
     }

@@ -82,7 +82,7 @@ void LexFile(metac_lexer_t* lexer,
 
 void ParseFile(metac_parser_t* parser,
                const char* path,
-               DeclarationArray* result)
+               DeclArray* result)
 {
 #if DRIVER_PRINT_DECLS
     metac_printer_t printer;
@@ -95,15 +95,15 @@ void ParseFile(metac_parser_t* parser,
     uint32_t declarationSize = 0;
     uint32_t declarationCapacity = 1024;
 
-    metac_declaration_t** declarations =
-        (metac_declaration_t**)
-            Allocator_Calloc(&parser->Allocator, metac_declaration_t*,
+    metac_decl_t** declarations =
+        (metac_decl_t**)
+            Allocator_Calloc(&parser->Allocator, metac_decl_t*,
             declarationCapacity);
 
     while(parser->CurrentTokenIndex < parser->Lexer->TokenCount)
     {
-        metac_declaration_t* decl =
-            MetaCParser_ParseDeclaration(parser, 0);
+        metac_decl_t* decl =
+            MetaCParser_ParseDecl(parser, 0);
         assert(decl);
         if (METAC_NODE(decl) == emptyNode)
         {
@@ -118,7 +118,7 @@ void ParseFile(metac_parser_t* parser,
         metac_token_t* lastToken = MetaCParser_PeekToken(parser, 1);
 #if DRIVER_PRINT_DECLS
         const char* str =
-            MetaCPrinter_PrintDeclaration(&printer,
+            MetaCPrinter_PrintDecl(&printer,
                 declarations[declarationSize - 1]
         );
         printf("%s\n", str);
@@ -134,10 +134,10 @@ void ParseFile(metac_parser_t* parser,
         if (result->Capacity < declarationSize)
         {
             result->Capacity = ALIGN4(declarationSize);
-            result->Ptr = (metac_declaration_t**)calloc(result->Capacity, sizeof(metac_declaration_t*));
+            result->Ptr = (metac_decl_t**)calloc(result->Capacity, sizeof(metac_decl_t*));
         }
         result->Length = declarationSize;
-        memcpy(result->Ptr, declarations, declarationSize * sizeof(metac_declaration_t*));
+        memcpy(result->Ptr, declarations, declarationSize * sizeof(metac_decl_t*));
         // free(declarations);
     }
 }
@@ -183,31 +183,31 @@ void MetaCLPP_Init(metac_lpp_t* lpp, metac_alloc_t* allocator, metac_file_storag
 #endif
 }
 
-metac_expression_t* MetaCLPP_ParseExpressionFromString(metac_lpp_t* lpp, const char* exp)
+metac_expr_t* MetaCLPP_ParseExprFromString(metac_lpp_t* lpp, const char* exp)
 {
     // assert(g_lineLexer.TokenCapacity == ARRAY_SIZE(g_lineLexer.inlineTokens));
     LexString(&lpp->Lexer, exp);
 
-    metac_expression_t* result = MetaCParser_ParseExpression(&lpp->Parser, expr_flags_none, 0);
+    metac_expr_t* result = MetaCParser_ParseExpr(&lpp->Parser, expr_flags_none, 0);
 
     return result;
 }
 
-metac_statement_t* MetaCLPP_ParseStatementFromString(metac_lpp_t* lpp, const char* stmt)
+metac_stmt_t* MetaCLPP_ParseStmtFromString(metac_lpp_t* lpp, const char* stmt)
 {
     // assert(g_lineLexer.TokenCapacity == ARRAY_SIZE(g_lineLexer.inlineTokens));
     LexString(&lpp->Lexer, stmt);
 
-    metac_statement_t* result = MetaCParser_ParseStatement(&lpp->Parser, 0, 0);
+    metac_stmt_t* result = MetaCParser_ParseStmt(&lpp->Parser, 0, 0);
 
     return result;
 }
 
-metac_declaration_t* MetaCLPP_ParseDeclarationFromString(metac_lpp_t* lpp, const char* decl)
+metac_decl_t* MetaCLPP_ParseDeclFromString(metac_lpp_t* lpp, const char* decl)
 {
     LexString(&lpp->Lexer, decl);
 
-    metac_declaration_t* result = MetaCParser_ParseDeclaration(&lpp->Parser, 0);
+    metac_decl_t* result = MetaCParser_ParseDecl(&lpp->Parser, 0);
 
     return result;
 }
@@ -226,9 +226,9 @@ metac_preprocessor_directive_t MetaCLPP_ParsePreprocFromString(metac_lpp_t* lpp,
 
 #include "../utils/read_file.c"
 
-DeclarationArray ReadLexParse(const char* filename, metac_lpp_t* lpp, metac_alloc_t* parent)
+DeclArray ReadLexParse(const char* filename, metac_lpp_t* lpp, metac_alloc_t* parent)
 {
-    DeclarationArray result = {0};
+    DeclArray result = {0};
 
     read_result_t readResult =
         ReadFileAndZeroTerminate(filename);

@@ -92,7 +92,7 @@ void VariableStore_RemoveVariable(variable_store_t* vstore, void* value)
 
 
 void VariableStore_SetValueI32(variable_store_t* vstore,
-                               metac_sema_expression_t* varExp,
+                               metac_sema_expr_t* varExp,
                                int32_t value)
 {
     assert(varExp->Kind == exp_variable);

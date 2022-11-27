@@ -25,7 +25,7 @@
 #endif
 
 static const metac_type_index_t zeroIdx = {0};
-metac_type_index_t MetaCSemantic_GetPtrTypeOf(metac_semantic_state_t* self,
+metac_type_index_t MetaCSemantic_GetPtrTypeOf(metac_sema_state_t* self,
                                               metac_type_index_t elementTypeIndex)
 {
     uint32_t hash = elementTypeIndex.v;
@@ -54,12 +54,12 @@ static inline bool isBasicType(metac_type_kind_t typeKind)
     return false;
 }
 
-sema_decl_type_t* MetaCSemantic_GetTypeNode(metac_semantic_state_t* self,
+sema_decl_type_t* MetaCSemantic_GetTypeNode(metac_sema_state_t* self,
                                             metac_type_index_t typeIndex)
 {
     return cast(sema_decl_type_t*) NodeFromTypeIndex(self, typeIndex);
 }
-metac_type_index_t MetaCSemantic_GetTypeIndex(metac_semantic_state_t* state,
+metac_type_index_t MetaCSemantic_GetTypeIndex(metac_sema_state_t* state,
                                               metac_type_kind_t typeKind,
                                               decl_type_t* type)
 {
@@ -96,7 +96,7 @@ metac_type_index_t MetaCSemantic_GetTypeIndex(metac_semantic_state_t* state,
     return result;
 }
 
-static inline bool IsAggregateTypeDecl(metac_declaration_kind_t declKind)
+static inline bool IsAggregateTypeDecl(metac_decl_kind_t declKind)
 {
     if (declKind == decl_type_struct || declKind == decl_type_union)
     {
@@ -105,7 +105,7 @@ static inline bool IsAggregateTypeDecl(metac_declaration_kind_t declKind)
     return false;
 }
 
-static inline bool IsPointerType(metac_declaration_kind_t declKind)
+static inline bool IsPointerType(metac_decl_kind_t declKind)
 {
     if (declKind == decl_type_ptr)
     {
@@ -235,7 +235,7 @@ static inline bool TypeConvertsToPointer(const metac_type_index_t a)
 
 ///TODO FIXME
 /// this is not nearly complete!
-metac_type_index_t MetaCSemantic_CommonSubtype(metac_semantic_state_t* self,
+metac_type_index_t MetaCSemantic_CommonSubtype(metac_sema_state_t* self,
                                                const metac_type_index_t a,
                                                const metac_type_index_t b)
 {
@@ -306,7 +306,7 @@ static inline uint32_t Align(uint32_t size, uint32_t alignment)
     return (alignSize & alignMask);
 }
 
-metac_type_index_t MetaCSemantic_GetElementType(metac_semantic_state_t* self,
+metac_type_index_t MetaCSemantic_GetElementType(metac_sema_state_t* self,
                                                 metac_type_index_t typeIndex)
 {
     metac_type_index_t result = {0};
@@ -328,7 +328,7 @@ metac_type_index_t MetaCSemantic_GetElementType(metac_semantic_state_t* self,
     return result;
 }
 
-uint32_t MetaCSemantic_GetTypeAlignment(metac_semantic_state_t* self,
+uint32_t MetaCSemantic_GetTypeAlignment(metac_sema_state_t* self,
                                         metac_type_index_t typeIndex)
 {
     uint32_t result = INVALID_SIZE;
@@ -403,7 +403,7 @@ static metac_type_index_t* NextTypeTupleElem(metac_type_index_t* typeIndexP)
 }
 
 /// Returns size in byte or INVALID_SIZE on error
-uint32_t MetaCSemantic_GetTypeSize(metac_semantic_state_t* self,
+uint32_t MetaCSemantic_GetTypeSize(metac_sema_state_t* self,
                                    metac_type_index_t typeIndex)
 {
     uint32_t result = INVALID_SIZE;
@@ -490,7 +490,7 @@ uint32_t MetaCSemantic_GetTypeSize(metac_semantic_state_t* self,
 
 
 /// this is where we also populate the scope
-metac_type_aggregate_t* MetaCSemantic_PersistTemporaryAggregateAndPopulateScope(metac_semantic_state_t* self,
+metac_type_aggregate_t* MetaCSemantic_PersistTemporaryAggregateAndPopulateScope(metac_sema_state_t* self,
                                                                                 metac_type_aggregate_t* tmpAgg)
 {
     // memcpy(semaAgg, tmpAgg, sizeof(metac_type_aggregate_t));
@@ -563,7 +563,7 @@ metac_type_aggregate_t* MetaCSemantic_PersistTemporaryAggregateAndPopulateScope(
     MetaCSemantic_UnmountScope(self);
 
     //TODO FIXME this should use a deep walk through the fields
-    //MetaCDeclaration_Walk(tmpAgg,)
+    //MetaCDecl_Walk(tmpAgg,)
 
     semaAgg->Fields = aggFields;
 
@@ -572,7 +572,7 @@ metac_type_aggregate_t* MetaCSemantic_PersistTemporaryAggregateAndPopulateScope(
 #define BeginTaskBarrier()
 #define EndTaskBarrier()
 
-void MetaCSemantic_ComputeEnumValues(metac_semantic_state_t* self,
+void MetaCSemantic_ComputeEnumValues(metac_sema_state_t* self,
                                      decl_type_enum_t* enum_,
                                      metac_type_enum_t* semaEnum)
 {
@@ -582,10 +582,10 @@ void MetaCSemantic_ComputeEnumValues(metac_semantic_state_t* self,
     int64_t nextValue = 0;
     const uint32_t memberCount = enum_->MemberCount;
 #if !DEBUG_MEMORY
-    STACK_ARENA_ARRAY(metac_sema_expression_t, memberPlaceholders, 32, &self->TempAlloc)
+    STACK_ARENA_ARRAY(metac_sema_expr_t, memberPlaceholders, 32, &self->TempAlloc)
 #else
-    metac_sema_expression_t* memberPlaceholders = (metac_semantic_state_t*)
-        calloc(memberCount, sizeof(metac_sema_expression_t));
+    metac_sema_expr_t* memberPlaceholders = (metac_sema_state_t*)
+        calloc(memberCount, sizeof(metac_sema_expr_t));
     uint32_t memberPlaceholdersCount = 0;
 #endif
     metac_printer_t debugPrinter;
@@ -604,7 +604,7 @@ void MetaCSemantic_ComputeEnumValues(metac_semantic_state_t* self,
     memset(memberPlaceholders, 0, memberCount * sizeof(*memberPlaceholders));
 #endif
 
-    //TODO you want to make CurrentValue a metac_sema_expression_t
+    //TODO you want to make CurrentValue a metac_sema_expr_t
     // such that you can interpret the increment operator
     //SetInProgress(semaEnum, "Members");
     // semaEnum->Name = MetaCSemantic_RegisterIdentifier(self, enum->Identifier);
@@ -627,11 +627,11 @@ void MetaCSemantic_ComputeEnumValues(metac_semantic_state_t* self,
             memberIdx < memberCount;
             memberIdx++, member = member->Next)
         {
-            metac_sema_expression_t* semaMember = memberPlaceholders + memberIdx;
+            metac_sema_expr_t* semaMember = memberPlaceholders + memberIdx;
 
             memberPlaceholders[memberIdx].Kind = exp_unknown_value;
             memberPlaceholders[memberIdx].TypeIndex = semaEnum->BaseType;
-            memberPlaceholders[memberIdx].Expression = member->Value;
+            memberPlaceholders[memberIdx].Expr = member->Value;
 
             MetaCSemantic_RegisterInScope(self, member->Name,
                                           METAC_NODE(semaMember));
@@ -652,7 +652,7 @@ void MetaCSemantic_ComputeEnumValues(metac_semantic_state_t* self,
             {
                 if (METAC_NODE(member->Value) != emptyNode)
                 {
-                    metac_sema_expression_t* semaValue =
+                    metac_sema_expr_t* semaValue =
                         MetaCSemantic_doExprSemantic(self, member->Value, 0);
                     semaEnum->Members[memberIdx].Value = semaValue;
                     if(semaValue->Kind == 0x1c)
@@ -696,9 +696,9 @@ void MetaCSemantic_ComputeEnumValues(metac_semantic_state_t* self,
             semaEnum->Members[memberIdx].Identifier = member->Name;
             semaEnum->Members[memberIdx].Header.Kind = decl_enum_member;
 
-            if (member->Value != cast(metac_expression_t*)emptyPointer)
+            if (member->Value != cast(metac_expr_t*)emptyPointer)
             {
-                metac_sema_expression_t* semaValue =
+                metac_sema_expr_t* semaValue =
                     semaEnum->Members[memberIdx].Value;
                 assert(member->Value);
                 if (semaValue->Kind != exp_signed_integer)
@@ -712,7 +712,7 @@ void MetaCSemantic_ComputeEnumValues(metac_semantic_state_t* self,
             else
             {
                 // let's construct a metac_expression from currentValue
-                metac_expression_t Value = {exp_signed_integer, member->LocationIdx, 0, 0};
+                metac_expr_t Value = {exp_signed_integer, member->LocationIdx, 0, 0};
                 Value.ValueI64 = nextValue++;
 
                 semaEnum->Members[memberIdx].Value =
@@ -750,7 +750,7 @@ static bool TypeIsInteger(metac_type_index_t typeIdx)
     return result;
 }
 
-static metac_type_index_t TypeTupleSemantic(metac_semantic_state_t* self,
+static metac_type_index_t TypeTupleSemantic(metac_sema_state_t* self,
                                             decl_type_t* type_)
 {
     metac_type_index_t result = {0};
@@ -793,7 +793,7 @@ static metac_type_index_t TypeTupleSemantic(metac_semantic_state_t* self,
         // metac_type_tuple_t* semaTypeTuple = TupleTypePtr(self, TYPE_INDEX_INDEX(result));
     return result;
 }
-metac_type_index_t TypeArraySemantic(metac_semantic_state_t* self,
+metac_type_index_t TypeArraySemantic(metac_sema_state_t* self,
                                      decl_type_t* type_)
 {
     metac_type_index_t result = {0};
@@ -805,8 +805,8 @@ metac_type_index_t TypeArraySemantic(metac_semantic_state_t* self,
     // it could be an array win inferred dimensions in which case
     // arrayType->Dim is the empty pointer
 
-    metac_sema_expression_t* dim = (METAC_NODE(arrayType->Dim) == emptyNode ?
-        cast(metac_sema_expression_t*)emptyNode :
+    metac_sema_expr_t* dim = (METAC_NODE(arrayType->Dim) == emptyNode ?
+        cast(metac_sema_expr_t*)emptyNode :
         MetaCSemantic_doExprSemantic(self, arrayType->Dim, 0)
     );
 
@@ -815,7 +815,7 @@ metac_type_index_t TypeArraySemantic(metac_semantic_state_t* self,
         if (dim->Kind != exp_signed_integer)
         {
             fprintf(stderr, "Array dimension should eval to integer but it is: %s\n",
-                MetaCExpressionKind_toChars(dim->Kind));
+                MetaCExprKind_toChars(dim->Kind));
         }
     }
     uint32_t dimValue = (
@@ -828,14 +828,14 @@ metac_type_index_t TypeArraySemantic(metac_semantic_state_t* self,
     return result;
 }
 
-metac_type_index_t TypeEnumSemantic(metac_semantic_state_t* self,
+metac_type_index_t TypeEnumSemantic(metac_sema_state_t* self,
                                     decl_type_t* type_)
 {
     metac_type_index_t result = {0};
 
     decl_type_enum_t* enm = cast(decl_type_enum_t*) type_;
 
-    metac_type_enum_t tmpSemaEnum = {(metac_declaration_kind_t)0};
+    metac_type_enum_t tmpSemaEnum = {(metac_decl_kind_t)0};
 
     metac_scope_t enumScope = { scope_flag_temporary };
     STACK_ARENA_ARRAY(metac_enum_member_t, semaMembers, 64, &self->TempAlloc)
@@ -924,7 +924,7 @@ metac_type_index_t TypeEnumSemantic(metac_semantic_state_t* self,
     return result;
 }
 
-metac_type_index_t MetaCSemantic_TypeSemantic(metac_semantic_state_t* self,
+metac_type_index_t MetaCSemantic_TypeSemantic(metac_sema_state_t* self,
                                               decl_type_t* type)
 {
     metac_type_index_t result = {0};
@@ -980,7 +980,7 @@ metac_type_index_t MetaCSemantic_TypeSemantic(metac_semantic_state_t* self,
     {
         decl_type_typeof_t* type_typeof = cast(decl_type_typeof_t*) type;
 
-        metac_sema_expression_t* se =
+        metac_sema_expr_t* se =
             MetaCSemantic_doExprSemantic(self, type_typeof->Exp, 0);
         result = se->TypeIndex;
     }
@@ -1001,7 +1001,7 @@ metac_type_index_t MetaCSemantic_TypeSemantic(metac_semantic_state_t* self,
         STACK_ARENA_ARRAY(metac_type_aggregate_field_t, tmpFields, 128, &self->TempAlloc);
         ARENA_ARRAY_ENSURE_SIZE(tmpFields, agg->FieldCount);
 
-        metac_type_aggregate_t tmpSemaAggMem = {(metac_declaration_kind_t)0};
+        metac_type_aggregate_t tmpSemaAggMem = {(metac_decl_kind_t)0};
         metac_type_aggregate_t* tmpSemaAgg = &tmpSemaAggMem;
         tmpSemaAgg->Header.Kind = agg->Kind;
         tmpSemaAgg->Identifier = agg->Identifier;
@@ -1219,7 +1219,7 @@ void MetaCSemantic_doTypeSemantic_Task(task_t* task)
 {
     MetaCSemantic_doTypeSemantic_Fiber_t* ctx =
         cast(MetaCSemantic_doTypeSemantic_Fiber_t*) task->Context;
-     metac_semantic_state_t* sema = ctx->Sema;
+     metac_sema_state_t* sema = ctx->Sema;
     decl_type_t* type = ctx->Type;
 
     ctx->Result = MetaCSemantic_TypeSemantic(sema, type);
@@ -1231,7 +1231,7 @@ void MetaCSemantic_doTypeSemantic_Fiber(void* caller, void* arg)
 {
     MetaCSemantic_doTypeSemantic_Fiber_t* ctx =
         cast(MetaCSemantic_doTypeSemantic_Fiber_t*) arg;
-    metac_semantic_state_t* sema = ctx->Sema;
+    metac_sema_state_t* sema = ctx->Sema;
     decl_type_t* type = ctx->Type;
 
     ctx->Result = MetaCSemantic_TypeSemantic(sema, type);
@@ -1239,7 +1239,7 @@ void MetaCSemantic_doTypeSemantic_Fiber(void* caller, void* arg)
 }
 #endif
 
-metac_type_index_t MetaCSemantic_doTypeSemantic_(metac_semantic_state_t* self,
+metac_type_index_t MetaCSemantic_doTypeSemantic_(metac_sema_state_t* self,
                                                  decl_type_t* type,
                                                  const char* callFile,
                                                  uint32_t callLine)
@@ -1297,7 +1297,7 @@ metac_type_index_t MetaCSemantic_doTypeSemantic_(metac_semantic_state_t* self,
     return result;
 }
 
-metac_type_index_t MetaCSemantic_GetArrayTypeOf(metac_semantic_state_t* state,
+metac_type_index_t MetaCSemantic_GetArrayTypeOf(metac_sema_state_t* state,
                                                 metac_type_index_t elementTypeIndex,
                                                 uint32_t dimension)
 {
@@ -1327,7 +1327,7 @@ metac_type_index_t MetaCSemantic_GetArrayTypeOf(metac_semantic_state_t* state,
 }
 /// Given a list of types compute how a struct would be layed out
 /// if it had a fields comprised of those types in the same order
-uint32_t ComputeStructSize(metac_semantic_state_t* self, metac_type_index_t* typeBegin,
+uint32_t ComputeStructSize(metac_sema_state_t* self, metac_type_index_t* typeBegin,
     uint32_t nTypes, metac_type_index_t * (*Next) (metac_type_index_t*))
 {
     uint32_t currentFieldOffset = 0;
@@ -1361,7 +1361,7 @@ uint32_t ComputeStructSize(metac_semantic_state_t* self, metac_type_index_t* typ
     return Align(currentFieldOffset, maxAlignment);
 }
 
-bool MetaCSemantic_ComputeStructLayout(metac_semantic_state_t* self,
+bool MetaCSemantic_ComputeStructLayout(metac_sema_state_t* self,
                                        decl_type_struct_t* agg,
                                        metac_type_aggregate_t* semaAgg)
 {
