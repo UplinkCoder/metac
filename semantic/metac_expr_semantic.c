@@ -1081,7 +1081,7 @@ LswitchIdKey:
                 result->TypeIndex.v = ERROR_TYPE_INDEX_V;
                 const char* e1String = "E1";
                 //TODO FIXME use some global printer to do this
-                //e1String = MetaCPrinter_PrintExpression(printer, expr->E1);
+                //e1String = MetaCPrinter_PrintExpr(printer, expr->E1);
 
                 SemanticError(self, "cannot take the address of %s", e1String);
             }

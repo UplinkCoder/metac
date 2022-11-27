@@ -44,9 +44,9 @@ void MetaCPrinter_InitSz(metac_printer_t* self,
                          metac_identifier_table_t* stringTable,
                          uint32_t initializeSize);
 
-const char* MetaCPrinter_PrintExpression(metac_printer_t* self, metac_expr_t* exp);
-const char* MetaCPrinter_PrintDeclaration(metac_printer_t* self, metac_decl_t* decl);
-const char* MetaCPrinter_PrintStatement(metac_printer_t* self, metac_stmt_t* stmt);
+const char* MetaCPrinter_PrintExpr(metac_printer_t* self, metac_expr_t* exp);
+const char* MetaCPrinter_PrintDecl(metac_printer_t* self, metac_decl_t* decl);
+const char* MetaCPrinter_PrintStmt(metac_printer_t* self, metac_stmt_t* stmt);
 const char* MetaCPrinter_PrintNode(metac_printer_t* self, metac_node_t node, uint32_t level);
 
 const char* StatementKind_toChars(metac_stmt_kind_t kind);

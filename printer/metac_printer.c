@@ -2144,7 +2144,7 @@ void MetacPrinter_PrintI64(metac_printer_t* self, int64_t val)
     PrintI64(self, val);
 }
 
-const char* MetaCPrinter_PrintExpression(metac_printer_t* self, metac_expr_t* exp)
+const char* MetaCPrinter_PrintExpr(metac_printer_t* self, metac_expr_t* exp)
 {
     const char* result = self->StringMemory + self->StringMemorySize;
 
@@ -2155,7 +2155,7 @@ const char* MetaCPrinter_PrintExpression(metac_printer_t* self, metac_expr_t* ex
     return result;
 }
 
-const char* MetaCPrinter_PrintDeclaration(metac_printer_t* self, metac_decl_t* decl)
+const char* MetaCPrinter_PrintDecl(metac_printer_t* self, metac_decl_t* decl)
 {
     const char* result = self->StringMemory + self->StringMemorySize;
 
@@ -2166,7 +2166,7 @@ const char* MetaCPrinter_PrintDeclaration(metac_printer_t* self, metac_decl_t* d
     return result;
 }
 
-const char* MetaCPrinter_PrintStatement(metac_printer_t* self, metac_stmt_t* exp)
+const char* MetaCPrinter_PrintStmt(metac_printer_t* self, metac_stmt_t* exp)
 {
     const char* result = self->StringMemory + self->StringMemorySize;
     uint32_t posBegin = self->StringMemorySize;

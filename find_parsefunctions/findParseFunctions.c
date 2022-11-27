@@ -34,7 +34,7 @@ metac_decl_t* FindDeclaration(DeclarationArray decls,
     {
         metac_decl_t* decl = decls.Ptr[idx];
         // printf("decl: %s\n",
-        //    MetaCPrinter_PrintDeclaration(&parser->DebugPrinter, decl));
+        //    MetaCPrinter_PrintDecl(&parser->DebugPrinter, decl));
         metac_identifier_ptr_t idPtr = {0};
         if (decl->Kind == decl_type_enum)
         {

@@ -3673,7 +3673,7 @@ LparseAsExpression:
 LdoneWithStatement:
     if (prev)
         prev->Next = result;
-    // printf("ParsedStatement:[%u] %s\n", result->Serial, MetaCPrinter_PrintStatement(&self->DebugPrinter, result));
+    // printf("ParsedStatement:[%u] %s\n", result->Serial, MetaCPrinter_PrintStmt(&self->DebugPrinter, result));
     MetaCPrinter_Reset(&self->DebugPrinter);
 
     if(tokenType != tok_lBrace && MetaCParser_PeekMatch(self, tok_semicolon, 1))
@@ -3884,22 +3884,22 @@ void TestParseExprssion(void)
     metac_expr_t* expr;
 
     expr = MetaCLPP_ParseExpressionFromString(&LPP, "12 - 16 - 99");
-    assert(!strcmp(MetaCPrinter_PrintExpression(&printer, expr), "((12 - 16) - 99)"));
+    assert(!strcmp(MetaCPrinter_PrintExpr(&printer, expr), "((12 - 16) - 99)"));
 
     expr = MetaCLPP_ParseExpressionFromString(&LPP, "2 * 12 + 10");
-    assert(!strcmp(MetaCPrinter_PrintExpression(&printer, expr), "((2 * 12) + 10)"));
+    assert(!strcmp(MetaCPrinter_PrintExpr(&printer, expr), "((2 * 12) + 10)"));
 
     expr = MetaCLPP_ParseExpressionFromString(&LPP, "2 + 10 * 2");
-    assert(!strcmp(MetaCPrinter_PrintExpression(&printer, expr), "(2 + (10 * 2))"));
+    assert(!strcmp(MetaCPrinter_PrintExpr(&printer, expr), "(2 + (10 * 2))"));
 
     expr = MetaCLPP_ParseExpressionFromString(&LPP, "a = b(c)");
-    assert(!strcmp(MetaCPrinter_PrintExpression(&printer, expr), "((a) = (b)((c)))"));
+    assert(!strcmp(MetaCPrinter_PrintExpr(&printer, expr), "((a) = (b)((c)))"));
 
     expr = MetaCLPP_ParseExpressionFromString(&LPP, "((x + ((((a + b))))) + d)");
-    assert(!strcmp(MetaCPrinter_PrintExpression(&printer, expr), "(((x) + (((((a) + (b)))))) + (d))"));
+    assert(!strcmp(MetaCPrinter_PrintExpr(&printer, expr), "(((x) + (((((a) + (b)))))) + (d))"));
 
     expr = MetaCLPP_ParseExpressionFromString(&LPP, "x + y * 6737203");
-    assert(!strcmp(MetaCPrinter_PrintExpression(&printer, expr), "((x) + (y * 6737203))"));
+    assert(!strcmp(MetaCPrinter_PrintExpr(&printer, expr), "((x) + (y * 6737203))"));
 }
 
 void TestParseDeclaration(void)
@@ -3918,14 +3918,14 @@ void TestParseDeclaration(void)
 
     metac_decl_t* decl = MetaCLPP_ParseDeclarationFromString(&LPP, "int f(double x)");
     //TODO the test above should work wtih a semicolon at the end as well
-    const char* str =  MetaCPrinter_PrintDeclaration(&printer, decl);
+    const char* str =  MetaCPrinter_PrintDecl(&printer, decl);
     assert(!strcmp(str, "int f (double x);\n"));
 
     decl = MetaCLPP_ParseDeclarationFromString(&LPP, "unsigned x");
-    assert(!strcmp(MetaCPrinter_PrintDeclaration(&printer, decl), "unsigned int x;\n"));
+    assert(!strcmp(MetaCPrinter_PrintDecl(&printer, decl), "unsigned int x;\n"));
 
     decl = MetaCLPP_ParseDeclarationFromString(&LPP, "signed y");
-    assert(!strcmp(MetaCPrinter_PrintDeclaration(&printer, decl), "signed int y;\n"));
+    assert(!strcmp(MetaCPrinter_PrintDecl(&printer, decl), "signed int y;\n"));
 
 }
 

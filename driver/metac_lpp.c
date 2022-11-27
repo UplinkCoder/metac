@@ -118,7 +118,7 @@ void ParseFile(metac_parser_t* parser,
         metac_token_t* lastToken = MetaCParser_PeekToken(parser, 1);
 #if DRIVER_PRINT_DECLS
         const char* str =
-            MetaCPrinter_PrintDeclaration(&printer,
+            MetaCPrinter_PrintDecl(&printer,
                 declarations[declarationSize - 1]
         );
         printf("%s\n", str);

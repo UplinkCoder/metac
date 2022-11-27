@@ -151,7 +151,7 @@ static inline int FindStatementCb(metac_node_t node, void* ctx)
         {
             stmt_if_t* stmt_if = cast(stmt_if_t*) node;
             MetaCPrinter_Reset(context->Printer);
-            MetaCPrinter_PrintStatement(context->Printer, node);
+            MetaCPrinter_PrintStmt(context->Printer, node);
             const char* stmt_str =
                 context->Printer->StringMemory;
             MSGF("Found if statement: if (%s)\n", stmt_str);
@@ -478,7 +478,7 @@ void MetaCRepl_ExprSemantic_Task(task_t* task)
     const char* type_str = TypeToChars(&ctx->Repl->SemanticState, result->TypeIndex);
 
     //MSGF("typeof(%s) = %s\n",
-    //       MetaCPrinter_PrintExpression(&ctx->Repl->printer, ctx->Exp));
+    //       MetaCPrinter_PrintExpr(&ctx->Repl->printer, ctx->Exp));
 }
 #endif
 
@@ -822,7 +822,7 @@ LswitchMode:
                  exp =
                     MetaCLPP_ParseExpressionFromString(&repl->LPP, repl->Line);
 
-                const char* str = MetaCPrinter_PrintExpression(&repl->printer, exp);
+                const char* str = MetaCPrinter_PrintExpr(&repl->printer, exp);
                 MSGF("expr = %s\n", str);
                 MetaCPrinter_Reset(&repl->printer);
                 goto LnextLine;
@@ -865,7 +865,7 @@ LswitchMode:
                 exp =
                     MetaCLPP_ParseExpressionFromString(&repl->LPP, repl->Line);
 
-                const char* str = MetaCPrinter_PrintExpression(&repl->printer, exp);
+                const char* str = MetaCPrinter_PrintExpr(&repl->printer, exp);
 
                 metac_sema_expr_t* result =
                     MetaCSemantic_doExprSemantic(&repl->SemanticState, exp, 0);
@@ -896,7 +896,7 @@ LswitchMode:
                 exp =
                     MetaCLPP_ParseExpressionFromString(&repl->LPP, repl->Line);
 
-                const char* str = MetaCPrinter_PrintExpression(&repl->printer, exp);
+                const char* str = MetaCPrinter_PrintExpr(&repl->printer, exp);
                 metac_sema_expr_t* result =
                     MetaCSemantic_doExprSemantic(&repl->SemanticState, exp, 0);
 
@@ -995,7 +995,7 @@ LswitchMode:
             {
                 stmt = MetaCLPP_ParseStatementFromString(&repl->LPP, repl->Line);
                 if (stmt)
-                    MSGF("stmt = %s\n", MetaCPrinter_PrintStatement(&repl->printer, stmt));
+                    MSGF("stmt = %s\n", MetaCPrinter_PrintStmt(&repl->printer, stmt));
                 else
                    ERRORMSG("couldn't parse statement\n");
                 MetaCPrinter_Reset(&repl->printer);
@@ -1007,7 +1007,7 @@ LswitchMode:
                 stmt = MetaCLPP_ParseStatementFromString(&repl->LPP, repl->Line);
                 /*
                 if (stmt)
-                    MSGF("stmt = %s\n", MetaCPrinter_PrintStatement(&repl->printer, stmt));
+                    MSGF("stmt = %s\n", MetaCPrinter_PrintStmt(&repl->printer, stmt));
                 else
                    ERRORMSG("couldn't parse statement\n");
                 */
@@ -1030,7 +1030,7 @@ LswitchMode:
             {
                 decl = MetaCLPP_ParseDeclarationFromString(&repl->LPP, repl->Line);
                 if (decl)
-                    MSGF("decl = %s\n", MetaCPrinter_PrintDeclaration(&repl->printer, decl));
+                    MSGF("decl = %s\n", MetaCPrinter_PrintDecl(&repl->printer, decl));
                 else
                     MSG("Couldn't parse Declaration\n");
 
@@ -1042,7 +1042,7 @@ LswitchMode:
                 metac_sema_decl_t* ds;
                 decl = MetaCLPP_ParseDeclarationFromString(&repl->LPP, repl->Line);
                 if (decl)
-                    MSGF("decl = %s\n", MetaCPrinter_PrintDeclaration(&repl->printer, decl));
+                    MSGF("decl = %s\n", MetaCPrinter_PrintDecl(&repl->printer, decl));
                 else
                     MSG("Couldn't parse Declaration\n");
                 decl->StorageClass = storageclass_global;

@@ -1063,7 +1063,7 @@ const char* doDeclSemantic_PrintFunction(task_t* task)
     metac_printer_t printer;
     //MetaCPrinter_Init(&printer, ctx->)
     const char* declPrint = 0;
-//        MetaCPrinter_PrintDeclaration(&printer, ctx->Decl);
+//        MetaCPrinter_PrintDecl(&printer, ctx->Decl);
 
     sprintf(buffer, "doDeclSemantic {Sema: %p, Decl: %s}\n",
                     ctx->Sema, declPrint);

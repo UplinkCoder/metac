@@ -814,7 +814,7 @@ uint32_t MetaCPreProcessor_Eval(metac_preprocessor_t* self, struct metac_parser_
 
         metac_expr_t* exp = MetaCParser_ParseExpression(parser, expr_flags_pp, 0);
         MetaCPrinter_Reset(&parser->DebugPrinter);
-        const char* exp_string = MetaCPrinter_PrintExpression(&parser->DebugPrinter, exp);
+        const char* exp_string = MetaCPrinter_PrintExpr(&parser->DebugPrinter, exp);
         printf("#eval '%s'\n", exp_string);
 
         return MetaCPreProcessor_EvalExp(self, exp, parser);
