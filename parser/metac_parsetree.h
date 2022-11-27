@@ -9,7 +9,7 @@
 
 #pragma pack(push, 1)
 
-#define EXPRESSION_HEADER \
+#define EXPR_HEADER \
     metac_expr_kind_t Kind; \
     uint32_t LocationIdx; \
     uint32_t Hash; \
@@ -17,12 +17,12 @@
 
 typedef struct metac_expr_header_t
 {
-    EXPRESSION_HEADER
+    EXPR_HEADER
 } metac_expr_header_t;
 
 typedef struct exp_argument_t
 {
-    EXPRESSION_HEADER
+    EXPR_HEADER
 
     struct metac_expr_t* Expr;
     struct exp_argument_t* Next;
@@ -30,7 +30,7 @@ typedef struct exp_argument_t
 
 typedef struct exp_tuple_t
 {
-    EXPRESSION_HEADER
+    EXPR_HEADER
 
     struct metac_expr_t* Expr;
     struct exp_tuple_t* Next;
@@ -45,7 +45,7 @@ typedef struct _metac_exp_body_t
 
 typedef struct metac_expr_t
 {
-    EXPRESSION_HEADER
+    EXPR_HEADER
 
     union // switch(Kind)
     {

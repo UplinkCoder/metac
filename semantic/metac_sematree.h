@@ -10,7 +10,7 @@
 #define ERROR_PARENT_INDEX_V -1
 
 #define SEMA_EXPR_HEADER \
-    EXPRESSION_HEADER \
+    EXPR_HEADER \
     metac_type_index_t TypeIndex;
 
 typedef enum metac_storage_kind_t
