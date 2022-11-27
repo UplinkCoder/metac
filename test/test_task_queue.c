@@ -50,7 +50,7 @@ bool ExecFront(taskqueue_t* q)
 #include <assert.h>
 
 taskqueue_t gQueue;
-void main(int argc, const char* argv[])
+int main(int argc, const char* argv[])
 {
     taskqueue_t myQ = {0};
     taskqueue_t* q = &gQueue;
@@ -75,4 +75,6 @@ void main(int argc, const char* argv[])
 
     worker_context_t worker;
     RunWorkerThread(&worker, run5Times, 0);
+
+    return 0;
 }
