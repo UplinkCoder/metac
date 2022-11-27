@@ -4,7 +4,7 @@
 #include "../parser/metac_parser.h"
 #include "../semantic/metac_sematree.h"
 
-void main()
+int main()
 {
     printf("%d token are defined\n", (int)tok_error);
     printf("%d expression types are defined\n", (int)exp_max);
@@ -37,4 +37,6 @@ void main()
 
     printf("sizeof(metac_stmt_t): %d\n", (int) sizeof(metac_stmt_t));
     FOREACH_STMT_KIND(PRINT_SIZE)
+
+    return 0;
 }

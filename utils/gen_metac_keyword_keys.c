@@ -7,11 +7,13 @@
 
 #include "kw_macros.h"
 
-void main(int argc, const char* argv[])
+int main(int argc, const char* argv[])
 {
 #define KW_WRITE_DEFINE(KW) \
     printf("#define %s_key 0x%x\n", \
         KW_STR(KW), KW_KEY(KW));
 
     FOREACH_KEYWORD_TOKEN(KW_WRITE_DEFINE)
+
+    return 0;
 }
