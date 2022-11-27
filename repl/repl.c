@@ -165,7 +165,7 @@ typedef struct presemantic_context_t
 {
     int32_t sz;
     const uint32_t FunctionKey;
-    metac_semantic_state_t* Sema;
+    metac_sema_state_t* Sema;
 } presemantic_context_t;
 
 

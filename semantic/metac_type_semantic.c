@@ -25,7 +25,7 @@
 #endif
 
 static const metac_type_index_t zeroIdx = {0};
-metac_type_index_t MetaCSemantic_GetPtrTypeOf(metac_semantic_state_t* self,
+metac_type_index_t MetaCSemantic_GetPtrTypeOf(metac_sema_state_t* self,
                                               metac_type_index_t elementTypeIndex)
 {
     uint32_t hash = elementTypeIndex.v;
@@ -54,12 +54,12 @@ static inline bool isBasicType(metac_type_kind_t typeKind)
     return false;
 }
 
-sema_decl_type_t* MetaCSemantic_GetTypeNode(metac_semantic_state_t* self,
+sema_decl_type_t* MetaCSemantic_GetTypeNode(metac_sema_state_t* self,
                                             metac_type_index_t typeIndex)
 {
     return cast(sema_decl_type_t*) NodeFromTypeIndex(self, typeIndex);
 }
-metac_type_index_t MetaCSemantic_GetTypeIndex(metac_semantic_state_t* state,
+metac_type_index_t MetaCSemantic_GetTypeIndex(metac_sema_state_t* state,
                                               metac_type_kind_t typeKind,
                                               decl_type_t* type)
 {
@@ -235,7 +235,7 @@ static inline bool TypeConvertsToPointer(const metac_type_index_t a)
 
 ///TODO FIXME
 /// this is not nearly complete!
-metac_type_index_t MetaCSemantic_CommonSubtype(metac_semantic_state_t* self,
+metac_type_index_t MetaCSemantic_CommonSubtype(metac_sema_state_t* self,
                                                const metac_type_index_t a,
                                                const metac_type_index_t b)
 {
@@ -306,7 +306,7 @@ static inline uint32_t Align(uint32_t size, uint32_t alignment)
     return (alignSize & alignMask);
 }
 
-metac_type_index_t MetaCSemantic_GetElementType(metac_semantic_state_t* self,
+metac_type_index_t MetaCSemantic_GetElementType(metac_sema_state_t* self,
                                                 metac_type_index_t typeIndex)
 {
     metac_type_index_t result = {0};
@@ -328,7 +328,7 @@ metac_type_index_t MetaCSemantic_GetElementType(metac_semantic_state_t* self,
     return result;
 }
 
-uint32_t MetaCSemantic_GetTypeAlignment(metac_semantic_state_t* self,
+uint32_t MetaCSemantic_GetTypeAlignment(metac_sema_state_t* self,
                                         metac_type_index_t typeIndex)
 {
     uint32_t result = INVALID_SIZE;
@@ -403,7 +403,7 @@ static metac_type_index_t* NextTypeTupleElem(metac_type_index_t* typeIndexP)
 }
 
 /// Returns size in byte or INVALID_SIZE on error
-uint32_t MetaCSemantic_GetTypeSize(metac_semantic_state_t* self,
+uint32_t MetaCSemantic_GetTypeSize(metac_sema_state_t* self,
                                    metac_type_index_t typeIndex)
 {
     uint32_t result = INVALID_SIZE;
@@ -490,7 +490,7 @@ uint32_t MetaCSemantic_GetTypeSize(metac_semantic_state_t* self,
 
 
 /// this is where we also populate the scope
-metac_type_aggregate_t* MetaCSemantic_PersistTemporaryAggregateAndPopulateScope(metac_semantic_state_t* self,
+metac_type_aggregate_t* MetaCSemantic_PersistTemporaryAggregateAndPopulateScope(metac_sema_state_t* self,
                                                                                 metac_type_aggregate_t* tmpAgg)
 {
     // memcpy(semaAgg, tmpAgg, sizeof(metac_type_aggregate_t));
@@ -572,7 +572,7 @@ metac_type_aggregate_t* MetaCSemantic_PersistTemporaryAggregateAndPopulateScope(
 #define BeginTaskBarrier()
 #define EndTaskBarrier()
 
-void MetaCSemantic_ComputeEnumValues(metac_semantic_state_t* self,
+void MetaCSemantic_ComputeEnumValues(metac_sema_state_t* self,
                                      decl_type_enum_t* enum_,
                                      metac_type_enum_t* semaEnum)
 {
@@ -584,7 +584,7 @@ void MetaCSemantic_ComputeEnumValues(metac_semantic_state_t* self,
 #if !DEBUG_MEMORY
     STACK_ARENA_ARRAY(metac_sema_expr_t, memberPlaceholders, 32, &self->TempAlloc)
 #else
-    metac_sema_expr_t* memberPlaceholders = (metac_semantic_state_t*)
+    metac_sema_expr_t* memberPlaceholders = (metac_sema_state_t*)
         calloc(memberCount, sizeof(metac_sema_expr_t));
     uint32_t memberPlaceholdersCount = 0;
 #endif
@@ -750,7 +750,7 @@ static bool TypeIsInteger(metac_type_index_t typeIdx)
     return result;
 }
 
-static metac_type_index_t TypeTupleSemantic(metac_semantic_state_t* self,
+static metac_type_index_t TypeTupleSemantic(metac_sema_state_t* self,
                                             decl_type_t* type_)
 {
     metac_type_index_t result = {0};
@@ -793,7 +793,7 @@ static metac_type_index_t TypeTupleSemantic(metac_semantic_state_t* self,
         // metac_type_tuple_t* semaTypeTuple = TupleTypePtr(self, TYPE_INDEX_INDEX(result));
     return result;
 }
-metac_type_index_t TypeArraySemantic(metac_semantic_state_t* self,
+metac_type_index_t TypeArraySemantic(metac_sema_state_t* self,
                                      decl_type_t* type_)
 {
     metac_type_index_t result = {0};
@@ -828,7 +828,7 @@ metac_type_index_t TypeArraySemantic(metac_semantic_state_t* self,
     return result;
 }
 
-metac_type_index_t TypeEnumSemantic(metac_semantic_state_t* self,
+metac_type_index_t TypeEnumSemantic(metac_sema_state_t* self,
                                     decl_type_t* type_)
 {
     metac_type_index_t result = {0};
@@ -924,7 +924,7 @@ metac_type_index_t TypeEnumSemantic(metac_semantic_state_t* self,
     return result;
 }
 
-metac_type_index_t MetaCSemantic_TypeSemantic(metac_semantic_state_t* self,
+metac_type_index_t MetaCSemantic_TypeSemantic(metac_sema_state_t* self,
                                               decl_type_t* type)
 {
     metac_type_index_t result = {0};
@@ -1219,7 +1219,7 @@ void MetaCSemantic_doTypeSemantic_Task(task_t* task)
 {
     MetaCSemantic_doTypeSemantic_Fiber_t* ctx =
         cast(MetaCSemantic_doTypeSemantic_Fiber_t*) task->Context;
-     metac_semantic_state_t* sema = ctx->Sema;
+     metac_sema_state_t* sema = ctx->Sema;
     decl_type_t* type = ctx->Type;
 
     ctx->Result = MetaCSemantic_TypeSemantic(sema, type);
@@ -1231,7 +1231,7 @@ void MetaCSemantic_doTypeSemantic_Fiber(void* caller, void* arg)
 {
     MetaCSemantic_doTypeSemantic_Fiber_t* ctx =
         cast(MetaCSemantic_doTypeSemantic_Fiber_t*) arg;
-    metac_semantic_state_t* sema = ctx->Sema;
+    metac_sema_state_t* sema = ctx->Sema;
     decl_type_t* type = ctx->Type;
 
     ctx->Result = MetaCSemantic_TypeSemantic(sema, type);
@@ -1239,7 +1239,7 @@ void MetaCSemantic_doTypeSemantic_Fiber(void* caller, void* arg)
 }
 #endif
 
-metac_type_index_t MetaCSemantic_doTypeSemantic_(metac_semantic_state_t* self,
+metac_type_index_t MetaCSemantic_doTypeSemantic_(metac_sema_state_t* self,
                                                  decl_type_t* type,
                                                  const char* callFile,
                                                  uint32_t callLine)
@@ -1297,7 +1297,7 @@ metac_type_index_t MetaCSemantic_doTypeSemantic_(metac_semantic_state_t* self,
     return result;
 }
 
-metac_type_index_t MetaCSemantic_GetArrayTypeOf(metac_semantic_state_t* state,
+metac_type_index_t MetaCSemantic_GetArrayTypeOf(metac_sema_state_t* state,
                                                 metac_type_index_t elementTypeIndex,
                                                 uint32_t dimension)
 {
@@ -1327,7 +1327,7 @@ metac_type_index_t MetaCSemantic_GetArrayTypeOf(metac_semantic_state_t* state,
 }
 /// Given a list of types compute how a struct would be layed out
 /// if it had a fields comprised of those types in the same order
-uint32_t ComputeStructSize(metac_semantic_state_t* self, metac_type_index_t* typeBegin,
+uint32_t ComputeStructSize(metac_sema_state_t* self, metac_type_index_t* typeBegin,
     uint32_t nTypes, metac_type_index_t * (*Next) (metac_type_index_t*))
 {
     uint32_t currentFieldOffset = 0;
@@ -1361,7 +1361,7 @@ uint32_t ComputeStructSize(metac_semantic_state_t* self, metac_type_index_t* typ
     return Align(currentFieldOffset, maxAlignment);
 }
 
-bool MetaCSemantic_ComputeStructLayout(metac_semantic_state_t* self,
+bool MetaCSemantic_ComputeStructLayout(metac_sema_state_t* self,
                                        decl_type_struct_t* agg,
                                        metac_type_aggregate_t* semaAgg)
 {

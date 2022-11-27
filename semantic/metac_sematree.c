@@ -12,7 +12,7 @@ int MetaCSemaTree_Walk_Debug(metac_sema_decl_t* decl, struct metac_sema_decl_sta
     return MetaCSemaTree_Walk_Real(decl, sema, walker_fn, ctx);
 }
 
-metac_type_t TypePtrToNode(metac_type_index_t typeIdx,metac_semantic_state_t* sema)
+metac_type_t TypePtrToNode(metac_type_index_t typeIdx,metac_sema_state_t* sema)
 {
     metac_type_t result;
     uint32_t idx = TYPE_INDEX_INDEX(typeIdx);
@@ -52,7 +52,7 @@ metac_type_t TypePtrToNode(metac_type_index_t typeIdx,metac_semantic_state_t* se
     return result;
 }
 
-int MetaCSemaTree_Walk_Real(metac_sema_decl_t* decl, struct metac_semantic_state_t* sema,
+int MetaCSemaTree_Walk_Real(metac_sema_decl_t* decl, struct metac_sema_state_t* sema,
                             walker_function_t walker_fn, void* ctx)
 {
 

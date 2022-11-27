@@ -1,127 +1,127 @@
-uint32_t StructIndex(metac_semantic_state_t* self, metac_type_aggregate_t* struct_)
+uint32_t StructIndex(metac_sema_state_t* self, metac_type_aggregate_t* struct_)
 {
     uint32_t result = (struct_ - self->StructTypeTable.Slots);
     return result;
 }
 
-uint32_t UnionIndex(metac_semantic_state_t* self, metac_type_aggregate_t* union_)
+uint32_t UnionIndex(metac_sema_state_t* self, metac_type_aggregate_t* union_)
 {
     uint32_t result = (union_ - self->UnionTypeTable.Slots);
     return result;
 }
 
 
-uint32_t FunctionIndex(metac_semantic_state_t* self, sema_decl_function_t* func)
+uint32_t FunctionIndex(metac_sema_state_t* self, sema_decl_function_t* func)
 {
     uint32_t result = (func - self->Functions);
     return result;
 }
 
-uint32_t StmtIndex_(metac_semantic_state_t* self, metac_sema_stmt_t* stmt)
+uint32_t StmtIndex_(metac_sema_state_t* self, metac_sema_stmt_t* stmt)
 {
     uint32_t result = (stmt - self->Stmts);
     return result;
 }
 
-uint32_t TypedefIndex(metac_semantic_state_t* self, metac_type_typedef_t* typedef_)
+uint32_t TypedefIndex(metac_sema_state_t* self, metac_type_typedef_t* typedef_)
 {
     uint32_t result = (typedef_ - self->TypedefTypeTable.Slots);
     return result;
 }
 
-uint32_t ArrayTypeIndex(metac_semantic_state_t* self, metac_type_array_t* array)
+uint32_t ArrayTypeIndex(metac_sema_state_t* self, metac_type_array_t* array)
 {
     uint32_t result = (array - self->ArrayTypeTable.Slots);
     return result;
 }
 
-uint32_t PtrTypeIndex(metac_semantic_state_t* self, metac_type_ptr_t* ptr)
+uint32_t PtrTypeIndex(metac_sema_state_t* self, metac_type_ptr_t* ptr)
 {
     uint32_t result = (ptr - self->PtrTypeTable.Slots);
     return result;
 }
 
-uint32_t FunctiontypeIndex(metac_semantic_state_t* self, metac_type_functiontype_t* functiontype)
+uint32_t FunctiontypeIndex(metac_sema_state_t* self, metac_type_functiontype_t* functiontype)
 {
     uint32_t result = (functiontype - self->FunctionTypeTable.Slots);
     return result;
 }
 
-uint32_t EnumIndex(metac_semantic_state_t* self, metac_type_enum_t* enumtype)
+uint32_t EnumIndex(metac_sema_state_t* self, metac_type_enum_t* enumtype)
 {
     uint32_t result = (enumtype - self->EnumTypeTable.Slots);
     return result;
 }
 
 
-uint32_t TupleTypeIndex(metac_semantic_state_t* self, metac_type_tuple_t* tupletype)
+uint32_t TupleTypeIndex(metac_sema_state_t* self, metac_type_tuple_t* tupletype)
 {
     uint32_t result = (tupletype - self->TupleTypeTable.Slots);
     return result;
 }
 
-metac_type_aggregate_t* StructPtr(metac_semantic_state_t* self, uint32_t index)
+metac_type_aggregate_t* StructPtr(metac_sema_state_t* self, uint32_t index)
 {
     metac_type_aggregate_t* result = (self->StructTypeTable.Slots + index);
     return result;
 }
 
-metac_type_aggregate_t* UnionPtr(metac_semantic_state_t* self, uint32_t index)
+metac_type_aggregate_t* UnionPtr(metac_sema_state_t* self, uint32_t index)
 {
     metac_type_aggregate_t* result = (self->UnionTypeTable.Slots + index);
     return result;
 }
 
-sema_decl_function_t* FunctionPtr(metac_semantic_state_t* self, uint32_t index)
+sema_decl_function_t* FunctionPtr(metac_sema_state_t* self, uint32_t index)
 {
     sema_decl_function_t* result = (self->Functions + index);
     return result;
 }
 
-metac_sema_stmt_t* StmtPtr(metac_semantic_state_t* self, uint32_t index)
+metac_sema_stmt_t* StmtPtr(metac_sema_state_t* self, uint32_t index)
 {
     metac_sema_stmt_t* result = (self->Stmts + index);
     return result;
 }
 
-metac_type_typedef_t* TypedefPtr(metac_semantic_state_t* self, uint32_t index)
+metac_type_typedef_t* TypedefPtr(metac_sema_state_t* self, uint32_t index)
 {
     metac_type_typedef_t* result = (self->TypedefTypeTable.Slots + index);
     return result;
 }
 
-metac_type_ptr_t* PtrTypePtr(metac_semantic_state_t* self, uint32_t index)
+metac_type_ptr_t* PtrTypePtr(metac_sema_state_t* self, uint32_t index)
 {
     metac_type_ptr_t* result = (self->PtrTypeTable.Slots + index);
     return result;
 }
 
-metac_type_array_t* ArrayTypePtr(metac_semantic_state_t* self, uint32_t index)
+metac_type_array_t* ArrayTypePtr(metac_sema_state_t* self, uint32_t index)
 {
     metac_type_array_t* result = (self->ArrayTypeTable.Slots + index);
     return result;
 }
 
-metac_type_functiontype_t* FunctiontypePtr(metac_semantic_state_t* self, uint32_t index)
+metac_type_functiontype_t* FunctiontypePtr(metac_sema_state_t* self, uint32_t index)
 {
     metac_type_functiontype_t* result = (self->FunctionTypeTable.Slots + index);
     return result;
 }
 
-metac_type_enum_t* EnumTypePtr(metac_semantic_state_t* self, uint32_t index)
+metac_type_enum_t* EnumTypePtr(metac_sema_state_t* self, uint32_t index)
 {
     metac_type_enum_t* result = (self->EnumTypeTable.Slots + index);
     return result;
 }
 
 
-metac_type_tuple_t* TupleTypePtr(metac_semantic_state_t* self, uint32_t index)
+metac_type_tuple_t* TupleTypePtr(metac_sema_state_t* self, uint32_t index)
 {
     metac_type_tuple_t* result = (self->TupleTypeTable.Slots + index);
     return result;
 }
 
-metac_scope_t* MetaCScope_PushNewScope(metac_semantic_state_t* sema,
+metac_scope_t* MetaCScope_PushNewScope(metac_sema_state_t* sema,
                                        metac_scope_t *parent,
                                        metac_scope_owner_t scopeOwner)
 {
@@ -137,7 +137,7 @@ metac_scope_t* MetaCScope_PushNewScope(metac_semantic_state_t* sema,
         for(uint32_t i = 0; i < cast(exp_tuple_t)) \
     \ }
 
-metac_sema_expr_t* AllocNewSemaExpr(metac_semantic_state_t* self, metac_expr_t* expr)
+metac_sema_expr_t* AllocNewSemaExpr(metac_sema_state_t* self, metac_expr_t* expr)
 {
     metac_sema_expr_t* result = 0;
 
@@ -203,7 +203,7 @@ metac_sema_expr_t* AllocNewSemaExpr(metac_semantic_state_t* self, metac_expr_t* 
     return result;
 }
 
-metac_scope_t* AllocNewScope(metac_semantic_state_t* self,
+metac_scope_t* AllocNewScope(metac_sema_state_t* self,
                              metac_scope_t* parent, metac_scope_owner_t owner)
 {
     metac_scope_t scope_ = {(metac_scope_flags_t)0};
@@ -222,7 +222,7 @@ metac_scope_t* AllocNewScope(metac_semantic_state_t* self,
 }
 
 
-sema_decl_function_t* AllocNewSemaFunction(metac_semantic_state_t* self,
+sema_decl_function_t* AllocNewSemaFunction(metac_sema_state_t* self,
                                            decl_function_t* declFunc)
 {
     sema_decl_function_t* result = 0;
@@ -239,7 +239,7 @@ sema_decl_function_t* AllocNewSemaFunction(metac_semantic_state_t* self,
     return result;
 }
 
-sema_decl_variable_t* AllocNewSemaVariable(metac_semantic_state_t* self,
+sema_decl_variable_t* AllocNewSemaVariable(metac_sema_state_t* self,
                                            decl_variable_t* declVar,
                                            metac_sema_decl_t** result_ptr)
 {
@@ -256,7 +256,7 @@ sema_decl_variable_t* AllocNewSemaVariable(metac_semantic_state_t* self,
     return result;
 }
 
-sema_decl_variable_t* AllocFunctionParameters(metac_semantic_state_t* self,
+sema_decl_variable_t* AllocFunctionParameters(metac_sema_state_t* self,
                                               sema_decl_function_t* func,
                                               uint32_t parameterCount)
 {
@@ -281,7 +281,7 @@ sema_decl_variable_t* AllocFunctionParameters(metac_semantic_state_t* self,
     return result;
 }
 #if 0
-metac_type_aggregate_field_t* AllocAggregateFields(metac_semantic_state_t* self,
+metac_type_aggregate_field_t* AllocAggregateFields(metac_sema_state_t* self,
                                                    metac_type_aggregate_t* aggregate,
                                                    metac_decl_kind_t kind,
                                                    uint32_t fieldCount)
@@ -329,7 +329,7 @@ metac_type_aggregate_field_t* AllocAggregateFields(metac_semantic_state_t* self,
 }
 #endif
 
-metac_sema_stmt_t* AllocNewSemaStmt_(metac_semantic_state_t* self,
+metac_sema_stmt_t* AllocNewSemaStmt_(metac_sema_state_t* self,
                                                metac_stmt_kind_t kind,
                                                size_t nodeSize, void** result_ptr)
 {
@@ -353,7 +353,7 @@ metac_sema_stmt_t* AllocNewSemaStmt_(metac_semantic_state_t* self,
 #define AllocateArray(ALLOC, TYPE, COUNT) \
     (cast(TYPE*) calloc(sizeof(TYPE), (COUNT)))
 
-sema_stmt_block_t* AllocNewSemaBlockStmt(metac_semantic_state_t* self,
+sema_stmt_block_t* AllocNewSemaBlockStmt(metac_sema_state_t* self,
                                               sema_stmt_block_t* Parent, uint32_t statementCount,
                                               void** result_ptr)
 {
@@ -374,7 +374,7 @@ sema_stmt_block_t* AllocNewSemaBlockStmt(metac_semantic_state_t* self,
     return result;
 }
 
-sema_stmt_casebody_t* AllocNewSemaCasebodyStmt(metac_semantic_state_t* self,
+sema_stmt_casebody_t* AllocNewSemaCasebodyStmt(metac_sema_state_t* self,
                                                     uint32_t statementCount,
                                                     void** result_ptr)
 {
@@ -399,7 +399,7 @@ sema_stmt_casebody_t* AllocNewSemaCasebodyStmt(metac_semantic_state_t* self,
 
 
 
-uint32_t BlockStmtIndex(metac_semantic_state_t* self,
+uint32_t BlockStmtIndex(metac_sema_state_t* self,
                              sema_stmt_block_t* blockstmt)
 {
     return blockstmt - self->BlockStmts;

@@ -2,8 +2,8 @@ typedef struct handoff_walker_context_t
 {
     uint32_t FunctionKey;
 
-    const metac_semantic_state_t* Origin;
-    metac_semantic_state_t* NewOwner;
+    const metac_sema_state_t* Origin;
+    metac_sema_state_t* NewOwner;
     metac_sema_decl_t* decl;
     metac_node_t result;
 } handoff_walker_context_t;
@@ -25,16 +25,16 @@ static inline void HandoffIdentifier(metac_identifier_table_t* dstTable,
     idPtrP->v = newPtr.v;
 }
 #if 0
-static void HandoffField(metac_semantic_state_t* dstState,
-                          const metac_semantic_state_t* srcState,
+static void HandoffField(metac_sema_state_t* dstState,
+                          const metac_sema_state_t* srcState,
                           metac_type_aggregate_field_t* field)
 {
 
 }
 #endif
 
-static inline void HandoffType(metac_semantic_state_t* dstState,
-                               const metac_semantic_state_t* srcState,
+static inline void HandoffType(metac_sema_state_t* dstState,
+                               const metac_sema_state_t* srcState,
                                metac_type_index_t* typeIndexP)
 {
     assert(typeIndexP->v);
@@ -45,7 +45,7 @@ static inline void HandoffType(metac_semantic_state_t* dstState,
     {
         case type_index_ptr:
         {
-            metac_type_ptr_t tmpSlot = *PtrTypePtr(cast(metac_semantic_state_t*)srcState, TYPE_INDEX_INDEX(idx));
+            metac_type_ptr_t tmpSlot = *PtrTypePtr(cast(metac_sema_state_t*)srcState, TYPE_INDEX_INDEX(idx));
             metac_type_index_t newElem = tmpSlot.ElementType;
             HandoffType(dstState, srcState, &newElem);
             tmpSlot.ElementType = newElem;
@@ -81,7 +81,7 @@ static inline void HandoffType(metac_semantic_state_t* dstState,
                 i++)
             {
                 metac_type_index_t elmT =
-                    MetaCSemantic_GetElementType(cast(metac_semantic_state_t*)srcState, newParams[i]);
+                    MetaCSemantic_GetElementType(cast(metac_sema_state_t*)srcState, newParams[i]);
                 HandoffType(dstState, srcState, newParams + i);
             }
             if (tmpSlot.ParameterTypeCount != 0)
@@ -171,8 +171,8 @@ static inline int HandoffWalker(metac_node_t node, void* ctx)
     assert(crc32c_nozero(~0, __FUNCTION__, strlen(__FUNCTION__))
         == context->FunctionKey);
 
-    const metac_semantic_state_t* srcState = context->Origin;
-    metac_semantic_state_t* dstState = context->NewOwner;
+    const metac_sema_state_t* srcState = context->Origin;
+    metac_sema_state_t* dstState = context->NewOwner;
 
     switch(node->Kind)
     {
@@ -226,8 +226,8 @@ static inline int HandoffWalker(metac_node_t node, void* ctx)
 }
 
 /// transfers ownership of decl and all it's dependents from self to newOwner
-void MetaCSemantic_Handoff(metac_semantic_state_t* self, metac_sema_decl_t** declP,
-                           metac_semantic_state_t* newOwner)
+void MetaCSemantic_Handoff(metac_sema_state_t* self, metac_sema_decl_t** declP,
+                           metac_sema_state_t* newOwner)
 {
     metac_sema_decl_t* decl = *declP;
 

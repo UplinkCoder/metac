@@ -109,10 +109,10 @@ static const char* OnResolveFail_toChars(metac_semantic_on_resolve_fail_t onFail
 }
 
 
-void MetaCSemantic_Init(metac_semantic_state_t* self, metac_parser_t* parser,
+void MetaCSemantic_Init(metac_sema_state_t* self, metac_parser_t* parser,
                         metac_type_aggregate_t* compilerStruct)
 {
-    //const metac_semantic_state_t _init = {};
+    //const metac_sema_state_t _init = {};
     // *self = _init;
 
     self->nLocals = 0;
@@ -176,13 +176,13 @@ void MetaCSemantic_Init(metac_semantic_state_t* self, metac_parser_t* parser,
     self->initialized = true;
 }
 
-void MetaCSemantic_PopScope(metac_semantic_state_t* self)
+void MetaCSemantic_PopScope(metac_sema_state_t* self)
 {
     assert(self->CurrentScope);
     self->CurrentScope = self->CurrentScope->Parent;
 }
 
-metac_scope_owner_t ScopeParent(metac_semantic_state_t* sema,
+metac_scope_owner_t ScopeParent(metac_sema_state_t* sema,
                                  metac_scope_owner_kind_t parentKind,
                                  metac_node_t parentNode)
 {
@@ -229,7 +229,7 @@ bool IsTemporaryScope(metac_scope_t* scope_)
 #define MetaCSemantic_PushTemporaryScope(SELF, TMPSCOPE) \
     MetaCSemantic_PushTemporaryScope_(SELF, TMPSCOPE, __LINE__, __FILE__)
 
-metac_scope_t* MetaCSemantic_PushTemporaryScope_(metac_semantic_state_t* self,
+metac_scope_t* MetaCSemantic_PushTemporaryScope_(metac_sema_state_t* self,
                                                  metac_scope_t* tmpScope,
                                                  uint32_t line,
                                                  const char* file)
@@ -246,7 +246,7 @@ metac_scope_t* MetaCSemantic_PushTemporaryScope_(metac_semantic_state_t* self,
     return tmpScope;
 }
 
-void MetaCSemantic_PopTemporaryScope_(metac_semantic_state_t* self,
+void MetaCSemantic_PopTemporaryScope_(metac_sema_state_t* self,
 //                                      metac_scope_t* tmpScope,
                                       uint32_t line,
                                       const char* file)
@@ -260,7 +260,7 @@ void MetaCSemantic_PopTemporaryScope_(metac_semantic_state_t* self,
 #define MetaCSemantic_PushMountedScope(SELF, MNTSCOPE) \
     MetaCSemantic_PushMountedScope_(SELF, MNTSCOPE, __LINE__, __FILE__)
 
-metac_scope_t* MetaCSemantic_PushMountedScope_(metac_semantic_state_t* self,
+metac_scope_t* MetaCSemantic_PushMountedScope_(metac_sema_state_t* self,
                                                metac_scope_t* mntScope,
                                                uint32_t line,
                                                const char* file)
@@ -279,7 +279,7 @@ metac_scope_t* MetaCSemantic_PushMountedScope_(metac_semantic_state_t* self,
 
 #define MetaCSemantic_PopMountedScope(SELF) \
     MetaCSemantic_PopMountedScope_(SELF, __LINE__, __FILE__)
-void MetaCSemantic_PopMountedScope_(metac_semantic_state_t* self,
+void MetaCSemantic_PopMountedScope_(metac_sema_state_t* self,
 //                                      metac_scope_t* tmpScope,
                                       uint32_t line,
                                       const char* file)
@@ -290,7 +290,7 @@ void MetaCSemantic_PopMountedScope_(metac_semantic_state_t* self,
     self->CurrentScope = self->CurrentScope->Parent;
 }
 */
-metac_scope_t* MetaCSemantic_PushNewScope(metac_semantic_state_t* self,
+metac_scope_t* MetaCSemantic_PushNewScope(metac_sema_state_t* self,
                                           metac_scope_owner_kind_t parentKind,
                                           metac_node_t parentNode)
 {
@@ -301,7 +301,7 @@ metac_scope_t* MetaCSemantic_PushNewScope(metac_semantic_state_t* self,
     return self->CurrentScope;
 }
 
-metac_scope_t* MetaCSemantic_MountScope(metac_semantic_state_t* self,
+metac_scope_t* MetaCSemantic_MountScope(metac_sema_state_t* self,
                                         metac_scope_t* scope_)
 {
     assert(!self->MountParent);
@@ -315,7 +315,7 @@ metac_scope_t* MetaCSemantic_MountScope(metac_semantic_state_t* self,
     return self->CurrentScope;
 }
 
-metac_scope_t* MetaCSemantic_UnmountScope(metac_semantic_state_t* self)
+metac_scope_t* MetaCSemantic_UnmountScope(metac_sema_state_t* self)
 {
     assert(self->MountParent);
     assert(self->CurrentScope->ScopeFlags & scope_flag_mounted);
@@ -331,7 +331,7 @@ metac_scope_t* MetaCSemantic_UnmountScope(metac_semantic_state_t* self)
 }
 
 
-sema_stmt_switch_t* MetaCSemantic_doSwitchSemantic(metac_semantic_state_t* self,
+sema_stmt_switch_t* MetaCSemantic_doSwitchSemantic(metac_sema_state_t* self,
                                                    stmt_switch_t* switchStmt)
 {
     sema_stmt_switch_t* semaSwitchStmt;
@@ -354,7 +354,7 @@ sema_stmt_switch_t* MetaCSemantic_doSwitchSemantic(metac_semantic_state_t* self,
 
     return semaSwitchStmt;
 }
-sema_stmt_casebody_t* MetaCSemantic_doCaseBodySemantic(metac_semantic_state_t* self,
+sema_stmt_casebody_t* MetaCSemantic_doCaseBodySemantic(metac_sema_state_t* self,
                                                        stmt_case_t* caseStmt)
 {
     sema_stmt_casebody_t* result = 0;
@@ -391,7 +391,7 @@ sema_stmt_casebody_t* MetaCSemantic_doCaseBodySemantic(metac_semantic_state_t* s
 
 }
 
-metac_type_index_t MetaCSemantic_GetType(metac_semantic_state_t* self, metac_node_t node)
+metac_type_index_t MetaCSemantic_GetType(metac_sema_state_t* self, metac_node_t node)
 {
     metac_type_index_t typeIdx = {0};
 
@@ -409,7 +409,7 @@ metac_type_index_t MetaCSemantic_GetType(metac_semantic_state_t* self, metac_nod
     return typeIdx;
 }
 
-metac_sema_stmt_t* MetaCSemantic_doStmtSemantic_(metac_semantic_state_t* self,
+metac_sema_stmt_t* MetaCSemantic_doStmtSemantic_(metac_sema_state_t* self,
                                                            metac_stmt_t* stmt,
                                                            const char* callFile,
                                                            uint32_t callLine)
@@ -755,12 +755,12 @@ static inline uint32_t _mm_movemask_epi16( __m128i a )
 }
 #endif
 
-void MetaCSemantic_ClearScope(metac_semantic_state_t* self)
+void MetaCSemantic_ClearScope(metac_sema_state_t* self)
 {
 
 }
 
-scope_insert_error_t MetaCSemantic_RegisterInScope(metac_semantic_state_t* self,
+scope_insert_error_t MetaCSemantic_RegisterInScope(metac_sema_state_t* self,
                                                    metac_identifier_ptr_t idPtr,
                                                    metac_node_t node)
 {
@@ -821,7 +821,7 @@ scope_insert_error_t MetaCSemantic_RegisterInScope(metac_semantic_state_t* self,
 }
 
 
-sema_decl_function_t* MetaCSemantic_doFunctionSemantic(metac_semantic_state_t* self,
+sema_decl_function_t* MetaCSemantic_doFunctionSemantic(metac_sema_state_t* self,
                                                        decl_function_t* func)
 {
     // one cannot do nested function semantic at this point
@@ -1024,7 +1024,7 @@ void SetTypeIndex(metac_type_t typeNode,
     }
 }
 
-metac_type_t NodeFromTypeIndex(metac_semantic_state_t* sema,
+metac_type_t NodeFromTypeIndex(metac_sema_state_t* sema,
                                metac_type_index_t typeIndex)
 {
     const uint32_t index = TYPE_INDEX_INDEX(typeIndex);
@@ -1049,7 +1049,7 @@ metac_type_t NodeFromTypeIndex(metac_semantic_state_t* sema,
 #ifndef NO_FIBERS
 typedef struct MetaCSemantic_doDeclSemantic_task_context_t
 {
-    metac_semantic_state_t* Sema;
+    metac_sema_state_t* Sema;
     metac_decl_t* Decl;
     metac_sema_decl_t* Result;
 } MetaCSemantic_doDeclSemantic_task_context_t;
@@ -1072,7 +1072,7 @@ const char* doDeclSemantic_PrintFunction(task_t* task)
 }
 #endif
 
-metac_sema_decl_t* MetaCSemantic_declSemantic(metac_semantic_state_t* self,
+metac_sema_decl_t* MetaCSemantic_declSemantic(metac_sema_state_t* self,
                                                      metac_decl_t* decl)
 {
     metac_sema_decl_t* result = cast(metac_sema_decl_t*)0xFEFEFEFE;
@@ -1193,7 +1193,7 @@ void MetaCSemantic_doDeclSemantic_Task(task_t* task)
 #endif
 #define TracyMessage(MSG) \
     TracyCMessage(MSG, sizeof(MSG) - 1)
-metac_sema_decl_t* MetaCSemantic_doDeclSemantic_(metac_semantic_state_t* self,
+metac_sema_decl_t* MetaCSemantic_doDeclSemantic_(metac_sema_state_t* self,
                                                         metac_decl_t* decl,
                                                         const char* callFile,
                                                         uint32_t callLine)
@@ -1241,7 +1241,7 @@ metac_sema_decl_t* MetaCSemantic_doDeclSemantic_(metac_semantic_state_t* self,
 }
 
 /// retruns an emptyNode in case it couldn't be found in the cache
-metac_node_t MetaCSemantic_LRU_LookupIdentifier(metac_semantic_state_t* self,
+metac_node_t MetaCSemantic_LRU_LookupIdentifier(metac_sema_state_t* self,
                                                 uint32_t idPtrHash,
                                                 metac_identifier_ptr_t idPtr)
 {
@@ -1272,14 +1272,14 @@ metac_node_t MetaCSemantic_LRU_LookupIdentifier(metac_semantic_state_t* self,
     return result;
 }
 // Sets the behavior for the case of a name-resolve failing
-void MetaCSemantic_PushOnResolveFail(metac_semantic_state_t* self,
+void MetaCSemantic_PushOnResolveFail(metac_sema_state_t* self,
                                      metac_semantic_on_resolve_fail_t onFail)
 {
     ARENA_ARRAY_ADD(self->OnResolveFailStack, onFail);
 }
 
 // Resets the behavior for the case of a name-resolve failing
-void MetaCSemantic_PopOnResolveFail(metac_semantic_state_t* self)
+void MetaCSemantic_PopOnResolveFail(metac_sema_state_t* self)
 {
     --self->OnResolveFailStackCount;
 }
@@ -1318,7 +1318,7 @@ metac_node_t MetaCSemantic_LookupIdentifierInScope(metac_scope_t* scope_,
 
 /// Returns _emptyNode to signifiy it could not be found
 /// a valid node otherwise
-metac_node_t MetaCSemantic_LookupIdentifier(metac_semantic_state_t* self,
+metac_node_t MetaCSemantic_LookupIdentifier(metac_sema_state_t* self,
                                             metac_identifier_ptr_t identifierPtr)
 {
 
@@ -1347,7 +1347,7 @@ metac_node_t MetaCSemantic_LookupIdentifier(metac_semantic_state_t* self,
     return result;
 }
 
-const char* TypeToChars(metac_semantic_state_t* self, metac_type_index_t typeIndex)
+const char* TypeToChars(metac_sema_state_t* self, metac_type_index_t typeIndex)
 {
     const char* result = 0;
     static metac_printer_t printer = {0};

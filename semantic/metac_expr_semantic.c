@@ -39,7 +39,7 @@ static bool IsAggregateType(metac_type_index_kind_t typeKind)
     return false;
 }
 
-void ConvertTupleElementToExp(metac_semantic_state_t* sema,
+void ConvertTupleElementToExp(metac_sema_state_t* sema,
                               metac_sema_expr_t** dstP, metac_type_index_t elemType,
                               uint32_t offset, BCHeap* heap)
 {
@@ -64,7 +64,7 @@ void ConvertTupleElementToExp(metac_semantic_state_t* sema,
 }
 
 metac_sema_expr_t
-EvaluateExpr(metac_semantic_state_t* sema,
+EvaluateExpr(metac_sema_state_t* sema,
                    metac_sema_expr_t* e,
                    BCHeap* heap)
 {
@@ -152,14 +152,14 @@ EvaluateExpr(metac_semantic_state_t* sema,
 }
 
 void
-MetaCSemantic_ConstantFold(metac_semantic_state_t* self, metac_sema_expr_t* exp)
+MetaCSemantic_ConstantFold(metac_sema_state_t* self, metac_sema_expr_t* exp)
 {
     bool couldFold = false;
 
     (*exp) = EvaluateExpr(self, exp, 0);
 }
 
-static inline int32_t GetConstI32(metac_semantic_state_t* self, metac_sema_expr_t* index, bool *errored)
+static inline int32_t GetConstI32(metac_sema_state_t* self, metac_sema_expr_t* index, bool *errored)
 {
     int32_t result = ~0;
 
@@ -175,7 +175,7 @@ static inline int32_t GetConstI32(metac_semantic_state_t* self, metac_sema_expr_
     return result;
 }
 
-metac_sema_expr_t* MetaCSemantic_doIndexSemantic_(metac_semantic_state_t* self,
+metac_sema_expr_t* MetaCSemantic_doIndexSemantic_(metac_sema_state_t* self,
                                                         metac_expr_t* expr,
                                                         const char* callFun,
                                                         uint32_t callLine)
@@ -216,7 +216,7 @@ metac_sema_expr_t* MetaCSemantic_doIndexSemantic_(metac_semantic_state_t* self,
     return  result;
 }
 
-metac_sema_expr_t* doCmpExpSemantic(metac_semantic_state_t* self,
+metac_sema_expr_t* doCmpExpSemantic(metac_sema_state_t* self,
                                           metac_location_t loc,
                                           metac_expr_kind_t kind,
                                           metac_sema_expr_t* e1,
@@ -250,7 +250,7 @@ metac_sema_expr_t* doCmpExpSemantic(metac_semantic_state_t* self,
 /// as there is no function overloading. However in case I add function overloading
 /// which I most certainly will; I want to have an entry point.
 static inline
-metac_sema_expr_t* ResloveFuncCall(metac_semantic_state_t* self,
+metac_sema_expr_t* ResloveFuncCall(metac_sema_state_t* self,
                                          metac_expr_t* fn,
                                          metac_sema_expr_t** arguments,
                                          uint32_t nArgs)
@@ -261,7 +261,7 @@ metac_sema_expr_t* ResloveFuncCall(metac_semantic_state_t* self,
 }
 
 static inline
-void MetaCSemantic_doCallSemantic(metac_semantic_state_t* self,
+void MetaCSemantic_doCallSemantic(metac_sema_state_t* self,
                                   metac_expr_t* call,
                                   metac_sema_expr_t** resultP)
 {
@@ -323,7 +323,7 @@ void MetaCSemantic_doCallSemantic(metac_semantic_state_t* self,
     //STACK_ARENA_ARRAY_FREE(arguments);
 }
 
-void ResolveIdentifierToExp(metac_semantic_state_t* self,
+void ResolveIdentifierToExp(metac_sema_state_t* self,
                             metac_node_t node,
                             metac_sema_expr_t** resultP,
                             uint32_t* hashP)
@@ -413,7 +413,7 @@ metac_sema_expr_t* ExtractCastExp(metac_sema_expr_t* e)
     return e;
 }
 
-void MetaCSemantic_doAssignSemantic(metac_semantic_state_t* self,
+void MetaCSemantic_doAssignSemantic(metac_sema_state_t* self,
                                     metac_expr_t* expr,
                                     metac_sema_expr_t* result)
 {
@@ -450,12 +450,12 @@ metac_identifier_ptr_t GetIdentifierPtr(metac_expr_t* expr)
     return result;
 }
 
-void MetaCSemantic_PushResultType(metac_semantic_state_t* self, metac_type_index_t type_)
+void MetaCSemantic_PushResultType(metac_sema_state_t* self, metac_type_index_t type_)
 {
 
 }
 
-metac_sema_expr_t* MetaCSemantic_doExprSemantic_(metac_semantic_state_t* self,
+metac_sema_expr_t* MetaCSemantic_doExprSemantic_(metac_sema_state_t* self,
                                                        metac_expr_t* expr,
                                                        metac_sema_expr_t* result,
                                                        const char* callFun,
@@ -1099,7 +1099,7 @@ Lret:
     return result;
 }
 
-void MetaCSemantic_PushExpr(metac_semantic_state_t* self, metac_sema_expr_t* expr)
+void MetaCSemantic_PushExpr(metac_sema_state_t* self, metac_sema_expr_t* expr)
 {
     if (self->ExprStackCapacity < self->ExprStackSize)
     {
@@ -1108,12 +1108,12 @@ void MetaCSemantic_PushExpr(metac_semantic_state_t* self, metac_sema_expr_t* exp
     }
 }
 
-void MetaCSemantic_PopExpr(metac_semantic_state_t* self,  metac_sema_expr_t* expr)
+void MetaCSemantic_PopExpr(metac_sema_state_t* self,  metac_sema_expr_t* expr)
 {
 
 }
 
-bool MetaCSemantic_CanHaveAddress(metac_semantic_state_t* self,
+bool MetaCSemantic_CanHaveAddress(metac_sema_state_t* self,
                                   metac_sema_expr_t* expr)
 {
     expr = ExtractCastExp(expr);

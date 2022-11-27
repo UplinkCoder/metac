@@ -432,7 +432,7 @@ void MetaCCodegen_Free(metac_bytecode_ctx_t* self)
     Debug_RemoveAllocator(g_DebugServer, &self->Allocator);
 }
 
-void MetaCCodegen_Begin(metac_bytecode_ctx_t* self, metac_identifier_table_t* idTable, metac_semantic_state_t* sema)
+void MetaCCodegen_Begin(metac_bytecode_ctx_t* self, metac_identifier_table_t* idTable, metac_sema_state_t* sema)
 {
     assert(self->c != 0);
     self->IdentifierTable = idTable;

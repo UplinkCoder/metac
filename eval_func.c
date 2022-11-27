@@ -104,7 +104,7 @@ int main(int argc, const char* argv[])
     printf("func: %s\n",
         MetaCPrinter_PrintNode(&LPP.Parser.DebugPrinter, METAC_NODE(funcDecl), 0));
 */
-    metac_semantic_state_t Sema;
+    metac_sema_state_t Sema;
     MetaCSemantic_Init(&Sema, &LPP.Parser, 0);
     metac_scope_t* scope =
         MetaCSemantic_PushNewScope(&Sema, scope_owner_module, (metac_node_t)1);

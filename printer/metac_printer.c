@@ -14,7 +14,7 @@
 
 static inline void PrintExpr(metac_printer_t* self, metac_expr_t* exp);
 #ifndef NO_SEMANTIC
-static inline void PrintSemaExpr(metac_printer_t* self, metac_semantic_state_t* sema, metac_sema_expr_t* exp);
+static inline void PrintSemaExpr(metac_printer_t* self, metac_sema_state_t* sema, metac_sema_expr_t* exp);
 #endif
 
 static inline void PrintSpace(metac_printer_t* self)
@@ -1227,15 +1227,15 @@ static inline void PrintExpr(metac_printer_t* self, metac_expr_t* exp)
 #include "../semantic/metac_semantic.h"
 
 static inline void PrintSemaStmt(metac_printer_t* self,
-                                      metac_semantic_state_t* sema,
+                                      metac_sema_state_t* sema,
                                       metac_sema_stmt_t* stmt);
 
 static inline void PrintSemaType(metac_printer_t* self,
-                                 metac_semantic_state_t* sema,
+                                 metac_sema_state_t* sema,
                                  metac_type_index_t typeIndex);
 
 static inline void PrintSemaFunctionType(metac_printer_t* self,
-                                         metac_semantic_state_t* sema,
+                                         metac_sema_state_t* sema,
                                          metac_type_functiontype_t* funcType,
                                          metac_identifier_ptr_t optId)
 {
@@ -1266,7 +1266,7 @@ static inline void PrintSemaFunctionType(metac_printer_t* self,
     PrintChar(self, ')');
 }
 
-void TypeToCharsP(metac_semantic_state_t* sema,
+void TypeToCharsP(metac_sema_state_t* sema,
                   metac_printer_t* printer,
                   metac_type_index_t typeIndex)
 {
@@ -1274,7 +1274,7 @@ void TypeToCharsP(metac_semantic_state_t* sema,
 }
 
 static inline void PrintSemaType(metac_printer_t* self,
-                                 metac_semantic_state_t* sema,
+                                 metac_sema_state_t* sema,
                                  metac_type_index_t typeIndex)
 {
     switch(TYPE_INDEX_KIND(typeIndex))
@@ -1375,7 +1375,7 @@ static inline void PrintSemaType(metac_printer_t* self,
 }
 
 static inline void PrintSemaVariable(metac_printer_t* self,
-                                     metac_semantic_state_t* sema,
+                                     metac_sema_state_t* sema,
                                      sema_decl_variable_t* variable)
 {
     if (TYPE_INDEX_KIND(variable->TypeIndex) == type_index_functiontype)
@@ -1405,7 +1405,7 @@ static inline void PrintSemaVariable(metac_printer_t* self,
 }
 
 static inline void PrintSemaDecl(metac_printer_t* self,
-                                        metac_semantic_state_t* sema,
+                                        metac_sema_state_t* sema,
                                         metac_sema_decl_t* semaDecl,
                                         uint32_t level)
 {
@@ -1527,7 +1527,7 @@ static inline void PrintSemaDecl(metac_printer_t* self,
 }
 
 static inline void PrintSemaExpr(metac_printer_t* self,
-                                       metac_semantic_state_t* sema,
+                                       metac_sema_state_t* sema,
                                        metac_sema_expr_t* semaExp)
 {
     if (semaExp->Kind == exp_paren)
@@ -1760,7 +1760,7 @@ static inline void PrintSemaExpr(metac_printer_t* self,
 }
 
 
-static inline void PrintSemaStmt(metac_printer_t* self, metac_semantic_state_t* sema, metac_sema_stmt_t* stmt)
+static inline void PrintSemaStmt(metac_printer_t* self, metac_sema_state_t* sema, metac_sema_stmt_t* stmt)
 {
     // printf("Kind: %s\n", StmtKind_toChars(stmt->Kind));
     switch(stmt->Kind)
@@ -2060,7 +2060,7 @@ static inline void PrintSemaStmt(metac_printer_t* self, metac_semantic_state_t* 
 
 
 const char* MetaCPrinter_PrintSemaNode(metac_printer_t* self,
-                                       metac_semantic_state_t* sema,
+                                       metac_sema_state_t* sema,
                                        metac_node_t node)
 {
     const char* result = self->StringMemory + self->StringMemorySize;
