@@ -228,7 +228,7 @@ static inline void PrintVariable(metac_printer_t* self,
     }
 }
 
-static inline void PrintDeclaration(metac_printer_t* self,
+static inline void PrintDecl(metac_printer_t* self,
                                     metac_decl_t* decl,
                                     uint32_t level);
 
@@ -241,7 +241,7 @@ static inline void PrintField(metac_printer_t* self,
     }
     else
     {
-        PrintDeclaration(self, cast(metac_decl_t*)field->VarType, 0);
+        PrintDecl(self, cast(metac_decl_t*)field->VarType, 0);
     }
 }
 
@@ -580,7 +580,7 @@ static inline void PrintStatement(metac_printer_t* self, metac_stmt_t* stmt)
         case stmt_decl:
         {
             stmt_decl_t* decl_stmt = cast(stmt_decl_t*) stmt;
-            PrintDeclaration(self, decl_stmt->Declaration, 0);
+            PrintDecl(self, decl_stmt->Decl, 0);
         } break;
         case stmt_for:
         {
@@ -595,8 +595,8 @@ static inline void PrintStatement(metac_printer_t* self, metac_stmt_t* stmt)
                 }
                 else
                 {
-                    self->SupressNewlineAfterDeclaration = true;
-                    PrintDeclaration(self, (metac_decl_t*)stmt_for->ForInit, 0);
+                    self->SupressNewlineAfterDecl = true;
+                    PrintDecl(self, (metac_decl_t*)stmt_for->ForInit, 0);
                     PrintSpace(self);
                 }
             }
@@ -774,7 +774,7 @@ static inline metac_token_enum_t AggToken(metac_decl_kind_t declKind)
     return result;
 }
 
-static inline void PrintDeclaration(metac_printer_t* self,
+static inline void PrintDecl(metac_printer_t* self,
                                     metac_decl_t* decl,
                                     uint32_t level)
 {
@@ -837,7 +837,7 @@ static inline void PrintDeclaration(metac_printer_t* self,
             decl_type_typedef_t* typdef = (decl_type_typedef_t*) decl;
             PrintString(self, "typedef ", sizeof("typedef ") - 1);
             level++;
-            PrintDeclaration(self, (metac_decl_t*)typdef->Type, level);
+            PrintDecl(self, (metac_decl_t*)typdef->Type, level);
             if (typdef->Identifier.v != empty_identifier.v)
             {
                 PrintIdentifier(self, typdef->Identifier);
@@ -869,7 +869,7 @@ static inline void PrintDeclaration(metac_printer_t* self,
                 memberIndex < struct_->FieldCount;
                 memberIndex++)
             {
-                PrintDeclaration(self, (metac_decl_t*)f, level);
+                PrintDecl(self, (metac_decl_t*)f, level);
                 //PrintChar(self, ';');
                 if (f->Next && f->Next != emptyPointer)
                     PrintIndent(self);
@@ -930,9 +930,9 @@ static inline void PrintDeclaration(metac_printer_t* self,
         } break;
     }
     if (!!printSemicolon) PrintToken(self, tok_semicolon);
-    if (self->SupressNewlineAfterDeclaration)
+    if (self->SupressNewlineAfterDecl)
     {
-        self->SupressNewlineAfterDeclaration = false;
+        self->SupressNewlineAfterDecl = false;
     }
     else
     {
@@ -953,10 +953,10 @@ void MetaCPrinter_PrintForHeader(metac_printer_t* self, metac_decl_t* decl)
                 *cast(decl_function_t*)decl;
 
             METAC_NODE(func.FunctionBody) = emptyNode;
-            PrintDeclaration(self, (metac_decl_t*)&func, 0);
+            PrintDecl(self, (metac_decl_t*)&func, 0);
         } break;
         default:
-            PrintDeclaration(self, decl, 0);
+            PrintDecl(self, decl, 0);
 
     }
 }
@@ -1404,7 +1404,7 @@ static inline void PrintSemaVariable(metac_printer_t* self,
 
 }
 
-static inline void PrintSemaDeclaration(metac_printer_t* self,
+static inline void PrintSemaDecl(metac_printer_t* self,
                                         metac_semantic_state_t* sema,
                                         metac_sema_decl_t* semaDecl,
                                         uint32_t level)
@@ -1446,7 +1446,7 @@ static inline void PrintSemaDeclaration(metac_printer_t* self,
                 memberIndex < struct_->FieldCount;
                 memberIndex++)
             {
-                //PrintSemaDeclaration(self, sema, f + memberIndex, level);
+                //PrintSemaDecl(self, sema, f + memberIndex, level);
                 sema_decl_variable_t synVar = {};
                 synVar.TypeIndex = (f + memberIndex)->Type;
                 synVar.VarIdentifier = (f + memberIndex)->Identifier;
@@ -1750,7 +1750,7 @@ static inline void PrintSemaExpression(metac_printer_t* self,
     else if (semaExp->Kind == decl_enum_member)
     {
         metac_enum_member_t* enumMember = cast(metac_enum_member_t*) semaExp;
-        //PrintSemaDeclaration(self, sema, enumMember, self->IndentLevel);
+        //PrintSemaDecl(self, sema, enumMember, self->IndentLevel);
         PrintIdentifier(self, enumMember->Identifier);
     }
     else
@@ -1890,7 +1890,7 @@ static inline void PrintSemaStatement(metac_printer_t* self, metac_semantic_stat
         case stmt_decl:
         {
             sema_stmt_decl_t* decl_stmt = cast(sema_stmt_decl_t*) stmt;
-            PrintSemaDeclaration(self, sema, decl_stmt->Declaration, 0);
+            PrintSemaDecl(self, sema, decl_stmt->Decl, 0);
         } break;
         case stmt_for:
         {
@@ -1905,8 +1905,8 @@ static inline void PrintSemaStatement(metac_printer_t* self, metac_semantic_stat
                 }
                 else
                 {
-                    self->SupressNewlineAfterDeclaration = true;
-                    PrintSemaDeclaration(self, sema, (cast(metac_sema_decl_t*)stmt_for->ForInit), self->IndentLevel);
+                    self->SupressNewlineAfterDecl = true;
+                    PrintSemaDecl(self, sema, (cast(metac_sema_decl_t*)stmt_for->ForInit), self->IndentLevel);
                 }
             }
             else
@@ -2076,7 +2076,7 @@ const char* MetaCPrinter_PrintSemaNode(metac_printer_t* self,
     }
     else if (node->Kind > decl_min && node->Kind < decl_max)
     {
-        PrintSemaDeclaration(self, sema, (metac_sema_decl_t*) node, 0);
+        PrintSemaDecl(self, sema, (metac_sema_decl_t*) node, 0);
     }
     else
         assert(0);
@@ -2116,7 +2116,7 @@ void MetaCPrinter_InitSz(metac_printer_t* self,
     self->StringMemoryCapacity = initialSize;
     self->StringMemory = (char*)malloc(self->StringMemoryCapacity);
     self->StringMemorySize = self->StringMemoryCapacity;
-    self->SupressNewlineAfterDeclaration = false;
+    self->SupressNewlineAfterDecl = false;
     self->AsType = false;
     MetaCPrinter_Reset(self);
 
@@ -2159,7 +2159,7 @@ const char* MetaCPrinter_PrintDecl(metac_printer_t* self, metac_decl_t* decl)
 {
     const char* result = self->StringMemory + self->StringMemorySize;
 
-    PrintDeclaration(self, decl, 0);
+    PrintDecl(self, decl, 0);
 
     self->StringMemory[self->StringMemorySize++] = '\0';
 
@@ -2193,7 +2193,7 @@ const char* MetaCPrinter_PrintNode(metac_printer_t* self, metac_node_t node, uin
     }
     else if (node->Kind > decl_min && node->Kind < decl_max)
     {
-        PrintDeclaration(self, (metac_decl_t*) node, level);
+        PrintDecl(self, (metac_decl_t*) node, level);
     }
     else
         assert(0);

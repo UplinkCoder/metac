@@ -11,9 +11,9 @@
 #include "repl/exp_eval.c"
 #include "codegen/metac_codegen.c"
 
-DeclarationArray ReadLexParse(const char* filename, metac_lpp_t* lpp)
+DeclArray ReadLexParse(const char* filename, metac_lpp_t* lpp)
 {
-    DeclarationArray result = {0};
+    DeclArray result = {0};
 
     read_result_t readResult =
         ReadFileAndZeroTerminate(filename);
@@ -29,7 +29,7 @@ DeclarationArray ReadLexParse(const char* filename, metac_lpp_t* lpp)
     return result;
 }
 
-metac_decl_t* FindDeclaration(DeclarationArray decls,
+metac_decl_t* FindDecl(DeclArray decls,
                                      metac_parser_t* parser, const char* name)
 {
     const uint32_t len = cast(uint32_t) strlen(name);
@@ -90,10 +90,10 @@ int main(int argc, const char* argv[])
     MetaCLPP_Init(&LPP);
     // TODO MetaCLPP_Init should take an allocator
 
-    DeclarationArray decls = ReadLexParse(filename, &LPP);
+    DeclArray decls = ReadLexParse(filename, &LPP);
 
     decl_function_t* funcDecl = cast(decl_function_t*)
-        FindDeclaration(decls, &LPP.Parser, funcname);
+        FindDecl(decls, &LPP.Parser, funcname);
 
     if(!funcDecl || funcDecl->Kind != decl_function)
     {

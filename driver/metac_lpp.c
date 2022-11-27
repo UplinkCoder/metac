@@ -82,7 +82,7 @@ void LexFile(metac_lexer_t* lexer,
 
 void ParseFile(metac_parser_t* parser,
                const char* path,
-               DeclarationArray* result)
+               DeclArray* result)
 {
 #if DRIVER_PRINT_DECLS
     metac_printer_t printer;
@@ -103,7 +103,7 @@ void ParseFile(metac_parser_t* parser,
     while(parser->CurrentTokenIndex < parser->Lexer->TokenCount)
     {
         metac_decl_t* decl =
-            MetaCParser_ParseDeclaration(parser, 0);
+            MetaCParser_ParseDecl(parser, 0);
         assert(decl);
         if (METAC_NODE(decl) == emptyNode)
         {
@@ -203,11 +203,11 @@ metac_stmt_t* MetaCLPP_ParseStatementFromString(metac_lpp_t* lpp, const char* st
     return result;
 }
 
-metac_decl_t* MetaCLPP_ParseDeclarationFromString(metac_lpp_t* lpp, const char* decl)
+metac_decl_t* MetaCLPP_ParseDeclFromString(metac_lpp_t* lpp, const char* decl)
 {
     LexString(&lpp->Lexer, decl);
 
-    metac_decl_t* result = MetaCParser_ParseDeclaration(&lpp->Parser, 0);
+    metac_decl_t* result = MetaCParser_ParseDecl(&lpp->Parser, 0);
 
     return result;
 }
@@ -226,9 +226,9 @@ metac_preprocessor_directive_t MetaCLPP_ParsePreprocFromString(metac_lpp_t* lpp,
 
 #include "../utils/read_file.c"
 
-DeclarationArray ReadLexParse(const char* filename, metac_lpp_t* lpp, metac_alloc_t* parent)
+DeclArray ReadLexParse(const char* filename, metac_lpp_t* lpp, metac_alloc_t* parent)
 {
-    DeclarationArray result = {0};
+    DeclArray result = {0};
 
     read_result_t readResult =
         ReadFileAndZeroTerminate(filename);

@@ -221,7 +221,7 @@ typedef struct stmt_decl_t
 {
     STMT_HEADER
 
-    struct metac_decl_t* Declaration;
+    struct metac_decl_t* Decl;
 } stmt_decl_t;
 
 typedef struct stmt_if_t
@@ -624,13 +624,13 @@ typedef struct metac_decl_t
 typedef int (*walker_function_t) (metac_node_t node, void * ctx);
 
 #ifdef NDEBUG
-#  define MetaCDeclaration_Walk(DECL, FUNC, CTX) \
-      MetaCDeclaration_Walk_Real(DECL, FUNC, (void*)CTX)
+#  define MetaCDecl_Walk(DECL, FUNC, CTX) \
+      MetaCDecl_Walk_Real(DECL, FUNC, (void*)CTX)
 #else
-  int MetaCDeclaration_Walk_Debug(metac_decl_t* decl, const char* fn_name, walker_function_t walker_fn, void* ctx);
-#  define MetaCDeclaration_Walk(DECL, FUNC, CTX) \
-      MetaCDeclaration_Walk_Debug(DECL, #FUNC, FUNC, (void*)CTX)
+  int MetaCDecl_Walk_Debug(metac_decl_t* decl, const char* fn_name, walker_function_t walker_fn, void* ctx);
+#  define MetaCDecl_Walk(DECL, FUNC, CTX) \
+      MetaCDecl_Walk_Debug(DECL, #FUNC, FUNC, (void*)CTX)
 #endif
-int MetaCDeclaration_Walk_Real(metac_decl_t* decl, walker_function_t walker_fn, void* ctx);
+int MetaCDecl_Walk_Real(metac_decl_t* decl, walker_function_t walker_fn, void* ctx);
 
 #endif

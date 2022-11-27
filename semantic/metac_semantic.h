@@ -115,7 +115,7 @@ typedef struct metac_semantic_state_t
 
     // has state such as the current stack offset and the like
     // to layout variables
-    AT(transient) metac_sema_decl_state_t* CurrentDeclarationState;
+    AT(transient) metac_sema_decl_state_t* CurrentDeclState;
 
     AT(transient) uint32_t TemporaryScopeDepth;
 

@@ -1794,7 +1794,7 @@ void MetaCCodegen_doStatement(metac_bytecode_ctx_t* ctx,
         case stmt_decl:
         {
             sema_stmt_decl_t* declStmt = cast(sema_stmt_decl_t*) stmt;
-            sema_decl_variable_t* localVar = (sema_decl_variable_t*) declStmt->Declaration;
+            sema_decl_variable_t* localVar = (sema_decl_variable_t*) declStmt->Decl;
             MetaCCodegen_doLocalVar(ctx, localVar);
             // MetaCCodegen_doStatement(ctx, decl)
         } break;

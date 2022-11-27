@@ -563,7 +563,7 @@ metac_type_aggregate_t* MetaCSemantic_PersistTemporaryAggregateAndPopulateScope(
     MetaCSemantic_UnmountScope(self);
 
     //TODO FIXME this should use a deep walk through the fields
-    //MetaCDeclaration_Walk(tmpAgg,)
+    //MetaCDecl_Walk(tmpAgg,)
 
     semaAgg->Fields = aggFields;
 

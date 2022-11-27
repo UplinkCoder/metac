@@ -165,7 +165,7 @@ metac_expr_t* AllocNewExpression(metac_expr_kind_t kind)
     return result;
 }
 
-metac_decl_t* AllocNewDeclaration_(metac_decl_kind_t kind, uint32_t nodeSize, void** result_ptr, uint32_t line)
+metac_decl_t* AllocNewDecl_(metac_decl_kind_t kind, uint32_t nodeSize, void** result_ptr, uint32_t line)
 {
     metac_decl_t* result = 0;
 

@@ -185,7 +185,7 @@ static inline int Presemantic(metac_node_t node, void* ctx)
 
         return 1;
     }
-    else if (MetaCNode_IsDeclaration(node))
+    else if (MetaCNode_IsDecl(node))
     {
         MetaCSemantic_doDeclSemantic(context->Sema, node);
     }
@@ -236,7 +236,7 @@ void Presemantic_(repl_state_t* self)
         metac_lexer_t tmpLexer;
         metac_parser_t tmpParser;
         metac_preprocessor_t preProc;
-        DeclarationArray decls = {0};
+        DeclArray decls = {0};
         {
             MetaCLexer_Init(&tmpLexer, &PresemanticAlloc);
 
@@ -933,7 +933,7 @@ LswitchMode:
             case repl_mode_setvars :
             {
 #if 0
-                metac_decl_t* decl = MetaCLPP_ParseDeclarationFromString(&repl->LPP, repl->Line);
+                metac_decl_t* decl = MetaCLPP_ParseDeclFromString(&repl->LPP, repl->Line);
                 if (decl)
                 {
                     metac_identifier_ptr_t idPtr = {0};
@@ -997,7 +997,7 @@ LswitchMode:
                 if (stmt)
                     MSGF("stmt = %s\n", MetaCPrinter_PrintStmt(&repl->printer, stmt));
                 else
-                   ERRORMSG("couldn't parse statement\n");
+                   ERRORMSG("Couldn't parse statement\n");
                 MetaCPrinter_Reset(&repl->printer);
                 goto LnextLine;
             }
@@ -1009,7 +1009,7 @@ LswitchMode:
                 if (stmt)
                     MSGF("stmt = %s\n", MetaCPrinter_PrintStmt(&repl->printer, stmt));
                 else
-                   ERRORMSG("couldn't parse statement\n");
+                   ERRORMSG("Couldn't parse statement\n");
                 */
                 if (stmt)
                 {
@@ -1020,7 +1020,7 @@ LswitchMode:
                 }
                 else
                 {
-                   ERRORMSG("couldn't parse statement\n");
+                   ERRORMSG("Couldn't parse statement\n");
                 }
                 MetaCPrinter_Reset(&repl->printer);
                 goto LnextLine;
@@ -1028,11 +1028,11 @@ LswitchMode:
 
             case repl_mode_decl :
             {
-                decl = MetaCLPP_ParseDeclarationFromString(&repl->LPP, repl->Line);
+                decl = MetaCLPP_ParseDeclFromString(&repl->LPP, repl->Line);
                 if (decl)
                     MSGF("decl = %s\n", MetaCPrinter_PrintDecl(&repl->printer, decl));
                 else
-                    MSG("Couldn't parse Declaration\n");
+                    MSG("Couldn't parse declaration\n");
 
                 goto LnextLine;
             }
@@ -1040,11 +1040,11 @@ LswitchMode:
             case repl_mode_ds :
             {
                 metac_sema_decl_t* ds;
-                decl = MetaCLPP_ParseDeclarationFromString(&repl->LPP, repl->Line);
+                decl = MetaCLPP_ParseDeclFromString(&repl->LPP, repl->Line);
                 if (decl)
                     MSGF("decl = %s\n", MetaCPrinter_PrintDecl(&repl->printer, decl));
                 else
-                    MSG("Couldn't parse Declaration\n");
+                    MSG("Couldn't parse declaration\n");
                 decl->StorageClass = storageclass_global;
 
 #ifndef NO_FIBERS

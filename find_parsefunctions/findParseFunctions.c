@@ -15,7 +15,7 @@
 #  include <unistd.h>
 #endif
 
-metac_decl_t* FindDeclaration(DeclarationArray decls,
+metac_decl_t* FindDecl(DeclArray decls,
                                      metac_parser_t* parser, const char* name)
 {
     const uint32_t len = cast(uint32_t) strlen(name);
@@ -79,7 +79,7 @@ metac_identifier_ptr_t IdentifierFromDecl(metac_decl_t* decl)
     return result;
 }
 
-DeclarationArray FilterDeclarations(DeclarationArray decls, metac_parser_t* parser,
+DeclArray FilterDecls(DeclArray decls, metac_parser_t* parser,
                                     metac_alloc_t* alloc,
                                     bool (*filterFunc) (metac_decl_t*, metac_parser_t*))
 {
@@ -97,7 +97,7 @@ DeclarationArray FilterDeclarations(DeclarationArray decls, metac_parser_t* pars
         }
     }
 
-    DeclarationArray retval;
+    DeclArray retval;
 
     retval.Ptr = result;
     retval.Length = resultCount;
@@ -105,7 +105,7 @@ DeclarationArray FilterDeclarations(DeclarationArray decls, metac_parser_t* pars
     return retval;
 }
 
-bool DeclarationIsParseFunc(metac_decl_t* decl, metac_parser_t* parser)
+bool DeclIsParseFunc(metac_decl_t* decl, metac_parser_t* parser)
 {
     bool result = false;
     const char* name = 0;
@@ -125,7 +125,7 @@ Lret:
     return result;
 }
 
-bool DeclarationIsInitFunc(metac_decl_t* decl, metac_parser_t* parser)
+bool DeclIsInitFunc(metac_decl_t* decl, metac_parser_t* parser)
 {
     bool result = false;
     const char* name = 0;
@@ -168,19 +168,19 @@ int main(int argc, const char* argv[])
 
     MetaCLPP_Init(&LPP, &alloc, 0);
 
-    DeclarationArray decls = ReadLexParse(filename, &LPP, 0);
+    DeclArray decls = ReadLexParse(filename, &LPP, 0);
     metac_alloc_t resultAlloc;
     Allocator_Init(&resultAlloc, 0, 0);
 
-    DeclarationArray parseFunctions =
-        FilterDeclarations(decls, &LPP.Parser,
-                          &resultAlloc, DeclarationIsParseFunc);
+    DeclArray parseFunctions =
+        FilterDecls(decls, &LPP.Parser,
+                          &resultAlloc, DeclIsParseFunc);
 
     printf("Found %d parserFuncs\n", (int)parseFunctions.Length);
 
-    DeclarationArray initFuncs =
-        FilterDeclarations(decls, &LPP.Parser,
-                          &resultAlloc, DeclarationIsInitFunc);
+    DeclArray initFuncs =
+        FilterDecls(decls, &LPP.Parser,
+                          &resultAlloc, DeclIsInitFunc);
 
     for(uint32_t i = 0; i < parseFunctions.Length; i++)
     {

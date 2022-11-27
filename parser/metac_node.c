@@ -10,7 +10,7 @@ static inline bool MetaCNode_IsStatement(metac_node_t node)
     return (node->Kind > stmt_min && node->Kind < stmt_max);
 }
 
-static inline bool MetaCNode_IsDeclaration(metac_node_t node)
+static inline bool MetaCNode_IsDecl(metac_node_t node)
 {
     return (node->Kind > decl_min && node->Kind < decl_max);
 }

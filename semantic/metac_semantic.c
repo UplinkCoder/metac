@@ -158,7 +158,7 @@ void MetaCSemantic_Init(metac_semantic_state_t* self, metac_parser_t* parser,
     self->ParserStringTable = &parser->StringTable;
 
     self->CurrentScope = 0;
-    self->CurrentDeclarationState = 0;
+    self->CurrentDeclState = 0;
 
     ARENA_ARRAY_INIT(metac_semantic_on_resolve_fail_t, self->OnResolveFailStack, &self->Allocator);
 
@@ -494,8 +494,8 @@ metac_sema_stmt_t* MetaCSemantic_doStatementSemantic_(metac_semantic_state_t* se
 
                 // MetaCSemantic_PushTemporaryScope(self, &declScope);
             }
-            semaDeclStatement->Declaration =
-                MetaCSemantic_doDeclSemantic(self, declStatement->Declaration);
+            semaDeclStatement->Decl =
+                MetaCSemantic_doDeclSemantic(self, declStatement->Decl);
         } break;
 /*
         default: {
@@ -825,9 +825,9 @@ sema_decl_function_t* MetaCSemantic_doFunctionSemantic(metac_semantic_state_t* s
                                                        decl_function_t* func)
 {
     // one cannot do nested function semantic at this point
-    // assert(self->CurrentDeclarationState == 0);
+    // assert(self->CurrentDeclState == 0);
     metac_sema_decl_state_t declState = {0};
-    self->CurrentDeclarationState = &declState;
+    self->CurrentDeclState = &declState;
 
     sema_decl_function_t* f = AllocNewSemaFunction(self, func);
     // for now we don't nest functions.

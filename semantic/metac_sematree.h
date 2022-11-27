@@ -270,7 +270,7 @@ typedef struct sema_stmt_decl_t
 {
     SEMA_STMT_HEADER
 
-    struct metac_sema_decl_t* Declaration;
+    struct metac_sema_decl_t* Decl;
 } sema_stmt_decl_t;
 
 typedef struct sema_stmt_if_t
