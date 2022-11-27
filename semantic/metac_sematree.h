@@ -177,7 +177,7 @@ typedef struct sema_stmt_block_t
     SEMA_STMT_HEADER
 
     ARENA_ARRAY(struct metac_sema_stmt_t*, Body)
-    uint32_t StatementCount;
+    uint32_t StmtCount;
 } sema_stmt_block_t;
 
 typedef struct sema_stmt_break_t
@@ -238,9 +238,9 @@ typedef struct sema_stmt_casebody_t
 {
     SEMA_STMT_HEADER
 
-    ARENA_ARRAY(struct metac_sema_stmt_t*, Statements)
+    ARENA_ARRAY(struct metac_sema_stmt_t*, Stmts)
 
-    uint32_t StatementCount;
+    uint32_t StmtCount;
 } sema_stmt_casebody_t;
 
 typedef struct sema_stmt_case_t

@@ -67,15 +67,15 @@ typedef struct metac_parser_t
     ARENA_ARRAY(identifier_callback_t, IdentifierCallbacks)
     metac_alloc_t Allocator;
 
-    stmt_block_t* CurrentBlockStatement;
+    stmt_block_t* CurrentBlockStmt;
 
     uint16_t* PackStack;
     /// -1 means empty
     int32_t  PackStackTop;
 
-    stmt_block_t** BlockStatementStack;
-    uint32_t BlockStatementStackCount;
-    uint32_t BlockStatementStackCapacity;
+    stmt_block_t** BlockStmtStack;
+    uint32_t BlockStmtStackCount;
+    uint32_t BlockStmtStackCapacity;
 
     uint32_t OpenParens;
     uint32_t PackStackCapacity;
@@ -116,7 +116,7 @@ uint32_t MetaCParser_HowMuchLookahead(metac_parser_t* self);
 metac_expr_t* MetaCParser_ParseExpr(metac_parser_t* self, parse_expr_flags_t flags, metac_expr_t* prev);
 metac_expr_t* MetaCParser_ParseExprFromString(const char* exp);
 metac_decl_t* MetaCParser_ParseDecl(metac_parser_t* self, metac_decl_t* parent);
-metac_stmt_t* MetaCParser_ParseStatement(metac_parser_t* self, metac_stmt_t* parent, metac_stmt_t* prev);
+metac_stmt_t* MetaCParser_ParseStmt(metac_parser_t* self, metac_stmt_t* parent, metac_stmt_t* prev);
 
 #if !defined(NO_PREPROCESSOR)
 metac_preprocessor_directive_t MetaCParser_ParsePreprocDirective(metac_parser_t* self,

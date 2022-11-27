@@ -555,7 +555,7 @@ metac_bytecode_function_t MetaCCodegen_GenerateFunctionFromExp(metac_bytecode_ct
     return func;
 }
 
-void MetaCCodegen_doStatement(metac_bytecode_ctx_t* ctx,
+void MetaCCodegen_doStmt(metac_bytecode_ctx_t* ctx,
                               metac_sema_stmt_t* stmt);
 
 metac_bytecode_function_t MetaCCodegen_GenerateFunction(metac_bytecode_ctx_t* ctx,
@@ -647,10 +647,10 @@ metac_bytecode_function_t MetaCCodegen_GenerateFunction(metac_bytecode_ctx_t* ct
     ctx->BreaksCount = breaksCount;
 
     for (uint32_t i = 0;
-         i < function->FunctionBody->StatementCount;
+         i < function->FunctionBody->StmtCount;
          i++)
     {
-        MetaCCodegen_doStatement(ctx, function->FunctionBody->Body[i]);
+        MetaCCodegen_doStmt(ctx, function->FunctionBody->Body[i]);
     }
 
     // gen.Comment(c, "Function body end");
@@ -1629,9 +1629,9 @@ static void MetaCCodegen_doBlockStmt(metac_bytecode_ctx_t* ctx,
                                      sema_stmt_block_t* stmt)
 {
     assert(stmt->Kind == stmt_block);
-    for(uint32_t i = 0; i < stmt->StatementCount; i++)
+    for(uint32_t i = 0; i < stmt->StmtCount; i++)
     {
-        MetaCCodegen_doStatement(ctx, stmt->Body[i]);
+        MetaCCodegen_doStmt(ctx, stmt->Body[i]);
     }
 }
 
@@ -1695,18 +1695,18 @@ static inline void MetaCCodegen_doCaseStmt(metac_bytecode_ctx_t* ctx,
         if (caseStmt->CaseBody->Kind == stmt_casebody)
         {
             const uint32_t stmtCount =
-                caseStmt->CaseBody->StatementCount;
+                caseStmt->CaseBody->StmtCount;
 
             for(uint32_t i = 0;
                 i < stmtCount;
                 i++)
             {
-                MetaCCodegen_doStatement(ctx, caseStmt->CaseBody->Statements[i]);
+                MetaCCodegen_doStmt(ctx, caseStmt->CaseBody->Stmts[i]);
             }
         }
         else
         {
-            MetaCCodegen_doStatement(ctx, cast(metac_sema_stmt_t*)caseStmt->CaseBody);
+            MetaCCodegen_doStmt(ctx, cast(metac_sema_stmt_t*)caseStmt->CaseBody);
         }
         BCAddr nextCaseJmp = gen.BeginJmp(c);
         metac_bytecode_casejmp_t caseJmp;
@@ -1724,7 +1724,7 @@ static inline void MetaCCodegen_doCaseStmt(metac_bytecode_ctx_t* ctx,
 
         ARENA_ARRAY_ADD(swtch->PrevCaseJumps, caseJmp);
         if (caseBody)
-            MetaCCodegen_doStatement(ctx, caseBody);
+            MetaCCodegen_doStmt(ctx, caseBody);
     }
 }
 
@@ -1753,7 +1753,7 @@ void MetaCCodegen_doLocalVar(metac_bytecode_ctx_t* ctx,
     }
 }
 
-void MetaCCodegen_doStatement(metac_bytecode_ctx_t* ctx,
+void MetaCCodegen_doStmt(metac_bytecode_ctx_t* ctx,
                               metac_sema_stmt_t* stmt)
 {
     const BackendInterface gen = *ctx->gen;
@@ -1765,16 +1765,16 @@ void MetaCCodegen_doStatement(metac_bytecode_ctx_t* ctx,
         {
             uint32_t currentBreakCount = ctx->BreaksCount;
 
-            sema_stmt_switch_t* switchStatement = cast(sema_stmt_switch_t*) stmt;
+            sema_stmt_switch_t* switchStmt = cast(sema_stmt_switch_t*) stmt;
             BCValue switchExp;
-            MetaCCodegen_doExpr(ctx, switchStatement->SwitchExp, &switchExp, _Rvalue);
+            MetaCCodegen_doExpr(ctx, switchStmt->SwitchExp, &switchExp, _Rvalue);
             metac_bytecode_switch_t* swtch =
                 MetaCCodegen_PushSwitch(ctx, switchExp);
-            MetaCCodegen_doBlockStmt(ctx, switchStatement->SwitchBody);
+            MetaCCodegen_doBlockStmt(ctx, switchStmt->SwitchBody);
             // gen default case if there is one.
             if (METAC_NODE(swtch->DefaultBody) != emptyPointer)
             {
-                MetaCCodegen_doStatement(ctx, swtch->DefaultBody);
+                MetaCCodegen_doStmt(ctx, swtch->DefaultBody);
             }
             MetaCCodegen_PopSwitch(ctx, switchExp);
             BCLabel breakLabel = gen.GenLabel(c);
@@ -1796,7 +1796,7 @@ void MetaCCodegen_doStatement(metac_bytecode_ctx_t* ctx,
             sema_stmt_decl_t* declStmt = cast(sema_stmt_decl_t*) stmt;
             sema_decl_variable_t* localVar = (sema_decl_variable_t*) declStmt->Decl;
             MetaCCodegen_doLocalVar(ctx, localVar);
-            // MetaCCodegen_doStatement(ctx, decl)
+            // MetaCCodegen_doStmt(ctx, decl)
         } break;
 
         case stmt_case:
@@ -1829,7 +1829,7 @@ void MetaCCodegen_doStatement(metac_bytecode_ctx_t* ctx,
             MetaCCodegen_doExpr(ctx, ifStmt->IfCond, &cond, _Cond);
             CndJmpBegin cj = gen.BeginCndJmp(c, &cond, false);
             {
-                MetaCCodegen_doStatement(ctx, ifStmt->IfBody);
+                MetaCCodegen_doStmt(ctx, ifStmt->IfBody);
             }
             BCAddr skipElse;
             if (METAC_NODE(ifStmt->ElseBody) != emptyNode)
@@ -1839,7 +1839,7 @@ void MetaCCodegen_doStatement(metac_bytecode_ctx_t* ctx,
             if (METAC_NODE(ifStmt->ElseBody) != emptyNode)
             {
                 {
-                    MetaCCodegen_doStatement(ctx, ifStmt->ElseBody);
+                    MetaCCodegen_doStmt(ctx, ifStmt->ElseBody);
                 }
                 gen.EndJmp(c, skipElse, gen.GenLabel(c));
             }
@@ -1847,64 +1847,64 @@ void MetaCCodegen_doStatement(metac_bytecode_ctx_t* ctx,
 
         case stmt_do_while:
         {
-            sema_stmt_while_t* whileStatement = cast(sema_stmt_while_t*) stmt;
+            sema_stmt_while_t* whileStmt = cast(sema_stmt_while_t*) stmt;
             BCLabel beginLoop = gen.GenLabel(c);
 
-            MetaCCodegen_doStatement(ctx, whileStatement->WhileBody);
+            MetaCCodegen_doStmt(ctx, whileStmt->WhileBody);
 
             // BCLabel evalCond = gen.GenLabel(c);
             BCValue cond = {BCValueType_Unknown};
-            MetaCCodegen_doExpr(ctx, whileStatement->WhileExp, &cond, _Cond);
+            MetaCCodegen_doExpr(ctx, whileStmt->WhileExp, &cond, _Cond);
             CndJmpBegin condExpJmp = gen.BeginCndJmp(c, &cond, true);
             gen.EndCndJmp(c, &condExpJmp, beginLoop);
         } break;
 
         case stmt_while:
         {
-            sema_stmt_while_t* whileStatement = cast(sema_stmt_while_t*) stmt;
+            sema_stmt_while_t* whileStmt = cast(sema_stmt_while_t*) stmt;
             BCLabel evalCond = gen.GenLabel(c);
             BCValue cond = {BCValueType_Unknown};
-            MetaCCodegen_doExpr(ctx, whileStatement->WhileExp, &cond, _Cond);
+            MetaCCodegen_doExpr(ctx, whileStmt->WhileExp, &cond, _Cond);
 
             CndJmpBegin condExpJmp = gen.BeginCndJmp(c, &cond, false);
-            MetaCCodegen_doStatement(ctx, whileStatement->WhileBody);
+            MetaCCodegen_doStmt(ctx, whileStmt->WhileBody);
             gen.Jmp(c, evalCond);
             gen.EndCndJmp(c, &condExpJmp, gen.GenLabel(c));
         } break;
 
         case stmt_for:
         {
-            sema_stmt_for_t* forStatement = cast(sema_stmt_for_t*) stmt;
+            sema_stmt_for_t* forStmt = cast(sema_stmt_for_t*) stmt;
 
-            if (forStatement->ForInit != emptyNode)
+            if (forStmt->ForInit != emptyNode)
             {
-                if (IsExprNode(forStatement->ForInit->Kind))
+                if (IsExprNode(forStmt->ForInit->Kind))
                 {
                     BCValue dontCare;
                     MetaCCodegen_doExpr(ctx,
-                        (metac_sema_expr_t*)forStatement->ForInit, &dontCare, _Discard);
+                        (metac_sema_expr_t*)forStmt->ForInit, &dontCare, _Discard);
                 }
                 else
                 {
                     MetaCCodegen_doLocalVar(ctx,
-                        (sema_decl_variable_t*)forStatement->ForInit);
+                        (sema_decl_variable_t*)forStmt->ForInit);
                 }
             }
 
             CndJmpBegin cndJmpToCondEval;
             BCLabel loopBegin = gen.GenLabel(c);
 
-            if (METAC_NODE(forStatement->ForCond) != emptyNode)
+            if (METAC_NODE(forStmt->ForCond) != emptyNode)
             {
                 BCValue cond = {BCValueType_Unknown};
-                MetaCCodegen_doExpr(ctx, forStatement->ForCond, &cond, _Cond);
+                MetaCCodegen_doExpr(ctx, forStmt->ForCond, &cond, _Cond);
                 cndJmpToCondEval = gen.BeginCndJmp(c, &cond, false);
             }
 
-            MetaCCodegen_doStatement(ctx, forStatement->ForBody);
+            MetaCCodegen_doStmt(ctx, forStmt->ForBody);
             gen.Jmp(c, loopBegin);
 
-            if (METAC_NODE(forStatement->ForCond) != emptyNode)
+            if (METAC_NODE(forStmt->ForCond) != emptyNode)
             {
                 gen.EndCndJmp(c, &cndJmpToCondEval, gen.GenLabel(c));
             }
@@ -1919,7 +1919,7 @@ void MetaCCodegen_doStatement(metac_bytecode_ctx_t* ctx,
 
         default:
         {
-            printf("Statement unsupported %s\n", StmtKind_toChars(stmt->Kind));
+            printf("Stmt unsupported %s\n", StmtKind_toChars(stmt->Kind));
             assert(0);
         } break;
     }

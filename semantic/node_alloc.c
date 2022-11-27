@@ -17,9 +17,9 @@ uint32_t FunctionIndex(metac_semantic_state_t* self, sema_decl_function_t* func)
     return result;
 }
 
-uint32_t StatementIndex_(metac_semantic_state_t* self, metac_sema_stmt_t* stmt)
+uint32_t StmtIndex_(metac_semantic_state_t* self, metac_sema_stmt_t* stmt)
 {
-    uint32_t result = (stmt - self->Statements);
+    uint32_t result = (stmt - self->Stmts);
     return result;
 }
 
@@ -78,9 +78,9 @@ sema_decl_function_t* FunctionPtr(metac_semantic_state_t* self, uint32_t index)
     return result;
 }
 
-metac_sema_stmt_t* StatementPtr(metac_semantic_state_t* self, uint32_t index)
+metac_sema_stmt_t* StmtPtr(metac_semantic_state_t* self, uint32_t index)
 {
-    metac_sema_stmt_t* result = (self->Statements + index);
+    metac_sema_stmt_t* result = (self->Stmts + index);
     return result;
 }
 
@@ -329,7 +329,7 @@ metac_type_aggregate_field_t* AllocAggregateFields(metac_semantic_state_t* self,
 }
 #endif
 
-metac_sema_stmt_t* AllocNewSemaStatement_(metac_semantic_state_t* self,
+metac_sema_stmt_t* AllocNewSemaStmt_(metac_semantic_state_t* self,
                                                metac_stmt_kind_t kind,
                                                size_t nodeSize, void** result_ptr)
 {
@@ -341,9 +341,9 @@ metac_sema_stmt_t* AllocNewSemaStatement_(metac_semantic_state_t* self,
         stmt.Kind = kind;
         stmt.Serial = INC(_nodeCounter);
         // result->TypeIndex.v = 0;
-        ARENA_ARRAY_ADD(self->Statements, stmt);
+        ARENA_ARRAY_ADD(self->Stmts, stmt);
     }
-    result = self->Statements + self->StatementsCount - 1;
+    result = self->Stmts + self->StmtsCount - 1;
 
     *result_ptr = result;
 
@@ -353,7 +353,7 @@ metac_sema_stmt_t* AllocNewSemaStatement_(metac_semantic_state_t* self,
 #define AllocateArray(ALLOC, TYPE, COUNT) \
     (cast(TYPE*) calloc(sizeof(TYPE), (COUNT)))
 
-sema_stmt_block_t* AllocNewSemaBlockStatement(metac_semantic_state_t* self,
+sema_stmt_block_t* AllocNewSemaBlockStmt(metac_semantic_state_t* self,
                                               sema_stmt_block_t* Parent, uint32_t statementCount,
                                               void** result_ptr)
 {
@@ -362,11 +362,11 @@ sema_stmt_block_t* AllocNewSemaBlockStatement(metac_semantic_state_t* self,
 
     {
         stmt.Kind = stmt_block;
-        stmt.StatementCount = statementCount;
+        stmt.StmtCount = statementCount;
         stmt.Serial = INC(_nodeCounter);
 
-        ARENA_ARRAY_ADD(self->BlockStatements, stmt);
-        result = self->BlockStatements + self->BlockStatementsCount - 1;
+        ARENA_ARRAY_ADD(self->BlockStmts, stmt);
+        result = self->BlockStmts + self->BlockStmtsCount - 1;
         ARENA_ARRAY_INIT_SZ(metac_sema_stmt_t*, result->Body, &self->Allocator, statementCount);
     }
     (*result_ptr) = result;
@@ -374,7 +374,7 @@ sema_stmt_block_t* AllocNewSemaBlockStatement(metac_semantic_state_t* self,
     return result;
 }
 
-sema_stmt_casebody_t* AllocNewSemaCasebodyStatement(metac_semantic_state_t* self,
+sema_stmt_casebody_t* AllocNewSemaCasebodyStmt(metac_semantic_state_t* self,
                                                     uint32_t statementCount,
                                                     void** result_ptr)
 {
@@ -383,13 +383,13 @@ sema_stmt_casebody_t* AllocNewSemaCasebodyStatement(metac_semantic_state_t* self
 
     {
         result = cast(sema_stmt_casebody_t*)
-            AllocNewSemaStatement(self, stmt_casebody, &result);
+            AllocNewSemaStmt(self, stmt_casebody, &result);
 
-        ARENA_ARRAY_ADD(self->Statements, *(metac_sema_stmt_t*)&stmt);
-        result = (sema_stmt_casebody_t*) self->BlockStatements + self->BlockStatementsCount - 1;
-        ARENA_ARRAY_INIT_SZ(metac_sema_stmt_t*, result->Statements, &self->Allocator, statementCount);
+        ARENA_ARRAY_ADD(self->Stmts, *(metac_sema_stmt_t*)&stmt);
+        result = (sema_stmt_casebody_t*) self->BlockStmts + self->BlockStmtsCount - 1;
+        ARENA_ARRAY_INIT_SZ(metac_sema_stmt_t*, result->Stmts, &self->Allocator, statementCount);
 
-        result->StatementCount = statementCount;
+        result->StmtCount = statementCount;
         result->Serial = INC(_nodeCounter);
     }
     (*result_ptr) = result;
@@ -399,9 +399,9 @@ sema_stmt_casebody_t* AllocNewSemaCasebodyStatement(metac_semantic_state_t* self
 
 
 
-uint32_t BlockStatementIndex(metac_semantic_state_t* self,
+uint32_t BlockStmtIndex(metac_semantic_state_t* self,
                              sema_stmt_block_t* blockstmt)
 {
-    return blockstmt - self->BlockStatements;
+    return blockstmt - self->BlockStmts;
 }
 

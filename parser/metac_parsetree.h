@@ -140,7 +140,7 @@ typedef struct stmt_block_t
     STMT_HEADER
 
     struct metac_stmt_t* Body;
-    uint32_t StatementCount;
+    uint32_t StmtCount;
 } stmt_block_t;
 
 typedef struct stmt_break_t

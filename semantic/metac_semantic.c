@@ -130,7 +130,7 @@ void MetaCSemantic_Init(metac_semantic_state_t* self, metac_parser_t* parser,
 
     FOREACH_SEMA_STATE_ARRAY(self, INIT_ARENA_STATE_ARRAY)
 
-    ARENA_ARRAY_INIT(metac_scope_t*, self->DeclStatementScope, &self->Allocator);
+    ARENA_ARRAY_INIT(metac_scope_t*, self->DeclStmtScope, &self->Allocator);
 
     ARENA_ARRAY_INIT(metac_sema_decl_t*, self->Globals, &self->Allocator);
     ARENA_ARRAY_INIT(metac_scope_t, self->Scopes, &self->Allocator);
@@ -208,10 +208,10 @@ metac_scope_owner_t ScopeParent(metac_semantic_state_t* sema,
         scopeParentIndex = StructIndex(sema, (metac_type_aggregate_t*)parentNode);
     break;
     case scope_owner_statement :
-        scopeParentIndex = StatementIndex(sema, (metac_sema_stmt_t*)parentNode);
+        scopeParentIndex = StmtIndex(sema, (metac_sema_stmt_t*)parentNode);
     break;
     case scope_owner_block :
-        scopeParentIndex = BlockStatementIndex(sema, (sema_stmt_block_t*)parentNode);
+        scopeParentIndex = BlockStmtIndex(sema, (sema_stmt_block_t*)parentNode);
     break;
     case scope_owner_union :
         scopeParentIndex = UnionIndex(sema, (metac_type_aggregate_t*)parentNode);
@@ -332,61 +332,61 @@ metac_scope_t* MetaCSemantic_UnmountScope(metac_semantic_state_t* self)
 
 
 sema_stmt_switch_t* MetaCSemantic_doSwitchSemantic(metac_semantic_state_t* self,
-                                                   stmt_switch_t* switchStatement)
+                                                   stmt_switch_t* switchStmt)
 {
-    sema_stmt_switch_t* semaSwitchStatement;
+    sema_stmt_switch_t* semaSwitchStmt;
 
-    AllocNewSemaStatement(self, stmt_switch, &semaSwitchStatement);
+    AllocNewSemaStmt(self, stmt_switch, &semaSwitchStmt);
 
-    semaSwitchStatement->SwitchExp =
-        MetaCSemantic_doExprSemantic(self, switchStatement->SwitchExp, 0);
+    semaSwitchStmt->SwitchExp =
+        MetaCSemantic_doExprSemantic(self, switchStmt->SwitchExp, 0);
 
-    semaSwitchStatement->Hash = CRC32C_VALUE(stmt_switch, switchStatement->SwitchExp->Hash);
+    semaSwitchStmt->Hash = CRC32C_VALUE(stmt_switch, switchStmt->SwitchExp->Hash);
 
-    self->SwitchStack[self->SwitchStackSize++] = semaSwitchStatement;
-    semaSwitchStatement->SwitchBody =
-        cast(sema_stmt_block_t*)MetaCSemantic_doStatementSemantic(self, switchStatement->SwitchBody);
+    self->SwitchStack[self->SwitchStackSize++] = semaSwitchStmt;
+    semaSwitchStmt->SwitchBody =
+        cast(sema_stmt_block_t*)MetaCSemantic_doStmtSemantic(self, switchStmt->SwitchBody);
 
     uint32_t statementCount =
-        semaSwitchStatement->SwitchBody->StatementCount;
+        semaSwitchStmt->SwitchBody->StmtCount;
 
     self->SwitchStack[--self->SwitchStackSize];
 
-    return semaSwitchStatement;
+    return semaSwitchStmt;
 }
 sema_stmt_casebody_t* MetaCSemantic_doCaseBodySemantic(metac_semantic_state_t* self,
                                                        stmt_case_t* caseStmt)
 {
     sema_stmt_casebody_t* result = 0;
 
-    STACK_ARENA_ARRAY(metac_stmt_t*, caseBodyStatements, 16, &self->Allocator);
-    metac_stmt_t* currentStatement = caseStmt->CaseBody;
-    while (METAC_NODE(currentStatement) != emptyNode)
+    STACK_ARENA_ARRAY(metac_stmt_t*, caseBodyStmts, 16, &self->Allocator);
+    metac_stmt_t* currentStmt = caseStmt->CaseBody;
+    while (METAC_NODE(currentStmt) != emptyNode)
     {
-        ARENA_ARRAY_ADD(caseBodyStatements, currentStatement);
-        currentStatement = currentStatement->Next;
+        ARENA_ARRAY_ADD(caseBodyStmts, currentStmt);
+        currentStmt = currentStmt->Next;
     }
 
-    if (caseBodyStatementsCount > 1)
+    if (caseBodyStmtsCount > 1)
     {
-        // AllocNewSemaStatement
-        AllocNewSemaCasebodyStatement(self, caseBodyStatementsCount, cast(void**)&result);
+        // AllocNewSemaStmt
+        AllocNewSemaCasebodyStmt(self, caseBodyStmtsCount, cast(void**)&result);
 
         for(uint32_t stmtIndex = 0;
-            stmtIndex < caseBodyStatementsCount;
+            stmtIndex < caseBodyStmtsCount;
             stmtIndex++)
         {
-            result->Statements[stmtIndex] =
-                MetaCSemantic_doStatementSemantic(self, caseBodyStatements[stmtIndex]);
+            result->Stmts[stmtIndex] =
+                MetaCSemantic_doStmtSemantic(self, caseBodyStmts[stmtIndex]);
         }
     }
     else
     {
         result = cast(sema_stmt_casebody_t*)
-            MetaCSemantic_doStatementSemantic(self, caseStmt->CaseBody);
+            MetaCSemantic_doStmtSemantic(self, caseStmt->CaseBody);
     }
 
-    ARENA_ARRAY_FREE(caseBodyStatements);
+    ARENA_ARRAY_FREE(caseBodyStmts);
     return  result;
 
 }
@@ -409,7 +409,7 @@ metac_type_index_t MetaCSemantic_GetType(metac_semantic_state_t* self, metac_nod
     return typeIdx;
 }
 
-metac_sema_stmt_t* MetaCSemantic_doStatementSemantic_(metac_semantic_state_t* self,
+metac_sema_stmt_t* MetaCSemantic_doStmtSemantic_(metac_semantic_state_t* self,
                                                            metac_stmt_t* stmt,
                                                            const char* callFile,
                                                            uint32_t callLine)
@@ -435,7 +435,7 @@ metac_sema_stmt_t* MetaCSemantic_doStatementSemantic_(metac_semantic_state_t* se
 
             stmt_while_t* whileStmt = cast(stmt_while_t*) stmt;
             sema_stmt_while_t* semaWhileStmt =
-                AllocNewSemaStatement(self, stmt_while, &result);
+                AllocNewSemaStmt(self, stmt_while, &result);
             semaWhileStmt->Kind = stmt->Kind;
 
             semaWhileStmt->WhileExp =
@@ -444,7 +444,7 @@ metac_sema_stmt_t* MetaCSemantic_doStatementSemantic_(metac_semantic_state_t* se
             if (METAC_NODE(whileStmt->WhileBody) != emptyNode)
             {
                 semaWhileStmt->WhileBody =
-                    MetaCSemantic_doStatementSemantic(self, whileStmt->WhileBody);
+                    MetaCSemantic_doStmtSemantic(self, whileStmt->WhileBody);
                 hash = CRC32C_VALUE(hash, semaWhileStmt->WhileBody->Hash);
             }
             else
@@ -456,10 +456,10 @@ metac_sema_stmt_t* MetaCSemantic_doStatementSemantic_(metac_semantic_state_t* se
         case stmt_exp:
         {
             hash ^= stmt_exp;
-            stmt_exp_t* expStatement = (stmt_exp_t*) stmt;
-            sema_stmt_exp_t* sse = AllocNewSemaStatement(self, stmt_exp, cast(void**)&result);
+            stmt_exp_t* expStmt = (stmt_exp_t*) stmt;
+            sema_stmt_exp_t* sse = AllocNewSemaStmt(self, stmt_exp, cast(void**)&result);
             sse->Expr =
-                MetaCSemantic_doExprSemantic(self, expStatement->Expr, 0);
+                MetaCSemantic_doExprSemantic(self, expStmt->Expr, 0);
             hash = CRC32C_VALUE(hash, sse->Hash);
         } break;
 
@@ -475,9 +475,9 @@ metac_sema_stmt_t* MetaCSemantic_doStatementSemantic_(metac_semantic_state_t* se
         case stmt_decl:
         {
             hash ^= stmt_decl;
-            stmt_decl_t* declStatement = cast(stmt_decl_t*) stmt;
-            sema_stmt_decl_t* semaDeclStatement =
-                AllocNewSemaStatement(self, stmt_decl, &result);
+            stmt_decl_t* declStmt = cast(stmt_decl_t*) stmt;
+            sema_stmt_decl_t* semaDeclStmt =
+                AllocNewSemaStmt(self, stmt_decl, &result);
             // We now technically need to wrap to the created variable in a new scope
             // however let's be civil with the creation of new scopes
             // and only create one if the next statement is not a decl_stmt
@@ -485,17 +485,17 @@ metac_sema_stmt_t* MetaCSemantic_doStatementSemantic_(metac_semantic_state_t* se
             if (METAC_NODE(stmt->Next) != emptyNode && stmt->Next->Kind != stmt_decl)
             {
                 metac_scope_owner_t owner = {
-                    SCOPE_OWNER_V(scope_owner_statement, StatementIndex(self, semaDeclStatement))
+                    SCOPE_OWNER_V(scope_owner_statement, StmtIndex(self, semaDeclStmt))
                 };
                 metac_scope_t* declScope =
                     MetaCScope_PushNewScope(self, self->CurrentScope, owner);
 
-                ARENA_ARRAY_ADD(self->DeclStatementScope, declScope);
+                ARENA_ARRAY_ADD(self->DeclStmtScope, declScope);
 
                 // MetaCSemantic_PushTemporaryScope(self, &declScope);
             }
-            semaDeclStatement->Decl =
-                MetaCSemantic_doDeclSemantic(self, declStatement->Decl);
+            semaDeclStmt->Decl =
+                MetaCSemantic_doDeclSemantic(self, declStmt->Decl);
         } break;
 /*
         default: {
@@ -510,7 +510,7 @@ metac_sema_stmt_t* MetaCSemantic_doStatementSemantic_(metac_semantic_state_t* se
             hash ^= stmt_if;
             stmt_if_t* ifStmt = cast(stmt_if_t*) stmt;
             sema_stmt_if_t* semaIfStmt =
-                AllocNewSemaStatement(self, stmt_if, &result);
+                AllocNewSemaStmt(self, stmt_if, &result);
 
             semaIfStmt->IfCond =
                 MetaCSemantic_doExprSemantic(self, ifStmt->IfCond, 0);
@@ -519,7 +519,7 @@ metac_sema_stmt_t* MetaCSemantic_doStatementSemantic_(metac_semantic_state_t* se
             if (METAC_NODE(ifStmt->IfBody) != emptyNode)
             {
                 semaIfStmt->IfBody =
-                    MetaCSemantic_doStatementSemantic(self, ifStmt->IfBody);
+                    MetaCSemantic_doStmtSemantic(self, ifStmt->IfBody);
                 hash = CRC32C_VALUE(hash, semaIfStmt->IfBody->Hash);
             }
             else
@@ -530,7 +530,7 @@ metac_sema_stmt_t* MetaCSemantic_doStatementSemantic_(metac_semantic_state_t* se
             if (METAC_NODE(ifStmt->ElseBody) != emptyNode)
             {
                 semaIfStmt->ElseBody =
-                    MetaCSemantic_doStatementSemantic(self, ifStmt->ElseBody);
+                    MetaCSemantic_doStmtSemantic(self, ifStmt->ElseBody);
                 hash = CRC32C_VALUE(hash, semaIfStmt->ElseBody->Hash);
             }
             else
@@ -541,64 +541,64 @@ metac_sema_stmt_t* MetaCSemantic_doStatementSemantic_(metac_semantic_state_t* se
 
         case stmt_case:
         {
-            stmt_case_t* caseStatement = (stmt_case_t*) stmt;
-            sema_stmt_case_t* semaCaseStatement =
-                AllocNewSemaStatement(self, stmt_case, &result);
+            stmt_case_t* caseStmt = (stmt_case_t*) stmt;
+            sema_stmt_case_t* semaCaseStmt =
+                AllocNewSemaStmt(self, stmt_case, &result);
 
             assert(self->SwitchStackSize != 0);
             // the default statement doesn't have a caseExp
             // therefore we check it here so we can skip it.
-            if (cast(metac_node_t)caseStatement->CaseExp != emptyNode)
+            if (cast(metac_node_t)caseStmt->CaseExp != emptyNode)
             {
-                semaCaseStatement->CaseExp =
-                    MetaCSemantic_doExprSemantic(self, caseStatement->CaseExp, 0);
-                hash = CRC32C_VALUE(hash, semaCaseStatement->CaseExp->Hash);
+                semaCaseStmt->CaseExp =
+                    MetaCSemantic_doExprSemantic(self, caseStmt->CaseExp, 0);
+                hash = CRC32C_VALUE(hash, semaCaseStmt->CaseExp->Hash);
             }
             else
             {
-                semaCaseStatement->CaseExp = (metac_sema_expr_t*)emptyNode;
+                semaCaseStmt->CaseExp = (metac_sema_expr_t*)emptyNode;
             }
-            semaCaseStatement->CaseBody =
-                MetaCSemantic_doCaseBodySemantic(self, caseStatement);
-            if (METAC_NODE(semaCaseStatement->CaseBody) != emptyNode)
+            semaCaseStmt->CaseBody =
+                MetaCSemantic_doCaseBodySemantic(self, caseStmt);
+            if (METAC_NODE(semaCaseStmt->CaseBody) != emptyNode)
             {
-                hash = CRC32C_VALUE(hash, semaCaseStatement->CaseBody->Hash);
+                hash = CRC32C_VALUE(hash, semaCaseStmt->CaseBody->Hash);
             }
         } break;
 
         case stmt_block:
         {
             hash ^= stmt_block;
-            stmt_block_t* blockStatement = (stmt_block_t*) stmt;
-            uint32_t statementCount = blockStatement->StatementCount;
-            sema_stmt_block_t* semaBlockStatement =
-                AllocNewSemaBlockStatement(self, 0, statementCount, cast(void**)&result);
+            stmt_block_t* blockStmt = (stmt_block_t*) stmt;
+            uint32_t statementCount = blockStmt->StmtCount;
+            sema_stmt_block_t* semaBlockStmt =
+                AllocNewSemaBlockStmt(self, 0, statementCount, cast(void**)&result);
 
             metac_scope_owner_t parent = {SCOPE_OWNER_V(scope_owner_statement,
-                                           BlockStatementIndex(self, semaBlockStatement))};
+                                           BlockStmtIndex(self, semaBlockStmt))};
 
             MetaCSemantic_PushNewScope(self,
                                        scope_owner_block,
-                                       (metac_node_t)semaBlockStatement);
+                                       (metac_node_t)semaBlockStmt);
 
-            metac_stmt_t* currentStatement = blockStatement->Body;
+            metac_stmt_t* currentStmt = blockStmt->Body;
             for(uint32_t i = 0;
                 i < statementCount;
                 i++)
             {
 
-                semaBlockStatement->Body[i] =
-                    MetaCSemantic_doStatementSemantic(self, currentStatement);
+                semaBlockStmt->Body[i] =
+                    MetaCSemantic_doStmtSemantic(self, currentStmt);
 
-                if (METAC_NODE(semaBlockStatement->Body[i]) != emptyPointer)
+                if (METAC_NODE(semaBlockStmt->Body[i]) != emptyPointer)
                 {
-                    hash = CRC32C_VALUE(hash, semaBlockStatement->Body[i]->Hash);
+                    hash = CRC32C_VALUE(hash, semaBlockStmt->Body[i]->Hash);
                 }
 
-                currentStatement = currentStatement->Next;
+                currentStmt = currentStmt->Next;
             }
             //TODO this doesn't handle inject statements
-            semaBlockStatement->StatementCount = statementCount;
+            semaBlockStmt->StmtCount = statementCount;
 
             MetaCSemantic_PopScope(self);
         } break;
@@ -609,7 +609,7 @@ metac_sema_stmt_t* MetaCSemantic_doStatementSemantic_(metac_semantic_state_t* se
 
             stmt_for_t* for_ = (stmt_for_t*) stmt;
             sema_stmt_for_t* semaFor =
-                AllocNewSemaStatement(self, stmt_for, &result);
+                AllocNewSemaStmt(self, stmt_for, &result);
 
             metac_scope_t* forScope = semaFor->Scope =
                 MetaCSemantic_PushNewScope(self,
@@ -659,7 +659,7 @@ metac_sema_stmt_t* MetaCSemantic_doStatementSemantic_(metac_semantic_state_t* se
             if (METAC_NODE(for_->ForBody) != emptyNode)
             {
                 metac_sema_stmt_t* forBody =
-                    MetaCSemantic_doStatementSemantic(self, for_->ForBody);
+                    MetaCSemantic_doStmtSemantic(self, for_->ForBody);
                 semaFor->ForBody = forBody;
                 hash = CRC32C_VALUE(hash, semaFor->ForBody->Hash);
             }
@@ -678,13 +678,13 @@ metac_sema_stmt_t* MetaCSemantic_doStatementSemantic_(metac_semantic_state_t* se
         {
             hash ^= stmt_yield;
 
-            stmt_yield_t* yieldStatement = (stmt_yield_t*) stmt;
-            sema_stmt_yield_t* semaYieldStatement =
-                AllocNewSemaStatement(self, stmt_yield, &result);
+            stmt_yield_t* yieldStmt = (stmt_yield_t*) stmt;
+            sema_stmt_yield_t* semaYieldStmt =
+                AllocNewSemaStmt(self, stmt_yield, &result);
 
             metac_sema_expr_t* yieldValue =
-                MetaCSemantic_doExprSemantic(self, yieldStatement->YieldExp, 0);
-            semaYieldStatement->YieldExp = yieldValue;
+                MetaCSemantic_doExprSemantic(self, yieldStmt->YieldExp, 0);
+            semaYieldStmt->YieldExp = yieldValue;
 
             if (cast(metac_node_t)yieldValue != emptyNode)
             {
@@ -696,13 +696,13 @@ metac_sema_stmt_t* MetaCSemantic_doStatementSemantic_(metac_semantic_state_t* se
         {
             hash ^= stmt_return;
 
-            stmt_return_t* returnStatement = (stmt_return_t*) stmt;
-            sema_stmt_return_t* semaReturnStatement =
-                AllocNewSemaStatement(self, stmt_return, &result);
+            stmt_return_t* returnStmt = (stmt_return_t*) stmt;
+            sema_stmt_return_t* semaReturnStmt =
+                AllocNewSemaStmt(self, stmt_return, &result);
 
             metac_sema_expr_t* returnValue =
-                MetaCSemantic_doExprSemantic(self, returnStatement->ReturnExp, 0);
-            semaReturnStatement->ReturnExp = returnValue;
+                MetaCSemantic_doExprSemantic(self, returnStmt->ReturnExp, 0);
+            semaReturnStmt->ReturnExp = returnValue;
 
             if (cast(metac_node_t)returnValue != emptyNode)
             {
@@ -712,22 +712,22 @@ metac_sema_stmt_t* MetaCSemantic_doStatementSemantic_(metac_semantic_state_t* se
 
         case stmt_switch:
         {
-            stmt_switch_t* switchStatement = cast(stmt_switch_t*) stmt;
+            stmt_switch_t* switchStmt = cast(stmt_switch_t*) stmt;
 
             result = cast(metac_sema_stmt_t*)
-                MetaCSemantic_doSwitchSemantic(self, switchStatement);
+                MetaCSemantic_doSwitchSemantic(self, switchStmt);
             hash = CRC32C_VALUE(hash, result->Hash);
         } break;
 
         case stmt_break:
         {
-            AllocNewSemaStatement(self, stmt_break, &result);
+            AllocNewSemaStmt(self, stmt_break, &result);
             hash = break_key;
         } break;
 
         case stmt_continue:
         {
-            AllocNewSemaStatement(self, stmt_continue, &result);
+            AllocNewSemaStmt(self, stmt_continue, &result);
             hash = continue_key;
         } break;
     }
@@ -935,7 +935,7 @@ sema_decl_function_t* MetaCSemantic_doFunctionSemantic(metac_semantic_state_t* s
     }
     f->FrameOffset = frameOffset;
     f->FunctionBody = cast(sema_stmt_block_t*)
-        MetaCSemantic_doStatementSemantic(self, func->FunctionBody);
+        MetaCSemantic_doStmtSemantic(self, func->FunctionBody);
 
     MetaCSemantic_PopScope(self);
 

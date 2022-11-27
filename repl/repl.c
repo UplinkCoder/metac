@@ -141,7 +141,7 @@ typedef struct find_stmt_context_t
     metac_stmt_kind_t Kind;
 } find_stmt_context_t;
 
-static inline int FindStatementCb(metac_node_t node, void* ctx)
+static inline int FindStmtCb(metac_node_t node, void* ctx)
 {
     find_stmt_context_t* context =
         (find_stmt_context_t*) ctx;
@@ -993,7 +993,7 @@ LswitchMode:
 
             case repl_mode_stmt :
             {
-                stmt = MetaCLPP_ParseStatementFromString(&repl->LPP, repl->Line);
+                stmt = MetaCLPP_ParseStmtFromString(&repl->LPP, repl->Line);
                 if (stmt)
                     MSGF("stmt = %s\n", MetaCPrinter_PrintStmt(&repl->printer, stmt));
                 else
@@ -1004,7 +1004,7 @@ LswitchMode:
 
             case repl_mode_ss :
             {
-                stmt = MetaCLPP_ParseStatementFromString(&repl->LPP, repl->Line);
+                stmt = MetaCLPP_ParseStmtFromString(&repl->LPP, repl->Line);
                 /*
                 if (stmt)
                     MSGF("stmt = %s\n", MetaCPrinter_PrintStmt(&repl->printer, stmt));
@@ -1014,7 +1014,7 @@ LswitchMode:
                 if (stmt)
                 {
                     metac_sema_stmt_t* semaStmt =
-                        MetaCSemantic_doStatementSemantic(&repl->SemanticState, stmt);
+                        MetaCSemantic_doStmtSemantic(&repl->SemanticState, stmt);
                     MSGF("stmt = %s\n",
                         MetaCPrinter_PrintSemaNode(&repl->printer, &repl->SemanticState, METAC_NODE(semaStmt)));
                 }
