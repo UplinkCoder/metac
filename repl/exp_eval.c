@@ -9,7 +9,7 @@
 
 bool IsBinaryExp(metac_expr_kind_t k);
 
-const char* MetaCExpressionKind_toChars(metac_expr_kind_t k);
+const char* MetaCExprKind_toChars(metac_expr_kind_t k);
 
 metac_identifier_ptr_t FindMatchingIdentifier(metac_identifier_table_t* searchTable,
                                               metac_identifier_table_t* sourceTable,
@@ -195,7 +195,7 @@ void WalkTree(void* c, BCValue* result,
         default : {
             fprintf(stderr,
                 "Evaluator doesn't know how to eval: %s\n",
-                MetaCExpressionKind_toChars(e->Kind)
+                MetaCExprKind_toChars(e->Kind)
             );
             assert(0);
         } break;
@@ -386,7 +386,7 @@ void WalkTree(void* c, BCValue* result,
         {
             sema_exp_call_t* call = &e->Call;
 
-            printf("call->Function->Kind: %s\n", MetaCExpressionKind_toChars(e->E1->Kind));
+            printf("call->Function->Kind: %s\n", MetaCExprKind_toChars(e->E1->Kind));
             assert(call->Function->Kind == exp_function);
             sema_decl_function_t* func = call->Function->Function;
             metac_identifier_ptr_t idPtr = func->Identifier;

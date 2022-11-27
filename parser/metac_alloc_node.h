@@ -1,7 +1,7 @@
 #include "../os/compat.h"
 #include "metac_parsetree.h"
 
-metac_expr_t* AllocNewExpression(metac_expr_kind_t kind);
+metac_expr_t* AllocNewExpr(metac_expr_kind_t kind);
 
 #define ASSERT_VALID_DECL(DECL_P) \
             assert(((metac_decl_t*)(DECL_P)) >= _newDecl_mem  \

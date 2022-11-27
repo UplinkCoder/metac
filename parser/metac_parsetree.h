@@ -24,7 +24,7 @@ typedef struct exp_argument_t
 {
     EXPRESSION_HEADER
 
-    struct metac_expr_t* Expression;
+    struct metac_expr_t* Expr;
     struct exp_argument_t* Next;
 } exp_argument_t;
 
@@ -32,7 +32,7 @@ typedef struct exp_tuple_t
 {
     EXPRESSION_HEADER
 
-    struct metac_expr_t* Expression;
+    struct metac_expr_t* Expr;
     struct exp_tuple_t* Next;
 } exp_tuple_t;
 
@@ -73,8 +73,8 @@ typedef struct metac_expr_t
         };
         // case exp_tuple:
         struct {
-            struct exp_tuple_t* TupleExpressionList;
-            uint32_t TupleExpressionCount;
+            struct exp_tuple_t* TupleExprList;
+            uint32_t TupleExprCount;
         };
         // case exp_cast:
         struct {
@@ -89,7 +89,7 @@ typedef struct metac_expr_t
         // case exp_argument:
         struct
         {
-            struct metac_expr_t* Expression;
+            struct metac_expr_t* Expr;
             struct exp_argument_t* Next;
         };
         // case identifier_exp :
@@ -214,7 +214,7 @@ typedef struct stmt_exp_t
 {
     STMT_HEADER
 
-    metac_expr_t* Expression;
+    metac_expr_t* Expr;
 } stmt_exp_t;
 
 typedef struct stmt_decl_t
@@ -427,7 +427,7 @@ typedef struct decl_variable_t
 
     metac_identifier_ptr_t VarIdentifier;
 
-    metac_expr_t* VarInitExpression;
+    metac_expr_t* VarInitExpr;
 
 } decl_variable_t;
 

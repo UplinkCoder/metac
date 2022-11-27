@@ -631,7 +631,7 @@ void MetaCSemantic_ComputeEnumValues(metac_semantic_state_t* self,
 
             memberPlaceholders[memberIdx].Kind = exp_unknown_value;
             memberPlaceholders[memberIdx].TypeIndex = semaEnum->BaseType;
-            memberPlaceholders[memberIdx].Expression = member->Value;
+            memberPlaceholders[memberIdx].Expr = member->Value;
 
             MetaCSemantic_RegisterInScope(self, member->Name,
                                           METAC_NODE(semaMember));
@@ -815,7 +815,7 @@ metac_type_index_t TypeArraySemantic(metac_semantic_state_t* self,
         if (dim->Kind != exp_signed_integer)
         {
             fprintf(stderr, "Array dimension should eval to integer but it is: %s\n",
-                MetaCExpressionKind_toChars(dim->Kind));
+                MetaCExprKind_toChars(dim->Kind));
         }
     }
     uint32_t dimValue = (

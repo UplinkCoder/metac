@@ -116,7 +116,7 @@ metac_expr_t* MetaCPreProcessor_ResolveDefineToExp(metac_preprocessor_t* self,
     {
         printf("Macro takes %u arguments but %u are given\n",
               define->ParameterCount, parameters.Count);
-        result = AllocNewExpression(exp_signed_integer);
+        result = AllocNewExpr(exp_signed_integer);
         result->ValueU64 = 0;
         goto Lret;
     }
@@ -175,7 +175,7 @@ metac_expr_t* MetaCPreProcessor_ResolveDefineToExp(metac_preprocessor_t* self,
 
     MetaCParser_InitFromLexer(&defineParser, &DefineLexer, &tmpDefineParserAlloc);
 
-    result = MetaCParser_ParseExpression(&defineParser, expr_flags_none, 0);
+    result = MetaCParser_ParseExpr(&defineParser, expr_flags_none, 0);
 Lret:
     return result;
 }
@@ -278,14 +278,14 @@ static inline int32_t MetaCPreProcessor_EvalExp(metac_preprocessor_t* self,
     }
 
 
-    printf("op: %s\n", MetaCExpressionKind_toChars(op));
+    printf("op: %s\n", MetaCExprKind_toChars(op));
     metac_identifier_ptr_t definedIdPtr;
     switch(op)
     {
         default : {
             fprintf(stderr,
                 "Evaluator doesn't know how to eval: %s\n",
-                MetaCExpressionKind_toChars(e->Kind)
+                MetaCExprKind_toChars(e->Kind)
             );
             assert(0);
         } break;
@@ -414,7 +414,7 @@ static inline int32_t MetaCPreProcessor_EvalExp(metac_preprocessor_t* self,
                 if (e->E1->IdentifierKey == defined_key)
                 {
                     exp_argument_t* args = (exp_argument_t*)e->E2;
-                    metac_expr_t* e2 = args->Expression;
+                    metac_expr_t* e2 = args->Expr;
                     // this if makes sure there is only one "argument" to defiend()
                     if (args->Next != emptyPointer || e2->Kind != exp_identifier)
                     {
@@ -812,7 +812,7 @@ uint32_t MetaCPreProcessor_Eval(metac_preprocessor_t* self, struct metac_parser_
         if (!tok || tok->TokenType == tok_eof)
             return result;
 
-        metac_expr_t* exp = MetaCParser_ParseExpression(parser, expr_flags_pp, 0);
+        metac_expr_t* exp = MetaCParser_ParseExpr(parser, expr_flags_pp, 0);
         MetaCPrinter_Reset(&parser->DebugPrinter);
         const char* exp_string = MetaCPrinter_PrintExpr(&parser->DebugPrinter, exp);
         printf("#eval '%s'\n", exp_string);

@@ -671,7 +671,7 @@ LswitchMode:
                         if (global->Kind == decl_variable)
                         {
                             sema_decl_variable_t var = global->sema_decl_variable;
-                            metac_sema_expr_t* value = var.VarInitExpression;
+                            metac_sema_expr_t* value = var.VarInitExpr;
                             metac_printer_t debugPrinter;
                             const char* typeString;
                             const char* valueString = "NULL";
@@ -820,7 +820,7 @@ LswitchMode:
             case repl_mode_expr:
             {
                  exp =
-                    MetaCLPP_ParseExpressionFromString(&repl->LPP, repl->Line);
+                    MetaCLPP_ParseExprFromString(&repl->LPP, repl->Line);
 
                 const char* str = MetaCPrinter_PrintExpr(&repl->printer, exp);
                 MSGF("expr = %s\n", str);
@@ -863,7 +863,7 @@ LswitchMode:
             case repl_mode_ee:
             {
                 exp =
-                    MetaCLPP_ParseExpressionFromString(&repl->LPP, repl->Line);
+                    MetaCLPP_ParseExprFromString(&repl->LPP, repl->Line);
 
                 const char* str = MetaCPrinter_PrintExpr(&repl->printer, exp);
 
@@ -873,7 +873,7 @@ LswitchMode:
                 if (!result)
                     goto LnextLine;
 
-                metac_sema_expr_t eval_exp = EvaluateExpression(&repl->SemanticState, result, &repl->Heap);
+                metac_sema_expr_t eval_exp = EvaluateExpr(&repl->SemanticState, result, &repl->Heap);
                 result = &eval_exp;
 
                 const char* result_str;
@@ -894,7 +894,7 @@ LswitchMode:
             case repl_mode_es:
             {
                 exp =
-                    MetaCLPP_ParseExpressionFromString(&repl->LPP, repl->Line);
+                    MetaCLPP_ParseExprFromString(&repl->LPP, repl->Line);
 
                 const char* str = MetaCPrinter_PrintExpr(&repl->printer, exp);
                 metac_sema_expr_t* result =
@@ -955,7 +955,7 @@ LswitchMode:
                 }
                 else
                 {
-                    metac_expr_t* assignExp = MetaCLPP_ParseExpressionFromString(&repl->LPP, repl->Line);
+                    metac_expr_t* assignExp = MetaCLPP_ParseExprFromString(&repl->LPP, repl->Line);
                     if (assignExp)
                     {
                         if (assignExp->Kind != exp_assign)

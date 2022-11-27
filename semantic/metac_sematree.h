@@ -112,8 +112,8 @@ typedef struct metac_sema_expr_t
         struct metac_type_index_t TypeExp;
         // case exp_tuple
         struct {
-            struct metac_sema_expr_t** TupleExpressions;
-            uint32_t TupleExpressionCount;
+            struct metac_sema_expr_t** TupleExprs;
+            uint32_t TupleExprCount;
         };
         // case exp_argument:
         sema_exp_argument_list_t* ArgumentList;
@@ -123,7 +123,7 @@ typedef struct metac_sema_expr_t
         struct sema_exp_call_t Call;
 
         // case unknown_value_exp:
-        metac_expr_t* Expression;
+        metac_expr_t* Expr;
         // case variable_exp:
         struct sema_decl_variable_t* Variable;
         // case field_exp:
@@ -263,7 +263,7 @@ typedef struct sema_stmt_exp_t
 {
     SEMA_STMT_HEADER
 
-    metac_sema_expr_t* Expression;
+    metac_sema_expr_t* Expr;
 } sema_stmt_exp_t;
 
 typedef struct sema_stmt_decl_t
@@ -390,7 +390,7 @@ typedef struct sema_decl_variable_t
 
     metac_identifier_ptr_t VarIdentifier;
 
-    metac_sema_expr_t* VarInitExpression;
+    metac_sema_expr_t* VarInitExpr;
 
     metac_storage_location_t Storage;
 } sema_decl_variable_t;

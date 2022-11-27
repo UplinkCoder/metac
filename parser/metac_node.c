@@ -1,6 +1,6 @@
 #include "metac_node.h"
 
-static inline bool MetaCNode_IsExpression(metac_node_t node)
+static inline bool MetaCNode_IsExpr(metac_node_t node)
 {
     return (node->Kind > node_exp_invalid && node->Kind < node_exp_max);
 }

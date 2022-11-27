@@ -97,7 +97,7 @@ typedef struct metac_parser_t
     metac_identifier_ptr_t SpecialNamePtr_Defined;
 } metac_parser_t;
 
-bool IsExpressionNode(metac_node_kind_t Kind);
+bool IsExprNode(metac_node_kind_t Kind);
 
 extern metac_parser_t g_lineParser;
 bool IsBinaryAssignExp(metac_expr_kind_t exp_kind);
@@ -113,8 +113,8 @@ void MetaCParser_InitFromLexer(metac_parser_t* self, metac_lexer_t* lexer, metac
 /// negative offsets allow you to look back
 metac_token_t* MetaCParser_PeekToken_(metac_parser_t* self, int32_t p, uint32_t line);
 uint32_t MetaCParser_HowMuchLookahead(metac_parser_t* self);
-metac_expr_t* MetaCParser_ParseExpression(metac_parser_t* self, parse_expr_flags_t flags, metac_expr_t* prev);
-metac_expr_t* MetaCParser_ParseExpressionFromString(const char* exp);
+metac_expr_t* MetaCParser_ParseExpr(metac_parser_t* self, parse_expr_flags_t flags, metac_expr_t* prev);
+metac_expr_t* MetaCParser_ParseExprFromString(const char* exp);
 metac_decl_t* MetaCParser_ParseDecl(metac_parser_t* self, metac_decl_t* parent);
 metac_stmt_t* MetaCParser_ParseStatement(metac_parser_t* self, metac_stmt_t* parent, metac_stmt_t* prev);
 

@@ -23,10 +23,10 @@ typedef struct  metac_type_table_t
     metac_type_index_kind_t Kind;
 } metac_type_table_t;
 
-#define Expression_IsEqual(A, B) \
-    (A == B ? true : Expression_IsEqual_(A, B))
+#define Expr_IsEqual(A, B) \
+    (A == B ? true : Expr_IsEqual_(A, B))
 
-bool Expression_IsEqual_(const struct metac_sema_expr_t* a,
+bool Expr_IsEqual_(const struct metac_sema_expr_t* a,
                          const struct metac_sema_expr_t* b);
 
 static inline const bool EnumSlotsEqual(const metac_type_table_slot_t* a,
@@ -41,7 +41,7 @@ static inline const bool EnumSlotsEqual(const metac_type_table_slot_t* a,
         for(uint32_t i = 0; i < count; i++)
         {
             if (slotA->Members[i].Identifier.v != slotB->Members[i].Identifier.v
-             || !Expression_IsEqual(slotA->Members[i].Value, slotB->Members[i].Value))
+             || !Expr_IsEqual(slotA->Members[i].Value, slotB->Members[i].Value))
             {
                 result = false;
                 break;

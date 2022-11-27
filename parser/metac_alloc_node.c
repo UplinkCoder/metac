@@ -150,7 +150,7 @@ if (PREFIX ## _capacity <= (PREFIX ## _size + (N))) \
             sizeof(* PREFIX ## _mem) \
         ); \
     }
-metac_expr_t* AllocNewExpression(metac_expr_kind_t kind)
+metac_expr_t* AllocNewExpr(metac_expr_kind_t kind)
 {
     metac_expr_t* result = 0;
 

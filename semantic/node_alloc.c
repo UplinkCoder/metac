@@ -137,7 +137,7 @@ metac_scope_t* MetaCScope_PushNewScope(metac_semantic_state_t* sema,
         for(uint32_t i = 0; i < cast(exp_tuple_t)) \
     \ }
 
-metac_sema_expr_t* AllocNewSemaExpression(metac_semantic_state_t* self, metac_expr_t* expr)
+metac_sema_expr_t* AllocNewSemaExpr(metac_semantic_state_t* self, metac_expr_t* expr)
 {
     metac_sema_expr_t* result = 0;
 
@@ -147,29 +147,29 @@ metac_sema_expr_t* AllocNewSemaExpression(metac_semantic_state_t* self, metac_ex
 
         exp.TypeIndex.v = 0;
         exp.Serial = INC(_nodeCounter);
-        ARENA_ARRAY_ADD(self->Expressions, exp);
-        result = self->Expressions + self->ExpressionsCount - 1;
+        ARENA_ARRAY_ADD(self->Exprs, exp);
+        result = self->Exprs + self->ExprsCount - 1;
     }
 
 
     if (expr->Kind == exp_tuple)
     {
-        const uint32_t tupleExpCount = expr->TupleExpressionCount;
-        ARENA_ARRAY_ENSURE_SIZE(self->Expressions, tupleExpCount);
+        const uint32_t tupleExpCount = expr->TupleExprCount;
+        ARENA_ARRAY_ENSURE_SIZE(self->Exprs, tupleExpCount);
 
-        uint32_t allocPos = POST_ADD(self->ExpressionsCount, tupleExpCount);
+        uint32_t allocPos = POST_ADD(self->ExprsCount, tupleExpCount);
         metac_sema_expr_t* elements =
-            self->Expressions + allocPos;
+            self->Exprs + allocPos;
         metac_sema_expr_t** elemArray =
             Allocator_Calloc(&self->Allocator, metac_sema_expr_t*, tupleExpCount);
-        exp_tuple_t* expList = expr->TupleExpressionList;
+        exp_tuple_t* expList = expr->TupleExprList;
 
         metac_expr_t* elemExpr;
         for(uint32_t i = 0;
             i < tupleExpCount;
             i++)
         {
-            elemExpr = expList->Expression;
+            elemExpr = expList->Expr;
             metac_sema_expr_t* semaElem = elements + i;
             semaElem->Serial = INC(_nodeCounter);
             METAC_COPY_HEADER(elemExpr, semaElem);
@@ -183,8 +183,8 @@ metac_sema_expr_t* AllocNewSemaExpression(metac_semantic_state_t* self, metac_ex
             elemArray[i] = semaElem;
             expList = expList->Next;
         }
-        result->TupleExpressions = elemArray;
-        result->TupleExpressionCount = tupleExpCount;
+        result->TupleExprs = elemArray;
+        result->TupleExprCount = tupleExpCount;
     }
     else
     {

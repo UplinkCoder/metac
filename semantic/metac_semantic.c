@@ -26,10 +26,10 @@
 #include "metac_type_semantic.c"
 #include "metac_expr_semantic.c"
 
-const char* MetaCExpressionKind_toChars(metac_expr_kind_t);
-bool IsExpressionNode(metac_node_kind_t);
+const char* MetaCExprKind_toChars(metac_expr_kind_t);
+bool IsExprNode(metac_node_kind_t);
 
-bool Expression_IsEqual_(const metac_sema_expr_t* a,
+bool Expr_IsEqual_(const metac_sema_expr_t* a,
                          const metac_sema_expr_t* b)
 {
     bool result = true;
@@ -61,7 +61,7 @@ bool Expression_IsEqual_(const metac_sema_expr_t* a,
                         i < ArgumentCount;
                         i++)
                     {
-                        result &= Expression_IsEqual(ExpsA[i], ExpsB[i]);
+                        result &= Expr_IsEqual(ExpsA[i], ExpsB[i]);
                     }
                 }
                 else
@@ -137,10 +137,10 @@ void MetaCSemantic_Init(metac_semantic_state_t* self, metac_parser_t* parser,
 
     self->TemporaryScopeDepth = 0;
 
-    self->ExpressionStackCapacity = 64;
-    self->ExpressionStackSize = 0;
-    self->ExpressionStack = (metac_sema_expr_t*)
-        calloc(sizeof(metac_sema_expr_t), self->ExpressionStackCapacity);
+    self->ExprStackCapacity = 64;
+    self->ExprStackSize = 0;
+    self->ExprStack = (metac_sema_expr_t*)
+        calloc(sizeof(metac_sema_expr_t), self->ExprStackCapacity);
 
     self->SwitchStackCapacity = 4;
     self->SwitchStackSize = 0;
@@ -458,8 +458,8 @@ metac_sema_stmt_t* MetaCSemantic_doStatementSemantic_(metac_semantic_state_t* se
             hash ^= stmt_exp;
             stmt_exp_t* expStatement = (stmt_exp_t*) stmt;
             sema_stmt_exp_t* sse = AllocNewSemaStatement(self, stmt_exp, cast(void**)&result);
-            sse->Expression =
-                MetaCSemantic_doExprSemantic(self, expStatement->Expression, 0);
+            sse->Expr =
+                MetaCSemantic_doExprSemantic(self, expStatement->Expr, 0);
             hash = CRC32C_VALUE(hash, sse->Hash);
         } break;
 
@@ -618,7 +618,7 @@ metac_sema_stmt_t* MetaCSemantic_doStatementSemantic_(metac_semantic_state_t* se
 
             if (METAC_NODE(for_->ForInit) != emptyNode)
             {
-                if (IsExpressionNode(for_->ForInit->Kind))
+                if (IsExprNode(for_->ForInit->Kind))
                 {
 
                     semaFor->ForInit = cast(metac_node_t)
@@ -850,15 +850,15 @@ sema_decl_function_t* MetaCSemantic_doFunctionSemantic(metac_semantic_state_t* s
         decl_variable_t* paramVar = currentParam->Parameter;
         f->Parameters[i].VarFlags |= variable_is_parameter;
         f->Parameters[i].VarIdentifier = paramVar->VarIdentifier;
-        if (METAC_NODE(paramVar->VarInitExpression) != emptyNode)
+        if (METAC_NODE(paramVar->VarInitExpr) != emptyNode)
         {
-            f->Parameters[i].VarInitExpression =
-                MetaCSemantic_doExprSemantic(self, paramVar->VarInitExpression, 0);
+            f->Parameters[i].VarInitExpr =
+                MetaCSemantic_doExprSemantic(self, paramVar->VarInitExpr, 0);
             assert(f->Parameters[i].Storage.Kind == storage_parameter);
         }
         else
         {
-            METAC_NODE(f->Parameters[i].VarInitExpression) = emptyNode;
+            METAC_NODE(f->Parameters[i].VarInitExpr) = emptyNode;
         }
         metac_type_index_t idx;
         idx = f->Parameters[i].TypeIndex =
@@ -1104,13 +1104,13 @@ metac_sema_decl_t* MetaCSemantic_declSemantic(metac_semantic_state_t* self,
             var->Hash = v->Hash;
             var->TypeIndex = MetaCSemantic_doTypeSemantic(self, v->VarType);
 
-            if (METAC_NODE(v->VarInitExpression) != emptyNode)
+            if (METAC_NODE(v->VarInitExpr) != emptyNode)
             {
-                var->VarInitExpression = MetaCSemantic_doExprSemantic(self, v->VarInitExpression, 0);
+                var->VarInitExpr = MetaCSemantic_doExprSemantic(self, v->VarInitExpr, 0);
             }
             else
             {
-                METAC_NODE(var->VarInitExpression) = emptyNode;
+                METAC_NODE(var->VarInitExpr) = emptyNode;
             }
 
             //TODO make sure nLocals is reset at the end of a function

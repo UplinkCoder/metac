@@ -44,7 +44,7 @@ void ConvertTupleElementToExp(metac_semantic_state_t* sema,
                               uint32_t offset, BCHeap* heap)
 {
     metac_expr_t exp = {exp_invalid};
-    *dstP = AllocNewSemaExpression(sema, &exp);
+    *dstP = AllocNewSemaExpr(sema, &exp);
     metac_sema_expr_t* dst = *dstP;
 
     if (elemType.v == TYPE_INDEX_V(type_index_basic, type_int))
@@ -64,7 +64,7 @@ void ConvertTupleElementToExp(metac_semantic_state_t* sema,
 }
 
 metac_sema_expr_t
-EvaluateExpression(metac_semantic_state_t* sema,
+EvaluateExpr(metac_semantic_state_t* sema,
                    metac_sema_expr_t* e,
                    BCHeap* heap)
 {
@@ -127,8 +127,8 @@ EvaluateExpression(metac_semantic_state_t* sema,
 
         STACK_ARENA_ARRAY_TO_HEAP(tupleExps, &sema->TempAlloc);
 
-        result.TupleExpressions = tupleExps;
-        result.TupleExpressionCount = count;
+        result.TupleExprs = tupleExps;
+        result.TupleExprCount = count;
     }
     else if (TYPE_INDEX_KIND(e->TypeIndex) == type_index_basic &&
              TYPE_INDEX_INDEX(e->TypeIndex) == (uint32_t) type_float)
@@ -156,7 +156,7 @@ MetaCSemantic_ConstantFold(metac_semantic_state_t* self, metac_sema_expr_t* exp)
 {
     bool couldFold = false;
 
-    (*exp) = EvaluateExpression(self, exp, 0);
+    (*exp) = EvaluateExpr(self, exp, 0);
 }
 
 static inline int32_t GetConstI32(metac_semantic_state_t* self, metac_sema_expr_t* index, bool *errored)
@@ -189,13 +189,13 @@ metac_sema_expr_t* MetaCSemantic_doIndexSemantic_(metac_semantic_state_t* self,
     {
         bool errored = false;
         int32_t idx = GetConstI32(self, index, &errored);
-        if ((int32_t)indexed->TupleExpressionCount > idx)
+        if ((int32_t)indexed->TupleExprCount > idx)
         {
-            result = indexed->TupleExpressions[idx];
+            result = indexed->TupleExprs[idx];
         }
         else if (!errored)
         {
-            fprintf(stderr, "TupleIndex needs to be less than: %u", indexed->TupleExpressionCount);
+            fprintf(stderr, "TupleIndex needs to be less than: %u", indexed->TupleExprCount);
         }
         else
         {
@@ -207,7 +207,7 @@ metac_sema_expr_t* MetaCSemantic_doIndexSemantic_(metac_semantic_state_t* self,
         assert(TYPE_INDEX_KIND(indexed->TypeIndex) == type_index_array
             || TYPE_INDEX_KIND(indexed->TypeIndex) == type_index_ptr);
 
-        result = AllocNewSemaExpression(self, expr);
+        result = AllocNewSemaExpr(self, expr);
         result->TypeIndex = MetaCSemantic_GetElementType(self, indexed->TypeIndex);
         result->E1 = indexed;
         result->E2 = index;
@@ -230,7 +230,7 @@ metac_sema_expr_t* doCmpExpSemantic(metac_semantic_state_t* self,
     switch(kind)
     {
         default: {
-            // InternalError("%s is not a comparison expression", MetaCExpressionKind_toChars(cmpExp->Kind));
+            // InternalError("%s is not a comparison expression", MetaCExprKind_toChars(cmpExp->Kind));
         };
 
         case exp_lt:
@@ -277,7 +277,7 @@ void MetaCSemantic_doCallSemantic(metac_semantic_state_t* self,
     {
         nArgs++;
         ARENA_ARRAY_ADD(arguments,
-            MetaCSemantic_doExprSemantic(self, argList->Expression, 0));
+            MetaCSemantic_doExprSemantic(self, argList->Expr, 0));
         argList = argList->Next;
     }
 
@@ -287,7 +287,7 @@ void MetaCSemantic_doCallSemantic(metac_semantic_state_t* self,
         ResloveFuncCall(self, fn, arguments, nArgs);
     if (func)
     {
-        result = AllocNewSemaExpression(self, call);
+        result = AllocNewSemaExpr(self, call);
         (*resultP) = result;
     }
     else
@@ -463,7 +463,7 @@ metac_sema_expr_t* MetaCSemantic_doExprSemantic_(metac_semantic_state_t* self,
 {
     if (!result)
     {
-        result = AllocNewSemaExpression(self, expr);
+        result = AllocNewSemaExpr(self, expr);
     }
 
     uint32_t hash = 0;
@@ -498,7 +498,7 @@ metac_sema_expr_t* MetaCSemantic_doExprSemantic_(metac_semantic_state_t* self,
         default:
         {
             fprintf(stderr, "expression semantic doesn't support %s yet.\n",
-                    MetaCExpressionKind_toChars(expr->Kind));
+                    MetaCExprKind_toChars(expr->Kind));
             assert(0);
         }
 
@@ -656,7 +656,7 @@ LswitchIdKey:
                     } break;
                     default : {
                         printf("Unexpected expression kind in . or -> expression: %s\n",
-                            MetaCExpressionKind_toChars(expr->E2->Kind));
+                            MetaCExprKind_toChars(expr->E2->Kind));
                         assert(!"Don't know how to deal with this y of x.y expression");
                     }
                 }
@@ -682,9 +682,9 @@ LswitchIdKey:
                         metac_type_aggregate_field_t* field =
                             cast(metac_type_aggregate_field_t*)node;
                         result->AggMemberIndex = field->Index;
-                        metac_expr_t* fieldExp = AllocNewExpression(exp_field);
+                        metac_expr_t* fieldExp = AllocNewExpr(exp_field);
                         fieldExp->LocationIdx = expr->E2->LocationIdx;
-                        dotExp->DotE2 = AllocNewSemaExpression(self, fieldExp);
+                        dotExp->DotE2 = AllocNewSemaExpr(self, fieldExp);
                         dotExp->DotE2->Field = field;
                         dotExp->DotE2->TypeIndex = field->Type;
                     }
@@ -818,24 +818,24 @@ LswitchIdKey:
         break;
         case exp_tuple:
         {
-            exp_tuple_t* tupleElement = expr->TupleExpressionList;
-            const uint32_t tupleExpressionCount = expr->TupleExpressionCount;
+            exp_tuple_t* tupleElement = expr->TupleExprList;
+            const uint32_t tupleExprCount = expr->TupleExprCount;
             STACK_ARENA_ARRAY(metac_type_index_t, typeIndicies, 32, &self->TempAlloc)
             STACK_ARENA_ARRAY(metac_sema_expr_t, tupleElements, 32, &self->TempAlloc)
-            ARENA_ARRAY_ENSURE_SIZE(tupleElements, tupleExpressionCount);
+            ARENA_ARRAY_ENSURE_SIZE(tupleElements, tupleExprCount);
 
-            // result->TupleExpressionCount = tupleExpressionCount;
-            // result->TupleExpressions = AllocNewSemaExpression(self, expr);
+            // result->TupleExprCount = tupleExprCount;
+            // result->TupleExprs = AllocNewSemaExpr(self, expr);
 
             bool isTypeTuple = true;
 
             for(uint32_t i = 0;
-                i < expr->TupleExpressionCount;
+                i < expr->TupleExprCount;
                 i++)
             {
-                metac_expr_t *e = tupleElement->Expression;
+                metac_expr_t *e = tupleElement->Expr;
                 tupleElement = tupleElement->Next;
-                metac_sema_expr_t* resultElem = result->TupleExpressions[i];
+                metac_sema_expr_t* resultElem = result->TupleExprs[i];
                 MetaCSemantic_doExprSemantic(self, e, resultElem);
                 ARENA_ARRAY_ADD(typeIndicies, resultElem->TypeIndex);
                 if (resultElem->Kind != exp_type)
@@ -846,27 +846,27 @@ LswitchIdKey:
 
             if (isTypeTuple)
             {
-                for(uint32_t i = 0; i < tupleExpressionCount; i++)
+                for(uint32_t i = 0; i < tupleExprCount; i++)
                 {
                     metac_type_index_t typeIndex =
-                        (result->TupleExpressions[i])->TypeExp;
+                        (result->TupleExprs[i])->TypeExp;
                     typeIndicies[i] = typeIndex;
                 }
                 metac_expr_t typeExp = *expr;
                 typeExp.Kind = exp_type;
-                result = AllocNewSemaExpression(self, &typeExp);
+                result = AllocNewSemaExpr(self, &typeExp);
             }
 
 #define tuple_key 0x55ee11
 
             uint32_t hash = crc32c(tuple_key, typeIndicies,
-                sizeof(metac_type_index_t) * expr->TupleExpressionCount);
-            assert(typeIndiciesCount == tupleExpressionCount);
+                sizeof(metac_type_index_t) * expr->TupleExprCount);
+            assert(typeIndiciesCount == tupleExprCount);
 
             metac_type_tuple_t typeTuple;
             typeTuple.Header.Kind = decl_type_tuple;
             typeTuple.Header.Hash = hash;
-            typeTuple.TypeCount = tupleExpressionCount;
+            typeTuple.TypeCount = tupleExprCount;
             typeTuple.TypeIndicies = typeIndicies;
 
            // AllocNewTupleType()
@@ -876,12 +876,12 @@ LswitchIdKey:
             {
                 metac_type_index_t* newIndicies =
                     Allocator_Calloc(&self->Allocator,
-                        metac_type_index_t, tupleExpressionCount);
+                        metac_type_index_t, tupleExprCount);
 
         //        metac_type_index_t* newIndicies = (metac_type_index_t*)
-        //            malloc(expr->TupleExpressionCount * sizeof(metac_type_index_t));
+        //            malloc(expr->TupleExprCount * sizeof(metac_type_index_t));
                 memcpy(newIndicies, typeIndicies,
-                    expr->TupleExpressionCount * sizeof(metac_type_index_t));
+                    expr->TupleExprCount * sizeof(metac_type_index_t));
                 typeTuple.TypeIndicies = newIndicies;
                 tupleIdx =
                     MetaCTypeTable_AddTupleType(&self->TupleTypeTable, &typeTuple);
@@ -908,7 +908,7 @@ LswitchIdKey:
             if (expr->E1->Kind != exp_call)
             {
                 fprintf(stderr, "Only calls are supported not %s\n",
-                    MetaCExpressionKind_toChars(expr->E1->Kind));
+                    MetaCExprKind_toChars(expr->E1->Kind));
                 break;
             }
             metac_expr_t* call = expr->E1;
@@ -922,7 +922,7 @@ LswitchIdKey:
                 return 0;
             }
 #if 0
-            // printf("Type(fn) %s\n", MetaCExpressionKind_toChars(fn->Kind));
+            // printf("Type(fn) %s\n", MetaCExprKind_toChars(fn->Kind));
 
             int callIdx = -1;
 
@@ -1067,7 +1067,7 @@ LswitchIdKey:
                 ResolveIdentifierToExp(self, node, &result, &hash);
             }
             //printf("Resolved exp_identifier to: %s\n",
-            //    MetaCExpressionKind_toChars(result->Kind));
+            //    MetaCExprKind_toChars(result->Kind));
         }
         break;
         case exp_addr:
@@ -1101,7 +1101,7 @@ Lret:
 
 void MetaCSemantic_PushExpr(metac_semantic_state_t* self, metac_sema_expr_t* expr)
 {
-    if (self->ExpressionStackCapacity < self->ExpressionStackSize)
+    if (self->ExprStackCapacity < self->ExprStackSize)
     {
         assert(0);
         // we would need to realloc in this case.

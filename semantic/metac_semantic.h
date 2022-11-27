@@ -18,7 +18,7 @@
 #endif
 
 #define FOREACH_SEMA_STATE_ARRAY(SELF, M) \
-    M(SELF, metac_sema_expr_t, Expressions) \
+    M(SELF, metac_sema_expr_t, Exprs) \
     M(SELF, sema_decl_variable_t, Variables) \
     M(SELF, sema_decl_function_t, Functions) \
     M(SELF, metac_scope_t, Scopes) \
@@ -130,9 +130,9 @@ typedef struct metac_semantic_state_t
 
     AT(TaskLocal) AT(transient) metac_scope_t* MountParent;
 
-    AT(transient) metac_sema_expr_t* ExpressionStack;
-    AT(transient) uint32_t ExpressionStackSize;
-    AT(transient) uint32_t ExpressionStackCapacity;
+    AT(transient) metac_sema_expr_t* ExprStack;
+    AT(transient) uint32_t ExprStackSize;
+    AT(transient) uint32_t ExprStackCapacity;
 
     AT(transient) sema_stmt_switch_t** SwitchStack;
     AT(transient) uint32_t SwitchStackSize;
@@ -207,17 +207,17 @@ metac_type_index_t MetaCSemantic_doTypeSemantic_(metac_semantic_state_t* self,
 /// a valid node otherwise
 metac_node_header_t* MetaCSemantic_LookupIdentifier(metac_semantic_state_t* self,
                                                     metac_identifier_ptr_t identifierPtr);
-#ifndef Expression_IsEqual
-#define Expression_IsEqual(A, B) \
-    ((A == B) ? true : Expression_IsEqual_( \
+#ifndef Expr_IsEqual
+#define Expr_IsEqual(A, B) \
+    ((A == B) ? true : Expr_IsEqual_( \
     ((const metac_sema_expr_t*)(A)), ((const metac_sema_expr_t*)(B)))
 #endif
 
-bool Expression_IsEqual_(const metac_sema_expr_t* a,
+bool Expr_IsEqual_(const metac_sema_expr_t* a,
                          const metac_sema_expr_t* b);
 
 
-metac_sema_expr_t* AllocNewSemaExpression(metac_semantic_state_t* self, metac_expr_t* expr);
+metac_sema_expr_t* AllocNewSemaExpr(metac_semantic_state_t* self, metac_expr_t* expr);
 
 sema_decl_function_t* AllocNewSemaFunction(metac_semantic_state_t* self,decl_function_t* func);
 
