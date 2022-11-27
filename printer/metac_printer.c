@@ -445,7 +445,7 @@ static inline void PrintType(metac_printer_t* self, decl_type_t* type)
 #define CASE_MACRO(EXP_TYPE) \
     case EXP_TYPE : {result = #EXP_TYPE;} break;
 
-const char* StatementKind_toChars(metac_stmt_kind_t kind)
+const char* StmtKind_toChars(metac_stmt_kind_t kind)
 {
     const char* result = 0;
 
@@ -470,7 +470,7 @@ static inline void PrintComment(metac_printer_t* self,
 }
 static inline void PrintStatement(metac_printer_t* self, metac_stmt_t* stmt)
 {
-    // printf("Kind: %s\n", StatementKind_toChars(stmt->Kind));
+    // printf("Kind: %s\n", StmtKind_toChars(stmt->Kind));
     switch(stmt->Kind)
     {
         case stmt_return :
@@ -746,7 +746,7 @@ static inline void PrintStatement(metac_printer_t* self, metac_stmt_t* stmt)
         default : {
             fprintf(stderr,
                 "Statement Kind: not handled by printer %s\n",
-                    StatementKind_toChars(stmt->Kind));
+                    StmtKind_toChars(stmt->Kind));
             assert(0);
         }
     }
@@ -1762,7 +1762,7 @@ static inline void PrintSemaExpression(metac_printer_t* self,
 
 static inline void PrintSemaStatement(metac_printer_t* self, metac_semantic_state_t* sema, metac_sema_stmt_t* stmt)
 {
-    // printf("Kind: %s\n", StatementKind_toChars(stmt->Kind));
+    // printf("Kind: %s\n", StmtKind_toChars(stmt->Kind));
     switch(stmt->Kind)
     {
         case stmt_casebody :
@@ -2052,7 +2052,7 @@ static inline void PrintSemaStatement(metac_printer_t* self, metac_semantic_stat
         default : {
             fprintf(stderr,
                 "Statement Kind: not handled by printer %s\n",
-                    StatementKind_toChars(stmt->Kind));
+                    StmtKind_toChars(stmt->Kind));
             assert(0);
         }
     }

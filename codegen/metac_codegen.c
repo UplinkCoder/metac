@@ -1919,7 +1919,7 @@ void MetaCCodegen_doStatement(metac_bytecode_ctx_t* ctx,
 
         default:
         {
-            printf("Statement unsupported %s\n", StatementKind_toChars(stmt->Kind));
+            printf("Statement unsupported %s\n", StmtKind_toChars(stmt->Kind));
             assert(0);
         } break;
     }

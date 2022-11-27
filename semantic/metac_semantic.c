@@ -424,7 +424,7 @@ metac_sema_stmt_t* MetaCSemantic_doStatementSemantic_(metac_semantic_state_t* se
     {
         default:
         {
-            printf("Statement unsupported %s\n", StatementKind_toChars(stmt->Kind));
+            printf("Statement unsupported %s\n", StmtKind_toChars(stmt->Kind));
             assert(0);
         } break;
 
@@ -501,7 +501,7 @@ metac_sema_stmt_t* MetaCSemantic_doStatementSemantic_(metac_semantic_state_t* se
         default: {
             fprintf(stderr,
                 "Statement not supported by semantic: %s\n",
-                MetaCStatementKind_toChars(stmt->StmtKind));
+                MetaCStmtKind_toChars(stmt->StmtKind));
                 assert(0);
         } break;
 */

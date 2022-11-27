@@ -3657,7 +3657,7 @@ metac_stmt_t* MetaCParser_ParseStatement(metac_parser_t* self,
 
     if (result && !result->Hash)
     {
-        printf("Hash for %s unimplemented\n", StatementKind_toChars(result->Kind));
+        printf("Hash for %s unimplemented\n", StmtKind_toChars(result->Kind));
     }
 
     // if we didn't parse as a declaration try an expression as the last resort
