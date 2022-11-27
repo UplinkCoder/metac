@@ -14,7 +14,7 @@
 #define INITIAL_SIZE (16 * 4096)
 #define GROWTH_FACTOR 1.3f
 
-typedef struct metac_semantic_state_t metac_semantic_state_t;
+typedef struct metac_sema_state_t metac_sema_state_t;
 
 typedef struct metac_printer_t
 {
@@ -29,7 +29,7 @@ typedef struct metac_printer_t
     uint16_t CurrentColumn;
 
     uint16_t StartColumn;
-    bool SupressNewlineAfterDeclaration;
+    bool SupressNewlineAfterDecl;
     bool AsType;
 } metac_printer_t;
 
@@ -44,12 +44,12 @@ void MetaCPrinter_InitSz(metac_printer_t* self,
                          metac_identifier_table_t* stringTable,
                          uint32_t initializeSize);
 
-const char* MetaCPrinter_PrintExpression(metac_printer_t* self, metac_expression_t* exp);
-const char* MetaCPrinter_PrintDeclaration(metac_printer_t* self, metac_declaration_t* decl);
-const char* MetaCPrinter_PrintStatement(metac_printer_t* self, metac_statement_t* stmt);
+const char* MetaCPrinter_PrintExpr(metac_printer_t* self, metac_expr_t* exp);
+const char* MetaCPrinter_PrintDecl(metac_printer_t* self, metac_decl_t* decl);
+const char* MetaCPrinter_PrintStmt(metac_printer_t* self, metac_stmt_t* stmt);
 const char* MetaCPrinter_PrintNode(metac_printer_t* self, metac_node_t node, uint32_t level);
 
-const char* StatementKind_toChars(metac_statement_kind_t kind);
+const char* StmtKind_toChars(metac_stmt_kind_t kind);
 
 void MetacPrinter_PrintI64(metac_printer_t* self, const int64_t value);
 void MetacPrinter_PrintStringLiteral(metac_printer_t* self, const char* str);
@@ -59,7 +59,7 @@ void MetaCPrinter_Reset(metac_printer_t* self);
 #ifndef NO_SEMANTIC
 
 const char* MetaCPrinter_PrintSemaNode(metac_printer_t* self,
-                                       metac_semantic_state_t* sema,
+                                       metac_sema_state_t* sema,
                                        metac_node_t node);
 
 #endif // NO_SEMANTIC

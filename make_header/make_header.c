@@ -17,7 +17,7 @@
 int main(int argc, const char* argv[])
 {
     metac_lpp_t lpp;
-    DeclarationArray decls;
+    DeclArray decls;
     metac_alloc_t alloc;
 
     Allocator_Init(&alloc, 0);
@@ -29,7 +29,7 @@ int main(int argc, const char* argv[])
     printf("Got %d declarations\n", (int32_t)decls.Length);
     {
         uint32_t i;
-        metac_declaration_t* decl = 0;
+        metac_decl_t* decl = 0;
         for(i = 0; i < decls.Length; i++)
         {
             decl = decls.Ptr[i];

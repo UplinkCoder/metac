@@ -11,9 +11,9 @@
 #include "repl/exp_eval.c"
 #include "codegen/metac_codegen.c"
 
-DeclarationArray ReadLexParse(const char* filename, metac_lpp_t* lpp)
+DeclArray ReadLexParse(const char* filename, metac_lpp_t* lpp)
 {
-    DeclarationArray result = {0};
+    DeclArray result = {0};
 
     read_result_t readResult =
         ReadFileAndZeroTerminate(filename);
@@ -29,7 +29,7 @@ DeclarationArray ReadLexParse(const char* filename, metac_lpp_t* lpp)
     return result;
 }
 
-metac_declaration_t* FindDeclaration(DeclarationArray decls,
+metac_decl_t* FindDecl(DeclArray decls,
                                      metac_parser_t* parser, const char* name)
 {
     const uint32_t len = cast(uint32_t) strlen(name);
@@ -46,9 +46,9 @@ metac_declaration_t* FindDeclaration(DeclarationArray decls,
         idx < decls.Length;
         idx++)
     {
-        metac_declaration_t* decl = decls.Ptr[idx];
+        metac_decl_t* decl = decls.Ptr[idx];
         // printf("decl: %s\n",
-        //    MetaCPrinter_PrintDeclaration(&parser->DebugPrinter, decl));
+        //    MetaCPrinter_PrintDecl(&parser->DebugPrinter, decl));
         metac_identifier_ptr_t idPtr = {0};
         if (decl->Kind == decl_type_enum)
         {
@@ -62,7 +62,7 @@ metac_declaration_t* FindDeclaration(DeclarationArray decls,
         {
             decl_type_typedef_t* typdef = cast(decl_type_typedef_t*) decl;
             idPtr = typdef->Identifier;
-            decl = cast(metac_declaration_t*) typdef->Type;
+            decl = cast(metac_decl_t*) typdef->Type;
         }
 
         if (idPtr.v == NameId.v)
@@ -90,10 +90,10 @@ int main(int argc, const char* argv[])
     MetaCLPP_Init(&LPP);
     // TODO MetaCLPP_Init should take an allocator
 
-    DeclarationArray decls = ReadLexParse(filename, &LPP);
+    DeclArray decls = ReadLexParse(filename, &LPP);
 
     decl_function_t* funcDecl = cast(decl_function_t*)
-        FindDeclaration(decls, &LPP.Parser, funcname);
+        FindDecl(decls, &LPP.Parser, funcname);
 
     if(!funcDecl || funcDecl->Kind != decl_function)
     {
@@ -104,7 +104,7 @@ int main(int argc, const char* argv[])
     printf("func: %s\n",
         MetaCPrinter_PrintNode(&LPP.Parser.DebugPrinter, METAC_NODE(funcDecl), 0));
 */
-    metac_semantic_state_t Sema;
+    metac_sema_state_t Sema;
     MetaCSemantic_Init(&Sema, &LPP.Parser, 0);
     metac_scope_t* scope =
         MetaCSemantic_PushNewScope(&Sema, scope_owner_module, (metac_node_t)1);

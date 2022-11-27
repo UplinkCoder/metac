@@ -218,28 +218,28 @@ typedef enum scope_kind_t
 #define BIN_MEMBERS(MEMB) \
     bin_ ## MEMB,
 
-typedef enum metac_expression_kind_t
+typedef enum metac_expr_kind_t
 {
     FOREACH_EXP(DEFINE_MEMBERS)
-} metac_expression_kind_t;
+} metac_expr_kind_t;
 
-typedef enum metac_statement_kind_t
+typedef enum metac_stmt_kind_t
 {
     stmt_min = exp_max + 1,
 
     FOREACH_STMT_KIND(DEFINE_MEMBERS)
 
     stmt_max
-} metac_statement_kind_t;
+} metac_stmt_kind_t;
 
-typedef enum metac_declaration_kind_t
+typedef enum metac_decl_kind_t
 {
     decl_min = stmt_max + 1,
 
     FOREACH_DECL_KIND(DEFINE_MEMBERS)
 
     decl_max
-} metac_declaration_kind_t;
+} metac_decl_kind_t;
 
 typedef enum metac_node_kind_t
 {
@@ -249,12 +249,12 @@ typedef enum metac_node_kind_t
 
 #undef DEFINE_NODE_MEMBERS
 
-typedef enum metac_binary_expression_kind_t
+typedef enum metac_binary_expr_kind_t
 {
     bin_exp_invalid = (FIRST_BINARY_EXP(EXP_SELF) - 1),
 
     FOREACH_BINARY_EXP(BIN_MEMBERS)
-} metac_binary_expression_kind_t;
+} metac_binary_expr_kind_t;
 
 typedef struct metac_node_header_t
 {

@@ -15,7 +15,7 @@
 #  include <unistd.h>
 #endif
 
-metac_declaration_t* FindDeclaration(DeclarationArray decls,
+metac_decl_t* FindDecl(DeclArray decls,
                                      metac_parser_t* parser, const char* name)
 {
     const uint32_t len = cast(uint32_t) strlen(name);
@@ -32,9 +32,9 @@ metac_declaration_t* FindDeclaration(DeclarationArray decls,
         idx < decls.Length;
         idx++)
     {
-        metac_declaration_t* decl = decls.Ptr[idx];
+        metac_decl_t* decl = decls.Ptr[idx];
         // printf("decl: %s\n",
-        //    MetaCPrinter_PrintDeclaration(&parser->DebugPrinter, decl));
+        //    MetaCPrinter_PrintDecl(&parser->DebugPrinter, decl));
         metac_identifier_ptr_t idPtr = {0};
         if (decl->Kind == decl_type_enum)
         {
@@ -48,7 +48,7 @@ metac_declaration_t* FindDeclaration(DeclarationArray decls,
         {
             decl_type_typedef_t* typdef = cast(decl_type_typedef_t*) decl;
             idPtr = typdef->Identifier;
-            decl = cast(metac_declaration_t*) typdef->Type;
+            decl = cast(metac_decl_t*) typdef->Type;
         }
 
         if (idPtr.v == NameId.v)
@@ -58,7 +58,7 @@ metac_declaration_t* FindDeclaration(DeclarationArray decls,
     return 0;
 }
 
-metac_identifier_ptr_t IdentifierFromDecl(metac_declaration_t* decl)
+metac_identifier_ptr_t IdentifierFromDecl(metac_decl_t* decl)
 {
     metac_identifier_ptr_t result = {0};
 
@@ -79,13 +79,13 @@ metac_identifier_ptr_t IdentifierFromDecl(metac_declaration_t* decl)
     return result;
 }
 
-DeclarationArray FilterDeclarations(DeclarationArray decls, metac_parser_t* parser,
+DeclArray FilterDecls(DeclArray decls, metac_parser_t* parser,
                                     metac_alloc_t* alloc,
-                                    bool (*filterFunc) (metac_declaration_t*, metac_parser_t*))
+                                    bool (*filterFunc) (metac_decl_t*, metac_parser_t*))
 {
-    ARENA_ARRAY(metac_declaration_t*, result)
+    ARENA_ARRAY(metac_decl_t*, result)
 
-    ARENA_ARRAY_INIT(metac_declaration_t*, result, alloc);
+    ARENA_ARRAY_INIT(metac_decl_t*, result, alloc);
 
     for(uint32_t idx = 0;
         idx < decls.Length;
@@ -97,7 +97,7 @@ DeclarationArray FilterDeclarations(DeclarationArray decls, metac_parser_t* pars
         }
     }
 
-    DeclarationArray retval;
+    DeclArray retval;
 
     retval.Ptr = result;
     retval.Length = resultCount;
@@ -105,7 +105,7 @@ DeclarationArray FilterDeclarations(DeclarationArray decls, metac_parser_t* pars
     return retval;
 }
 
-bool DeclarationIsParseFunc(metac_declaration_t* decl, metac_parser_t* parser)
+bool DeclIsParseFunc(metac_decl_t* decl, metac_parser_t* parser)
 {
     bool result = false;
     const char* name = 0;
@@ -125,7 +125,7 @@ Lret:
     return result;
 }
 
-bool DeclarationIsInitFunc(metac_declaration_t* decl, metac_parser_t* parser)
+bool DeclIsInitFunc(metac_decl_t* decl, metac_parser_t* parser)
 {
     bool result = false;
     const char* name = 0;
@@ -168,19 +168,19 @@ int main(int argc, const char* argv[])
 
     MetaCLPP_Init(&LPP, &alloc, 0);
 
-    DeclarationArray decls = ReadLexParse(filename, &LPP, 0);
+    DeclArray decls = ReadLexParse(filename, &LPP, 0);
     metac_alloc_t resultAlloc;
     Allocator_Init(&resultAlloc, 0, 0);
 
-    DeclarationArray parseFunctions =
-        FilterDeclarations(decls, &LPP.Parser,
-                          &resultAlloc, DeclarationIsParseFunc);
+    DeclArray parseFunctions =
+        FilterDecls(decls, &LPP.Parser,
+                          &resultAlloc, DeclIsParseFunc);
 
     printf("Found %d parserFuncs\n", (int)parseFunctions.Length);
 
-    DeclarationArray initFuncs =
-        FilterDeclarations(decls, &LPP.Parser,
-                          &resultAlloc, DeclarationIsInitFunc);
+    DeclArray initFuncs =
+        FilterDecls(decls, &LPP.Parser,
+                          &resultAlloc, DeclIsInitFunc);
 
     for(uint32_t i = 0; i < parseFunctions.Length; i++)
     {
