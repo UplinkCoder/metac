@@ -1435,7 +1435,8 @@ void test_lexer()
             assert(tok == tok_error);
             continue;
         }
-        if (!memcmp(word, "first_", sizeof("first_") - 1))
+        const char* first_ = "first_";
+        if (!strncmp(word, first_, sizeof(first_) - 1))
         {
             continue;
         }
