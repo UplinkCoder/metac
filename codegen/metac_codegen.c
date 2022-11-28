@@ -1078,8 +1078,8 @@ static void MetaCCodegen_doArrowExpr(metac_bytecode_ctx_t* ctx,
     BCValue e1Value = {BCValueType_Unknown};
     BCValue offsetVal = {BCValueType_Unknown};
 
-    assert(exp->Kind == exp_arrow);
     assert(idxKind == type_index_ptr);
+    assert(exp->Kind == exp_arrow || exp->Kind == exp_dot);
     assert(e2->Kind == exp_field || e2->Kind == exp_call);
 
     if (TYPE_INDEX_KIND(e2->TypeIndex) == type_index_functiontype)
@@ -1264,7 +1264,14 @@ static void MetaCCodegen_doExpr(metac_bytecode_ctx_t* ctx,
 
         case exp_dot:
         {
-            MetaCCodegen_doDotExpr(ctx, exp, result);
+            if (TYPE_INDEX_KIND(exp->E1->TypeIndex) == type_index_ptr)
+            {
+                MetaCCodegen_doArrowExpr(ctx, exp, result);
+            }
+            else
+            {
+                MetaCCodegen_doDotExpr(ctx, exp, result);
+            }
         } break;
 
         case exp_arrow:

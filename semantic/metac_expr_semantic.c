@@ -590,7 +590,7 @@ LswitchIdKey:
             typeIndexIndex = TYPE_INDEX_INDEX(e1Type);
 
             // first make the arrowExp into a dot exp essentailly
-            if (isArrow)
+            if (isArrow || TYPE_INDEX_KIND(e1Type) == type_index_ptr)
             {
                 elementType =
                     PtrTypePtr(self, TYPE_INDEX_INDEX(e1Type))->ElementType;
