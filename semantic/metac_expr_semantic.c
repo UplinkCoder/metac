@@ -602,7 +602,7 @@ LswitchIdKey:
                     SemanticError(expr->LocationIndex,
                         "lhs of -> is supposed to be a pointer but it is: %s\n",
                         TypeToChars(self, e1Type));
-                    return emptyNode;
+                    return (metac_sema_expr_t*)emptyNode;
                 }
 
                 e1Type = PtrTypePtr(self, TYPE_INDEX_INDEX(e1Type))->ElementType;

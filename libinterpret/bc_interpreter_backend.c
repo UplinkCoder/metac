@@ -2101,9 +2101,9 @@ LendSearch2:{}
                     unrealAddresses[1] = frameP[args[1].stackAddr.addr / 4];
                     unrealAddresses[2] = frameP[args[2].stackAddr.addr / 4];
 
-                    void* arg0 = (void*) BCInterpreter_toRealPointer(self, heapPtr, unrealAddresses[0]);
-                    void* arg1 = (void*) BCInterpreter_toRealPointer(self, heapPtr, unrealAddresses[1]);
-                    void* arg2 = (void*) BCInterpreter_toRealPointer(self, heapPtr, unrealAddresses[2]);
+                    void* arg0 = (void*) BCInterpreter_toRealPointer(&state, heapPtr, unrealAddresses[0]);
+                    void* arg1 = (void*) BCInterpreter_toRealPointer(&state, heapPtr, unrealAddresses[1]);
+                    void* arg2 = (void*) BCInterpreter_toRealPointer(&state, heapPtr, unrealAddresses[2]);
 
                     switch(call.n_args)
                     {
