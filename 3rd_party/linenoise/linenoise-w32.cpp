@@ -79,6 +79,21 @@ static void output(const char* str,
     WriteConsoleOutputCharacterA(console_out, str, len, pos, &written);
 }
 
+static void linenoiseClearScreen(void)
+{
+    COORD pos = { 0, 0 };
+    CONSOLE_SCREEN_BUFFER_INFO info = { 0 };
+    DWORD written;
+
+    GetConsoleScreenBufferInfo(console_out, &info);
+
+    FillConsoleOutputCharacterA(console_out, ' ',
+        (DWORD)(info.dwSize.X * info.dwSize.Y),
+        pos, &written);
+
+   SetConsoleCursorPosition(console_out, pos);
+}
+
 static void refreshLine(const char* prompt,
                         char*       buf,
                         size_t      len,

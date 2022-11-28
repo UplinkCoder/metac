@@ -15,7 +15,7 @@ const char* Linenoise_GetInputLine(ui_state_t* state, repl_state_t* repl, uint32
 
     if (line)
     {
-        *length = strlen(line);
+        *length = (uint32_t)strlen(line);
         linenoiseHistoryAdd(line);
     }
     else
@@ -33,6 +33,11 @@ void Linenoise_Message(ui_state_t* state, const char* fmt, ...)
     va_start (args, fmt);
     vprintf (fmt, args);
     va_end (args);
+}
+
+void Linenoise_Clear(ui_state_t* uiState)
+{
+    linenoiseClearScreen();
 }
 
 void Linenoise_Info(ui_state_t* state, const char* fmt, ...)
@@ -59,6 +64,7 @@ const struct ui_interface_t LinenoiseUiInterface =
     Linenoise_GetInputLine,
     Linenoise_Message,
     Linenoise_QueryMode,
+    Linenoise_Clear,
     Linenoise_Info,
     0
 } ;
