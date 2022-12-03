@@ -23,8 +23,9 @@ typedef void (*collect_cb_t) (const char* completionString, uint32_t length, voi
 
 typedef struct completion_trie_root_t {
     ARENA_ARRAY(completion_trie_node_t, Nodes)
+#if TRACK_RANGES
     ARENA_ARRAY(node_range_t, NodeRanges)
-
+#endif
     // How many nodes are currently allocated for the root
     // The root get's trated specially ebcayse it has the most children typically
     // requireing us to use a diffrent growth strategy

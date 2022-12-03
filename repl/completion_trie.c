@@ -1,6 +1,15 @@
+#include <assert.h>
+#include <stdio.h>
+#include <string.h>
+
+#include "../os/metac_atomic.h"
+
+#define TRACK_RANGES 0
 #include "../repl/completion_trie.h"
+
 #define BASE_IDX_SCALE 1
-#define TRACK_RANGES 1
+
+#define MAXIMUM(a,b) (((a)>(b)) ? (a) : (b))
 
 void CompletionTrie_Init(completion_trie_root_t* self, metac_alloc_t* parentAlloc)
 {
@@ -21,11 +30,12 @@ void CompletionTrie_Init(completion_trie_root_t* self, metac_alloc_t* parentAllo
 
     self->WordCount = 0;
     self->TotalNodes = 1;
-
+#if TRACK_RANGES
     {
         node_range_t range = {0, self->NodesCount, 1};
         ARENA_ARRAY_ADD(self->NodeRanges, range);
     }
+#endif
 }
 
 static int PrefixLen(const char prefix4[])
@@ -48,14 +58,14 @@ static int PrefixLen(const char prefix4[])
 void CompletionTrie_Collect(completion_trie_root_t* root,
                             uint32_t startNodeIdx,
                             const char* prefix, uint32_t matchedUntil,
-                            void (*collectCb) (const char* completionString, uint32_t length, void* ctx),
+                            void (*collectCb) (_scope const char* completionString, uint32_t length, void* ctx),
                             void* userCtx)
 {
     uint32_t parentStack[128];
     uint16_t childIndexStack[128];
     uint16_t completionLengthAddStack[128];
 
-    const completion_trie_node_t const * nodes = root->Nodes;
+    completion_trie_node_t const * nodes = root->Nodes;
     const uint32_t completionLengthBase = matchedUntil
                                         - PrefixLen(nodes[startNodeIdx].Prefix4);
 
@@ -67,7 +77,7 @@ void CompletionTrie_Collect(completion_trie_root_t* root,
 
     const uint32_t unmatchedPrefixLength = strlen(prefix) - matchedUntil;
     uint32_t currentUnmatchedPrefixLength = unmatchedPrefixLength;
-    bool decend = true;
+    bool descend = true;
 
     memcpy(completionString + completionLength, prefix, matchedUntil);
 
@@ -78,7 +88,7 @@ LSetCurrent:
         uint32_t childBeginIdx = current->ChildrenBaseIdx * BASE_IDX_SCALE;
         uint32_t childEndIdx = childBeginIdx + current->ChildCount;
         uint32_t prefixLen = PrefixLen(current->Prefix4);
-        if (decend)
+        if (descend)
         {
             memcpy(completionString + completionLength, current->Prefix4, prefixLen);
             completionLength += prefixLen;
@@ -89,7 +99,7 @@ LSetCurrent:
             // we just ascended to we need to decent again
             if (currentChildIndex + childBeginIdx < childEndIdx)
             {
-                decend = true;
+                descend = true;
                 currentChildIndex++;
             }
         }
@@ -137,7 +147,7 @@ LSetCurrent:
                     if (currentNodeIdx == startNodeIdx)
                         currentUnmatchedPrefixLength = unmatchedPrefixLength;
                 }
-                else if (decend)
+                else if (descend)
                 {
                     // Push Completion stacks
                     {
@@ -154,7 +164,7 @@ LSetCurrent:
             }
         }
         // The for loop is over ... time to pop the state
-        // but we must only pop if we are not decending
+        // but we must only pop if we are not descending
         {
             if (!currentStackIndex)
                 break;
@@ -163,13 +173,13 @@ LSetCurrent:
             currentChildIndex = childIndexStack[currentStackIndex];
             completionLength = completionLengthBase
                              + completionLengthAddStack[currentStackIndex];
-            // we are going up the tree now so decend is false
+            // we are going up the tree now so descend is false
             if (currentNodeIdx == startNodeIdx)
             {
                 // TODO this should be stacked
                 currentUnmatchedPrefixLength = unmatchedPrefixLength;
             }
-            decend = false;
+            descend = false;
         }
     }
 }
@@ -227,8 +237,10 @@ completion_trie_node_t* CompletionTrie_FindLongestMatchingPrefix(completion_trie
     return (completion_trie_node_t*)current;
 }
 
-void CompletionTrie_AddChild(completion_trie_root_t* root, completion_trie_node_t* PrefNode,
-                             const char* word, uint32_t length)
+completion_trie_node_t*
+CompletionTrie_AddChild(completion_trie_root_t* root,
+                        completion_trie_node_t* PrefNode,
+                        const char* word, uint32_t length)
 {
     completion_trie_node_t const * nodes = root->Nodes;
     completion_trie_node_t* child = 0;
@@ -242,7 +254,6 @@ void CompletionTrie_AddChild(completion_trie_root_t* root, completion_trie_node_
                 nodes +
                 (PrefNode->ChildrenBaseIdx
                + INC(PrefNode->ChildCount));
-            INC(root->WordCount);
             goto LGotChild;
         }
     }
@@ -256,13 +267,10 @@ void CompletionTrie_AddChild(completion_trie_root_t* root, completion_trie_node_
         for(uint32_t i = baseIdx; i < endIdx; i++)
         {
             if (nodes[i].Prefix4[0] == '\0')
-                return ;
+                return (completion_trie_node_t*)nodes + i;
         }
-        INC(root->WordCount);
         goto LinsertNode;
     }
-
-    INC(root->WordCount);
 
     while(length)
     {
@@ -273,12 +281,14 @@ void CompletionTrie_AddChild(completion_trie_root_t* root, completion_trie_node_
             {
                 ARENA_ARRAY_ENSURE_SIZE(root->Nodes, root->NodesCount + BASE_IDX_SCALE);
                 PrefNode->ChildrenBaseIdx = (POST_ADD(root->NodesCount, BASE_IDX_SCALE)) / BASE_IDX_SCALE;
+#if TRACK_RANGES
                 {
                     uint32_t NodeRangestart = PrefNode->ChildrenBaseIdx * BASE_IDX_SCALE;
                     node_range_t range = {NodeRangestart, NodeRangestart + BASE_IDX_SCALE, 1};
                     ARENA_ARRAY_ADD(root->NodeRanges, range);
                     PrefNode->Range = root->NodeRanges + root->NodeRangesCount - 1;
                 }
+#endif
             }
             else
             {
@@ -334,6 +344,12 @@ LGotChild:
     }
 
     assert (root->Nodes[0].ChildCount != 0);
+    if (child->Prefix4[0] == '\0')
+    {
+        INC(root->WordCount);
+    }
+
+    return child;
 }
 
 void CompletionTrie_Print(completion_trie_root_t* root, uint32_t n, const char* rootPrefix, FILE* f)
@@ -377,12 +393,33 @@ void CompletionTrie_Add(completion_trie_root_t* root, const char* word, uint32_t
     if (remaning_length)
     {
         int posWord = length - remaning_length;
-        CompletionTrie_AddChild(root, PrefNode, word + posWord, remaning_length);
+        PrefNode = CompletionTrie_AddChild(root, PrefNode, word + posWord, remaning_length);
     }
-    // If the node has children we need to insert a Terminal node
-    else if (PrefNode->ChildCount)
+    // insert terminal node
+    CompletionTrie_AddChild(root, PrefNode, "", 0);
+}
+
+#if defined(TEST_MAIN)
+typedef struct {
+    const char** Strings;
+    uint32_t nStrings;
+
+    uint32_t nMatches;
+} testCb_ctx_t;
+
+void testCollect (_scope const char* completionString, uint32_t length, void* ctx)
+{
+    testCb_ctx_t* ctxP = (testCb_ctx_t*) ctx;
+    const char** strings = ctxP->Strings;
+    const uint32_t nStrings = ctxP->nStrings;
+
+    for(uint32_t i = 0; i < nStrings; i++)
     {
-        CompletionTrie_AddChild(root, PrefNode, "", 0);
+        if (0 == strncmp(strings[i], completionString, length))
+        {
+            ctxP->nMatches++;
+            break;
+        }
     }
 }
 
@@ -394,7 +431,48 @@ void testCompletionTrie(void)
     completion_trie_root_t root;
 
     CompletionTrie_Init(&root, &rootAlloc);
+
+    CompletionTrie_Add(&root, "clot", strlen("clot"));
+    CompletionTrie_Add(&root, "compiler", strlen("compiler"));
+    CompletionTrie_Add(&root, "compilerP", strlen("compilerP"));
+
+    FILE* f = fopen("test.dot", "w");
+    fprintf(f, "digraph G {\n");
+    fprintf(f, "  node [shape=record headport=n]\n");
+
+    CompletionTrie_Print(&root, 0, "", f);
+
+    fprintf(f, "}\n");
+    fclose(f);
+
+    testCb_ctx_t userCtx;
+
+    {
+        const char* strings[] = {"clot"};
+        userCtx.Strings = strings;
+        userCtx.nStrings = ARRAY_SIZE(strings);
+        userCtx.nMatches = 0;
+
+        CompletionTrie_Collect(&root, 0, "cl", 0, testCollect, &userCtx);
+        assert(userCtx.nMatches == 1);
+    }
+
+    {
+        const char* strings[] = {"compiler", "compilerP"};
+        userCtx.Strings = strings;
+        userCtx.nStrings = ARRAY_SIZE(strings);
+        userCtx.nMatches = 0;
+        uint32_t wordLength = 4;
+        completion_trie_node_t* n =
+            CompletionTrie_FindLongestMatchingPrefix(&root, "comp", &wordLength);
+
+        CompletionTrie_Collect(&root, n - root.Nodes, "comp", strlen("comp") - wordLength, testCollect, &userCtx);
+        assert(userCtx.nMatches == 2);
+    }
 }
+
+#endif
+
 #if TRACK_RANGES
 void CompletionTrie_PrintRanges(completion_trie_root_t* self)
 {
@@ -435,3 +513,14 @@ void CompletionTrie_PrintStats(completion_trie_root_t* self)
     CompletionTrie_PrintRanges(self);
 #endif
 }
+
+#ifdef TEST_MAIN
+    int main(int argc, const char* argv[])
+    {
+        testCompletionTrie();
+    }
+#endif
+
+#undef MAXIMUM
+#undef TRACK_RANGES
+#undef BASE_IDX_SCALE

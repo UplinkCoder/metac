@@ -13,3 +13,6 @@ $CC $CFLAGS parser/metac_parser_obj.c driver/metac_lpp.c \
     -g3 -DNO_DOT_PRINTER -DTEST_PARSER -DNO_SEMANTIC -DNO_FIBERS -DNO_PREPROCESSOR \
     -o parser_test
 ./parser_test
+
+$CC $CFLAGS repl/completion_trie.c os/os.c os/metac_alloc.c -g3 -DTEST_MAIN -o completion_trie_test
+./completion_trie_test
