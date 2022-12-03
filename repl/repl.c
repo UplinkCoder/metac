@@ -207,6 +207,13 @@ void SeeIdentifier(const char* idStr, uint32_t key, repl_state_t* replCtx)
 //    CompletionTrie_Print(&replCtx->CompletionTrie);
 }
 
+void AddIdentifierToCompletion(repl_state_t* self, const char* idString)
+{
+    uint32_t len = (uint32_t) strlen(idString);
+    uint32_t hash = crc32c(~0, idString, len);
+    uint32_t key = IDENTIFIER_KEY(hash, len);
+    SeeIdentifier(idString, key, self);
+}
 
 void Presemantic_(repl_state_t* self)
 {
@@ -243,6 +250,7 @@ void Presemantic_(repl_state_t* self)
             LexFile(&tmpLexer, "metac_compiler_interface.h",
                     fCompilterInterface.FileContent0,
                     fCompilterInterface.FileLength);
+            AddIdentifierToCompletion(self, "compiler");
 
             MetaCPreProcessor_Init(&preProc, &tmpLexer, &PresemanticAlloc, 0, 0);
             MetaCParser_InitFromLexer(&tmpParser, &tmpLexer, &PresemanticAlloc);
@@ -1187,8 +1195,7 @@ void CollectCompletionsCb(const char* completionString, uint32_t length,
     //printf("%.*s\n", (int) length, completionString);
 }
 
-
-completion_list_t ReplComplete (repl_state_t* repl, const char *input, uint32_t inputLength)
+completion_list_t ReplComplete (repl_state_t* repl, const char *input, int32_t inputLength)
 {
     completion_list_t result = {0};
     const char* lastWord = 0;
@@ -1205,11 +1212,11 @@ completion_list_t ReplComplete (repl_state_t* repl, const char *input, uint32_t 
     // let's collect a maximum of 512 Completions.
 
     {
-        uint32_t i;
-        for(i = inputLength - 1; i > 0; i--)
+        int32_t i;
+        for(i = inputLength - 1;; i--)
         {
             char c = input[i];
-            if (!IsIdentifierChar(c))
+            if (!IsIdentifierChar(c) || (i < 0))
             {
                 i++;
                 break;
@@ -1256,7 +1263,6 @@ completion_list_t ReplComplete (repl_state_t* repl, const char *input, uint32_t 
 
 void Repl_Fiber(void)
 {
-
     repl_state_t repl_ = {repl_mode_ee};
     repl_state_t* repl = &repl_;
 

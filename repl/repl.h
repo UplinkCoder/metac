@@ -83,7 +83,7 @@ typedef struct completion_list_t
     uint32_t BeforeCompletionLength;
 } completion_list_t;
 
-typedef completion_list_t (*completion_cb_t) (repl_state_t* repl, const char *input, uint32_t inputLength);
+typedef completion_list_t (*completion_cb_t) (repl_state_t* repl, const char *input, int32_t inputLength);
 
 typedef struct ui_interface_t
 {
