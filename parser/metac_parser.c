@@ -2999,6 +2999,11 @@ static metac_storageclasses_t ParseStorageClasses(metac_parser_t* self)
             MetaCParser_Match(self, tok_kw_volatile);
             U32(result) |= storageclass_volatile;
         }
+        else if (currentTokenType == tok_kw__scope)
+        {
+            MetaCParser_Match(self, tok_kw__scope);
+            U32(result) |= storageclass_scope;
+        }
         else if (currentTokenType == tok_identifier)
         {
             if (currentToken->IdentifierKey == __thread_key)

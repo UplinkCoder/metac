@@ -1,6 +1,8 @@
 #ifndef _COMPAT_H_
 #define _COMPAT_H_
 
+#define _scope
+
 #define cast(T) (T)
 
 #ifndef ARRAY_SIZE

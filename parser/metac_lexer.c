@@ -367,6 +367,7 @@ static uint32_t MetaCStaticTokenLength(metac_token_enum_t token)
         case tok_kw_goto     : return 4;
 
         case tok_kw_yield    : return 5;
+        case tok_kw__scope   : return 6;
         case tok_kw___attribute__ : return 13;
     }
 }
@@ -1405,6 +1406,7 @@ void test_lexer()
         "continue",
         "until",
         "yield",
+        "_scope",
         "__attribute__",
 
 

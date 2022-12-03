@@ -129,6 +129,8 @@ typedef struct metac_lexer_state_t
     \
     M(tok_kw_yield) \
     \
+    M(tok_kw__scope) \
+    \
     LAST_KEYWORD_TOKEN(M)
 
 #define FIRST_STATIC_TOKEN(M) \

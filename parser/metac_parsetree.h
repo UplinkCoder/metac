@@ -327,6 +327,8 @@ typedef enum metac_storageclasses_t
     // it's potentially subject to future removal
     storageclass_global   = (1 << 6),
     storageclass_local    = (1 << 7),
+
+    storageclass_scope    = (1 << 8),
 } metac_storageclasses_t;
 
 typedef enum metac_type_kind_t
