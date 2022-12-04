@@ -251,11 +251,11 @@ metac_sema_stmt_t* AllocNewSemaStmt_(metac_sema_state_t* self,
                                                size_t nodeSize, void** result_ptr);
 
 sema_stmt_block_t* AllocNewSemaBlockStmt(metac_sema_state_t* self,
-                                              sema_stmt_block_t* Parent, uint32_t statementCount,
+                                              sema_stmt_block_t* Parent, uint32_t stmtCount,
                                               void** result_ptr);
 
 sema_stmt_casebody_t* AllocNewSemaCasebodyStmt(metac_sema_state_t* self,
-                                                    uint32_t statementCount,
+                                                    uint32_t stmtCount,
                                                     void** result_ptr);
 
 metac_scope_t* AllocNewScope(metac_sema_state_t* self, metac_scope_t* parent, metac_scope_owner_t owner);

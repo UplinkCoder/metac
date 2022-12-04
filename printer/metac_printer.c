@@ -1784,14 +1784,14 @@ static inline void PrintSemaStmt(metac_printer_t* self, metac_sema_state_t* sema
         case stmt_casebody :
         {
             sema_stmt_casebody_t* stmtCasebody = cast(sema_stmt_casebody_t*) stmt;
-            const uint32_t statementCount = stmtCasebody->StmtCount;
+            const uint32_t stmtCount = stmtCasebody->StmtCount;
             for(uint32_t i = 0;
-                i < statementCount;
+                i < stmtCount;
                 i++)
             {
                 PrintSemaStmt(self, sema, stmtCasebody->Stmts[i]);
 
-                if (i < (statementCount - 1))
+                if (i < (stmtCount - 1))
                 {
                     PrintNewline(self);
                     PrintIndent(self);
@@ -1829,13 +1829,13 @@ static inline void PrintSemaStmt(metac_printer_t* self, metac_sema_state_t* sema
             PrintIndent(self);
 
 
-            const uint32_t statementCount = blockStmt->StmtCount;
+            const uint32_t stmtCount = blockStmt->StmtCount;
             for(uint32_t i = 0;
-                i < statementCount;
+                i < stmtCount;
                 i++)
             {
                 PrintSemaStmt(self, sema, blockStmt->Body[i]);
-                if(i < (statementCount - 1))
+                if(i < (stmtCount - 1))
                 {
                     PrintNewline(self);
                     PrintIndent(self);
@@ -1982,19 +1982,19 @@ static inline void PrintSemaStmt(metac_printer_t* self, metac_sema_state_t* sema
                 else if (caseStmt->CaseBody->Kind == stmt_casebody)
                 {
                     sema_stmt_casebody_t* caseBody = caseStmt->CaseBody;
-                    const uint32_t statementCount = caseBody->StmtCount;
-                    assert(statementCount);
+                    const uint32_t stmtCount = caseBody->StmtCount;
+                    assert(stmtCount);
 
                     ++self->IndentLevel;
                     PrintNewline(self);
                     PrintIndent(self);
                     for(uint32_t i = 0;
-                        i < statementCount;
+                        i < stmtCount;
                         i++)
                     {
                         metac_sema_stmt_t* s = caseBody->Stmts[i];
                         PrintSemaStmt(self, sema, s);
-                        if (i < (statementCount - 1))
+                        if (i < (stmtCount - 1))
                         {
                             PrintIndent(self);
                         }
