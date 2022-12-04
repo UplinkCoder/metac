@@ -6,6 +6,7 @@
 #include <assert.h>
 #include <stdlib.h>
 #include "bsf.h"
+#include <signal.h>
 
 // the watcher shoud allocate the worker contexts since it is responsible for distribution
 // and monitoring of the work
