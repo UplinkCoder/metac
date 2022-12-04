@@ -134,7 +134,7 @@ metac_scope_t* MetaCScope_PushNewScope(metac_sema_state_t* sema,
 
 #define BREAK_ON_SERIAL(NODE, SERIAL) do { \
     if ((cast(metac_node_t)NODE)->Kind == node_exp_tuple) { \
-        for(uint32_t i = 0; i < cast(exp_tuple_t)) \
+        for(uint32_t i = 0; i < cast(expr_tuple_t)) \
     \ }
 
 metac_sema_expr_t* AllocNewSemaExpr(metac_sema_state_t* self, metac_expr_t* expr)
@@ -152,7 +152,7 @@ metac_sema_expr_t* AllocNewSemaExpr(metac_sema_state_t* self, metac_expr_t* expr
     }
 
 
-    if (expr->Kind == exp_tuple)
+    if (expr->Kind == expr_tuple)
     {
         const uint32_t tupleExpCount = expr->TupleExprCount;
         ARENA_ARRAY_ENSURE_SIZE(self->Exprs, tupleExpCount);
@@ -162,7 +162,7 @@ metac_sema_expr_t* AllocNewSemaExpr(metac_sema_state_t* self, metac_expr_t* expr
             self->Exprs + allocPos;
         metac_sema_expr_t** elemArray =
             Allocator_Calloc(&self->Allocator, metac_sema_expr_t*, tupleExpCount);
-        exp_tuple_t* expList = expr->TupleExprList;
+        expr_tuple_t* expList = expr->TupleExprList;
 
         metac_expr_t* elemExpr;
         for(uint32_t i = 0;

@@ -17,7 +17,7 @@
 
 #include "../parser/metac_identifier_table.h"
 
-/*    M(exp_bin_invalid) \*/
+/*    M(expr_bin_invalid) \*/
 
 typedef enum parse_expr_flags_t
 {
@@ -100,8 +100,8 @@ typedef struct metac_parser_t
 bool IsExprNode(metac_node_kind_t Kind);
 
 extern metac_parser_t g_lineParser;
-bool IsBinaryAssignExp(metac_expr_kind_t exp_kind);
-bool IsBinaryExp(metac_expr_kind_t exp_kind);
+bool IsBinaryAssignExp(metac_expr_kind_t expr_kind);
+bool IsBinaryExp(metac_expr_kind_t expr_kind);
 
 void MetaCParser_Init(metac_parser_t* self, metac_alloc_t* allocator);
 void MetaCParser_InitFromLexer(metac_parser_t* self, metac_lexer_t* lexer, metac_alloc_t* allocator);

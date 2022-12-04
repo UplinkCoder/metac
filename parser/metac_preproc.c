@@ -116,7 +116,7 @@ metac_expr_t* MetaCPreProcessor_ResolveDefineToExp(metac_preprocessor_t* self,
     {
         printf("Macro takes %u arguments but %u are given\n",
               define->ParameterCount, parameters.Count);
-        result = AllocNewExpr(exp_signed_integer);
+        result = AllocNewExpr(expr_signed_integer);
         result->ValueU64 = 0;
         goto Lret;
     }
@@ -265,11 +265,11 @@ static inline int32_t MetaCPreProcessor_EvalExp(metac_preprocessor_t* self,
     if (IsBinaryExp(op))
     {
         e1 = MetaCPreProcessor_EvalExp(self, e->E1, parser);
-        if (op == exp_oror)
+        if (op == expr_oror)
         {
             if (e1)
                 return true;
-        } else if (op == exp_andand)
+        } else if (op == expr_andand)
         {
             if (!e1)
                 return false;
@@ -289,78 +289,78 @@ static inline int32_t MetaCPreProcessor_EvalExp(metac_preprocessor_t* self,
             );
             assert(0);
         } break;
-        case exp_string:
+        case expr_string:
         {
             // this should not happen, we should have made it into a pointer I think
             assert(0);
         }
 
 
-        case exp_signed_integer:
+        case expr_signed_integer:
         {
             result = cast(int32_t)(e->ValueU64);
         }
         break;
 
-        case exp_neq:
+        case expr_neq:
         {
             result = (e1 != e2);
         } break;
 
-        case exp_eq:
+        case expr_eq:
         {
             result = (e1 == e2);
         } break;
 
-        case exp_add:
+        case expr_add:
         {
             result = (e1 + e2);
         } break;
-        case exp_sub:
+        case expr_sub:
         {
             result = (e1 - e2);
         } break;
-        case exp_mul:
+        case expr_mul:
         {
             result = (e1 * e2);
         } break;
-        case exp_div:
+        case expr_div:
         {
             result = (e1 / e2);
         } break;
-        case exp_rem:
+        case expr_rem:
         {
             result = (e1 % e2);
         } break;
-        case exp_andand:
+        case expr_andand:
         {
             result = (e1 && e2);
         } break;
-        case exp_and:
+        case expr_and:
         {
             result = (e1 & e2);
         } break;
-        case exp_oror:
+        case expr_oror:
         {
             result = (e1 || e2);
         } break;
-        case exp_or:
+        case expr_or:
         {
             result = (e1 | e2);
         } break;
-        case exp_xor:
+        case expr_xor:
         {
             result = (e1 ^ e2);
         } break;
-        case exp_lsh:
+        case expr_lsh:
         {
            result = (e1 << e2);
         } break;
-        case exp_rsh:
+        case expr_rsh:
         {
             result = (e1 >> e2);
         } break;
-        case exp_identifier:
+        case expr_identifier:
         {
             const char* identifierChars =
                 IdentifierPtrToCharPtr(&parser->IdentifierTable, e->IdentifierPtr);
@@ -380,43 +380,43 @@ static inline int32_t MetaCPreProcessor_EvalExp(metac_preprocessor_t* self,
             }
         }
         break;
-        case exp_variable:
+        case expr_variable:
         {
             // this should not happen
             assert(0);
         } break;
 
-        case exp_paren:
+        case expr_paren:
         {
             result = MetaCPreProcessor_EvalExp(self, e->E1, parser);
         } break;
-        case exp_compl:
+        case expr_compl:
         {
             result = ~MetaCPreProcessor_EvalExp(self, e->E1, parser);
         } break;
-        case exp_not:
+        case expr_not:
         {
             result = !MetaCPreProcessor_EvalExp(self, e->E1, parser);
         } break;
-        case exp_umin:
+        case expr_umin:
         {
             result = -MetaCPreProcessor_EvalExp(self, e->E1, parser);
         } break;
-        case exp_post_increment:
+        case expr_post_increment:
         {
             assert(0); // I don't think this can happen
         } break;
 
-        case exp_call:
+        case expr_call:
         {
-            if (e->E1->Kind == exp_identifier)
+            if (e->E1->Kind == expr_identifier)
             {
                 if (e->E1->IdentifierKey == defined_key)
                 {
-                    exp_argument_t* args = (exp_argument_t*)e->E2;
+                    expr_argument_t* args = (expr_argument_t*)e->E2;
                     metac_expr_t* e2 = args->Expr;
                     // this if makes sure there is only one "argument" to defiend()
-                    if (args->Next != emptyPointer || e2->Kind != exp_identifier)
+                    if (args->Next != emptyPointer || e2->Kind != expr_identifier)
                     {
                         printf("single Identifier expected after defined(\n");
                         result = 0;
@@ -814,8 +814,8 @@ uint32_t MetaCPreProcessor_Eval(metac_preprocessor_t* self, struct metac_parser_
 
         metac_expr_t* exp = MetaCParser_ParseExpr(parser, expr_flags_pp, 0);
         MetaCPrinter_Reset(&parser->DebugPrinter);
-        const char* exp_string = MetaCPrinter_PrintExpr(&parser->DebugPrinter, exp);
-        printf("#eval '%s'\n", exp_string);
+        const char* expr_string = MetaCPrinter_PrintExpr(&parser->DebugPrinter, exp);
+        printf("#eval '%s'\n", expr_string);
 
         return MetaCPreProcessor_EvalExp(self, exp, parser);
 /*

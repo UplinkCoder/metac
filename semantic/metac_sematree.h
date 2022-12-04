@@ -80,46 +80,46 @@ typedef struct metac_sema_expr_t
 
     union // switch(Kind)
     {
-        // invalid case exp_max, exp_invalid :
+        // invalid case expr_max, expr_invalid :
 
-        // case exp_add, exp_sub, exp_mul, exp_div, exp_cat, exp_catAss, exp_assign,
-        // exp_lt, exp_gt, exp_le, exp_ge, exp_spaceShip :
+        // case expr_add, expr_sub, expr_mul, expr_div, expr_cat, expr_catAss, expr_assign,
+        // expr_lt, expr_gt, expr_le, expr_ge, expr_spaceShip :
         struct {
             struct metac_sema_expr_t* _E1;
             struct metac_sema_expr_t* E2;
         };
-        // case exp_ternary:
+        // case expr_ternary:
         struct {
             struct metac_sema_expr_t* _E1_;
             struct metac_sema_expr_t* _E2;
             struct metac_sema_expr_t* Econd;
         };
-        // case exp_sizeof:
-        // case  exp_inject, exp_eject, exp_assert, exp_outerParen, exp_outer :
+        // case expr_sizeof:
+        // case  expr_inject, expr_eject, expr_assert, expr_outerParen, expr_outer :
         struct metac_sema_expr_t* E1;
-        // case exp_cast:
+        // case expr_cast:
         struct {
             struct metac_sema_expr_t* CastExp;
             struct metac_type_index_t CastType;
         };
-        // case exp_dot, exp_arrow:
+        // case expr_dot, expr_arrow:
         struct {
             struct metac_sema_expr_t* AggExp;
             uint32_t AggMemberIndex;
             struct metac_sema_expr_t* DotE2;
         };
-        // case exp_type
+        // case expr_type
         struct metac_type_index_t TypeExp;
-        // case exp_tuple
+        // case expr_tuple
         struct {
             struct metac_sema_expr_t** TupleExprs;
             uint32_t TupleExprCount;
         };
-        // case exp_argument:
+        // case expr_argument:
         sema_exp_argument_list_t* ArgumentList;
-        // case exp_function:
+        // case expr_function:
         struct sema_decl_function_t* Function;
-        // case exp_call:
+        // case expr_call:
         struct sema_exp_call_t Call;
 
         // case unknown_value_exp:
@@ -133,22 +133,22 @@ typedef struct metac_sema_expr_t
             uint32_t IdentifierKey;
             metac_identifier_ptr_t IdentifierPtr;
         };
-        // case exp_string :
+        // case expr_string :
         struct {
             uint32_t StringKey;
             metac_identifier_ptr_t StringPtr;
         };
-        // case exp_char:
+        // case expr_char:
         struct {
             uint32_t CharKey;
             char Chars[8];
         };
 
-        // case exp_signed_integer :
+        // case expr_signed_integer :
         int64_t ValueI64;
-        // case exp_unsigned_integer :
+        // case expr_unsigned_integer :
         uint64_t ValueU64;
-        // case exp_float :
+        // case expr_float :
         float ValueF23;
 
         uint8_t _Body[METAC_MAX_EXP_BODY_SIZE];

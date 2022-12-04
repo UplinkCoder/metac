@@ -1,10 +1,10 @@
 #include "../os/compat.h"
 
 #define FIRST_BINARY_EXP(M) \
-    M(exp_comma)
+    M(expr_comma)
 
 #define LAST_BINARY_EXP(M) \
-    M(exp_spaceship)
+    M(expr_spaceship)
 
 #define FIRST_DECL_TYPE(M) \
     M(decl_type)
@@ -47,112 +47,112 @@
     LAST_BINARY_EXP(M)
 
 #define FOREACH_CMP_EXP(M) \
-    M(exp_eq) \
-    M(exp_neq) \
-    M(exp_lt) \
-    M(exp_le) \
-    M(exp_gt) \
-    M(exp_ge)
+    M(expr_eq) \
+    M(expr_neq) \
+    M(expr_lt) \
+    M(expr_le) \
+    M(expr_gt) \
+    M(expr_ge)
 
 #define FOREACH_BIN_ARITH_EXP(M) \
-    M(exp_add) \
-    M(exp_sub) \
-    M(exp_mul) \
-    M(exp_div) \
-    M(exp_rem) \
-    M(exp_xor) \
-    M(exp_or) \
-    M(exp_and) \
-    M(exp_lsh) \
-    M(exp_rsh)
+    M(expr_add) \
+    M(expr_sub) \
+    M(expr_mul) \
+    M(expr_div) \
+    M(expr_rem) \
+    M(expr_xor) \
+    M(expr_or) \
+    M(expr_and) \
+    M(expr_lsh) \
+    M(expr_rsh)
 
 #define FOREACH_BIN_ARITH_ASSIGN_EXP(M) \
-    M(exp_add_ass) \
-    M(exp_sub_ass) \
-    M(exp_mul_ass) \
-    M(exp_div_ass) \
-    M(exp_rem_ass) \
-    M(exp_xor_ass) \
-    M(exp_or_ass) \
-    M(exp_and_ass) \
-    M(exp_lsh_ass) \
-    M(exp_rsh_ass)
+    M(expr_add_ass) \
+    M(expr_sub_ass) \
+    M(expr_mul_ass) \
+    M(expr_div_ass) \
+    M(expr_rem_ass) \
+    M(expr_xor_ass) \
+    M(expr_or_ass) \
+    M(expr_and_ass) \
+    M(expr_lsh_ass) \
+    M(expr_rsh_ass)
 
 #define FOREACH_BIN_LOGIC_EXP(M) \
-    M(exp_oror) \
-    M(exp_andand)
+    M(expr_oror) \
+    M(expr_andand)
 
 #define FOREACH_BINARY_EXP_(M) \
-    M(exp_dot) \
+    M(expr_dot) \
     \
     FOREACH_BIN_ARITH_EXP(M) \
     \
     FOREACH_BIN_LOGIC_EXP(M) \
     \
-    M(exp_arrow) \
-    M(exp_dotdot) \
+    M(expr_arrow) \
+    M(expr_dotdot) \
     \
-    M(exp_assign) \
+    M(expr_assign) \
     \
     FOREACH_BIN_ARITH_ASSIGN_EXP(M) \
     \
     FOREACH_CMP_EXP(M)
 
 #define FOREACH_EXP(M) \
-    M(exp_invalid) \
+    M(expr_invalid) \
     \
-    M(exp_identifier) \
-    M(exp_string) \
-    M(exp_char) \
-    M(exp_signed_integer) \
-    M(exp_float) \
-    M(exp_increment) \
-    M(exp_decrement) \
-    M(exp_post_increment) \
-    M(exp_post_decrement) \
-    M(exp_typeof) \
-    M(exp_sizeof) \
-    M(exp_inject) \
-    M(exp_eject) \
-    M(exp_assert) \
-    M(exp_outer) \
-    M(exp_stringize) \
-    M(exp_unary_dot) \
-    M(exp_addr) \
-    M(exp_deref) \
-    M(exp_not) \
-    M(exp_compl) \
-    M(exp_umin) \
-    M(exp_paren) \
-    M(exp_tuple) \
-    M(exp_ternary) \
-    M(exp_cast) \
+    M(expr_identifier) \
+    M(expr_string) \
+    M(expr_char) \
+    M(expr_signed_integer) \
+    M(expr_float) \
+    M(expr_increment) \
+    M(expr_decrement) \
+    M(expr_post_increment) \
+    M(expr_post_decrement) \
+    M(expr_typeof) \
+    M(expr_sizeof) \
+    M(expr_inject) \
+    M(expr_eject) \
+    M(expr_assert) \
+    M(expr_outer) \
+    M(expr_stringize) \
+    M(expr_unary_dot) \
+    M(expr_addr) \
+    M(expr_deref) \
+    M(expr_not) \
+    M(expr_compl) \
+    M(expr_umin) \
+    M(expr_paren) \
+    M(expr_tuple) \
+    M(expr_ternary) \
+    M(expr_cast) \
     \
     FOREACH_BINARY_EXP(M) \
     \
-    M(exp_full_slice) \
-    M(exp_slice) \
-    M(exp_index) \
-    M(exp_call) \
-    M(exp_argument) \
-    M(exp_type) \
+    M(expr_full_slice) \
+    M(expr_slice) \
+    M(expr_index) \
+    M(expr_call) \
+    M(expr_argument) \
+    M(expr_type) \
     \
-    M(exp_template_instance) \
+    M(expr_template_instance) \
     \
-    M(exp_variable) \
-    M(exp_field) \
-    M(exp_function) \
+    M(expr_variable) \
+    M(expr_field) \
+    M(expr_function) \
     \
-    M(exp_unknown_value) \
+    M(expr_unknown_value) \
     \
-    M(exp_addr_or_and) \
-    M(exp_deref_or_mul) \
+    M(expr_addr_or_and) \
+    M(expr_deref_or_mul) \
     \
-    M(exp_dot_compiler) \
-    M(exp_dot_context) \
-    M(exp_dot_target) \
+    M(expr_dot_compiler) \
+    M(expr_dot_context) \
+    M(expr_dot_target) \
     \
-    M(exp_max)
+    M(expr_max)
 
 
 #define FOREACH_STMT_KIND_(M) \
@@ -213,7 +213,7 @@ typedef enum scope_kind_t
     scope_exit
 } scope_kind_t;
 
-#define EXP_SELF(EXP) \
+#define EXPR_SELF(EXP) \
     EXP
 
 #define BIN_MEMBERS(MEMB) \
@@ -226,7 +226,7 @@ typedef enum metac_expr_kind_t
 
 typedef enum metac_stmt_kind_t
 {
-    stmt_min = exp_max + 1,
+    stmt_min = expr_max + 1,
 
     FOREACH_STMT_KIND(DEFINE_MEMBERS)
 
@@ -252,7 +252,7 @@ typedef enum metac_node_kind_t
 
 typedef enum metac_binary_expr_kind_t
 {
-    bin_exp_invalid = (FIRST_BINARY_EXP(EXP_SELF) - 1),
+    bin_exp_invalid = (FIRST_BINARY_EXP(EXPR_SELF) - 1),
 
     FOREACH_BINARY_EXP(BIN_MEMBERS)
 } metac_binary_expr_kind_t;

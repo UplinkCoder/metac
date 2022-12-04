@@ -20,21 +20,21 @@ typedef struct metac_expr_header_t
     EXPR_HEADER
 } metac_expr_header_t;
 
-typedef struct exp_argument_t
+typedef struct expr_argument_t
 {
     EXPR_HEADER
 
     struct metac_expr_t* Expr;
-    struct exp_argument_t* Next;
-} exp_argument_t;
+    struct expr_argument_t* Next;
+} expr_argument_t;
 
-typedef struct exp_tuple_t
+typedef struct expr_tuple_t
 {
     EXPR_HEADER
 
     struct metac_expr_t* Expr;
-    struct exp_tuple_t* Next;
-} exp_tuple_t;
+    struct expr_tuple_t* Next;
+} expr_tuple_t;
 
 #define METAC_MAX_EXP_BODY_SIZE 24
 
@@ -49,70 +49,70 @@ typedef struct metac_expr_t
 
     union // switch(Kind)
     {
-        // invalid case exp_max, exp_invalid :
+        // invalid case expr_max, expr_invalid :
 
-        // case exp_add, exp_sub, exp_mul, exp_div, exp_cat, exp_catAss, exp_assign,
-        // exp_lt, exp_gt, exp_le, exp_ge, exp_spaceShip :
+        // case expr_add, expr_sub, expr_mul, expr_div, expr_cat, expr_catAss, expr_assign,
+        // expr_lt, expr_gt, expr_le, expr_ge, expr_spaceShip :
         struct {
             struct metac_expr_t* _E1;
             struct metac_expr_t* E2;
         };
-        //case exp_ternary:
+        //case expr_ternary:
         struct {
             struct metac_expr_t* _E1_;
             struct metac_expr_t* _E2;
             struct metac_expr_t* Econd;
         };
-        // case  exp_inject, exp_eject, exp_assert, exp_outerParen, exp_outer :
+        // case  expr_inject, expr_eject, expr_assert, expr_outerParen, expr_outer :
         struct {
             struct metac_expr_t* E1;
         };
-        // case exp_sizeof:
+        // case expr_sizeof:
         struct {
             struct metac_expr_t* SizeofExp;
         };
-        // case exp_tuple:
+        // case expr_tuple:
         struct {
-            struct exp_tuple_t* TupleExprList;
+            struct expr_tuple_t* TupleExprList;
             uint32_t TupleExprCount;
         };
-        // case exp_cast:
+        // case expr_cast:
         struct {
             struct metac_expr_t* CastExp;
             struct decl_type_t* CastType;
         };
-        // case exp_type:
+        // case expr_type:
         struct {
             struct decl_type_t* TypeExp;
         };
 
-        // case exp_argument:
+        // case expr_argument:
         struct
         {
             struct metac_expr_t* Expr;
-            struct exp_argument_t* Next;
+            struct expr_argument_t* Next;
         };
         // case identifier_exp :
         struct {
             uint32_t IdentifierKey;
             metac_identifier_ptr_t IdentifierPtr;
         };
-        // case exp_string :
+        // case expr_string :
         struct {
             uint32_t StringKey;
             metac_identifier_ptr_t StringPtr;
         };
-        // case exp_char:
+        // case expr_char:
         struct {
             uint32_t CharKey;
             char Chars[8];
         };
 
-        // case exp_signed_integer :
+        // case expr_signed_integer :
         int64_t ValueI64;
-        // case exp_unsigned_integer :
+        // case expr_unsigned_integer :
         uint64_t ValueU64;
-        // case exp_float:
+        // case expr_float:
         float ValueF23;
     };
 } metac_expr_t;

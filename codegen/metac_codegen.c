@@ -477,14 +477,14 @@ bool IsExternal(metac_sema_expr_t* expr)
 
     switch(expr->Kind)
     {
-        case exp_variable:
+        case expr_variable:
             result = (STORAGE_KIND(expr->Variable->Storage) == storage_external);
         break;
-        case exp_dot:
-        case exp_arrow:
+        case expr_dot:
+        case expr_arrow:
             result = IsExternal(expr->E1);
         break;
-        case exp_function:
+        case expr_function:
             result = false;
         break;
         default: assert(0);
@@ -525,9 +525,9 @@ metac_bytecode_function_t MetaCCodegen_GenerateFunctionFromExp(metac_bytecode_ct
 
     bool compilerInterfaceInited = false;
 
-    if (expr->Kind == exp_call)
+    if (expr->Kind == expr_call)
     {
-        if(expr->E1->Kind == exp_function)
+        if(expr->E1->Kind == expr_function)
         {
             calledF = MetaCCodegen_GenerateFunction(ctx, expr->E1->Function);
         }
@@ -684,19 +684,19 @@ static bool IsUnaryExp(metac_expr_kind_t kind)
 {
     switch(kind)
     {
-        case exp_umin:
-        case exp_not:
-        case exp_compl:
-        case exp_decrement:
-        case exp_increment:
-        case exp_post_decrement:
-        case exp_post_increment:
-        case exp_paren:
-        case exp_cast:
-        case exp_deref:
-        case exp_addr:
-        case exp_sizeof:
-        case exp_typeof:
+        case expr_umin:
+        case expr_not:
+        case expr_compl:
+        case expr_decrement:
+        case expr_increment:
+        case expr_post_decrement:
+        case expr_post_increment:
+        case expr_paren:
+        case expr_cast:
+        case expr_deref:
+        case expr_addr:
+        case expr_sizeof:
+        case expr_typeof:
             return true;
         default:
             return false;
@@ -891,7 +891,7 @@ static void doArithExp(metac_bytecode_ctx_t* ctx,
 
 static bool HasSideEffect(metac_sema_expr_t* exp)
 {
-    return exp->Kind != exp_signed_integer;
+    return exp->Kind != expr_signed_integer;
 }
 
 static BCValue PtrValue(metac_bytecode_ctx_t* ctx, void* ptrV)
@@ -913,7 +913,7 @@ static void MetaCCodegen_ComputeAddress(metac_bytecode_ctx_t* ctx,
                                         BCValue* result)
 {
     sema_decl_variable_t* var = exp->Variable;
-    assert(exp->Kind == exp_variable);
+    assert(exp->Kind == expr_variable);
     switch(var->Storage.Kind)
     {
         case storage_external:
@@ -975,7 +975,7 @@ static void MetaCCodegen_doCastExpr(metac_bytecode_ctx_t* ctx,
     BCValue rhs = { BCValueType_Unknown };
     MetaCCodegen_doExpr(ctx, castExpr, &rhs, _Rvalue);
 
-    assert(exp->Kind == exp_cast);
+    assert(exp->Kind == expr_cast);
 
     if (castToType.v == TYPE_INDEX_V(type_index_basic, type_float))
     {
@@ -1012,7 +1012,7 @@ static void MetaCCodegen_doCastExpr(metac_bytecode_ctx_t* ctx,
         }
     }
 
-    assert(!"Handling for exp_cast not implemented at the moment");
+    assert(!"Handling for expr_cast not implemented at the moment");
 }
 
 static void MetaCCodegen_doDotExpr(metac_bytecode_ctx_t* ctx,
@@ -1033,9 +1033,9 @@ static void MetaCCodegen_doDotExpr(metac_bytecode_ctx_t* ctx,
     BCValue e1Value = {BCValueType_Unknown};
     BCValue offsetVal = {BCValueType_Unknown};
 
-    assert(exp->Kind == exp_dot);
+    assert(exp->Kind == expr_dot);
     assert(idxKind == type_index_struct);
-    assert(e2->Kind == exp_field || e2->Kind == exp_call);
+    assert(e2->Kind == expr_field || e2->Kind == expr_call);
 
     if (TYPE_INDEX_KIND(e2->TypeIndex) == type_index_functiontype)
     {
@@ -1082,8 +1082,8 @@ static void MetaCCodegen_doArrowExpr(metac_bytecode_ctx_t* ctx,
     BCValue offsetVal = {BCValueType_Unknown};
 
     assert(idxKind == type_index_ptr);
-    assert(exp->Kind == exp_arrow || exp->Kind == exp_dot);
-    assert(e2->Kind == exp_field || e2->Kind == exp_call);
+    assert(exp->Kind == expr_arrow || exp->Kind == expr_dot);
+    assert(e2->Kind == expr_field || e2->Kind == expr_call);
 
     if (TYPE_INDEX_KIND(e2->TypeIndex) == type_index_functiontype)
     {
@@ -1130,7 +1130,7 @@ static void MetaCCodegen_doExpr(metac_bytecode_ctx_t* ctx,
     {
         return ;
     }
-    else if (lValue == _Cond && exp->Kind == exp_signed_integer)
+    else if (lValue == _Cond && exp->Kind == expr_signed_integer)
     {
         int32_t truthval = exp->ValueI64 & 0xffffffff
                          | exp->ValueI64 << 32;
@@ -1148,18 +1148,18 @@ static void MetaCCodegen_doExpr(metac_bytecode_ctx_t* ctx,
             result = &tmp;
         }
 
-        if (op == exp_signed_integer)
+        if (op == expr_signed_integer)
         {
             (*result) = imm32_(cast(int32_t)exp->ValueI64, true);
             goto Lret;
         }
-        else if (op == exp_char)
+        else if (op == expr_char)
         {
             //TODO this is wrong!
             (*result) = imm32(exp->Chars[0]);
             goto Lret;
         }
-        else if (op == exp_float)
+        else if (op == expr_float)
         {
             (*result) = imm32(*(uint32_t*)&exp->ValueF23);
             result->type.type = BCTypeEnum_f23;
@@ -1176,28 +1176,28 @@ static void MetaCCodegen_doExpr(metac_bytecode_ctx_t* ctx,
     if (IsBinaryAssignExp(op))
     {
         doBinAss = true;
-        U32(op) -= (exp_add_ass - exp_add);
+        U32(op) -= (expr_add_ass - expr_add);
     }
 
 
 
-    if (op == exp_assign)
+    if (op == expr_assign)
     {
         MetaCCodegen_doExpr(ctx, exp->E1, result, _Lvalue);
         MetaCCodegen_doExpr(ctx, exp->E2, &rhs, _Rvalue);
     }
-    else if (op == exp_addr)
+    else if (op == expr_addr)
     {
     }
-    else if (op == exp_dot)
+    else if (op == expr_dot)
     {
     }
-    else if (op == exp_arrow)
+    else if (op == expr_arrow)
     {
     }
     else if (IsUnaryExp(op))
     {
-        if (exp->E1->Kind == exp_signed_integer
+        if (exp->E1->Kind == expr_signed_integer
            && (exp->E1->ValueI64 >= INT32_MIN && exp->E1->ValueI64 <= INT32_MAX))
         {
             lhs = imm32_(cast(int32_t)exp->E1->ValueI64, true);
@@ -1205,14 +1205,14 @@ static void MetaCCodegen_doExpr(metac_bytecode_ctx_t* ctx,
         else
         {
             bool opIsPostIncDec =
-                (op == exp_post_decrement || op == exp_post_increment);
+                (op == expr_post_decrement || op == expr_post_increment);
             lhs = gen.GenTemporary(c, expType);
             MetaCCodegen_doExpr(ctx, exp->E1, &lhs, (opIsPostIncDec ? _Lvalue : _Rvalue));
         }
     }
-    else if (IsBinaryExp(op) && op != exp_comma)
+    else if (IsBinaryExp(op) && op != expr_comma)
     {
-        if (!doBinAss && exp->E1->Kind != exp_signed_integer)
+        if (!doBinAss && exp->E1->Kind != expr_signed_integer)
         {
             lhs = gen.GenTemporary(c, expType);
         }
@@ -1227,7 +1227,7 @@ static void MetaCCodegen_doExpr(metac_bytecode_ctx_t* ctx,
             MetaCCodegen_doExpr(ctx, exp->E1, &lhs, _Rvalue);
         }
 
-        if (exp->E2->Kind == exp_signed_integer
+        if (exp->E2->Kind == expr_signed_integer
            && (exp->E2->ValueI64 >= INT32_MIN && exp->E2->ValueI64 <= INT32_MAX))
         {
             rhs = imm32_(cast(int32_t)exp->E2->ValueI64, true);
@@ -1241,7 +1241,7 @@ static void MetaCCodegen_doExpr(metac_bytecode_ctx_t* ctx,
 
     switch(op)
     {
-        case exp_dot_compiler:
+        case expr_dot_compiler:
         {
             printf("ignoring unprocessed .compiler expression\n");
         } break;
@@ -1253,25 +1253,25 @@ static void MetaCCodegen_doExpr(metac_bytecode_ctx_t* ctx,
             assert(0);
         } break;
 
-        case exp_unknown_value:
+        case expr_unknown_value:
         {
             assert(0);
             BCValue unknown = gen.GenTemporary(c, expType);
             gen.Set(c, result, &unknown);
         } break;
 
-        case exp_cast:
+        case expr_cast:
         {
             MetaCCodegen_doCastExpr(ctx, exp, result);
         } break;
 
-        case exp_deref:
+        case expr_deref:
         {
             metac_type_index_t lhsType = exp->TypeIndex;
             MetaCCodegen_doDeref(ctx, &lhs, lhsType, result);
         } break;
 
-        case exp_dot:
+        case expr_dot:
         {
             if (TYPE_INDEX_KIND(exp->E1->TypeIndex) == type_index_ptr)
             {
@@ -1283,12 +1283,12 @@ static void MetaCCodegen_doExpr(metac_bytecode_ctx_t* ctx,
             }
         } break;
 
-        case exp_arrow:
+        case expr_arrow:
         {
             MetaCCodegen_doArrowExpr(ctx, exp, result);
         } break;
 
-        case exp_function:
+        case expr_function:
         {
             *result = MetaCCodegen_doFunction(ctx, exp->Function);
         } break;
@@ -1299,7 +1299,7 @@ static void MetaCCodegen_doExpr(metac_bytecode_ctx_t* ctx,
             MetaCCodegen_doExpr(ctx, enumMember->Value, result, _Rvalue);
         } break;
 
-        case exp_ternary:
+        case expr_ternary:
         {
             BCValue cond = gen.GenTemporary(c, BCType_i32);
 
@@ -1317,13 +1317,13 @@ static void MetaCCodegen_doExpr(metac_bytecode_ctx_t* ctx,
             gen.EndCndJmp(c, &condExpJmp, falseBranch);
         } break;
 
-        case exp_comma:
+        case expr_comma:
         {
             metac_sema_expr_t* r = exp;
-            while(r->Kind == exp_comma)
+            while(r->Kind == expr_comma)
             {
                 // skip the generation of integers we'll never see
-                if (r->E1->Kind != exp_signed_integer)
+                if (r->E1->Kind != expr_signed_integer)
                 {
                     MetaCCodegen_doExpr(ctx, r->E1, 0, _Discard);
                 }
@@ -1332,17 +1332,17 @@ static void MetaCCodegen_doExpr(metac_bytecode_ctx_t* ctx,
             MetaCCodegen_doExpr(ctx, r, result, lValue);
         } break;
 
-        case exp_addr:
+        case expr_addr:
         {
             MetaCCodegen_ComputeAddress(ctx, exp->E1, result);
         } break;
 
-        case exp_string:
+        case expr_string:
         {
             // this should not happen, we should have made it into a pointer I think
             assert(0);
         }
-        case exp_assert:
+        case expr_assert:
         {
             /*
             BCValue errVal = imm32(0);
@@ -1351,16 +1351,16 @@ static void MetaCCodegen_doExpr(metac_bytecode_ctx_t* ctx,
             gen.Assert(c, &cond, &errVal);
              */
         } break;
-        case exp_assign:
+        case expr_assign:
         {
-            if (exp->E1->Kind == exp_tuple)
+            if (exp->E1->Kind == expr_tuple)
             {
-                if (exp->E2->Kind == exp_tuple)
+                if (exp->E2->Kind == expr_tuple)
                 {
                     //
                 }
             }
-            else if (exp->E1->Kind != exp_variable)
+            else if (exp->E1->Kind != expr_variable)
             {
                 fprintf(stderr, "left hand side of assignment is not a variable but a %s ..."
                                 " this should not happen; we are past semantic analysis\n", "");
@@ -1382,7 +1382,7 @@ static void MetaCCodegen_doExpr(metac_bytecode_ctx_t* ctx,
             //gen.Set(c, result, &lhs);
         } break;
 
-        case exp_tuple:
+        case expr_tuple:
         {
             if (result)
             {
@@ -1422,7 +1422,7 @@ static void MetaCCodegen_doExpr(metac_bytecode_ctx_t* ctx,
                     metac_sema_expr_t te = *exp->TupleExprs[i];
                     uint32_t memberSz = MetaCCodegen_GetStorageSize(ctx, bcTypes[i]);
 
-                    if (te.Kind == exp_signed_integer)
+                    if (te.Kind == expr_signed_integer)
                     {
                         BCValue val = imm32(cast(int32_t)te.ValueI64);
                         gen.Store32(c, &address, &val);
@@ -1455,102 +1455,102 @@ static void MetaCCodegen_doExpr(metac_bytecode_ctx_t* ctx,
             }
         } break;
 
-        case exp_type:
+        case expr_type:
         {
             BCValue imm = imm32(exp->TypeExp.v);
             gen.Set(c, result, &imm);
         } break;
 /*
-        case exp_char:
+        case expr_char:
         {
             // BCValue imm = imm32()
         } break;
 */
-        case exp_signed_integer:
+        case expr_signed_integer:
         {
             // BCValue imm = imm32((int32_t)exp->ValueU64);
             // gen.Set(c, result, &imm);
             assert(!"this should have been taken care of already");
         } break;
 
-        case exp_eq:
+        case expr_eq:
         {
             gen.Eq3(c, result, &lhs, &rhs);
         } break;
 
-        case exp_neq:
+        case expr_neq:
         {
             gen.Neq3(c, result, &lhs, &rhs);
         } break;
 
-        case exp_lt:
+        case expr_lt:
         {
             gen.Lt3(c, result, &lhs, &rhs);
         } break;
 
-        case exp_le:
+        case expr_le:
         {
             gen.Le3(c, result, &lhs, &rhs);
         } break;
 
-        case exp_ge:
+        case expr_ge:
         {
             gen.Ge3(c, result, &lhs, &rhs);
         } break;
 
-        case exp_gt:
+        case expr_gt:
         {
             gen.Gt3(c, result, &lhs, &rhs);
         } break;
 
-        case exp_add:
+        case expr_add:
         {
             gen.Add3(c, result, &lhs, &rhs);
         } break;
-        case exp_sub:
+        case expr_sub:
         {
             gen.Sub3(c, result, &lhs, &rhs);
         } break;
-        case exp_mul:
+        case expr_mul:
         {
             gen.Mul3(c, result, &lhs, &rhs);
         } break;
-        case exp_div:
+        case expr_div:
         {
             gen.Div3(c, result, &lhs, &rhs);
         } break;
-        case exp_rem:
+        case expr_rem:
         {
             gen.Mod3(c, result, &lhs, &rhs);
         } break;
-        case exp_andand:
-        case exp_and:
+        case expr_andand:
+        case expr_and:
         {
             gen.And3(c, result, &lhs, &rhs);
         } break;
 
-        case exp_oror:
-        case exp_or:
+        case expr_oror:
+        case expr_or:
         {
             gen.Or3(c, result, &lhs, &rhs);
         } break;
-        case exp_xor:
+        case expr_xor:
         {
             gen.Xor3(c, result, &lhs, &rhs);
         } break;
-        case exp_lsh:
+        case expr_lsh:
         {
             gen.Lsh3(c, result, &lhs, &rhs);
         } break;
-        case exp_rsh:
+        case expr_rsh:
         {
             gen.Rsh3(c, result, &lhs, &rhs);
         } break;
-        case exp_identifier:
+        case expr_identifier:
         {
             fprintf(stderr, "There have been unresolved identifiers ... this should not happen\n");
         } break;
-        case exp_variable:
+        case expr_variable:
         {
             if (MetaCCodegen_AccessVariable(ctx, exp->Variable, result, lValue))
             {
@@ -1560,44 +1560,44 @@ static void MetaCCodegen_doExpr(metac_bytecode_ctx_t* ctx,
                 // Info("Indirected access");
             }
         } break;
-        case exp_paren:
+        case expr_paren:
         {
             MetaCCodegen_doExpr(ctx, exp->E1, result, lValue);
         } break;
-        case exp_compl:
+        case expr_compl:
         {
             gen.Not(c, result, &lhs);
         } break;
-        case exp_not:
+        case expr_not:
         {
             BCValue zero = imm32(0);
             gen.Eq3(c, result, &lhs, &zero);
         } break;
-        case exp_umin:
+        case expr_umin:
         {
             BCValue zero = imm32(0);
             gen.Sub3(c, result, &zero, &lhs);
         } break;
 
-        case exp_post_increment:
-        case exp_post_decrement:
+        case expr_post_increment:
+        case expr_post_decrement:
         {
             gen.Set(c, result, &lhs);
             BCValue one = imm32(1);
-            (op == exp_post_increment ? gen.Add3(c, &lhs, &lhs, &one)
+            (op == expr_post_increment ? gen.Add3(c, &lhs, &lhs, &one)
                                       : gen.Sub3(c, &lhs, &lhs, &one));
         } break;
 
-        case exp_increment:
-        case exp_decrement:
+        case expr_increment:
+        case expr_decrement:
         {
             BCValue one = imm32(1);
-            (op == exp_increment ? gen.Add3(c, &lhs, &lhs, &one)
+            (op == expr_increment ? gen.Add3(c, &lhs, &lhs, &one)
                                  : gen.Sub3(c, &lhs, &lhs, &one));
             gen.Set(c, result, &lhs);
         } break;
 
-        case exp_call:
+        case expr_call:
         {
             sema_exp_call_t call = exp->Call;
             bool isExternal = IsExternal(call.Function);
@@ -1605,7 +1605,7 @@ static void MetaCCodegen_doExpr(metac_bytecode_ctx_t* ctx,
             BCValue resultVal =
                 gen.GenTemporary(c, MetaCCodegen_GetBCType(ctx, exp->TypeIndex));
 
-            if (call.Function->Kind == exp_function)
+            if (call.Function->Kind == expr_function)
             {
                 assert(call.Function->Function);
             }

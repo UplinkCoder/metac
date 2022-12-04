@@ -885,7 +885,7 @@ LswitchMode:
                 result = &eval_exp;
 
                 const char* result_str;
-                if (eval_exp.Kind == exp_type)
+                if (eval_exp.Kind == expr_type)
                 {
                     result_str = MetaCPrinter_PrintSemaNode(&repl->printer, &repl->SemanticState, cast(metac_node_t)&eval_exp);
                 }
@@ -966,7 +966,7 @@ LswitchMode:
                     metac_expr_t* assignExp = MetaCLPP_ParseExprFromString(&repl->LPP, repl->Line);
                     if (assignExp)
                     {
-                        if (assignExp->Kind != exp_assign)
+                        if (assignExp->Kind != expr_assign)
                         {
                             ERRORMSG("You must write an expression of the from identifier = value");
                             goto LnextLine;
@@ -976,11 +976,11 @@ LswitchMode:
                             MetaCSemantic_doExprSemantic(&repl->SemanticState, assignExp, 0);
                         if (ae)
                         {
-                            if (ae->E1->Kind == exp_identifier)
+                            if (ae->E1->Kind == expr_identifier)
                             {
                                 assert(0);
                             }
-                            assert(ae->E2->Kind == exp_signed_integer);
+                            assert(ae->E2->Kind == expr_signed_integer);
 
                             // VariableStore_SetValueI32(&repl->vstore, ae->E1, (int32_t)ae->E2->ValueI64);
                         }

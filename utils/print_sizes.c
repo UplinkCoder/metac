@@ -7,7 +7,7 @@
 int main()
 {
     printf("%d token are defined\n", (int)tok_error);
-    printf("%d expression types are defined\n", (int)exp_max);
+    printf("%d expression types are defined\n", (int)expr_max);
     printf("%d node types are defined\n", (int)node_max);
 
     printf("\n\n");
