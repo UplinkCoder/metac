@@ -20,7 +20,7 @@ jobs:
       run: ./gen_code.sh && ./run_tests.sh
 
     - name: Build REPL
-      run:  cd repl && ./build.sh 
+      run:  ./build_repl.sh
 
   build_windows:
     runs-on: windows-2019
@@ -33,4 +33,4 @@ jobs:
       run: ./gen_code.bat && ./run_tests.bat
 
     - name: Build REPL
-      run:  cd repl && ./build.bat 
+      run:  cd repl && ./build.bat
