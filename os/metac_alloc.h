@@ -165,3 +165,5 @@ void* Allocator_Calloc_(metac_alloc_t* alloc, uint32_t elemSize, uint32_t elemCo
     Allocate_((ALLOC), (SIZE), __FILE__, __LINE__, false)
 arena_ptr_t  Allocate_(metac_alloc_t* allocator, uint32_t size,
                        const char* file, uint32_t line, bool forChild);
+
+void Allocator_FreeArena (metac_alloc_t* alloc, arena_ptr_t arena);
