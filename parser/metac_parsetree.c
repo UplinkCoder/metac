@@ -203,6 +203,15 @@ int MetaCNode_TreeWalk_Real(metac_node_t node, walker_function_t walker_fn, void
                  return result;
         } break;
 
+        case stmt_run:
+        {
+            stmt_run_t* stmt_run = cast(stmt_run_t*) node;
+            if ((metac_node_t)stmt_run->RunStmt != emptyNode)
+                result = MetaCNode_TreeWalk_Real(stmt_run->RunStmt, walker_fn, ctx);
+             if(result)
+                 return result;
+        } break;
+
         case node_stmt_scope:
             assert(0); // Not implemented currently.
 
