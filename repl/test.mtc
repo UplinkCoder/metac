@@ -1,0 +1,32 @@
+void Print(auto Value, const char* name, uint32_t indent)
+{
+    for(uint32_t i = 0; i < indent; i++)
+    {
+        printf("    ");
+    }
+    printf("%s:", name ? name : "");
+
+    @run {
+        type valueType = .compiler.GetType(Value);
+        switch(.compiler.GetTypeKind(valueType))
+        {
+            case metac_type_kind_struct:
+            {
+                metac_aggregate_members_t* members = 
+                    .compiler.GetMembers(valueType);
+                .compiler.Assert(members, "ICE: structs are supposed to have members"); 
+
+                const uint32_t memberCount = members->Count;
+                for(uint32_t i = 0; i < memberCount; i++)
+                {
+                    metac_aggregate_member_t member = members->Members[i];
+                    inject Print(Value.$(member.name), #$(member.name), $(indent++));
+                }
+            }
+            default:
+            {
+                .compiler.Error("Value type not supported");
+            }
+        }
+    }
+}
