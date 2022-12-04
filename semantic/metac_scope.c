@@ -1,4 +1,5 @@
 #include <string.h>
+#include <assert.h>
 #include "metac_scope.h"
 #include "../hash/crc32c.h"
 #include "../parser/metac_alloc_node.h"
