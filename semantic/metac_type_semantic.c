@@ -629,7 +629,7 @@ void MetaCSemantic_ComputeEnumValues(metac_sema_state_t* self,
         {
             metac_sema_expr_t* semaMember = memberPlaceholders + memberIdx;
 
-            memberPlaceholders[memberIdx].Kind = exp_unknown_value;
+            memberPlaceholders[memberIdx].Kind = expr_unknown_value;
             memberPlaceholders[memberIdx].TypeIndex = semaEnum->BaseType;
             memberPlaceholders[memberIdx].Expr = member->Value;
 
@@ -701,18 +701,18 @@ void MetaCSemantic_ComputeEnumValues(metac_sema_state_t* self,
                 metac_sema_expr_t* semaValue =
                     semaEnum->Members[memberIdx].Value;
                 assert(member->Value);
-                if (semaValue->Kind != exp_signed_integer)
+                if (semaValue->Kind != expr_signed_integer)
                 {
                     semaValue->TypeIndex.v = semaEnum->BaseType.v;
                     MetaCSemantic_ConstantFold(self, semaValue);
                 }
-                assert(semaValue->Kind == exp_signed_integer);
+                assert(semaValue->Kind == expr_signed_integer);
                 nextValue = semaValue->ValueI64 + 1;
             }
             else
             {
                 // let's construct a metac_expression from currentValue
-                metac_expr_t Value = {exp_signed_integer, member->LocationIdx, 0, 0};
+                metac_expr_t Value = {expr_signed_integer, member->LocationIdx, 0, 0};
                 Value.ValueI64 = nextValue++;
 
                 semaEnum->Members[memberIdx].Value =
@@ -812,7 +812,7 @@ metac_type_index_t TypeArraySemantic(metac_sema_state_t* self,
 
     if (METAC_NODE(dim) != emptyNode)
     {
-        if (dim->Kind != exp_signed_integer)
+        if (dim->Kind != expr_signed_integer)
         {
             fprintf(stderr, "Array dimension should eval to integer but it is: %s\n",
                 MetaCExprKind_toChars(dim->Kind));

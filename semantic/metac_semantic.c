@@ -41,11 +41,11 @@ bool Expr_IsEqual_(const metac_sema_expr_t* a,
     {
         switch(a->Kind)
         {
-            case exp_signed_integer:
+            case expr_signed_integer:
                result = a->ValueI64 == b->ValueI64;
             break;
 
-            case exp_argument:
+            case expr_argument:
             {
                 if (a->ArgumentList->ArgumentCount
                     == b->ArgumentList->ArgumentCount)
@@ -1290,7 +1290,7 @@ void MetaCSemantic_PopOnResolveFail(metac_sema_state_t* self)
 
 bool IsUnresolved(metac_node_t node)
 {
-    return node == (metac_node_t)0 || node->Kind == node_exp_unknown_value;
+    return node == (metac_node_t)0 || node->Kind == node_expr_unknown_value;
 }
 
 /// Returns _emptyNode to signifiy it could not be found

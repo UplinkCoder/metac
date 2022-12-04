@@ -2,7 +2,7 @@
 #if 0
 #include "../compat.h"
 #include "../metac_parser.h"
-#include "exp_eval.h"
+#include "expr_eval.h"
 #include "../libinterpret/bc_common.c"
 #include "../libinterpret/bc_interpreter_backend.c"
 #include <stdio.h>
@@ -106,7 +106,7 @@ void VariableStore_SetValueI32(variable_store_t* vstore,
                                metac_sema_expr_t* varExp,
                                int32_t value)
 {
-    assert(varExp->Kind == exp_variable);
+    assert(varExp->Kind == expr_variable);
 
     metac_identifier_ptr_t vstoreId = GetVStoreID(vstore, varExp->Variable);
     BCValue* v = GetValueFromVariableStore(vstore, vstoreId);
@@ -163,7 +163,7 @@ void WalkTree(void* c, BCValue* result,
 {
     metac_expr_kind_t op = e->Kind;
 
-    if (op == exp_signed_integer)
+    if (op == expr_signed_integer)
     {
         (*result) = imm32(cast(int32_t)e->ValueI64);
         return ;
@@ -177,7 +177,7 @@ void WalkTree(void* c, BCValue* result,
 
     if (IsBinaryAssignExp(op))
     {
-        op -= (exp_add_ass - exp_add);
+        op -= (expr_add_ass - expr_add);
     }
 
     if (IsBinaryExp(op))
@@ -188,7 +188,7 @@ void WalkTree(void* c, BCValue* result,
 
     switch(op)
     {
-        case exp_dot_compiler:
+        case expr_dot_compiler:
         {
             printf("ignoring unprocessed .compiler expression\n");
         } break;
@@ -204,12 +204,12 @@ void WalkTree(void* c, BCValue* result,
             metac_enum_member_t* enumMember = cast(metac_enum_member_t*) e;
             *result = imm32((int32_t)enumMember->Value->ValueI64);
         } break;
-        case exp_string:
+        case expr_string:
         {
             // this should not happen, we should have made it into a pointer I think
             assert(0);
         }
-        case exp_assert:
+        case expr_assert:
         {
             /*
             BCValue errVal = imm32(0);
@@ -218,9 +218,9 @@ void WalkTree(void* c, BCValue* result,
             bc->Assert(c, &cond, &errVal);
              */
         } break;
-        case exp_assign:
+        case expr_assign:
         {
-            assert(e->E1->Kind == exp_variable);
+            assert(e->E1->Kind == expr_variable);
 
             //metac_identifier_ptr_t idPtr = e->E1->Variable->VarIdentifier;
             //metac_identifier_ptr_t vStorePtr = GetVStoreID(vstore, e->E1);
@@ -228,93 +228,93 @@ void WalkTree(void* c, BCValue* result,
             bc->Set(c, result, lhs);
         } break;
 
-        case exp_tuple:
+        case expr_tuple:
         {
             TupleToValue(c, result, e);
         } break;
 
-        case exp_type:
+        case expr_type:
         {
             BCValue imm = imm32(e->TypeExp.v);
             bc->Set(c, result, &imm);
         } break;
 
-        case exp_signed_integer:
+        case expr_signed_integer:
         {
             BCValue imm = imm32((int32_t)e->ValueU64);
             bc->Set(c, result, &imm);
         } break;
 
-        case exp_eq:
+        case expr_eq:
         {
             bc->Eq3(c, result, lhs, rhs);
         } break;
 
-        case exp_neq:
+        case expr_neq:
         {
             bc->Neq3(c, result, lhs, rhs);
         } break;
 
-        case exp_lt:
+        case expr_lt:
         {
             bc->Lt3(c, result, lhs, rhs);
         } break;
 
-        case exp_le:
+        case expr_le:
         {
             bc->Le3(c, result, lhs, rhs);
         } break;
 
-        case exp_ge:
+        case expr_ge:
         {
             bc->Ge3(c, result, lhs, rhs);
         } break;
 
-        case exp_gt:
+        case expr_gt:
         {
             bc->Gt3(c, result, lhs, rhs);
         } break;
 
-        case exp_add:
+        case expr_add:
         {
             bc->Add3(c, result, lhs, rhs);
         } break;
-        case exp_sub:
+        case expr_sub:
         {
             bc->Sub3(c, result, lhs, rhs);
         } break;
-        case exp_mul:
+        case expr_mul:
         {
             bc->Mul3(c, result, lhs, rhs);
         } break;
-        case exp_div:
+        case expr_div:
         {
             bc->Div3(c, result, lhs, rhs);
         } break;
-        case exp_rem:
+        case expr_rem:
         {
             bc->Mod3(c, result, lhs, rhs);
         } break;
-        case exp_andand:
-        case exp_and:
+        case expr_andand:
+        case expr_and:
         {
             bc->And3(c, result, lhs, rhs);
         } break;
 
-        case exp_oror:
-        case exp_or:
+        case expr_oror:
+        case expr_or:
         {
             bc->Or3(c, result, lhs, rhs);
         } break;
-        case exp_xor:
+        case expr_xor:
         {
             bc->Xor3(c, result, lhs, rhs);
         } break;
-        case exp_identifier:
+        case expr_identifier:
         {
             fprintf(stderr, "There have been unresolved identifiers ... this should not happen\n");
         }
-        case exp_variable:
+        case expr_variable:
         {
             metac_identifier_ptr_t vstoreId =
                 GetVStoreID(vstore, e->Variable);
@@ -331,41 +331,41 @@ void WalkTree(void* c, BCValue* result,
                                                        vstoreId));
             }
         } break;
-        case exp_paren:
+        case expr_paren:
         {
             WalkTree(c, result, e->E1, vstore);
         } break;
-        case exp_compl:
+        case expr_compl:
         {
             WalkTree(c, rhs, e->E1, vstore);
             bc->Not(c, result, rhs);
         } break;
-        case exp_not:
+        case expr_not:
         {
             WalkTree(c, lhs, e->E1, vstore);
             BCValue zero = imm32(0);
             bc->Eq3(c, result, lhs, &zero);
         } break;
-        case exp_umin:
+        case expr_umin:
         {
             WalkTree(c, lhs, e->E1, vstore);
             BCValue zero = imm32(0);
             bc->Sub3(c, result, &zero, lhs);
         } break;
-        case exp_post_decrement:
+        case expr_post_decrement:
         {
             WalkTree(c, lhs, e->E1, vstore);
             bc->Set(c, result, lhs);
             BCValue one = imm32(1);
             bc->Sub3(c, lhs, lhs, &one);
         } break;
-        case exp_post_increment:
+        case expr_post_increment:
         {
             WalkTree(c, lhs, e->E1, vstore);
             bc->Set(c, result, lhs);
             BCValue one = imm32(1);
             bc->Add3(c, lhs, lhs, &one);
-            if (e->E1->Kind == exp_variable)
+            if (e->E1->Kind == expr_variable)
             {
 /*
                 assert(_ReadContextSize < _ReadContextCapacity);
@@ -382,12 +382,12 @@ void WalkTree(void* c, BCValue* result,
             }
         } break;
 
-        case exp_call:
+        case expr_call:
         {
             sema_exp_call_t* call = &e->Call;
 
             printf("call->Function->Kind: %s\n", MetaCExprKind_toChars(e->E1->Kind));
-            assert(call->Function->Kind == exp_function);
+            assert(call->Function->Kind == expr_function);
             sema_decl_function_t* func = call->Function->Function;
             metac_identifier_ptr_t idPtr = func->Identifier;
             assert(0); // Not supported for the time being
@@ -441,13 +441,13 @@ metac_sema_expr_t evalWithVariables(metac_sema_expr_t* e,
 
     if (e->TypeIndex.v == TYPE_INDEX_V(type_index_basic, type_type))
     {
-        result.Kind = exp_type;
+        result.Kind = expr_type;
         result.TypeIndex.v = TYPE_INDEX_V(type_index_basic, type_type);
         result.TypeExp.v = res.imm32.imm32;
     }
     else
     {
-        result.Kind = exp_signed_integer;
+        result.Kind = expr_signed_integer;
         result.ValueI64 = res.imm64.imm64;
     }
 

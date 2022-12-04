@@ -2,7 +2,7 @@
 
 static inline bool MetaCNode_IsExpr(metac_node_t node)
 {
-    return (node->Kind > node_exp_invalid && node->Kind < node_exp_max);
+    return (node->Kind > node_expr_invalid && node->Kind < node_expr_max);
 }
 
 static inline bool MetaCNode_IsStmt(metac_node_t node)

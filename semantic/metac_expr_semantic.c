@@ -43,21 +43,21 @@ void ConvertTupleElementToExp(metac_sema_state_t* sema,
                               metac_sema_expr_t** dstP, metac_type_index_t elemType,
                               uint32_t offset, BCHeap* heap)
 {
-    metac_expr_t exp = {exp_invalid};
+    metac_expr_t exp = {expr_invalid};
     *dstP = AllocNewSemaExpr(sema, &exp);
     metac_sema_expr_t* dst = *dstP;
 
     if (elemType.v == TYPE_INDEX_V(type_index_basic, type_int))
     {
         int32_t value = *cast(int32_t*)(heap->heapData + offset);
-        dst->Kind = exp_signed_integer;
+        dst->Kind = expr_signed_integer;
         dst->TypeIndex = elemType;
         dst->ValueI64 = value;
     }
     else if (elemType.v == TYPE_INDEX_V(type_index_basic, type_type))
     {
         metac_type_index_t value = *cast(metac_type_index_t*)(heap->heapData + offset);
-        dst->Kind = exp_type;
+        dst->Kind = expr_type;
         dst->TypeIndex = elemType;
         dst->TypeExp = value;
     }
@@ -97,7 +97,7 @@ EvaluateExpr(metac_sema_state_t* sema,
 
     if (e->TypeIndex.v == TYPE_INDEX_V(type_index_basic, type_type))
     {
-        result.Kind = exp_type;
+        result.Kind = expr_type;
         result.TypeIndex.v = TYPE_INDEX_V(type_index_basic, type_type);
         result.TypeExp.v = resultInt;
     }
@@ -114,7 +114,7 @@ EvaluateExpr(metac_sema_state_t* sema,
 
         ARENA_ARRAY_ENSURE_SIZE(tupleExps, count);
 
-        result.Kind = exp_tuple;
+        result.Kind = expr_tuple;
         result.TypeIndex = e->TypeIndex;
 
         for(uint32_t i = 0; i < count; i++)
@@ -133,13 +133,13 @@ EvaluateExpr(metac_sema_state_t* sema,
     else if (TYPE_INDEX_KIND(e->TypeIndex) == type_index_basic &&
              TYPE_INDEX_INDEX(e->TypeIndex) == (uint32_t) type_float)
     {
-        result.Kind = exp_float;
+        result.Kind = expr_float;
         result.ValueF23 = *(float*) &resultInt;
         result.TypeIndex.v = TYPE_INDEX_V(type_index_basic, type_float);
     }
     else
     {
-        result.Kind = exp_signed_integer;
+        result.Kind = expr_signed_integer;
         result.TypeIndex.v = e->TypeIndex.v;
         result.ValueI64 = resultInt;
     }
@@ -163,7 +163,7 @@ static inline int32_t GetConstI32(metac_sema_state_t* self, metac_sema_expr_t* i
 {
     int32_t result = ~0;
 
-    if (index->Kind == exp_signed_integer)
+    if (index->Kind == expr_signed_integer)
     {
         result = cast(int32_t) index->ValueI64;
     }
@@ -185,7 +185,7 @@ metac_sema_expr_t* MetaCSemantic_doIndexSemantic_(metac_sema_state_t* self,
     metac_sema_expr_t* indexed = MetaCSemantic_doExprSemantic(self, expr->E1, 0/*, expr_asAddress*/);
     metac_sema_expr_t* index = MetaCSemantic_doExprSemantic(self, expr->E2, 0);
 
-    if (indexed->Kind ==  exp_tuple)
+    if (indexed->Kind ==  expr_tuple)
     {
         bool errored = false;
         int32_t idx = GetConstI32(self, index, &errored);
@@ -202,7 +202,7 @@ metac_sema_expr_t* MetaCSemantic_doIndexSemantic_(metac_sema_state_t* self,
             fprintf(stderr, "index is not a constant value\n");
         }
     }
-    else if (indexed->Kind == exp_variable)
+    else if (indexed->Kind == expr_variable)
     {
         assert(TYPE_INDEX_KIND(indexed->TypeIndex) == type_index_array
             || TYPE_INDEX_KIND(indexed->TypeIndex) == type_index_ptr);
@@ -233,12 +233,12 @@ metac_sema_expr_t* doCmpExpSemantic(metac_sema_state_t* self,
             // InternalError("%s is not a comparison expression", MetaCExprKind_toChars(cmpExp->Kind));
         };
 
-        case exp_lt:
-        case exp_le:
-        case exp_gt:
-        case exp_ge:
-        case exp_neq:
-        case exp_eq: {
+        case expr_lt:
+        case expr_le:
+        case expr_gt:
+        case expr_ge:
+        case expr_neq:
+        case expr_eq: {
             if (TypeIsInteger(e1->TypeIndex) && TypeIsInteger(e2->TypeIndex))
                 result->TypeIndex = tbool;
         } break;
@@ -268,8 +268,8 @@ void MetaCSemantic_doCallSemantic(metac_sema_state_t* self,
     metac_sema_expr_t* result;
     metac_expr_t* fn = call->E1;
 
-    exp_argument_t* argList = (METAC_NODE(call->E2) != emptyNode ?
-        (exp_argument_t*)call->E2 : (exp_argument_t*)emptyNode);
+    expr_argument_t* argList = (METAC_NODE(call->E2) != emptyNode ?
+        (expr_argument_t*)call->E2 : (expr_argument_t*)emptyNode);
     STACK_ARENA_ARRAY(metac_sema_expr_t*, arguments, 64, &self->TempAlloc);
 
     uint32_t nArgs = 0;
@@ -304,7 +304,7 @@ void MetaCSemantic_doCallSemantic(metac_sema_state_t* self,
 
     metac_expr_t dummy;
     dummy.LocationIdx = call->LocationIdx;
-    dummy.Kind = exp_variable;
+    dummy.Kind = expr_variable;
 
     metac_type_functiontype_t* funcType = FunctiontypePtr(self, TYPE_INDEX_INDEX(func->TypeIndex));
 
@@ -332,7 +332,7 @@ void ResolveIdentifierToExp(metac_sema_state_t* self,
     metac_sema_expr_t* result = *resultP;
     // printf("Resolving node: %p\n", node);
 
-    if (node->Kind == (metac_node_kind_t)exp_identifier)
+    if (node->Kind == (metac_node_kind_t)expr_identifier)
     {
         fprintf(stderr, "we should not be retured an identifier\n");
     }
@@ -340,7 +340,7 @@ void ResolveIdentifierToExp(metac_sema_state_t* self,
              node->Kind == node_decl_parameter)
     {
         sema_decl_variable_t* v = cast(sema_decl_variable_t*)node;
-        result->Kind = exp_variable;
+        result->Kind = expr_variable;
         result->Variable = v;
         result->TypeIndex = v->TypeIndex;
         hash = v->Hash;
@@ -349,7 +349,7 @@ void ResolveIdentifierToExp(metac_sema_state_t* self,
     {
         metac_type_aggregate_field_t* field =
             cast(metac_type_aggregate_field_t*) node;
-        result->Kind = exp_field;
+        result->Kind = expr_field;
         result->Field = field;
         result->TypeIndex = field->Type;
         hash = field->Header.Hash;
@@ -362,25 +362,25 @@ void ResolveIdentifierToExp(metac_sema_state_t* self,
     }
     else if (node->Kind == node_decl_type_struct)
     {
-        result->Kind = exp_type;
+        result->Kind = expr_type;
         result->TypeExp.v =
             TYPE_INDEX_V(type_index_struct, StructIndex(self, cast(metac_type_aggregate_t*)node));
         result->TypeIndex.v = TYPE_INDEX_V(type_index_basic, type_type);
     }
     else if (node->Kind == node_decl_type_typedef)
     {
-        result->Kind = exp_type;
+        result->Kind = expr_type;
         result->TypeExp.v =
             TYPE_INDEX_V(type_index_typedef, TypedefIndex(self, cast(metac_type_typedef_t*)node));
     }
     else if (node->Kind == node_decl_function)
     {
         sema_decl_function_t* func = cast(sema_decl_function_t*) node;
-        result->Kind = exp_function;
+        result->Kind = expr_function;
         result->Function = func;
         result->TypeIndex = func->TypeIndex;
     }
-    else if (node->Kind == node_exp_unknown_value)
+    else if (node->Kind == node_expr_unknown_value)
     {
         (*result) = *cast(metac_sema_expr_t*) node;
         hash = result->Hash;
@@ -395,7 +395,7 @@ void ResolveIdentifierToExp(metac_sema_state_t* self,
 
 metac_sema_expr_t* UnwrapParen(metac_sema_expr_t* e)
 {
-    while(e->Kind == exp_paren)
+    while(e->Kind == expr_paren)
     {
         e = e->E1;
     }
@@ -405,7 +405,7 @@ metac_sema_expr_t* UnwrapParen(metac_sema_expr_t* e)
 
 metac_sema_expr_t* ExtractCastExp(metac_sema_expr_t* e)
 {
-    while(e->Kind == exp_cast)
+    while(e->Kind == expr_cast)
     {
         e = e->CastExp;
     }
@@ -417,8 +417,8 @@ void MetaCSemantic_doAssignSemantic(metac_sema_state_t* self,
                                     metac_expr_t* expr,
                                     metac_sema_expr_t* result)
 {
-    assert(expr->Kind == exp_assign);
-    assert(result->Kind == exp_assign);
+    assert(expr->Kind == expr_assign);
+    assert(result->Kind == expr_assign);
 
     if (result->E1->TypeIndex.v != result->E2->TypeIndex.v)
     {
@@ -432,14 +432,14 @@ metac_identifier_ptr_t GetIdentifierPtr(metac_expr_t* expr)
 
     switch(expr->Kind)
     {
-        case exp_type:
+        case expr_type:
         {
             if (expr->TypeExp->TypeKind == type_identifier)
             {
                 result.v = expr->TypeExp->TypeIdentifier.v;
             }
         } break;
-        case exp_identifier:
+        case expr_identifier:
         {
             result.v = expr->IdentifierPtr.v;
         } break;
@@ -469,15 +469,15 @@ metac_sema_expr_t* MetaCSemantic_doExprSemantic_(metac_sema_state_t* self,
     uint32_t hash = 0;
 
     if (IsBinaryExp(expr->Kind)
-        && (   expr->Kind != exp_arrow
-            && expr->Kind != exp_dot
-            && expr->Kind != exp_index
-        ) ||   expr->Kind == exp_ternary
+        && (   expr->Kind != expr_arrow
+            && expr->Kind != expr_dot
+            && expr->Kind != expr_index
+        ) ||   expr->Kind == expr_ternary
     )
     {
         MetaCSemantic_PushExpr(self, result);
 
-        if (expr->Kind == exp_ternary)
+        if (expr->Kind == expr_ternary)
         {
             result->Econd = MetaCSemantic_doExprSemantic(self, expr->Econd, 0);
             hash = CRC32C_VALUE(hash, result->Econd->Hash);
@@ -494,7 +494,7 @@ metac_sema_expr_t* MetaCSemantic_doExprSemantic_(metac_sema_state_t* self,
 
     switch(expr->Kind)
     {
-        case exp_invalid:
+        case expr_invalid:
         default:
         {
             fprintf(stderr, "expression semantic doesn't support %s yet.\n",
@@ -502,30 +502,30 @@ metac_sema_expr_t* MetaCSemantic_doExprSemantic_(metac_sema_state_t* self,
             assert(0);
         }
 
-        case exp_comma:
+        case expr_comma:
         {
             metac_sema_expr_t* r = result->E2;
-            while(r->Kind == exp_comma)
+            while(r->Kind == expr_comma)
             {
                 r = r->E2;
             }
             result->TypeIndex = r->TypeIndex;
         } break;
 
-        case exp_unary_dot:
+        case expr_unary_dot:
         {
             metac_identifier_ptr_t idPtr = {0};
             uint32_t idKey = 0;
             const char* idString = 0;
 
-            if (expr->E1->Kind == exp_type &&
+            if (expr->E1->Kind == expr_type &&
                 expr->E1->TypeExp->TypeKind == type_identifier)
             {
                 metac_sema_expr_t holder;
                 idPtr = expr->E1->TypeExp->TypeIdentifier;
                 goto LswitchIdKey;
             }
-            else if (result->E1->Kind == exp_identifier)
+            else if (result->E1->Kind == expr_identifier)
             {
                 idPtr = (expr->E1->IdentifierPtr);
 LswitchIdKey:
@@ -537,7 +537,7 @@ LswitchIdKey:
                 {
                     case compiler_key:
                     {
-                        result->Kind = exp_variable;
+                        result->Kind = expr_variable;
                         result->Variable = &self->CompilerVariable;
                         // result->TypeIndex = MetaCSemantic_doTypeSemantic(self, result->Variable);
                         result->TypeIndex = result->Variable->TypeIndex;
@@ -551,12 +551,12 @@ LswitchIdKey:
             }
         } break;
 
-        case exp_call:
+        case expr_call:
         {
             MetaCSemantic_doCallSemantic(self, expr, &result);
         } break;
 
-        case exp_deref:
+        case expr_deref:
         {
             result->E1 = MetaCSemantic_doExprSemantic(self, expr->E1, 0);
             metac_type_index_t e1type = result->E1->TypeIndex;
@@ -572,15 +572,15 @@ LswitchIdKey:
             }
         } break;
 
-        case exp_arrow:
-        case exp_dot:
+        case expr_arrow:
+        case expr_dot:
         {
             // for the semantic of E2 we need to do the lookup in the scope of
             // the type of E1
             metac_type_index_t e1Type = {0};
             uint32_t typeIndexIndex = 0;
 
-            bool isArrow = expr->Kind == exp_arrow;
+            bool isArrow = expr->Kind == expr_arrow;
             metac_type_index_t elementType = {0};
             metac_type_aggregate_t* e1AggType = 0;
             metac_type_ptr_t* ptrType = 0;
@@ -632,12 +632,12 @@ LswitchIdKey:
                 metac_identifier_ptr_t idPtr = {0};
                 switch(expr->E2->Kind)
                 {
-                    case exp_type:
-                    case exp_identifier:
+                    case expr_type:
+                    case expr_identifier:
                     {
                         idPtr = GetIdentifierPtr(expr->E2);
                     } break;
-                    case exp_call:
+                    case expr_call:
                     {
                         idPtr = GetIdentifierPtr(expr->E2->E1);
                     } break;
@@ -648,10 +648,10 @@ LswitchIdKey:
                     }
                 }
 
-                assert(expr->E2->Kind == exp_identifier || expr->E2->Kind == exp_call || expr->E2->Kind == exp_type);
+                assert(expr->E2->Kind == expr_identifier || expr->E2->Kind == expr_call || expr->E2->Kind == expr_type);
                 result->AggExp = result->E1;
 
-                if (expr->E2->Kind == exp_call)
+                if (expr->E2->Kind == expr_call)
                 {
                     // the issue with calling through a member function pointer
                     // is that we have to synthesize the call
@@ -678,7 +678,7 @@ LswitchIdKey:
                         metac_type_aggregate_field_t* field =
                             cast(metac_type_aggregate_field_t*)node;
                         result->AggMemberIndex = field->Index;
-                        metac_expr_t* fieldExp = AllocNewExpr(exp_field);
+                        metac_expr_t* fieldExp = AllocNewExpr(expr_field);
                         fieldExp->LocationIdx = expr->E2->LocationIdx;
                         dotExp->DotE2 = AllocNewSemaExpr(self, fieldExp);
                         dotExp->DotE2->Field = field;
@@ -700,7 +700,7 @@ LswitchIdKey:
                     dotExp->TypeIndex = callExp->Call.Function->TypeIndex;
                     callExp->E1 = dotExp;
                 }
-                else if (expr->E2->Kind == exp_identifier || expr->E2->Kind == exp_type)
+                else if (expr->E2->Kind == expr_identifier || expr->E2->Kind == expr_type)
                 {
                     result->DotE2 = MetaCSemantic_doExprSemantic(self, expr->E2, 0);
                     //printf("result->DotE2.Kind: %s\n",
@@ -718,29 +718,29 @@ LswitchIdKey:
             }
         } break;
 
-        case exp_decrement:
-        case exp_increment:
-        case exp_post_decrement:
-        case exp_post_increment:
-        case exp_compl:
-        case exp_not:
-        case exp_umin:
-        case exp_paren:
+        case expr_decrement:
+        case expr_increment:
+        case expr_post_decrement:
+        case expr_post_increment:
+        case expr_compl:
+        case expr_not:
+        case expr_umin:
+        case expr_paren:
         {
             metac_sema_expr_t* E1 =
                 MetaCSemantic_doExprSemantic(self, expr->E1, 0);
             hash = CRC32C_VALUE(hash, E1->Hash);
 
-            if (result->E1->Kind == exp_unknown_value)
-                result->Kind = exp_unknown_value;
+            if (result->E1->Kind == expr_unknown_value)
+                result->Kind = expr_unknown_value;
 
-            //result->Kind = exp_paren;
+            //result->Kind = expr_paren;
             result->TypeIndex = E1->TypeIndex;
             result->E1 = E1;
         } break;
 
 
-        case exp_cast:
+        case expr_cast:
         {
             metac_type_index_t castType =
                 MetaCSemantic_doTypeSemantic(self, expr->CastType);
@@ -752,69 +752,69 @@ LswitchIdKey:
             result->TypeIndex = castType;
             result->CastType = castType;
             result->CastExp = castExp;
-            if (castType.v == 0 || castExp->Kind == exp_unknown_value)
-                result->Kind = exp_unknown_value;
+            if (castType.v == 0 || castExp->Kind == expr_unknown_value)
+                result->Kind = expr_unknown_value;
         } break;
 #define CASE(M) \
     case M:
         FOREACH_BIN_ARITH_EXP(CASE)
-        case exp_ternary:
-            if (result->E1->Kind == exp_unknown_value || result->E2->Kind == exp_unknown_value)
-                result->Kind = exp_unknown_value;
+        case expr_ternary:
+            if (result->E1->Kind == expr_unknown_value || result->E2->Kind == expr_unknown_value)
+                result->Kind = expr_unknown_value;
 
             result->TypeIndex =
                 MetaCSemantic_CommonSubtype(self, result->E1->TypeIndex, result->E2->TypeIndex);
         break;
         FOREACH_BIN_ARITH_ASSIGN_EXP(CASE)
-            if (result->E1->Kind == exp_unknown_value)
-                result->Kind = exp_unknown_value;
+            if (result->E1->Kind == expr_unknown_value)
+                result->Kind = expr_unknown_value;
             result->TypeIndex = result->E1->TypeIndex;
         break;
 #undef CASE
-        case exp_index:
+        case expr_index:
             result = MetaCSemantic_doIndexSemantic(self, expr);
         break;
-        case exp_char :
+        case expr_char :
             result->TypeIndex = MetaCSemantic_GetTypeIndex(self, type_char, (decl_type_t*)emptyPointer);
         break;
-        case exp_string :
+        case expr_string :
             result->TypeIndex = MetaCSemantic_GetArrayTypeOf(self,
                 MetaCSemantic_GetTypeIndex(self, type_char, (decl_type_t*)emptyPointer),
                 LENGTH_FROM_STRING_KEY(expr->StringKey) + 1);
         break;
-        case exp_signed_integer :
-            hash = CRC32C_VALUE(exp_signed_integer, expr->ValueU64);
+        case expr_signed_integer :
+            hash = CRC32C_VALUE(expr_signed_integer, expr->ValueU64);
             result->TypeIndex = MetaCSemantic_GetTypeIndex(self, type_int, (decl_type_t*)emptyPointer);
         break;
-        case exp_float :
-            hash = CRC32C_VALUE(exp_float, expr->ValueF23);
+        case expr_float :
+            hash = CRC32C_VALUE(expr_float, expr->ValueF23);
             result->TypeIndex = MetaCSemantic_GetTypeIndex(self, type_float, (decl_type_t*)emptyPointer);
         break;
 
-        case exp_assign:
+        case expr_assign:
             MetaCSemantic_doAssignSemantic(self, expr, result);
             result->TypeIndex = result->E1->TypeIndex;
         break;
-        case exp_lt:
-        case exp_le:
-        case exp_gt:
-        case exp_ge:
-        case exp_neq:
-        case exp_eq:
+        case expr_lt:
+        case expr_le:
+        case expr_gt:
+        case expr_ge:
+        case expr_neq:
+        case expr_eq:
             // doCmpExpSemantic()
             //TODO assert that E1 and E2 are comperable
-        case exp_andand:
-        case exp_oror:
+        case expr_andand:
+        case expr_oror:
             result->TypeIndex = MetaCSemantic_GetTypeIndex(self, type_bool, (decl_type_t*)emptyPointer);
         break;
-        case exp_assert:
+        case expr_assert:
             result->E1 =
                 MetaCSemantic_doExprSemantic(self, expr->E1, 0);
             result->TypeIndex = MetaCSemantic_GetTypeIndex(self, type_void, (decl_type_t*)emptyPointer);
         break;
-        case exp_tuple:
+        case expr_tuple:
         {
-            exp_tuple_t* tupleElement = expr->TupleExprList;
+            expr_tuple_t* tupleElement = expr->TupleExprList;
             const uint32_t tupleExprCount = expr->TupleExprCount;
             STACK_ARENA_ARRAY(metac_type_index_t, typeIndicies, 32, &self->TempAlloc)
             STACK_ARENA_ARRAY(metac_sema_expr_t, tupleElements, 32, &self->TempAlloc)
@@ -834,7 +834,7 @@ LswitchIdKey:
                 metac_sema_expr_t* resultElem = result->TupleExprs[i];
                 MetaCSemantic_doExprSemantic(self, e, resultElem);
                 ARENA_ARRAY_ADD(typeIndicies, resultElem->TypeIndex);
-                if (resultElem->Kind != exp_type)
+                if (resultElem->Kind != expr_type)
                 {
                     isTypeTuple &= 0;
                 }
@@ -849,7 +849,7 @@ LswitchIdKey:
                     typeIndicies[i] = typeIndex;
                 }
                 metac_expr_t typeExp = *expr;
-                typeExp.Kind = exp_type;
+                typeExp.Kind = expr_type;
                 result = AllocNewSemaExpr(self, &typeExp);
             }
 
@@ -895,13 +895,13 @@ LswitchIdKey:
             }
         }
         break;
-        case exp_inject:
+        case expr_inject:
         {
             result->TypeIndex.v = TYPE_INDEX_V(type_index_basic, type_code);
         } break;
-        case exp_dot_compiler:
+        case expr_dot_compiler:
         {
-            if (expr->E1->Kind != exp_call)
+            if (expr->E1->Kind != expr_call)
             {
                 fprintf(stderr, "Only calls are supported not %s\n",
                     MetaCExprKind_toChars(expr->E1->Kind));
@@ -909,8 +909,8 @@ LswitchIdKey:
             }
             metac_expr_t* call = expr->E1;
             metac_expr_t* fn = call->E1;
-            exp_argument_t* args = (METAC_NODE(call->E2) != emptyNode ?
-                (exp_argument_t*)call->E2 : (exp_argument_t*)emptyNode);
+            expr_argument_t* args = (METAC_NODE(call->E2) != emptyNode ?
+                (expr_argument_t*)call->E2 : (expr_argument_t*)emptyNode);
 
             if (!self->CompilerInterface)
             {
@@ -941,7 +941,7 @@ LswitchIdKey:
             if (callIdx == -1)
             {
                 printf("CallNotFound\n");
-                result->Kind = exp_signed_integer;
+                result->Kind = expr_signed_integer;
                 result->ValueI64 = 0;
                 result->TypeIndex.v = 0;
             }
@@ -952,7 +952,7 @@ LswitchIdKey:
             // CompilerInterface_Call(
 #endif
         } break;
-        case exp_type:
+        case expr_type:
         {
             // type identifiers are special since they may not be types
             decl_type_t* typeExpr = expr->TypeExp;
@@ -993,7 +993,7 @@ LswitchIdKey:
                 hash = CRC32C_VALUE(hash, typeIdx);
             }
         } break;
-        case exp_typeof:
+        case expr_typeof:
         {
             hash = typeof_key;
             metac_sema_expr_t* e1 =
@@ -1010,10 +1010,10 @@ LswitchIdKey:
             }
 
             result->TypeIndex.v = TYPE_INDEX_V(type_index_basic, type_type);
-            result->Kind = exp_type;
+            result->Kind = expr_type;
             result->TypeExp = type;
         } break;
-        case exp_sizeof:
+        case expr_sizeof:
         {
             uint32_t size = -1;
             hash = sizeof_key;
@@ -1023,9 +1023,9 @@ LswitchIdKey:
             metac_type_index_t typeIdx = e1->TypeIndex;
             // usually we assume the type of which we want
             // to get the size is the type of the expression
-            if (e1->Kind == exp_type)
+            if (e1->Kind == expr_type)
             {
-                // Execpt if it's a exp_type expression
+                // Execpt if it's a expr_type expression
                 // which is something that resolves to a type such as the identifier int
                 typeIdx = e1->TypeExp;
                 hash = CRC32C_VALUE(hash, e1->TypeExp);
@@ -1040,11 +1040,11 @@ LswitchIdKey:
                 size = MetaCSemantic_GetTypeSize(self, typeIdx);
 
             result->TypeIndex.v = TYPE_INDEX_V(type_index_basic, type_size_t);
-            result->Kind = exp_signed_integer;
+            result->Kind = expr_signed_integer;
             result->ValueU64 = size;
         } break;
 
-        case exp_identifier:
+        case expr_identifier:
         {
 
             //printf("Looking up: %s\n",
@@ -1062,11 +1062,11 @@ LswitchIdKey:
             {
                 ResolveIdentifierToExp(self, node, &result, &hash);
             }
-            //printf("Resolved exp_identifier to: %s\n",
+            //printf("Resolved expr_identifier to: %s\n",
             //    MetaCExprKind_toChars(result->Kind));
         }
         break;
-        case exp_addr:
+        case expr_addr:
         {
             MetaCSemantic_PushExpr(self, result);
             result->E1 = MetaCSemantic_doExprSemantic(self, expr->E1, 0);
@@ -1119,7 +1119,7 @@ bool MetaCSemantic_CanHaveAddress(metac_sema_state_t* self,
 
     switch (expr->Kind)
     {
-        case exp_variable:
+        case expr_variable:
             return true;
 
         default: return false;

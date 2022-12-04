@@ -95,7 +95,7 @@ void VariableStore_SetValueI32(variable_store_t* vstore,
                                metac_sema_expr_t* varExp,
                                int32_t value)
 {
-    assert(varExp->Kind == exp_variable);
+    assert(varExp->Kind == expr_variable);
 
     metac_identifier_ptr_t vstoreId = GetVStoreID(vstore, varExp->Variable);
     BCValue* v = GetValueFromVariableStore(vstore, vstoreId);
