@@ -4,12 +4,12 @@ MetalNode {
     }
 
     Digits @internal {
-        [0-9][] digits 
+        [0-9][] digits
     }
 
     Operator @enumify
     {
-        Add { 
+        Add {
             "+"
         }
 
@@ -40,7 +40,7 @@ MetalNode {
         Eq {
             "=="
         }
-        
+
         Neq {
             "!="
         }
@@ -74,73 +74,73 @@ MetalNode {
         }
     }
 
-    Expression {
+    Expr {
 
-        IntExp {
+        IntExpr {
             Digits number;
         }
 
-        StringExp {
+        StringExpr {
             "\"", char[] string, "\""
         }
 
-        InjectExp {
-            "inject", Expression ie
+        InjectExpr {
+            "inject", Expr ie
         }
 
-        EjectExp {
-            "eject", Expression ee
+        EjectExpr {
+            "eject", Expr ee
         }
 
-        AssertExp {
-            "assert", "(", Expression ae, ",", StringLiteral msg, ")"
+        AssertExpr {
+            "assert", "(", Expr ae, ",", StringLiteral msg, ")"
         }
 
-        OuterParenExp {
-            "$(", Expression[] exps : ",", ")"
+        OuterParenExpr {
+            "$(", Expr[] exps : ",", ")"
         }
-        
-        OuterExp {
+
+        OuterExpr {
             "$", Identfier outer_name
         }
-        AddrExp {
-            "&", Expression lhs
+        AddrExpr {
+            "&", Expr lhs
         }
 
-        PtrExp {
-            "*", Expression lhs
+        PtrExpr {
+            "*", Expr lhs
         }
 
-        ParenExp {
+        ParenExpr {
             "(", Expresion lhs, ")"
         }
 
-        IdentifierExp {
+        IdentifierExpr {
             Identfier identifier
         }
 
-        BinaryExpression {
-             Expression rhs, Operator op, Expression rhs
+        BinaryExpr {
+             Expr rhs, Operator op, Expr rhs
         }
 
-        TernaryExpression {
-            Expression cond, "?", Expression e1, ":", Expression e2  
+        TernaryExpr {
+            Expr cond, "?", Expr e1, ":", Expr e2
         }
 
-        SliceExp {
-            Expression slice, "[", Expression lower, "..", Expression upper, "]"
+        SliceExpr {
+            Expr slice, "[", Expr lower, "..", Expr upper, "]"
         }
 
-        FullSliceExp {
-            Expression var, "[]"
+        FullSliceExpr {
+            Expr var, "[]"
         }
 
-        CallExp {
-            Expression func, "(", Expression[] args : ",", ")"
+        CallExpr {
+            Expr func, "(", Expr[] args : ",", ")"
         }
     }
 
-    
+
     Variable @internal {
         "type" / Identfier type, Identifier name
     }
@@ -156,7 +156,7 @@ MetalNode {
     }
 
 
-    Typedef { 
+    Typedef {
         "typedef", Type type, Identifier name, ";"
     }
 
@@ -174,7 +174,7 @@ MetalNode {
         }
 
         ArrayType {
-            Type elementType , "[", Expression e, "]"
+            Type elementType , "[", Expr e, "]"
         }
     }
 }
