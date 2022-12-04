@@ -56,7 +56,6 @@ static repl_state_t* s_repl;
 
 void linenoiseCompletionCallbackFn(const char *input, linenoiseCompletions * resultP)
 {
-    uint32_t cursorPos = getCursorPosition;
     completion_list_t list = s_completionCb(s_repl, input, strlen(input));
     uint32_t beforeLen = list.BeforeCompletionLength;
     char LineBuffer[512];
