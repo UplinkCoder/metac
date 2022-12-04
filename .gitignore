@@ -4,3 +4,5 @@ generated/
 lexer_test
 parser_test
 repl/repl
+completion_trie_test
+test.dot
