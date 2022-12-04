@@ -351,7 +351,7 @@ sema_stmt_switch_t* MetaCSemantic_doSwitchSemantic(metac_sema_state_t* self,
     semaSwitchStmt->SwitchBody =
         cast(sema_stmt_block_t*)MetaCSemantic_doStmtSemantic(self, switchStmt->SwitchBody);
 
-    uint32_t statementCount =
+    uint32_t stmtCount =
         semaSwitchStmt->SwitchBody->StmtCount;
 
     self->SwitchStack[--self->SwitchStackSize];
@@ -574,9 +574,9 @@ metac_sema_stmt_t* MetaCSemantic_doStmtSemantic_(metac_sema_state_t* self,
         {
             hash ^= stmt_block;
             stmt_block_t* blockStmt = (stmt_block_t*) stmt;
-            uint32_t statementCount = blockStmt->StmtCount;
+            uint32_t stmtCount = blockStmt->StmtCount;
             sema_stmt_block_t* semaBlockStmt =
-                AllocNewSemaBlockStmt(self, 0, statementCount, cast(void**)&result);
+                AllocNewSemaBlockStmt(self, 0, stmtCount, cast(void**)&result);
 
             metac_scope_owner_t parent = {SCOPE_OWNER_V(scope_owner_statement,
                                            BlockStmtIndex(self, semaBlockStmt))};
@@ -587,7 +587,7 @@ metac_sema_stmt_t* MetaCSemantic_doStmtSemantic_(metac_sema_state_t* self,
 
             metac_stmt_t* currentStmt = blockStmt->Body;
             for(uint32_t i = 0;
-                i < statementCount;
+                i < stmtCount;
                 i++)
             {
 
@@ -602,7 +602,7 @@ metac_sema_stmt_t* MetaCSemantic_doStmtSemantic_(metac_sema_state_t* self,
                 currentStmt = currentStmt->Next;
             }
             //TODO this doesn't handle inject statements
-            semaBlockStmt->StmtCount = statementCount;
+            semaBlockStmt->StmtCount = stmtCount;
 
             MetaCSemantic_PopScope(self);
         } break;

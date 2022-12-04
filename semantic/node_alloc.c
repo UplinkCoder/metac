@@ -354,7 +354,7 @@ metac_sema_stmt_t* AllocNewSemaStmt_(metac_sema_state_t* self,
     (cast(TYPE*) calloc(sizeof(TYPE), (COUNT)))
 
 sema_stmt_block_t* AllocNewSemaBlockStmt(metac_sema_state_t* self,
-                                              sema_stmt_block_t* Parent, uint32_t statementCount,
+                                              sema_stmt_block_t* Parent, uint32_t stmtCount,
                                               void** result_ptr)
 {
     sema_stmt_block_t* result = 0;
@@ -362,12 +362,12 @@ sema_stmt_block_t* AllocNewSemaBlockStmt(metac_sema_state_t* self,
 
     {
         stmt.Kind = stmt_block;
-        stmt.StmtCount = statementCount;
+        stmt.StmtCount = stmtCount;
         stmt.Serial = INC(_nodeCounter);
 
         ARENA_ARRAY_ADD(self->BlockStmts, stmt);
         result = self->BlockStmts + self->BlockStmtsCount - 1;
-        ARENA_ARRAY_INIT_SZ(metac_sema_stmt_t*, result->Body, &self->Allocator, statementCount);
+        ARENA_ARRAY_INIT_SZ(metac_sema_stmt_t*, result->Body, &self->Allocator, stmtCount);
     }
     (*result_ptr) = result;
 
@@ -375,7 +375,7 @@ sema_stmt_block_t* AllocNewSemaBlockStmt(metac_sema_state_t* self,
 }
 
 sema_stmt_casebody_t* AllocNewSemaCasebodyStmt(metac_sema_state_t* self,
-                                                    uint32_t statementCount,
+                                                    uint32_t stmtCount,
                                                     void** result_ptr)
 {
     sema_stmt_casebody_t* result;
@@ -387,9 +387,9 @@ sema_stmt_casebody_t* AllocNewSemaCasebodyStmt(metac_sema_state_t* self,
 
         ARENA_ARRAY_ADD(self->Stmts, *(metac_sema_stmt_t*)&stmt);
         result = (sema_stmt_casebody_t*) self->BlockStmts + self->BlockStmtsCount - 1;
-        ARENA_ARRAY_INIT_SZ(metac_sema_stmt_t*, result->Stmts, &self->Allocator, statementCount);
+        ARENA_ARRAY_INIT_SZ(metac_sema_stmt_t*, result->Stmts, &self->Allocator, stmtCount);
 
-        result->StmtCount = statementCount;
+        result->StmtCount = stmtCount;
         result->Serial = INC(_nodeCounter);
     }
     (*result_ptr) = result;
