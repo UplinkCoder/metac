@@ -243,7 +243,7 @@ void Presemantic_(repl_state_t* self)
         metac_lexer_t tmpLexer;
         metac_parser_t tmpParser;
         metac_preprocessor_t preProc;
-        DeclArray decls = {0};
+        decl_array_t decls = {0};
         {
             MetaCLexer_Init(&tmpLexer, &PresemanticAlloc);
 

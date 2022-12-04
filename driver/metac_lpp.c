@@ -82,7 +82,7 @@ void LexFile(metac_lexer_t* lexer,
 
 void ParseFile(metac_parser_t* parser,
                const char* path,
-               DeclArray* result)
+               decl_array_t* result)
 {
 #if DRIVER_PRINT_DECLS
     metac_printer_t printer;
@@ -226,9 +226,9 @@ metac_preprocessor_directive_t MetaCLPP_ParsePreprocFromString(metac_lpp_t* lpp,
 
 #include "../utils/read_file.c"
 
-DeclArray ReadLexParse(const char* filename, metac_lpp_t* lpp, metac_alloc_t* parent)
+decl_array_t ReadLexParse(const char* filename, metac_lpp_t* lpp, metac_alloc_t* parent)
 {
-    DeclArray result = {0};
+    decl_array_t result = {0};
 
     read_result_t readResult =
         ReadFileAndZeroTerminate(filename);

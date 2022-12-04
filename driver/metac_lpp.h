@@ -35,5 +35,5 @@ metac_preprocessor_directive_t MetaCLPP_ParsePreprocFromString(metac_lpp_t* lpp,
                                                                metac_token_buffer_t* tokenBuffer);
 #endif
 
-DeclArray ReadLexParse(const char* filename, metac_lpp_t* lpp, metac_alloc_t* parent);
+decl_array_t ReadLexParse(const char* filename, metac_lpp_t* lpp, metac_alloc_t* parent);
 #endif

@@ -17,7 +17,7 @@
 int main(int argc, const char* argv[])
 {
     metac_lpp_t lpp;
-    DeclArray decls;
+    decl_array_t decls;
     metac_alloc_t alloc;
 
     Allocator_Init(&alloc, 0);
