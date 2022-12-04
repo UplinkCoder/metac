@@ -909,7 +909,8 @@ metac_type_index_t TypeEnumSemantic(metac_sema_state_t* self,
                 MetaCSemantic_RegisterInScope(self, member->Identifier, METAC_NODE(member));
             if(inserted != success)
             {
-                SemanticError(member->Header.LocationIdx, "Couldn't be inserted into the scope", 0);
+                SemanticError(member->Header.LocationIdx, "%s couldn't be inserted into the scope",
+                              IdentifierPtrToCharPtr(self->ParserIdentifierTable, member->Identifier));
             }
         }
     }
@@ -1056,7 +1057,7 @@ metac_type_index_t MetaCSemantic_TypeSemantic(metac_sema_state_t* self,
         if (elementTypeIndex.v == 0 || elementTypeIndex.v == -1)
         {
             metac_location_t currentLoc = {0};
-            SemanticError(currentLoc, "Cannot resolve ptr element type", 0);
+            SemanticError(currentLoc, "Cannot resolve ptr element type {%s}", "");
             return result;
         }
         result = MetaCSemantic_GetPtrTypeOf(self, elementTypeIndex);
