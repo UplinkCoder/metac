@@ -1,4 +1,4 @@
-#if !defined(NO_FIBERS) || !NO_FIBERS
+#if !(defined(NO_FIBERS) && !NO_FIBERS)
 
 #include "../os/os.h"
 #include "metac_task.h"
