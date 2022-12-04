@@ -3325,8 +3325,8 @@ static decl_type_array_t* ParseArraySuffix(metac_parser_t* self, decl_type_t* ty
 static inline void PrintStmt(metac_printer_t* self, metac_stmt_t* stmt);
 
 metac_stmt_t* MetaCParser_ParseStmt(metac_parser_t* self,
-                                              metac_stmt_t* parent,
-                                              metac_stmt_t* prev)
+                                    metac_stmt_t* parent,
+                                    metac_stmt_t* prev)
 {
     static const metac_location_t nullLocation = {0};
     metac_stmt_t* result = 0;
@@ -3375,6 +3375,23 @@ metac_stmt_t* MetaCParser_ParseStmt(metac_parser_t* self,
         metac_token_t* tok2 = MetaCParser_PeekToken(self, 1);
         int k = 12;
     }
+    // match @run statement
+    else if (tokenType == tok_at)
+    {
+#define run_key 0x3809a6
+        metac_token_t* peek = MetaCParser_PeekToken(self, 2);
+        if (peek->TokenType == tok_identifier
+         && peek->IdentifierKey == run_key)
+        {
+            MetaCParser_Match(self, tok_at);
+            MetaCParser_Match(self, tok_identifier);
+            hash = run_key;
+            stmt_run_t* run_stmt = AllocNewStmt(stmt_run, &result);
+            run_stmt->RunStmt = MetaCParser_ParseStmt(self, (metac_stmt_t*) run_stmt, 0);
+            hash = CRC32C_VALUE(hash, run_stmt->RunStmt->Hash);
+            result->Hash = hash;
+        }
+    }
     else if (tokenType == tok_kw_if)
     {
         stmt_if_t* if_stmt = AllocNewStmt(stmt_if, &result);
@@ -3388,7 +3405,7 @@ metac_stmt_t* MetaCParser_ParseStmt(metac_parser_t* self,
         MetaCParser_Match(self, tok_lParen);
         if_stmt->IfCond =
             MetaCParser_ParseExpr(self, expr_flags_none, 0);
-        hash = CRC32C_VALUE(hash, if_stmt->IfCond);
+        hash = CRC32C_VALUE(hash, if_stmt->IfCond->Hash);
         MetaCParser_Match(self, tok_rParen);
         if_stmt->IfBody = MetaCParser_ParseStmt(self, (metac_stmt_t*)result, 0);
         hash = CRC32C_VALUE(hash, if_stmt->IfBody->Hash);
@@ -3714,8 +3731,8 @@ static inline void MetaCParser_PopBlockStmt(metac_parser_t* self,
 }
 
 static stmt_block_t* MetaCParser_ParseBlockStmt(metac_parser_t* self,
-                                                     metac_stmt_t* parent,
-                                                     metac_stmt_t* prev)
+                                                metac_stmt_t* parent,
+                                                metac_stmt_t* prev)
 {
     static const metac_location_t nullLoc = {0};
     metac_token_t* lBrace = MetaCParser_Match(self, tok_lBrace);

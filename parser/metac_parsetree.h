@@ -160,6 +160,13 @@ typedef struct stmt_yield_t
     metac_expr_t* YieldExp;
 } stmt_yield_t;
 
+typedef struct stmt_run_t
+{
+    STMT_HEADER
+
+    struct metac_stmt_t* RunStmt;
+} stmt_run_t;
+
 typedef struct stmt_scope_t
 {
     STMT_HEADER
