@@ -2096,17 +2096,22 @@ LendSearch2:{}
                     // printf("Should call fnPtr: %p\n", frameP[call.fn.stackAddr.addr / 4]);
                     uint32_t nParams = 0;
                     void* result = 0;
+/*
                     uint32_t unrealAddresses[3];
-                    unrealAddresses[0] = frameP[args[0].stackAddr.addr / 4];
-                    unrealAddresses[1] = frameP[args[1].stackAddr.addr / 4];
-                    unrealAddresses[2] = frameP[args[2].stackAddr.addr / 4];
+                    unrealAddresses[0] = args[0].imm32.imm32;
+                    unrealAddresses[1] = args[1].imm32.imm32;
+                    unrealAddresses[2] = args[2].imm32.imm32;
 
                     void* arg0 = (void*) BCInterpreter_toRealPointer(&state, heapPtr, unrealAddresses[0]);
                     void* arg1 = (void*) BCInterpreter_toRealPointer(&state, heapPtr, unrealAddresses[1]);
                     void* arg2 = (void*) BCInterpreter_toRealPointer(&state, heapPtr, unrealAddresses[2]);
+*/
+                   void* arg0 = (void*) call.args[0].voidStar;
+                   void* arg1 = (void*) call.args[1].voidStar;
+                   void* arg2 = (void*) call.args[2].voidStar;
 
-                    switch(call.n_args)
-                    {
+                   switch(call.n_args)
+                   {
                         case 0:
                             result = ((void* (*)()) frameP[call.fn.stackAddr.addr / 4])();
                         break;

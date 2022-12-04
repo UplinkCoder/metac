@@ -1634,7 +1634,7 @@ metac_expr_t* MetaCParser_ParseUnaryExpr(metac_parser_t* self, parse_expr_flags_
         result = AllocNewExpr(exp_umin);
         //PushOperator(exp_addr);
         result->E1 = MetaCParser_ParseExpr(self,
-			cast(parse_expr_flags_t)(expr_flags_unary | (eflags & expr_flags_pp)), 0);
+            cast(parse_expr_flags_t)(expr_flags_unary | (eflags & expr_flags_pp)), 0);
         result->Hash = CRC32C_VALUE(CRC32C_MINUS, result->E1->Hash);
     }
     else if (tokenType == tok_minusminus)
@@ -1643,7 +1643,7 @@ metac_expr_t* MetaCParser_ParseUnaryExpr(metac_parser_t* self, parse_expr_flags_
         result = AllocNewExpr(exp_decrement);
         //PushOperator(exp_addr);
         result->E1 = MetaCParser_ParseExpr(self,
-			cast(parse_expr_flags_t)(expr_flags_unary | (eflags & expr_flags_pp)), 0);
+            cast(parse_expr_flags_t)(expr_flags_unary | (eflags & expr_flags_pp)), 0);
         result->Hash = CRC32C_VALUE(CRC32C_MINUSMINUS, result->E1->Hash);
     }
     else if (tokenType == tok_plusplus)
@@ -1652,7 +1652,7 @@ metac_expr_t* MetaCParser_ParseUnaryExpr(metac_parser_t* self, parse_expr_flags_
         result = AllocNewExpr(exp_increment);
         //PushOperator(exp_addr);
         result->E1 = MetaCParser_ParseExpr(self,
-			cast(parse_expr_flags_t)(expr_flags_unary | (eflags & expr_flags_pp)), 0);
+            cast(parse_expr_flags_t)(expr_flags_unary | (eflags & expr_flags_pp)), 0);
         result->Hash = CRC32C_VALUE(CRC32C_PLUSPLUS, result->E1->Hash);
     }
     else if (tokenType == tok_and)
@@ -1679,7 +1679,7 @@ metac_expr_t* MetaCParser_ParseUnaryExpr(metac_parser_t* self, parse_expr_flags_
         MetaCParser_Match(self, tok_bang);
         result = AllocNewExpr(exp_not);
         result->E1 = MetaCParser_ParseExpr(self,
-			cast(parse_expr_flags_t)(expr_flags_unary | (eflags & expr_flags_pp)), 0);
+            cast(parse_expr_flags_t)(expr_flags_unary | (eflags & expr_flags_pp)), 0);
         result->Hash = CRC32C_VALUE(CRC32C_BANG, result->E1->Hash);
     }
     else if (tokenType == tok_dollar)
@@ -1703,7 +1703,7 @@ metac_expr_t* MetaCParser_ParseUnaryExpr(metac_parser_t* self, parse_expr_flags_
         MetaCParser_Match(self, tok_tilde);
         result = AllocNewExpr(exp_compl);
         result->E1 = MetaCParser_ParseExpr(self,
-			cast(parse_expr_flags_t)(expr_flags_unary | (eflags & expr_flags_pp)), 0);
+            cast(parse_expr_flags_t)(expr_flags_unary | (eflags & expr_flags_pp)), 0);
         result->Hash = CRC32C_VALUE(
             crc32c_nozero(~0, "~", 1),
             result->E1->Hash

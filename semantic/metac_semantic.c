@@ -156,7 +156,11 @@ void MetaCSemantic_Init(metac_sema_state_t* self, metac_parser_t* parser,
     IdentifierTable_Init(&self->SemanticIdentifierTable, IDENTIFIER_LENGTH_SHIFT, 13, &self->Allocator);
     self->ParserIdentifierTable = &parser->IdentifierTable;
     self->ParserStringTable = &parser->StringTable;
+    self->ParserLocations = &parser->LocationStorage;
 
+    self->LexerLocations = &parser->Lexer->LocationStorage;
+
+    self->CurrentLocIdx = 0;
     self->CurrentScope = 0;
     self->CurrentDeclState = 0;
 
@@ -1194,9 +1198,9 @@ void MetaCSemantic_doDeclSemantic_Task(task_t* task)
 #define TracyMessage(MSG) \
     TracyCMessage(MSG, sizeof(MSG) - 1)
 metac_sema_decl_t* MetaCSemantic_doDeclSemantic_(metac_sema_state_t* self,
-                                                        metac_decl_t* decl,
-                                                        const char* callFile,
-                                                        uint32_t callLine)
+                                                 metac_decl_t* decl,
+                                                 const char* callFile,
+                                                 uint32_t callLine)
 {
     metac_sema_decl_t* result = 0;
     result = MetaCSemantic_declSemantic(self, decl);

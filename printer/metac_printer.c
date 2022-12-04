@@ -1376,6 +1376,12 @@ static inline void PrintSemaType(metac_printer_t* self,
             }
             PrintChar(self, ']');
         } break;
+        case 0: // HACK case 0 is not supposed to be here, it should not be emiited
+                // however for now I am not going to track this issue down
+        case type_index_invalid:
+        {
+            PrintString(self, "__error_type ", sizeof("__error_type ") - 1);
+        } break;
         default:
         {
             fprintf(stderr, "Invalid type_index_kind: %x\n", TYPE_INDEX_KIND(typeIndex));

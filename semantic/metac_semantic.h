@@ -108,6 +108,9 @@ typedef struct metac_sema_state_t
     metac_identifier_table_t SemanticIdentifierTable;
     metac_identifier_table_t* ParserIdentifierTable;
     metac_identifier_table_t* ParserStringTable;
+    metac_location_t_array* ParserLocations;
+
+    metac_location_t_array* LexerLocations;
 
     metac_semantic_waitlist_t Waiters;
 
@@ -122,6 +125,10 @@ typedef struct metac_sema_state_t
     AT(TaskLocal) AT(transient) metac_scope_t* CurrentScope;
 
     AT(TaskLocal) AT(transient) metac_semantic_lru_t LRU;
+
+    AT(TaskLocal) AT(transient) uint32_t CurrentLocIdx;
+    // only to be used if CurrentLocIdx == 0
+    AT(TaskLocal) AT(transient) metac_location_t CurrentLoc;
 
     // metac_type_table_t* TypeTable;
     FOREACH_TYPE_TABLE(DECLARE_TYPE_TABLE)

@@ -150,6 +150,9 @@ static metac_type_index_t GetTypeIndex(BCType bcType)
         case BCTypeEnum_Struct:
             kind = type_index_struct;
         break;
+        case BCTypeEnum_Ptr:
+            kind = type_index_ptr;
+        break;
 
         case BCTypeEnum_Void:
             result.v = TYPE_INDEX_V(type_index_basic, type_void);
@@ -191,7 +194,7 @@ static metac_type_index_t GetTypeIndex(BCType bcType)
             result.v = TYPE_INDEX_V(type_index_basic, type_unsigned_long_long);
         break;
 
-        default: assert(0);
+        // default: assert(0);
     }
 
     if (kind != type_index_invalid)
@@ -797,7 +800,7 @@ Lload32: {}
     // since the stuff below are heapValues we may not want to do this ??
     {
         BCTypeEnum types[] =
-            { BCTypeEnum_Struct, BCTypeEnum_Slice, BCTypeEnum_Array, BCTypeEnum_Tuple };
+            { BCTypeEnum_Struct, BCTypeEnum_Slice, BCTypeEnum_Array, BCTypeEnum_Tuple, BCTypeEnum_Ptr };
         if (BCTypeEnum_anyOf(hrv->type.type, types, ARRAY_SIZE(types)))
         {
             BCValue sz = imm32(abiSize);
@@ -861,7 +864,7 @@ static void StoreToHeapRef(metac_bytecode_ctx_t* ctx, BCValue* hrv, uint32_t abi
     // since the stuff below are heapValues we may not want to do this ??
     {
         BCTypeEnum types[] =
-            { BCTypeEnum_Struct, BCTypeEnum_Slice, BCTypeEnum_Array, BCTypeEnum_Tuple };
+            { BCTypeEnum_Struct, BCTypeEnum_Slice, BCTypeEnum_Array, BCTypeEnum_Tuple, BCTypeEnum_Ptr };
         if (BCTypeEnum_anyOf(hrv->type.type, types, ARRAY_SIZE(types)))
         {
             BCValue hr = BCValue_fromHeapref(hrv->heapRef);
@@ -1107,9 +1110,9 @@ static void MetaCCodegen_doArrowExpr(metac_bytecode_ctx_t* ctx,
 }
 
 static void MetaCCodegen_doExpr(metac_bytecode_ctx_t* ctx,
-                                      metac_sema_expr_t* exp,
-                                      BCValue* result,
-                                      metac_value_type_t lValue)
+                                metac_sema_expr_t* exp,
+                                BCValue* result,
+                                metac_value_type_t lValue)
 {
     const BackendInterface gen = *ctx->gen;
     void* c = ctx->c;
@@ -1260,6 +1263,12 @@ static void MetaCCodegen_doExpr(metac_bytecode_ctx_t* ctx,
         case exp_cast:
         {
             MetaCCodegen_doCastExpr(ctx, exp, result);
+        } break;
+
+        case exp_deref:
+        {
+            metac_type_index_t lhsType = exp->TypeIndex;
+            MetaCCodegen_doDeref(ctx, &lhs, lhsType, result);
         } break;
 
         case exp_dot:

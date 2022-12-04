@@ -1,5 +1,5 @@
 #define ACCEL ACCEL_TABLE
-#define NO_FIBERS
+#define NO_FIBERS 1
 #define PRINT_CODE
 #include "os/compat.h"
 
@@ -7,30 +7,12 @@
 #include "utils/read_file.c"
 #include "parser/metac_parser_obj.c"
 #include "semantic/metac_semantic_obj.c"
-#include "driver/metac_lpp.c"
 #include "repl/exp_eval.c"
 #include "codegen/metac_codegen.c"
 
-DeclArray ReadLexParse(const char* filename, metac_lpp_t* lpp)
-{
-    DeclArray result = {0};
-
-    read_result_t readResult =
-        ReadFileAndZeroTerminate(filename);
-
-    LexFile(&lpp->Lexer, filename,
-        readResult.FileContent0, readResult.FileLength
-    );
-
-    MetaCParser_InitFromLexer(&lpp->Parser, &lpp->Lexer);
-
-    ParseFile(&lpp->Parser, filename, &result);
-
-    return result;
-}
 
 metac_decl_t* FindDecl(DeclArray decls,
-                                     metac_parser_t* parser, const char* name)
+                       metac_parser_t* parser, const char* name)
 {
     const uint32_t len = cast(uint32_t) strlen(name);
     const uint32_t hash = crc32c_nozero(~0, name, len);
@@ -74,32 +56,36 @@ metac_decl_t* FindDecl(DeclArray decls,
 
 int main(int argc, const char* argv[])
 {
+
+    const char* filename = argv[1];
+    const char* funcname = argv[2];
+    uint32_t arg = atoi(argv[3]);
+    metac_alloc_t alloc;
+    metac_lpp_t LPP;
+    DeclArray decls;
+
     if (argc != 4)
     {
         fprintf(stderr, "Usage %s filename funcname numeric_arg\n", argv[0]);
         return -1;
     }
 
-    const char* filename = argv[1];
-    const char* funcname = argv[2];
-    uint32_t arg = atoi(argv[3]);
-
-    metac_lpp_t LPP;
+    Allocator_Init(&alloc, 0);
     // lpp stands for lexer preprocessor parser
     // it simply bundles them as they are mostly used together
-    MetaCLPP_Init(&LPP);
+    MetaCLPP_Init(&LPP, &alloc, 0);
     // TODO MetaCLPP_Init should take an allocator
-
-    DeclArray decls = ReadLexParse(filename, &LPP);
-
-    decl_function_t* funcDecl = cast(decl_function_t*)
-        FindDecl(decls, &LPP.Parser, funcname);
-
-    if(!funcDecl || funcDecl->Kind != decl_function)
     {
-        printf("%s is not a function declaration\n", funcname);
-        return -1;
-    }
+        decls = ReadLexParse(filename, &LPP, 0);
+
+        decl_function_t* funcDecl = cast(decl_function_t*)
+            FindDecl(decls, &LPP.Parser, funcname);
+
+        if(!funcDecl || funcDecl->Kind != decl_function)
+        {
+            printf("%s is not a function declaration\n", funcname);
+            return -1;
+        }
 /*
     printf("func: %s\n",
         MetaCPrinter_PrintNode(&LPP.Parser.DebugPrinter, METAC_NODE(funcDecl), 0));
@@ -131,6 +117,8 @@ int main(int argc, const char* argv[])
         MetaCCodegen_RunFunction(&ctx, fCode, &interpAlloc, "u", arg);
 
     printf("%s(%u) = %u\n", funcname, arg, result);
+
+    }
 
     return 0;
 }

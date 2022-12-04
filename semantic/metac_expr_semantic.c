@@ -663,6 +663,15 @@ LswitchIdKey:
                     metac_node_t node =
                         MetaCSemantic_LookupIdentifier(self, idPtr);
 
+                    if (node == emptyNode)
+                    {
+                        SemanticError(dotExp->LocatiionIndex,
+                                      "function %s couldn't be found\n",
+                                      IdentifierPtrToCharPtr(self->ParserIdentifierTable, idPtr)
+                        );
+
+                        METAC_NODE(result) = emptyNode;
+                    }
 
                     if (node->Kind == node_decl_field)
                     {

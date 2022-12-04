@@ -1,4 +1,5 @@
 #include "metac_compiler_interface.h"
+extern metac_compiler_t compiler;
 
 /*
  *     void* semanticState;
@@ -72,6 +73,15 @@ const char* compiler_msg ()
 }
 
 
+void compiler_PrintInt(int32_t* value)
+{
+    char Buffer[24];
+    int len = sprintf(Buffer, "%d", value);
+    Buffer[len] = '\0';
+    //compiler.Message(&compiler, Buffer, 0);
+    fprintf(stderr, "-> %s\n", Buffer);
+}
+
 metac_parser_t* GetCurrentParser(metac_compiler_t* compilerP)
 {
 
@@ -106,8 +116,12 @@ metac_compiler_t compiler = {
     compiler_Message,
     compiler_Error,
 
-    0,
+    0, // get type kind
+
+    0, // register log callback
 
     compiler_RegisterIdentifierCallback,
+
+    compiler_PrintInt,
 };
 

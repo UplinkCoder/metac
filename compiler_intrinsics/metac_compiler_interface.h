@@ -1,10 +1,13 @@
 #ifndef _METAC_COMPILER_INTERFACE_H_
 #define _METAC_COMPILER_INTERFACE_H_
 
+typedef int int32_t;
 typedef unsigned int uint32_t;
 typedef unsigned long int uint64_t;
 
+#ifndef __METAC__
 typedef void* type;
+#endif
 
 typedef enum type_kind_t
 {
@@ -19,8 +22,8 @@ typedef struct metac_compiler_t
     void* semanticState;
 
     uint32_t StartTimeStamp;
-    uint32_t (*CurrentTimeStamp) ();
-    uint32_t (*BuiltinCount) ();
+    void (*CurrentTimeStamp) (uint32_t* outResult);
+    void (*BuiltinCount) (uint32_t* outResult);
 
     const char* (*PrintType) (struct metac_compiler_t* compilerP, type* T);
 
@@ -46,6 +49,7 @@ typedef struct metac_compiler_t
     void (*RegisterIdentifierCallback) (struct metac_compiler_t* compilerP,
                                         void (*IdentfierCb)(const char* idChars, uint32_t idKey, void* context),
                                         void* context);
+    void (*PrintInt) (int32_t* value);
 } metac_compiler_t;
 
 #endif

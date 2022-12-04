@@ -954,6 +954,7 @@ metac_type_index_t MetaCSemantic_TypeSemantic(metac_sema_state_t* self,
     else if (type->Kind == decl_type_typedef)
     {
         decl_type_typedef_t* typedef_ = cast(decl_type_typedef_t*) type;
+        self->CurrentLocIdx = typedef_->LocationIdx;
         metac_type_index_t elementTypeIndex =
             MetaCSemantic_doTypeSemantic(self, typedef_->Type);
 
@@ -1051,7 +1052,13 @@ metac_type_index_t MetaCSemantic_TypeSemantic(metac_sema_state_t* self,
         decl_type_ptr_t* typePtr = (decl_type_ptr_t*) type;
         elementTypeIndex =
             MetaCSemantic_doTypeSemantic(self, typePtr->ElementType);
-        assert(elementTypeIndex.v && elementTypeIndex.v != -1);
+
+        if (elementTypeIndex.v == 0 || elementTypeIndex.v == -1)
+        {
+            metac_location_t currentLoc = {0};
+            SemanticError(currentLoc, "Cannot resolve ptr element type", 0);
+            return result;
+        }
         result = MetaCSemantic_GetPtrTypeOf(self, elementTypeIndex);
     }
     else if (type->Kind == decl_type_functiontype)
@@ -1122,7 +1129,10 @@ LtryAgian: {}
 #endif
             if (node == emptyNode)
             {
-                if (self->OnResolveFailStack[self->OnResolveFailStackCount - 1] == OnResolveFail_ReturnNull)
+                uint32_t stackIdx =
+                    (self->OnResolveFailStackCount ? self->OnResolveFailStackCount - 1 : 0);
+
+                if (self->OnResolveFailStack[stackIdx] == OnResolveFail_ReturnNull)
                 {
                     // MetaCSemantic_ResolveFail(self, type->TypeIdentifier);
                     metac_type_index_t unresolvedIdx = {0};

@@ -85,8 +85,9 @@ void Linenoise_SetCompletionCallback(struct ui_state_t* state, repl_state_t* rep
 
 repl_mode_t Linenoise_QueryMode(ui_state_t* uiState)
 {
-
+    return uiState->parseMode;
 }
+
 
 void Linenoise_Clear(ui_state_t* uiState)
 {
@@ -131,7 +132,6 @@ int main(int argc, const char* argv[])
     g_DebugServer = &dbgSrv;
     Debug_Init(g_DebugServer, 8180);
 #endif
-
     ctx.UiInterface = &LinenoiseUiInterface;
     ctx.UiState = &uiState;
 

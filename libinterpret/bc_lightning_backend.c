@@ -7,8 +7,6 @@
 #include "backend_interface_funcs.h"
 #include "bc_common.h"
 
-#include "../os/bsf.h"
-
 #define NREGS 6
 
 #undef offsetof
@@ -1612,9 +1610,9 @@ static inline BCValue Lightning_Run(Lightning* self, uint32_t fnIdx, const BCVal
     void* marshaled_args = self->allocMemory(self->allocCtx, sizeof(double) * n_args, 0);
 
     {
-        rtContext.heapDataBegin = heap->heapData;
-        rtContext.heapCapacityP = &heap->heapMax;
-        rtContext.heapSizeP = &heap->heapSize;
+        rtContext.heapDataBegin = heap ? heap->heapData : 0;
+        rtContext.heapCapacityP = heap ? &heap->heapMax : 0;
+        rtContext.heapSizeP = heap ? &heap->heapSize : 0;
 
         rtContext.externals = self->allocMemory(self->allocCtx, sizeof(Lightning_External) * 8, 0);
         rtContext.externalsCount = 0;
