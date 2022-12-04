@@ -1,6 +1,8 @@
-#ifndef NO_FIBERS
+#if !NO_FIBERS
 
+#include "../os/os.h"
 #include "metac_task.h"
+#include "../debug/debug_server.h"
 #include <assert.h>
 #include <stdlib.h>
 #include "bsf.h"
@@ -8,7 +10,7 @@
 // the watcher shoud allocate the worker contexts since it is responsible for distribution
 // and monitoring of the work
 
-#if defined(_MSC_VER) || defined(__STDC_NO_THREADS__) || defined(__TINYC__)
+#if defined(_MSC_VER) || __STDC_VERSION__ < 201112L || defined(__STDC_NO_THREADS__) || defined(__TINYC__)
 #  include "../3rd_party/tinycthread/tinycthread.c"
 #endif
 
@@ -203,12 +205,21 @@ void WatcherFunc(void)
 
 }
 
+void WorkerSIGUSR1()
+{
+    printf("Worker: %d\n", THREAD_CONTEXT->WorkerId);
+}
+
 void RunWorkerThread(worker_context_t* worker, void (*specialFunc)(),  void* specialFuncCtx)
 {
     aco_thread_init(0);
+    signal(SIGUSR1, WorkerSIGUSR1);
+
     assert(THREAD_CONTEXT == 0 || THREAD_CONTEXT == worker);
     THREAD_CONTEXT_SET(worker);
-
+#if DEBUG_SERVER
+    Debug_RegisterWorker(g_DebugServer, worker);
+#endif
     aco_t* threadFiber =
         aco_create(0, 0, 0, 0, worker);
     worker->WorkerMain = threadFiber;
@@ -237,7 +248,7 @@ void RunWorkerThread(worker_context_t* worker, void (*specialFunc)(),  void* spe
     uint32_t* FreeBitfield = &fiberPool.FreeBitfield;
 
     task_t (*fileTasks)[4] = {0};
-    
+
 
     for(;;)
     {
@@ -248,7 +259,7 @@ void RunWorkerThread(worker_context_t* worker, void (*specialFunc)(),  void* spe
         {
             goto LscheduleNextTask;
         }
-
+        OS.GetTimeStamp(&worker->HeartBeat);
         // if we end up here we still have a free fiber
         if (tasksInQueueFront(q->readPointer, q->writePointer))
         {
@@ -376,7 +387,7 @@ void RunWorkerThread(worker_context_t* worker, void (*specialFunc)(),  void* spe
         }
         // Now it's time to scan for outstanding tasks I/O
         {
-            
+
         }
         // if we couldn't finish all the tasks it's likely
         // that we need to spawn new tasks in order to succseed

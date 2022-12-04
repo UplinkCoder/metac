@@ -438,6 +438,8 @@ int Debug_Init(debug_server_t* debugServer, unsigned short port) {
     debugServer->GraphsCount = 0;
     debugServer->GraphsCapacity = graphCapa;
 
+    ARENA_ARRAY_INIT(worker_context_t*, debugServer->Workers, &debugServer->Allocator)
+
    return 0;
 }
 
@@ -540,5 +542,11 @@ void Debug_GraphValue(debug_server_t* debugServer, const char* name, double valu
 
     ARENA_ARRAY_ADD(graphP->Values, graphValue);
 }
+#if !NO_FIBERS
+void Debug_RegisterWorker(debug_server_t* debugServer, worker_context_t* worker)
+{
+    ARENA_ARRAY_ADD(debugServer->Workers, worker);
+}
+#endif
 
 #endif

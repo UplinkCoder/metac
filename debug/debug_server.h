@@ -9,6 +9,10 @@
 #include "../semantic/metac_scope.h"
 #include "../parser/metac_identifier_table.h"
 
+#if !NO_FIBERS
+#  include "../os/metac_task.h"
+#endif
+
 #define MHD_COMPLETED_CB(NAME) \
 void NAME (void *cls, \
            struct MHD_Connection *connection, \
@@ -87,6 +91,9 @@ typedef struct debug_server_t
     debug_message_t* Messages;
     uint32_t MessagesCount;
     uint32_t MessagesCapacity;
+#if !NO_FIBERS
+    ARENA_ARRAY(worker_context_t*, Workers)
+#endif
 } debug_server_t;
 
 int Debug_Init(debug_server_t* debugServer, unsigned short port);
@@ -100,7 +107,9 @@ void Debug_GraphValue(debug_server_t* debugServer, const char* name, double valu
 
 void Debug_CurrentScope(debug_server_t* debugServer, metac_scope_t* scopeP);
 void Debug_CurrentIdentifierTable(debug_server_t* debugServer, metac_identifier_table_t* scopeP);
-
+#if !NO_FIBERS
+void Debug_RegisterWorker(debug_server_t* debugServer, worker_context_t* worker);
+#endif
 
 extern debug_server_t* g_DebugServer;
 

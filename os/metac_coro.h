@@ -1,4 +1,4 @@
-#ifndef NO_FIBERS
+#if !NO_FIBERS
 #  include "../3rd_party/libaco/aco.h"
 #endif
 
@@ -12,7 +12,7 @@
     aco_resume(CO); \
 } while(0);
 
-#ifndef NO_FIBERS
+#if !NO_FIBERS
 #  define YIELD(REASON) do { \
 /*    printf("Yielding %x from {%s:%d} %s\n",  (GET_CO()), __FILE__, __LINE__, #REASON);*/ \
     aco_yield(); \

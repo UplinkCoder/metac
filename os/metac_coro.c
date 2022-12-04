@@ -1,4 +1,4 @@
-#ifndef NO_FIBERS
+#if !NO_FIBERS
 #include "../3rd_party/libaco/aco.c"
 
 #ifndef ACOSW_EXTERNAL_ASM

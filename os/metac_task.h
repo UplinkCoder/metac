@@ -1,7 +1,7 @@
 #ifndef _METAC_TASK_H_
 #define _METAC_TASK_H_
 
-#ifdef NO_FIBERS
+#if NO_FIBERS
 #  error "Tasks don't work without fibers at the moment"
 #endif
 
@@ -184,6 +184,8 @@ typedef struct worker_context_t
     //PoolAllocator threadAlloc;
 
     volatile uint32_t Flags;
+
+    uint32_t HeartBeat;
 
     thrd_t Thread;
     aco_t* WorkerMain;
