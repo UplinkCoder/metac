@@ -1,4 +1,4 @@
-#if !NO_FIBERS
+#if !(defined(NO_FIBERS) && !NO_FIBERS)
 #  include "../3rd_party/libaco/aco.h"
 #endif
 
