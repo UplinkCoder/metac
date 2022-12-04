@@ -96,6 +96,20 @@ typedef struct metac_scope_table_t
     bool AllowOverride;
 } metac_scope_table_t;
 
+void MetaCScopeTable_InitN(metac_scope_table_t *self,
+                           uint32_t nMembers,
+                           metac_alloc_t *alloc);
+
+void MetaCScopeTable_Init(metac_scope_table_t *self, metac_alloc_t *alloc);
+
+void MetaCScopeTable_Free(metac_scope_table_t *self);
+
+metac_scope_table_slot_t* MetaCScopeTable_Lookup(metac_scope_table_t* self,
+                                                 const uint32_t idPtrHash,
+                                                 metac_identifier_ptr_t idPtr);
+
+metac_scope_table_slot_t* MetaCScopeTable_Insert(metac_scope_table_t* self,
+                                                 metac_identifier_ptr_t idPtr);
 
 typedef enum metac_scope_flags_t
 {
