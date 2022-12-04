@@ -15,7 +15,7 @@
 #  include <unistd.h>
 #endif
 
-metac_decl_t* FindDecl(DeclArray decls,
+metac_decl_t* FindDecl(decl_array_t decls,
                                      metac_parser_t* parser, const char* name)
 {
     const uint32_t len = cast(uint32_t) strlen(name);
@@ -79,7 +79,7 @@ metac_identifier_ptr_t IdentifierFromDecl(metac_decl_t* decl)
     return result;
 }
 
-DeclArray FilterDecls(DeclArray decls, metac_parser_t* parser,
+decl_array_t FilterDecls(decl_array_t decls, metac_parser_t* parser,
                                     metac_alloc_t* alloc,
                                     bool (*filterFunc) (metac_decl_t*, metac_parser_t*))
 {
@@ -97,7 +97,7 @@ DeclArray FilterDecls(DeclArray decls, metac_parser_t* parser,
         }
     }
 
-    DeclArray retval;
+    decl_array_t retval;
 
     retval.Ptr = result;
     retval.Length = resultCount;
@@ -168,17 +168,17 @@ int main(int argc, const char* argv[])
 
     MetaCLPP_Init(&LPP, &alloc, 0);
 
-    DeclArray decls = ReadLexParse(filename, &LPP, 0);
+    decl_array_t decls = ReadLexParse(filename, &LPP, 0);
     metac_alloc_t resultAlloc;
     Allocator_Init(&resultAlloc, 0, 0);
 
-    DeclArray parseFunctions =
+    decl_array_t parseFunctions =
         FilterDecls(decls, &LPP.Parser,
                           &resultAlloc, DeclIsParseFunc);
 
     printf("Found %d parserFuncs\n", (int)parseFunctions.Length);
 
-    DeclArray initFuncs =
+    decl_array_t initFuncs =
         FilterDecls(decls, &LPP.Parser,
                           &resultAlloc, DeclIsInitFunc);
 

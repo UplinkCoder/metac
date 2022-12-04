@@ -5,12 +5,12 @@
 #include "../parser/metac_lexer.h"
 #include "../parser/metac_parser.h"
 
-typedef struct DeclArray
+typedef struct decl_array_t
 {
     metac_decl_t** Ptr;
     uint32_t Length;
     uint32_t Capacity;
-} DeclArray;
+} decl_array_t;
 
 void LexFile(metac_lexer_t* lexer,
              const char* path,
@@ -18,7 +18,7 @@ void LexFile(metac_lexer_t* lexer,
 
 void ParseFile(metac_parser_t* parser,
                const char* path,
-               DeclArray* result);
+               decl_array_t* result);
 
 extern bool errored;
 

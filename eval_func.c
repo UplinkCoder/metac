@@ -11,7 +11,7 @@
 #include "codegen/metac_codegen.c"
 
 
-metac_decl_t* FindDecl(DeclArray decls,
+metac_decl_t* FindDecl(decl_array_t decls,
                        metac_parser_t* parser, const char* name)
 {
     const uint32_t len = cast(uint32_t) strlen(name);
@@ -62,7 +62,7 @@ int main(int argc, const char* argv[])
     uint32_t arg = atoi(argv[3]);
     metac_alloc_t alloc;
     metac_lpp_t LPP;
-    DeclArray decls;
+    decl_array_t decls;
 
     if (argc != 4)
     {
