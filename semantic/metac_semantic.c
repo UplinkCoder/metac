@@ -1206,7 +1206,7 @@ metac_sema_decl_t* MetaCSemantic_doDeclSemantic_(metac_sema_state_t* self,
     result = MetaCSemantic_declSemantic(self, decl);
     if (!result)
     {
-#if !defined(NO_FIBERS)
+#ifndef NO_FIBERS
         taskqueue_t* q = &CurrentWorker()->Queue;
         printf("Couldn't do the decl Semantic, yielding to try again\n");
         MetaCSemantic_doDeclSemantic_task_context_t CtxValue = {

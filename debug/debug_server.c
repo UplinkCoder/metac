@@ -542,7 +542,7 @@ void Debug_GraphValue(debug_server_t* debugServer, const char* name, double valu
 
     ARENA_ARRAY_ADD(graphP->Values, graphValue);
 }
-#if !NO_FIBERS
+#ifndef NO_FIBERS
 void Debug_RegisterWorker(debug_server_t* debugServer, worker_context_t* worker)
 {
     ARENA_ARRAY_ADD(debugServer->Workers, worker);

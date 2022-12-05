@@ -1,7 +1,7 @@
 #ifndef _METAC_TASK_H_
 #define _METAC_TASK_H_
 
-#if NO_FIBERS
+#ifdef NO_FIBERS
 #  error "Tasks don't work without fibers at the moment"
 #endif
 
