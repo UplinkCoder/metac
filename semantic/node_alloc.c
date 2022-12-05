@@ -1,3 +1,7 @@
+#include <inttypes.h>
+#include "metac_semantic.h"
+#include "metac_scope.h"
+
 uint32_t StructIndex(metac_sema_state_t* self, metac_type_aggregate_t* struct_)
 {
     uint32_t result = (struct_ - self->StructTypeTable.Slots);
