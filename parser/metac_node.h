@@ -123,6 +123,8 @@
     M(expr_not) \
     M(expr_compl) \
     M(expr_umin) \
+    M(expr_run) \
+    \
     M(expr_paren) \
     M(expr_tuple) \
     M(expr_ternary) \
@@ -174,7 +176,6 @@
     M(stmt_casebody) \
     M(stmt_break) \
     M(stmt_yield) \
-    M(stmt_run) \
     M(stmt_scope) \
     M(stmt_continue) \
     M(stmt_goto) \

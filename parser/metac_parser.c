@@ -1709,6 +1709,52 @@ metac_expr_t* MetaCParser_ParseUnaryExpr(metac_parser_t* self, parse_expr_flags_
             result->E1->Hash
         );
     }
+    else if (tokenType == tok_at)
+    {
+#define run_key 0x3809a6
+        metac_token_t* peek = MetaCParser_PeekToken(self, 2);
+        if (peek->TokenType == tok_identifier
+         && peek->IdentifierKey == run_key)
+        {
+            uint32_t hash = run_key;
+            bool isStmt = false;
+            MetaCParser_Match(self, tok_at);
+            MetaCParser_Match(self, tok_identifier);
+            result = AllocNewExpr(expr_run);
+            peek = MetaCParser_PeekToken(self, 1);
+            // if there is a { following the run expression
+            // we need to scan for a ; before the closing }
+            if (peek->TokenType == tok_lBrace)
+            {
+                uint32_t peekN = 2;
+                while(peek && peek->TokenType != tok_rBrace)
+                {
+                    peek = MetaCParser_PeekToken(self, peekN++);
+                    if (peek->TokenType == tok_semicolon)
+                    {
+                        isStmt = true;
+                    }
+                }
+            }
+
+            if (isStmt)
+            {
+                metac_stmt_t* runStmt = MetaCParser_ParseStmt(self, 0, 0);
+                // introduce function body expression
+                assert(!"Not implemented yet");
+            }
+            else
+            {
+                result->E1 = MetaCParser_ParseExpr(self,
+                    cast(parse_expr_flags_t)(expr_flags_unary | (eflags & expr_flags_pp)),
+                    0
+                );
+
+            }
+            hash = CRC32C_VALUE(hash, result->E1->Hash);
+            result->Hash = hash;
+        }
+    }
     else if (IsPrimaryExprToken(tokenType))
     {
         isPrimaryExp = true;
@@ -3374,23 +3420,6 @@ metac_stmt_t* MetaCParser_ParseStmt(metac_parser_t* self,
         comment->Hash = crc32c(CRC32C_SLASH_SLASH, comment->Text, comment->Length);
         metac_token_t* tok2 = MetaCParser_PeekToken(self, 1);
         int k = 12;
-    }
-    // match @run statement
-    else if (tokenType == tok_at)
-    {
-#define run_key 0x3809a6
-        metac_token_t* peek = MetaCParser_PeekToken(self, 2);
-        if (peek->TokenType == tok_identifier
-         && peek->IdentifierKey == run_key)
-        {
-            MetaCParser_Match(self, tok_at);
-            MetaCParser_Match(self, tok_identifier);
-            hash = run_key;
-            stmt_run_t* run_stmt = AllocNewStmt(stmt_run, &result);
-            run_stmt->RunStmt = MetaCParser_ParseStmt(self, (metac_stmt_t*) run_stmt, 0);
-            hash = CRC32C_VALUE(hash, run_stmt->RunStmt->Hash);
-            result->Hash = hash;
-        }
     }
     else if (tokenType == tok_kw_if)
     {

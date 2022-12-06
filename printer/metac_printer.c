@@ -493,16 +493,6 @@ static inline void PrintStmt(metac_printer_t* self, metac_stmt_t* stmt)
                 PrintExpr(self, stmt_yield->YieldExp);
             PrintToken(self, tok_semicolon);
         } break;
-        case stmt_run :
-        {
-            stmt_run_t* stmt_run = cast(stmt_run_t*) stmt;
-
-            PrintString(self, "@run", 4);
-            PrintSpace(self);
-            if (stmt_run->RunStmt != emptyPointer)
-                PrintStmt(self, stmt_run->RunStmt);
-            PrintToken(self, tok_semicolon);
-        } break;
         case stmt_block :
         {
             stmt_block_t* stmt_block = cast(stmt_block_t*) stmt;

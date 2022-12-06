@@ -63,7 +63,8 @@ typedef struct metac_expr_t
             struct metac_expr_t* _E2;
             struct metac_expr_t* Econd;
         };
-        // case  expr_inject, expr_eject, expr_assert, expr_outerParen, expr_outer :
+        // case expr_inject, expr_eject, expr_assert, expr_outerParen, expr_outer,
+        // expr_run :
         struct {
             struct metac_expr_t* E1;
         };
@@ -159,13 +160,6 @@ typedef struct stmt_yield_t
 
     metac_expr_t* YieldExp;
 } stmt_yield_t;
-
-typedef struct stmt_run_t
-{
-    STMT_HEADER
-
-    struct metac_stmt_t* RunStmt;
-} stmt_run_t;
 
 typedef struct stmt_scope_t
 {
