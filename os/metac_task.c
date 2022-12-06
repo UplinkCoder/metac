@@ -119,7 +119,7 @@ void FiberDoTask(void)
         {
             task->ContinuationFunc(task->Context);
         }
-        YIELD(YieldingBackAfterTaskCompletion);
+        YIELD_WORKER();
 
         // FiberReport(fiber);
     }
@@ -169,7 +169,7 @@ void ExecuteTask(worker_context_t* worker, task_t* task, aco_t* fiber)
     }
     else
     {
-        assert((task->TaskFlags & Task_Resumable) == Task_Resumable);
+        assert((task->TaskFlags & Task_Waiting) == Task_Waiting);
     }
 }
 
@@ -229,12 +229,7 @@ void RunWorkerThread(worker_context_t* worker, void (*specialFunc)(),  void* spe
     //FileStorage_Init(&worker->FileStorage, 0);
 
     aco_t* specialFiber = 0;
-    if (specialFunc)
-    {
-        specialFiber =
-            aco_create(threadFiber, aco_share_stack_new(KILOBYTE(256)), 0, specialFunc, specialFuncCtx);
-        START(specialFiber, specialFuncCtx);
-    }
+
 
     fiber_pool_t fiberPool;
     FiberPool_Init(&fiberPool, worker);
@@ -250,6 +245,12 @@ void RunWorkerThread(worker_context_t* worker, void (*specialFunc)(),  void* spe
 
     task_t (*fileTasks)[4] = {0};
 
+    if (specialFunc)
+    {
+        specialFiber =
+            aco_create(threadFiber, aco_share_stack_new(KILOBYTE(256)), 0, specialFunc, specialFuncCtx);
+        START(specialFiber, specialFuncCtx);
+    }
 
     for(;;)
     {

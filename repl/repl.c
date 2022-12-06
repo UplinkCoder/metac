@@ -1269,7 +1269,10 @@ void Repl_Fiber(void)
     repl_ui_context_t* uiContext = g_uiContext;
     ui_interface_t uiInterface = *uiContext->UiInterface;
     struct ui_state_t* uiState = uiContext->UiState;
-
+#ifndef NO_FIBERS
+    task_t replTask = {0};
+    SET_CURRENT_TASK(&replTask);
+#endif
     metac_filesystem_t* fs = 0;
 
     if (uiInterface.GetFileSystem)
@@ -1307,6 +1310,7 @@ void Repl_Fiber(void)
     while (Repl_Loop(repl, uiContext) != false)
     {
 #ifndef NO_FIBERS
+        task_t* replTask = (task_t*)(GET_CO()->arg);
         YIELD(ReplYield);
 #endif
     }

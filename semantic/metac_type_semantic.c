@@ -1398,7 +1398,7 @@ bool MetaCSemantic_ComputeStructLayout(metac_sema_state_t* self,
         semaField->Type =
             MetaCSemantic_doTypeSemantic(self, declField->Field->VarType);
 #ifndef NO_FIBERS
-        if (!semaField->Type.v)
+        while (!semaField->Type.v)
         {
             printf("FieldType couldn't be resolved ... yielding fiber\n");
             aco_t* me = (aco_t*)CurrentFiber();
@@ -1412,8 +1412,9 @@ bool MetaCSemantic_ComputeStructLayout(metac_sema_state_t* self,
                 assert(self->Waiters.WaiterCount < self->Waiters.WaiterCapacity);
                 self->Waiters.Waiters[self->Waiters.WaiterCount++] = waiter;
                 printf("We should Yield\n");
-                (cast(task_t*)(me->arg))->TaskFlags |= Task_Waiting;
+                (cast(task_t*)(me->arg))->TaskFlags = Task_Waiting;
                 YIELD(watingOnTypeSemantic);
+                (cast(task_t*)(me->arg))->TaskFlags = Task_Running;
                 printf("Now we should be able to resolve\n");
                 semaField->Type =
                     MetaCSemantic_doTypeSemantic(self, declField->Field->VarType);

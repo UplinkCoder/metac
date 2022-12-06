@@ -80,11 +80,11 @@ typedef enum task_flags_t
     Task_Running   = (1 << 1),
     Task_Resumable = (1 << 2),
     Task_Complete  = (1 << 3),
-    Task_Waiting   = Task_Resumable | Task_Running,
+    Task_Waiting   = (1 << 4),
 
-    Task_Continuation_JumpToLabel = (1 << 4),
-    Task_Continuation_Task        = (1 << 5),
-    Task_Continuation_Func        = (1 << 6),
+    Task_Continuation_JumpToLabel = (1 << 5),
+    Task_Continuation_Task        = (1 << 6),
+    Task_Continuation_Func        = (1 << 7),
 } task_flags_t;
 
 #pragma pack(push, 1)
@@ -120,6 +120,7 @@ typedef struct task_t
         };
         void (*ContinuationFunc)(void* ctx);
     };
+    const char* YieldReason;
     union {
         uint8_t _inlineContext[INLINE_TASK_CTX_SZ];
         task_inline_ctx_t inlineContext;
@@ -207,6 +208,9 @@ worker_context_t* CurrentWorker(void);
 
 void* CurrentFiber(void);
 task_t* CurrentTask(void);
+
+#define SET_CURRENT_TASK(TASKP) \
+    (*(task_t**)&(GET_CO()->arg)) = (TASKP);
 
 /// copies the task pointed to by *taskP the queue
 bool TaskQueue_Push(taskqueue_t* self, task_t* taskP);

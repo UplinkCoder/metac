@@ -15,6 +15,10 @@
 #ifndef NO_FIBERS
 #  define YIELD(REASON) do { \
 /*    printf("Yielding %x from {%s:%d} %s\n",  (GET_CO()), __FILE__, __LINE__, #REASON);*/ \
+    ((task_t*)(GET_CO())->arg)->YieldReason = #REASON; \
+    aco_yield(); \
+} while(0)
+#  define YIELD_WORKER() do { \
     aco_yield(); \
 } while(0)
 #else

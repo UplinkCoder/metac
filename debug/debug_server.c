@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include "../os/bsf.h"
 
 debug_server_t* g_DebugServer;
 
@@ -346,6 +347,111 @@ MHD_HANDLER(handleArenas)
     return send_html (connection, responseBuffer, len);
 }
 
+#ifndef NO_FIBERS
+void outTaskRow(char* body, uint32_t sz, uint32_t* pp, task_t* task)
+{
+/*
+        const char* headers[] = {
+        "Task_Addr",
+        "Name",
+        "File",
+        "Line",
+        "Parent_Addr",
+        "Parent_Name",
+    };
+*/
+    uint32_t p = *pp;
+
+    p += snprintf (body + p, sz - p, "<tr>");
+    {
+        p += snprintf (body + p, sz - p,
+                       "<td>%p</td>", task
+        );
+
+        p += snprintf (body + p, sz - p,
+                       "<td>%p</td>", task->TaskFunction
+        );
+
+        p += snprintf (body + p, sz - p,
+                       "<td>%s</td>", (task->Origin.File ? task->Origin.File : "(null)")
+        );
+
+        p += snprintf (body + p, sz - p,
+                       "<td>%u</td>", task->Origin.Line
+        );
+
+        p += snprintf (body + p, sz - p,
+                       "<td>%p</td>", task->Parent
+        );
+
+        p += snprintf (body + p, sz - p,
+                       "<td>%p</td>", (task->Parent ? task->Parent->TaskFunction : 0)
+        );
+    }
+
+    p += snprintf(body + p, sz - p, "</tr>");
+    (*pp) = p;
+}
+
+MHD_HANDLER(handleTasks)
+{
+    static char responseBuffer[8192];
+    uint32_t p = 0;
+    const char* headers[] = {
+        "Task_Addr",
+        "Name",
+        "File",
+        "Line",
+        "Parent_Addr",
+        "Parent_Name",
+    };
+    char body[8192];
+
+    debug_server_t *debugServer = cast(debug_server_t*) cls;
+    const char *workerIdxStr =
+        MHD_lookup_connection_value(connection, MHD_GET_ARGUMENT_KIND, "workerIdx");
+    uint32_t workerIdx = workerIdxStr ? atoi(workerIdxStr) : 1;
+    worker_context_t* worker = ((workerIdx && workerIdx <= (debugServer->WorkersCount))
+        ? debugServer->Workers[workerIdx - 1] : 0);
+
+    const uint32_t inProgress = __builtin_popcount(~worker->FiberPool->FreeBitfield);
+
+    p += snprintf(body + p, ARRAYSIZE(body) - p, "<tr>");
+    for(uint32_t i = 0; i < ARRAYSIZE(headers); i++)
+    {
+        p += snprintf(body + p, ARRAYSIZE(body) - p, "<th>%s</th>", headers[i]);
+    }
+    p += snprintf(body + p, ARRAYSIZE(body) - p, "</tr>");
+#define CLEAR_BIT(BF, IDX) \
+    BF &= ~(1 << IDX);
+#define SET_BIT(BF, IDX) \
+    BF |= (1 << IDX);
+
+    {
+        uint32_t inProgressBf = worker->FiberPool->FreeBitfield;
+        uint32_t currentIdx;
+        while (inProgressBf != ~0)
+        {
+            currentIdx = BSF(inProgressBf) - 1;
+            task_t* task = &worker->FiberPool->Tasks[currentIdx];
+            outTaskRow(body, ARRAYSIZE(body), &p, task);
+            SET_BIT(inProgressBf, currentIdx);
+        }
+    }
+
+    if (!worker)
+        return MHD_NO;
+
+   uint32_t len = snprintf (responseBuffer, ARRAYSIZE (responseBuffer),
+                    "<hmtl><body>"
+                    "<h3>Tasks: </h3>"
+                    "<table id=\"tasks\">%s</table>"
+                    "</body></hmtl>",
+           body);
+    return send_html (connection, responseBuffer, len);
+}
+#endif
+
 static MHD_HANDLER(debugServerHandler)
 {
     debug_server_t *debugServer = cast(debug_server_t*) cls;
@@ -383,6 +489,11 @@ static MHD_HANDLER(debugServerHandler)
     if (memcmp(url, "/data.json", sizeof("/data.json") - 1) == 0)
     {
         return handleData(MHD_HANDLER_PASSTHROUGH);
+    }
+
+    if (memcmp(url, "/tasks", sizeof("/tasks") - 1) == 0)
+    {
+        return handleTasks(MHD_HANDLER_PASSTHROUGH);
     }
 
 
