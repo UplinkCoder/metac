@@ -250,7 +250,7 @@ void Presemantic_(repl_state_t* self)
             LexFile(&tmpLexer, "metac_compiler_interface.h",
                     fCompilterInterface.FileContent0,
                     fCompilterInterface.FileLength);
-            AddIdentifierToCompletion(self, "compiler");
+            AddIdentifierToCompletion(self, "Compiler");
 
             MetaCPreProcessor_Init(&preProc, &tmpLexer, &PresemanticAlloc, 0, 0);
             MetaCParser_InitFromLexer(&tmpParser, &tmpLexer, &PresemanticAlloc);
@@ -356,7 +356,7 @@ void Presemantic_(repl_state_t* self)
                         //fakeDotStruct.VarIdentifier = expr->E1->IdentifierPtr;
                         //TODO implement metaCCodegen_RegisterExternal
                         fakeDotStruct.Storage.v = STORAGE_V(storage_external, 0);
-                        fakeDotStruct.VarIdentifier = GetOrAddIdentifier(&self->SemanticState.SemanticIdentifierTable, compiler_key, "compiler");
+                        fakeDotStruct.VarIdentifier = GetOrAddIdentifier(&self->SemanticState.SemanticIdentifierTable, Compiler_key, "Compiler");
                         self->SemanticState.CompilerVariable = fakeDotStruct;
                     }
                 }

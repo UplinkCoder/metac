@@ -535,7 +535,7 @@ LswitchIdKey:
 
                 switch(idKey)
                 {
-                    case compiler_key:
+                    case Compiler_key:
                     {
                         result->Kind = expr_variable;
                         result->Variable = &self->CompilerVariable;

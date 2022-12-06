@@ -31,22 +31,22 @@ bool IsExprNode(metac_node_kind_t Kind)
     return ((Kind > node_expr_invalid) & (Kind < node_expr_max));
 }
 
-#define compiler_key 0x8481e0
-#define context_key 0x7a2a7f
-#define target_key 0x63a0c4
+#define Compiler_key 0x84e479
+#define Context_key 0x71a9c2
+#define Target_key 0x67b649
 #define type_key 0x40869f
 #define defined_key 0x7d9260
 
 static inline void InitSpecialIdentifier(metac_parser_t* self)
 {
     self->SpecialNamePtr_Compiler =
-        GetOrAddIdentifier(&self->IdentifierTable, compiler_key, "compiler");
+        GetOrAddIdentifier(&self->IdentifierTable, Compiler_key, "Compiler");
 
     self->SpecialNamePtr_Context =
-        GetOrAddIdentifier(&self->IdentifierTable, context_key, "context");
+        GetOrAddIdentifier(&self->IdentifierTable, Context_key, "Context");
 
     self->SpecialNamePtr_Target =
-        GetOrAddIdentifier(&self->IdentifierTable, target_key, "target");
+        GetOrAddIdentifier(&self->IdentifierTable, Target_key, "Target");
 
     self->SpecialNamePtr_Type =
         GetOrAddIdentifier(&self->IdentifierTable, type_key, "type");
