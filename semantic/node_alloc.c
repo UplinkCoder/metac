@@ -1,4 +1,4 @@
-#include <inttypes.h>
+#include "../os/compat.h"
 #include "metac_semantic.h"
 #include "metac_scope.h"
 
