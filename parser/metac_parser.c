@@ -3884,7 +3884,17 @@ const char* MetaCNodeKind_toChars(metac_node_kind_t type)
 #undef CASE_MACRO
 }
 
+
 #  ifdef TEST_PARSER
+#define TEST_STR_EQ(GIVEN, EXPECTED) { \
+    const char * _given = GIVEN; \
+    const char * _expected = EXPECTED; \
+    if (strcmp(_given, _expected) != 0) \
+    { \
+        fprintf(stderr, "[+%d %s] failing '%s' != '%s'\n", __LINE__, __FILE__, \
+                                                           _given, _expected); \
+    } \
+}
 
 #include "../printer/metac_printer.h"
 
@@ -3906,22 +3916,22 @@ void TestParseExprssion(void)
     metac_expr_t* expr;
 
     expr = MetaCLPP_ParseExprFromString(&LPP, "12 - 16 - 99");
-    assert(!strcmp(MetaCPrinter_PrintExpr(&printer, expr), "((12 - 16) - 99)"));
+    TEST_STR_EQ(MetaCPrinter_PrintExpr(&printer, expr), "((12 - 16) - 99)");
 
     expr = MetaCLPP_ParseExprFromString(&LPP, "2 * 12 + 10");
-    assert(!strcmp(MetaCPrinter_PrintExpr(&printer, expr), "((2 * 12) + 10)"));
+    TEST_STR_EQ(MetaCPrinter_PrintExpr(&printer, expr), "((2 * 12) + 10)");
 
     expr = MetaCLPP_ParseExprFromString(&LPP, "2 + 10 * 2");
-    assert(!strcmp(MetaCPrinter_PrintExpr(&printer, expr), "(2 + (10 * 2))"));
+    TEST_STR_EQ(MetaCPrinter_PrintExpr(&printer, expr), "(2 + (10 * 2))");
 
     expr = MetaCLPP_ParseExprFromString(&LPP, "a = b(c)");
-    assert(!strcmp(MetaCPrinter_PrintExpr(&printer, expr), "((a) = (b)((c)))"));
+    TEST_STR_EQ(MetaCPrinter_PrintExpr(&printer, expr), "((a) = (b)((c)))");
 
     expr = MetaCLPP_ParseExprFromString(&LPP, "((x + ((((a + b))))) + d)");
-    assert(!strcmp(MetaCPrinter_PrintExpr(&printer, expr), "(((x) + (((((a) + (b)))))) + (d))"));
+    TEST_STR_EQ(MetaCPrinter_PrintExpr(&printer, expr), "(((x) + (((((a) + (b)))))) + (d))");
 
     expr = MetaCLPP_ParseExprFromString(&LPP, "x + y * 6737203");
-    assert(!strcmp(MetaCPrinter_PrintExpr(&printer, expr), "((x) + (y * 6737203))"));
+    TEST_STR_EQ(MetaCPrinter_PrintExpr(&printer, expr), "((x) + (y * 6737203))");
 }
 
 void TestParseDecl(void)
@@ -3941,13 +3951,13 @@ void TestParseDecl(void)
     metac_decl_t* decl = MetaCLPP_ParseDeclFromString(&LPP, "int f(double x)");
     //TODO the test above should work wtih a semicolon at the end as well
     const char* str =  MetaCPrinter_PrintDecl(&printer, decl);
-    assert(!strcmp(str, "int f (double x);\n"));
+    TEST_STR_EQ(str, "int f (double x);\n");
 
     decl = MetaCLPP_ParseDeclFromString(&LPP, "unsigned x");
-    assert(!strcmp(MetaCPrinter_PrintDecl(&printer, decl), "unsigned int x;\n"));
+    TEST_STR_EQ(MetaCPrinter_PrintDecl(&printer, decl), "unsigned int x;\n");
 
     decl = MetaCLPP_ParseDeclFromString(&LPP, "signed y");
-    assert(!strcmp(MetaCPrinter_PrintDecl(&printer, decl), "signed int y;\n"));
+    TEST_STR_EQ(MetaCPrinter_PrintDecl(&printer, decl), "signed int y;\n");
 
 }
 
