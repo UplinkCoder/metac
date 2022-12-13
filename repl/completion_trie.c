@@ -209,7 +209,7 @@ completion_trie_node_t* CompletionTrie_FindLongestMatchingPrefix(completion_trie
             if (c == nodes[i].Prefix4[0])
             {
                 int len = PrefixLen(nodes[i].Prefix4);
-                if (len > length)
+                if (len > length || !len)
                     continue;
 
                 if (memcmp(nodes[i].Prefix4 + 1, word + 1, len - 1) == 0)
