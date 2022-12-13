@@ -1152,6 +1152,7 @@ LtryAgian: {}
                 meWaiter->NodeHash = CRC32C_VALUE(~0, type->TypeIdentifier);
                 meWaiter->Continuation = me;
                 task->TaskFlags |= Task_Waiting;
+                task->TaskFlags &= (~Task_Running);
                 YIELD(WaitOnResolve);
                 printf("Trying agian after yielding\n");
                 goto LtryAgian;

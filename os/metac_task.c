@@ -169,7 +169,7 @@ void ExecuteTask(worker_context_t* worker, task_t* task, aco_t* fiber)
     }
     else
     {
-        assert((task->TaskFlags & Task_Waiting) == Task_Waiting);
+        assert((!task->TaskFunction) || (task->TaskFlags & Task_Waiting) == Task_Waiting);
     }
 }
 
@@ -214,7 +214,9 @@ void WorkerSIGUSR1()
 void RunWorkerThread(worker_context_t* worker, void (*specialFunc)(),  void* specialFuncCtx)
 {
     aco_thread_init(0);
+#ifdef POSIX
     signal(SIGUSR1, WorkerSIGUSR1);
+#endif
 
     assert(THREAD_CONTEXT == 0 || THREAD_CONTEXT == worker);
     THREAD_CONTEXT_SET(worker);
@@ -354,10 +356,11 @@ void RunWorkerThread(worker_context_t* worker, void (*specialFunc)(),  void* spe
             }
             const uint32_t CompletedTasks = ((completionGoal) ^ ~(*FreeBitfield)) & completionGoal;
 
+            tryMask1 |= CompletedTasks;
             // set all tasks which have been completed in the tryMask1
+
             nextFiberBitfield = (~CompletedTasks) & (~(*FreeBitfield));
             execFiber = 0;
-            tryMask1 |= CompletedTasks;
             for(;;)
             {
                 nextFiberIdx = BSF(nextFiberBitfield);
@@ -391,6 +394,39 @@ void RunWorkerThread(worker_context_t* worker, void (*specialFunc)(),  void* spe
         {
 
         }
+        // let's give waiting tasks the chance to make progress now.
+        {
+            uint32_t tryMask0 = 0; // tasks which have been tried once
+            const uint32_t completionGoal = ~(*FreeBitfield);
+            uint32_t nextFiberBitfield = completionGoal;
+            uint32_t nextFiberIdx = -1;
+            for(;;)
+            {
+                nextFiberIdx = BSF(nextFiberBitfield);
+                nextFiberBitfield &= ~(1 << nextFiberIdx);
+
+                // printf("nextFiberIdx: %u\n", nextFiberIdx);
+                // printf("nextFiberBitField: %x\n", nextFiberBitfield);
+                // printf("tryMask0: %x\n", tryMask0);
+
+                execFiber = &fiberPool.MainCos[nextFiberIdx];
+                task_t* task = (task_t*)execFiber->arg;
+
+                if (tryMask0 == completionGoal)
+                {
+                    assert(nextFiberBitfield == 0);
+                    break;
+                }
+
+                if ((task->TaskFlags & Task_Waiting) == Task_Waiting)
+                {
+                    printf("Encountered waiting task ... let's see if it can make progress\n");
+                    ExecuteTask(worker, task, execFiber);
+                }
+                tryMask0 |= (1 << nextFiberIdx);
+            }
+        }
+
         // if we couldn't finish all the tasks it's likely
         // that we need to spawn new tasks in order to succseed
 LrunSpeicalFiberOrTerminate:
@@ -405,8 +441,9 @@ LrunSpeicalFiberOrTerminate:
                 terminationRequested = true;
                 continue;
             }
-
+            ((task_t*)specialFiber->arg)->TaskFlags |= Task_Running;
             RESUME(specialFiber);
+            ((task_t*)specialFiber->arg)->TaskFlags |= Task_Waiting;
         }
     }
 
