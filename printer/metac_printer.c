@@ -961,43 +961,43 @@ void MetaCPrinter_PrintForHeader(metac_printer_t* self, metac_decl_t* decl)
     }
 }
 
-static inline void PrintExpr(metac_printer_t* self, metac_expr_t* exp)
+static inline void PrintExpr(metac_printer_t* self, metac_expr_t* expr)
 {
-    if (exp->Kind == expr_paren)
+    if (expr->Kind == expr_paren)
     {
-        if (!IsBinaryExp(exp->E1->Kind))
+        if (!IsBinaryExp(expr->E1->Kind))
             PrintChar(self, '(');
 
-        PrintExpr(self, exp->E1);
+        PrintExpr(self, expr->E1);
 
-        if (!IsBinaryExp(exp->E1->Kind))
+        if (!IsBinaryExp(expr->E1->Kind))
             PrintChar(self, ')');
     }
-    else if (exp->Kind == expr_ternary)
+    else if (expr->Kind == expr_ternary)
     {
         PrintChar(self, '(');
-        PrintExpr(self, exp->Econd);
+        PrintExpr(self, expr->Econd);
         PrintSpace(self);
         PrintChar(self, '?');
         PrintSpace(self);
-        PrintExpr(self, exp->E1);
+        PrintExpr(self, expr->E1);
         PrintSpace(self);
         PrintChar(self, ':');
         PrintSpace(self);
-        PrintExpr(self, exp->E2);
+        PrintExpr(self, expr->E2);
         PrintChar(self, ')');
     }
-    else if (exp->Kind == expr_tuple)
+    else if (expr->Kind == expr_tuple)
     {
         PrintChar(self, '{');
         expr_tuple_t* tupleElement =
-            exp->TupleExprList;
+            expr->TupleExprList;
         for(uint32_t i = 0;
-            i < exp->TupleExprCount;
+            i < expr->TupleExprCount;
             i++)
         {
             PrintExpr(self, tupleElement->Expr);
-            if (i != (exp->TupleExprCount - 1))
+            if (i != (expr->TupleExprCount - 1))
             {
                 PrintChar(self, ',');
                 PrintSpace(self);
@@ -1006,90 +1006,99 @@ static inline void PrintExpr(metac_printer_t* self, metac_expr_t* exp)
         }
         PrintChar(self, '}');
     }
-    else if (exp->Kind == expr_type)
+    else if (expr->Kind == expr_type)
     {
         PrintChar(self, '(');
-        PrintType(self, exp->TypeExp);
+        PrintType(self, expr->TypeExp);
         PrintChar(self, ')');
     }
-    else if (exp->Kind == expr_identifier)
+    else if (expr->Kind == expr_identifier)
     {
-        PrintIdentifier(self, exp->IdentifierPtr);
+        PrintIdentifier(self, expr->IdentifierPtr);
     }
-    else if (exp->Kind == expr_string)
+/*
+    else if (expr->Kind == expr_run)
     {
-        uint32_t stringLength = LENGTH_FROM_STRING_KEY(exp->StringKey);
+        PrintString(self, "@run", 4);
+        PrintSpace(self);
+        if (expr->RunStmt != emptyPointer)
+            PrintStmt(self, expr->RunStmt);
+    }
+*/
+    else if (expr->Kind == expr_string)
+    {
+        uint32_t stringLength = LENGTH_FROM_STRING_KEY(expr->StringKey);
         PrintChar(self, '"');
         PrintString(self,
-            IdentifierPtrToCharPtr(self->StringTable, exp->StringPtr),
+            IdentifierPtrToCharPtr(self->StringTable, expr->StringPtr),
             stringLength);
         PrintChar(self, '"');
     }
-    else if (exp->Kind == expr_signed_integer)
+    else if (expr->Kind == expr_signed_integer)
     {
-        PrintI64(self, exp->ValueI64);
+        PrintI64(self, expr->ValueI64);
     }
-    else if (exp->Kind == expr_float)
+    else if (expr->Kind == expr_float)
     {
-        PrintF23(self, exp->ValueF23);
+        PrintF23(self, expr->ValueF23);
     }
-    else if (exp->Kind == expr_char)
+    else if (expr->Kind == expr_char)
     {
         PrintChar(self, '\'');
-        PrintString(self, exp->Chars, LENGTH_FROM_CHAR_KEY(exp->CharKey));
+        PrintString(self, expr->Chars, LENGTH_FROM_CHAR_KEY(expr->CharKey));
         PrintChar(self, '\'');
     }
-    else if (exp->Kind == expr_index)
+    else if (expr->Kind == expr_index)
     {
-        PrintExpr(self, exp->E1);
+        PrintExpr(self, expr->E1);
         PrintToken(self, tok_lBracket);
-        PrintExpr(self, exp->E2);
+        PrintExpr(self, expr->E2);
         PrintToken(self, tok_rBracket);
     }
-    else if (IsBinaryExp(exp->Kind))
+    else if (IsBinaryExp(expr->Kind))
     {
         PrintChar(self, '(');
-        PrintExpr(self, exp->E1);
+        PrintExpr(self, expr->E1);
 
         PrintSpace(self);
-        const char* op = BinExpTypeToChars((metac_binary_expr_kind_t)exp->Kind);
+        const char* op = BinExpTypeToChars((metac_binary_expr_kind_t)expr->Kind);
         PrintString(self, op, strlen(op));
         PrintSpace(self);
 
-        PrintExpr(self, exp->E2);
+        PrintExpr(self, expr->E2);
         PrintChar(self, ')');
     }
-    else if (exp->Kind == expr_cast)
+    else if (expr->Kind == expr_cast)
     {
         PrintString(self, "cast", 4);
         PrintChar(self, '(');
-        PrintType(self, exp->CastType);
+        PrintType(self, expr->CastType);
         PrintChar(self, ')');
 
-        PrintExpr(self, exp->CastExp);
+        PrintExpr(self, expr->CastExp);
     }
-    else if (exp->Kind == expr_call)
+    else if (expr->Kind == expr_call)
     {
-        PrintExpr(self, exp->E1);
-        if (METAC_NODE(exp->E2) != emptyPointer)
+        PrintExpr(self, expr->E1);
+        if (METAC_NODE(expr->E2) != emptyPointer)
         {
-            PrintExpr(self, exp->E2);
+            PrintExpr(self, expr->E2);
         }
         else
         {
             PrintString(self, "()", 2);
         }
     }
-    else if (exp->Kind == expr_template_instance)
+    else if (expr->Kind == expr_template_instance)
     {
-        PrintExpr(self, exp->E1);
+        PrintExpr(self, expr->E1);
         PrintChar(self, '!');
-        PrintExpr(self, exp->E2);
+        PrintExpr(self, expr->E2);
     }
-    else if (exp->Kind == expr_argument)
+    else if (expr->Kind == expr_argument)
     {
         PrintChar(self, '(');
-        for(expr_argument_t* arg = (expr_argument_t*)exp;
+        for(expr_argument_t* arg = (expr_argument_t*)expr;
             arg != emptyPointer;
             arg = arg->Next)
         {
@@ -1099,108 +1108,108 @@ static inline void PrintExpr(metac_printer_t* self, metac_expr_t* exp)
         }
         PrintChar(self, ')');
     }
-    else if (exp->Kind == expr_sizeof)
+    else if (expr->Kind == expr_sizeof)
     {
         PrintKeyword(self, tok_kw_sizeof);
         PrintToken(self, tok_lParen);
-        PrintExpr(self, exp->E1);
+        PrintExpr(self, expr->E1);
         PrintToken(self, tok_rParen);
     }
-    else if (exp->Kind == expr_addr || exp->Kind == expr_deref
-          || exp->Kind == expr_not  || exp->Kind == expr_compl
-          || exp->Kind == expr_umin)
+    else if (expr->Kind == expr_addr || expr->Kind == expr_deref
+          || expr->Kind == expr_not  || expr->Kind == expr_compl
+          || expr->Kind == expr_umin)
     {
         {
             const char* op = 0;
-            if (exp->Kind == expr_addr)
+            if (expr->Kind == expr_addr)
                 op = "&";
-            else if (exp->Kind == expr_deref)
+            else if (expr->Kind == expr_deref)
                 op = "*";
-            else if (exp->Kind == expr_not)
+            else if (expr->Kind == expr_not)
                 op = "!";
-            else if (exp->Kind == expr_compl)
+            else if (expr->Kind == expr_compl)
                 op = "~";
-            else if (exp->Kind == expr_umin)
+            else if (expr->Kind == expr_umin)
                 op = "-";
 
             PrintString(self, op, strlen(op));
         }
 
-        if (!IsBinaryExp(exp->E1->Kind))
+        if (!IsBinaryExp(expr->E1->Kind))
             PrintChar(self, '(');
 
-        PrintExpr(self, exp->E1);
+        PrintExpr(self, expr->E1);
 
-        if (!IsBinaryExp(exp->E1->Kind))
+        if (!IsBinaryExp(expr->E1->Kind))
             PrintChar(self, ')');
     }
-    else if (exp->Kind == expr_outer)
+    else if (expr->Kind == expr_outer)
     {
         PrintChar(self, '$');
         PrintChar(self, '(');
-        PrintExpr(self, exp->E1);
+        PrintExpr(self, expr->E1);
         PrintChar(self, ')');
     }
-    else if (exp->Kind == expr_stringize)
+    else if (expr->Kind == expr_stringize)
     {
         PrintChar(self, '#');
-        PrintExpr(self, exp->E1);
+        PrintExpr(self, expr->E1);
     }
-    else if (exp->Kind == expr_increment || exp->Kind == expr_decrement)
+    else if (expr->Kind == expr_increment || expr->Kind == expr_decrement)
     {
         const char* op = 0;
-        if (exp->Kind == expr_increment)
+        if (expr->Kind == expr_increment)
             op = "++";
-        else if (exp->Kind == expr_decrement)
+        else if (expr->Kind == expr_decrement)
             op = "--";
 
         assert(op);
 
         PrintString(self, op, strlen(op));
 
-        if (!IsBinaryExp(exp->E1->Kind))
+        if (!IsBinaryExp(expr->E1->Kind))
             PrintChar(self, '(');
 
-        PrintExpr(self, exp->E1);
+        PrintExpr(self, expr->E1);
 
-        if (!IsBinaryExp(exp->E1->Kind))
+        if (!IsBinaryExp(expr->E1->Kind))
             PrintChar(self, ')');
     }
-    else if (exp->Kind == expr_post_increment || exp->Kind == expr_post_decrement)
+    else if (expr->Kind == expr_post_increment || expr->Kind == expr_post_decrement)
     {
         const char* op = 0;
-        if (exp->Kind == expr_post_increment)
+        if (expr->Kind == expr_post_increment)
             op = "++";
-        else if (exp->Kind == expr_post_decrement)
+        else if (expr->Kind == expr_post_decrement)
             op = "--";
 
         assert(op);
 
-        if (!IsBinaryExp(exp->E1->Kind))
+        if (!IsBinaryExp(expr->E1->Kind))
             PrintChar(self, '(');
 
-        PrintExpr(self, exp->E1);
+        PrintExpr(self, expr->E1);
 
-        if (!IsBinaryExp(exp->E1->Kind))
+        if (!IsBinaryExp(expr->E1->Kind))
             PrintChar(self, ')');
 
         PrintString(self, op, strlen(op));
     }
-    else if (exp->Kind == expr_inject || exp->Kind == expr_eject
-          || exp->Kind == expr_typeof || exp->Kind == expr_assert
-          || exp->Kind == expr_unary_dot)
+    else if (expr->Kind == expr_inject || expr->Kind == expr_eject
+          || expr->Kind == expr_typeof || expr->Kind == expr_assert
+          || expr->Kind == expr_unary_dot)
     {
         {
             const char* op = 0;
-            if (exp->Kind == expr_inject)
+            if (expr->Kind == expr_inject)
                 op = "inject";
-            else if (exp->Kind == expr_eject)
+            else if (expr->Kind == expr_eject)
                 op = "eject";
-            else if (exp->Kind == expr_typeof)
+            else if (expr->Kind == expr_typeof)
                 op = "typeof";
-            else if (exp->Kind == expr_assert)
+            else if (expr->Kind == expr_assert)
                 op = "assert";
-            else if (exp->Kind == expr_unary_dot)
+            else if (expr->Kind == expr_unary_dot)
                 op = ".";
 
             assert(op);
@@ -1208,17 +1217,17 @@ static inline void PrintExpr(metac_printer_t* self, metac_expr_t* exp)
             PrintString(self, op, strlen(op));
         }
 
-        if (!IsBinaryExp(exp->E1->Kind))
+        if (!IsBinaryExp(expr->E1->Kind))
            PrintChar(self, '(');
 
-        PrintExpr(self, exp->E1);
+        PrintExpr(self, expr->E1);
 
-        if (!IsBinaryExp(exp->E1->Kind))
+        if (!IsBinaryExp(expr->E1->Kind))
             PrintChar(self, ')');
     }
     else
     {
-        printf("don't know how to print %s\n", (MetaCExprKind_toChars(exp->Kind)));
+        printf("don't know how to print %s\n", (MetaCExprKind_toChars(expr->Kind)));
     }
 }
 
@@ -1533,35 +1542,35 @@ static inline void PrintSemaDecl(metac_printer_t* self,
 }
 
 static inline void PrintSemaExpr(metac_printer_t* self,
-                                       metac_sema_state_t* sema,
-                                       metac_sema_expr_t* semaExp)
+                                 metac_sema_state_t* sema,
+                                 metac_sema_expr_t* semaExpr)
 {
-    if (semaExp->Kind == expr_paren)
+    if (semaExpr->Kind == expr_paren)
     {
-        if (!IsBinaryExp(semaExp->E1->Kind))
+        if (!IsBinaryExp(semaExpr->E1->Kind))
             PrintChar(self, '(');
 
-        PrintSemaExpr(self, sema,  semaExp->E1);
+        PrintSemaExpr(self, sema,  semaExpr->E1);
 
-        if (!IsBinaryExp(semaExp->E1->Kind))
+        if (!IsBinaryExp(semaExpr->E1->Kind))
             PrintChar(self, ')');
     }
-    else if (semaExp->Kind == expr_variable)
+    else if (semaExpr->Kind == expr_variable)
     {
         // printf("Don't know how to print expr_variable\n");
-        PrintIdentifier(self, semaExp->Variable->VarIdentifier);
+        PrintIdentifier(self, semaExpr->Variable->VarIdentifier);
     }
-    else if (semaExp->Kind == expr_tuple)
+    else if (semaExpr->Kind == expr_tuple)
     {
         PrintChar(self, '{');
         metac_sema_expr_t** tupleElement =
-            semaExp->TupleExprs;
+            semaExpr->TupleExprs;
         for(uint32_t i = 0;
-            i < semaExp->TupleExprCount;
+            i < semaExpr->TupleExprCount;
             i++)
         {
             PrintSemaExpr(self, sema,  tupleElement[i]);
-            if (i != (semaExp->TupleExprCount - 1))
+            if (i != (semaExpr->TupleExprCount - 1))
             {
                 PrintChar(self, ',');
                 PrintSpace(self);
@@ -1569,67 +1578,67 @@ static inline void PrintSemaExpr(metac_printer_t* self,
         }
         PrintChar(self, '}');
     }
-    else if (semaExp->Kind == expr_type)
+    else if (semaExpr->Kind == expr_type)
     {
         PrintChar(self, '(');
-        PrintSemaType(self, sema, semaExp->TypeExp);
+        PrintSemaType(self, sema, semaExpr->TypeExp);
         PrintChar(self, ')');
     }
-    else if (semaExp->Kind == expr_identifier || semaExp->Kind == expr_variable)
+    else if (semaExpr->Kind == expr_identifier || semaExpr->Kind == expr_variable)
     {
-        PrintIdentifier(self, semaExp->IdentifierPtr);
+        PrintIdentifier(self, semaExpr->IdentifierPtr);
     }
-    else if (semaExp->Kind == expr_string)
+    else if (semaExpr->Kind == expr_string)
     {
-        uint32_t stringLength = LENGTH_FROM_STRING_KEY(semaExp->StringKey);
+        uint32_t stringLength = LENGTH_FROM_STRING_KEY(semaExpr->StringKey);
         PrintChar(self, '"');
         PrintString(self,
-            IdentifierPtrToCharPtr(self->StringTable, semaExp->StringPtr),
+            IdentifierPtrToCharPtr(self->StringTable, semaExpr->StringPtr),
             stringLength);
         PrintChar(self, '"');
     }
-    else if (semaExp->Kind == expr_signed_integer)
+    else if (semaExpr->Kind == expr_signed_integer)
     {
-        PrintI64(self, semaExp->ValueI64);
+        PrintI64(self, semaExpr->ValueI64);
     }
-    else if (semaExp->Kind == expr_float)
+    else if (semaExpr->Kind == expr_float)
     {
-        PrintF23(self, semaExp->ValueF23);
+        PrintF23(self, semaExpr->ValueF23);
     }
-    else if (semaExp->Kind == expr_char)
+    else if (semaExpr->Kind == expr_char)
     {
         PrintChar(self, '\'');
-        PrintString(self, semaExp->Chars, LENGTH_FROM_CHAR_KEY(semaExp->CharKey));
+        PrintString(self, semaExpr->Chars, LENGTH_FROM_CHAR_KEY(semaExpr->CharKey));
         PrintChar(self, '\'');
     }
-    else if (IsBinaryExp(semaExp->Kind) && semaExp->Kind != expr_index)
+    else if (IsBinaryExp(semaExpr->Kind) && semaExpr->Kind != expr_index)
     {
         PrintChar(self, '(');
-        PrintSemaExpr(self, sema,  semaExp->E1);
+        PrintSemaExpr(self, sema,  semaExpr->E1);
 
         PrintSpace(self);
-        const char* op = BinExpTypeToChars((metac_binary_expr_kind_t)semaExp->Kind);
+        const char* op = BinExpTypeToChars((metac_binary_expr_kind_t)semaExpr->Kind);
         PrintString(self, op, strlen(op));
         PrintSpace(self);
 
-        PrintSemaExpr(self, sema,  semaExp->E2);
+        PrintSemaExpr(self, sema,  semaExpr->E2);
         PrintChar(self, ')');
     }
-    else if (semaExp->Kind == expr_cast)
+    else if (semaExpr->Kind == expr_cast)
     {
         PrintString(self, "cast", 4);
         PrintChar(self, '(');
-        PrintSemaType(self, sema,semaExp->CastType);
+        PrintSemaType(self, sema,semaExpr->CastType);
         PrintChar(self, ')');
 
-        PrintSemaExpr(self, sema,  semaExp->CastExp);
+        PrintSemaExpr(self, sema,  semaExpr->CastExp);
     }
-    else if (semaExp->Kind == expr_call)
+    else if (semaExpr->Kind == expr_call)
     {
-        PrintSemaExpr(self, sema,  semaExp->E1);
+        PrintSemaExpr(self, sema,  semaExpr->E1);
         PrintChar(self, '(');
         sema_exp_argument_list_t* argList =
-            semaExp->E2->ArgumentList;
+            semaExpr->E2->ArgumentList;
         metac_sema_expr_t** onePastLastArg =
             cast(metac_sema_expr_t**)
             argList->Arguments + argList->ArgumentCount;
@@ -1643,83 +1652,83 @@ static inline void PrintSemaExpr(metac_printer_t* self,
         }
         PrintChar(self, ')');
     }
-    else if (semaExp->Kind == expr_index)
+    else if (semaExpr->Kind == expr_index)
     {
-        PrintSemaExpr(self, sema,  semaExp->E1);
+        PrintSemaExpr(self, sema,  semaExpr->E1);
         PrintToken(self, tok_lBracket);
-        PrintSemaExpr(self, sema,  semaExp->E2);
+        PrintSemaExpr(self, sema,  semaExpr->E2);
         PrintToken(self, tok_rBracket);
     }
-    else if (semaExp->Kind == expr_sizeof)
+    else if (semaExpr->Kind == expr_sizeof)
     {
         PrintKeyword(self, tok_kw_sizeof);
         PrintToken(self, tok_lParen);
-        PrintSemaExpr(self, sema,  semaExp->E1);
+        PrintSemaExpr(self, sema,  semaExpr->E1);
         PrintToken(self, tok_rParen);
     }
-    else if (semaExp->Kind == expr_addr || semaExp->Kind == expr_deref
-          || semaExp->Kind == expr_not  || semaExp->Kind == expr_compl
-          || semaExp->Kind == expr_umin)
+    else if (semaExpr->Kind == expr_addr || semaExpr->Kind == expr_deref
+          || semaExpr->Kind == expr_not  || semaExpr->Kind == expr_compl
+          || semaExpr->Kind == expr_umin)
     {
         {
             const char* op = 0;
-            if (semaExp->Kind == expr_addr)
+            if (semaExpr->Kind == expr_addr)
                 op = "&";
-            else if (semaExp->Kind == expr_deref)
+            else if (semaExpr->Kind == expr_deref)
                 op = "*";
-            else if (semaExp->Kind == expr_not)
+            else if (semaExpr->Kind == expr_not)
                 op = "!";
-            else if (semaExp->Kind == expr_compl)
+            else if (semaExpr->Kind == expr_compl)
                 op = "~";
-            else if (semaExp->Kind == expr_umin)
+            else if (semaExpr->Kind == expr_umin)
                 op = "-";
 
             PrintString(self, op, strlen(op));
         }
 
-        if (!IsBinaryExp(semaExp->E1->Kind))
+        if (!IsBinaryExp(semaExpr->E1->Kind))
             PrintChar(self, '(');
 
-        PrintSemaExpr(self, sema,  semaExp->E1);
+        PrintSemaExpr(self, sema,  semaExpr->E1);
 
-        if (!IsBinaryExp(semaExp->E1->Kind))
+        if (!IsBinaryExp(semaExpr->E1->Kind))
             PrintChar(self, ')');
     }
-    else if (semaExp->Kind == expr_post_increment || semaExp->Kind == expr_post_decrement)
+    else if (semaExpr->Kind == expr_post_increment || semaExpr->Kind == expr_post_decrement)
     {
         const char* op = 0;
-        if (semaExp->Kind == expr_post_increment)
+        if (semaExpr->Kind == expr_post_increment)
             op = "++";
-        else if (semaExp->Kind == expr_post_decrement)
+        else if (semaExpr->Kind == expr_post_decrement)
             op = "--";
 
         assert(op);
 
-        if (!IsBinaryExp(semaExp->E1->Kind))
+        if (!IsBinaryExp(semaExpr->E1->Kind))
             PrintChar(self, '(');
 
-        PrintSemaExpr(self, sema,  semaExp->E1);
+        PrintSemaExpr(self, sema,  semaExpr->E1);
 
-        if (!IsBinaryExp(semaExp->E1->Kind))
+        if (!IsBinaryExp(semaExpr->E1->Kind))
             PrintChar(self, ')');
 
         PrintString(self, op, strlen(op));
     }
-    else if (semaExp->Kind == expr_inject || semaExp->Kind == expr_eject
-          || semaExp->Kind == expr_typeof || semaExp->Kind == expr_assert
-          || semaExp->Kind == expr_unary_dot)
+    else if (semaExpr->Kind == expr_inject || semaExpr->Kind == expr_eject
+          || semaExpr->Kind == expr_typeof || semaExpr->Kind == expr_assert
+          || semaExpr->Kind == expr_unary_dot)
     {
         {
             const char* op = 0;
-            if (semaExp->Kind == expr_inject)
+            if (semaExpr->Kind == expr_inject)
                 op = "inject";
-            else if (semaExp->Kind == expr_eject)
+            else if (semaExpr->Kind == expr_eject)
                 op = "eject";
-            else if (semaExp->Kind == expr_typeof)
+            else if (semaExpr->Kind == expr_typeof)
                 op = "typeof";
-            else if (semaExp->Kind == expr_assert)
+            else if (semaExpr->Kind == expr_assert)
                 op = "assert";
-            else if (semaExp->Kind == expr_unary_dot)
+            else if (semaExpr->Kind == expr_unary_dot)
                 op = ".";
 
             assert(op);
@@ -1727,41 +1736,41 @@ static inline void PrintSemaExpr(metac_printer_t* self,
             PrintString(self, op, strlen(op));
         }
 
-        if (!IsBinaryExp(semaExp->E1->Kind))
+        if (!IsBinaryExp(semaExpr->E1->Kind))
            PrintChar(self, '(');
 
-        PrintSemaExpr(self, sema,  semaExp->E1);
+        PrintSemaExpr(self, sema,  semaExpr->E1);
 
-        if (!IsBinaryExp(semaExp->E1->Kind))
+        if (!IsBinaryExp(semaExpr->E1->Kind))
             PrintChar(self, ')');
     }
-    else if (semaExp->Kind == expr_outer)
+    else if (semaExpr->Kind == expr_outer)
     {
         PrintChar(self, '$');
         PrintChar(self, '(');
-        PrintSemaExpr(self, sema, semaExp->E1);
+        PrintSemaExpr(self, sema, semaExpr->E1);
         PrintChar(self, ')');
     }
-    else if (semaExp->Kind == expr_stringize)
+    else if (semaExpr->Kind == expr_stringize)
     {
         PrintChar(self, '#');
-        if (!IsBinaryExp(semaExp->E1->Kind))
+        if (!IsBinaryExp(semaExpr->E1->Kind))
            PrintChar(self, '(');
 
-        PrintSemaExpr(self, sema, semaExp->E1);
+        PrintSemaExpr(self, sema, semaExpr->E1);
 
-        if (!IsBinaryExp(semaExp->E1->Kind))
+        if (!IsBinaryExp(semaExpr->E1->Kind))
             PrintChar(self, ')');
     }
-    else if (semaExp->Kind == decl_enum_member)
+    else if (semaExpr->Kind == decl_enum_member)
     {
-        metac_enum_member_t* enumMember = cast(metac_enum_member_t*) semaExp;
+        metac_enum_member_t* enumMember = cast(metac_enum_member_t*) semaExpr;
         //PrintSemaDecl(self, sema, enumMember, self->IndentLevel);
         PrintIdentifier(self, enumMember->Identifier);
     }
     else
     {
-        printf("don't know how to print %s\n", (MetaCExprKind_toChars(semaExp->Kind)));
+        printf("don't know how to print %s\n", (MetaCExprKind_toChars(semaExpr->Kind)));
     }
 }
 
