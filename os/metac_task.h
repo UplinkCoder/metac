@@ -120,7 +120,10 @@ typedef struct task_t
         };
         void (*ContinuationFunc)(void* ctx);
     };
+
     const char* YieldReason;
+    const char* YieldLoc;
+
     union {
         uint8_t _inlineContext[INLINE_TASK_CTX_SZ];
         task_inline_ctx_t inlineContext;
@@ -177,6 +180,7 @@ typedef enum worker_flags_t
 
 typedef struct worker_context_t
 {
+    task_t* ActiveTask;
     taskqueue_t Queue;
 
     uint32_t WorkerId;

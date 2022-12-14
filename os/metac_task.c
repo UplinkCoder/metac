@@ -95,9 +95,22 @@ void FiberDoTask(void)
     {
         aco_t* fiber = CurrentFiber();
         task_t* task = (task_t*) aco_get_arg();
-        assert(!(task->TaskFlags & Task_Running));
+        if (worker->ActiveTask != task)
+        {
+#ifdef TASKLOG
+            TaskLog_SwitchTask(worker->TaskLog, worker->ActiveTask, task);
+#endif
+            worker->ActiveTask = task;
+        }
+
+//        assert(!(task->TaskFlags & Task_Running));
         assert(task->Fiber == fiber);
 
+        if (!task->TaskFunction)
+        {
+            YIELD_WORKER();
+            continue;
+        }
         task->TaskFlags |= Task_Running;
         task->TaskFunction(task);
         task->TaskFlags |= Task_Complete;
@@ -154,10 +167,12 @@ void ExecuteTask(worker_context_t* worker, task_t* task, aco_t* fiber)
     assert((fiberPool->FreeBitfield & (1 << fiberIdx)) == 0);
     if (task->TaskFlags == Task_Halted)
     {
+        // task->TaskFlags |= Task_Running;
         START(task->Fiber, task);
     }
     else
     {
+        task->TaskFlags |= Task_Running;
         RESUME(task->Fiber);
     }
 

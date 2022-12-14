@@ -244,6 +244,7 @@ extern void aco_resume(aco_t* resume_co);
 #endif
 
 #define aco_yield2(target_co) do { \
+    CurrentWorker()->ActiveTask = ((task_t*)(target_co)->arg); \
     acosw(GET_CO(), target_co); \
 } while(0);
 
@@ -251,6 +252,7 @@ extern void aco_resume(aco_t* resume_co);
 {                                           \
     aco_assertptr((yield_co));              \
     aco_assertptr((yield_co)->main_co);     \
+    CurrentWorker()->ActiveTask = ((task_t*)(yield_co)->arg); \
     acosw(yield_co, yield_co->main_co);     \
 } while(0)
 

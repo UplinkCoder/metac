@@ -356,6 +356,8 @@ void outTaskRow(char* body, uint32_t sz, uint32_t* pp, task_t* task)
         "Name",
         "File",
         "Line",
+        "Yield Reason",
+        "Yield Loc",
         "Parent_Addr",
         "Parent_Name",
     };
@@ -381,6 +383,14 @@ void outTaskRow(char* body, uint32_t sz, uint32_t* pp, task_t* task)
         );
 
         p += snprintf (body + p, sz - p,
+                       "<td>%s</td>", task->YieldReason
+        );
+
+        p += snprintf (body + p, sz - p,
+                       "<td>%s</td>", task->YieldLoc
+        );
+
+        p += snprintf (body + p, sz - p,
                        "<td>%p</td>", task->Parent
         );
 
@@ -402,6 +412,8 @@ MHD_HANDLER(handleTasks)
         "Name",
         "File",
         "Line",
+        "Yield Reason",
+        "Yield Location",
         "Parent_Addr",
         "Parent_Name",
     };
@@ -445,9 +457,10 @@ MHD_HANDLER(handleTasks)
    uint32_t len = snprintf (responseBuffer, ARRAYSIZE (responseBuffer),
                     "<hmtl><body>"
                     "<h3>Tasks: </h3>"
+                    "<h2>ActiveTask: %p</h2>"
                     "<table id=\"tasks\">%s</table>"
                     "</body></hmtl>",
-           body);
+           worker->ActiveTask, body);
     return send_html (connection, responseBuffer, len);
 }
 #endif
@@ -490,12 +503,12 @@ static MHD_HANDLER(debugServerHandler)
     {
         return handleData(MHD_HANDLER_PASSTHROUGH);
     }
-
+#ifndef NO_FIBERS
     if (memcmp(url, "/tasks", sizeof("/tasks") - 1) == 0)
     {
         return handleTasks(MHD_HANDLER_PASSTHROUGH);
     }
-
+#endif
 
     if (debugServer->Handler)
     {
@@ -548,9 +561,9 @@ int Debug_Init(debug_server_t* debugServer, unsigned short port) {
         malloc(sizeof(debug_graph_t) * graphCapa);
     debugServer->GraphsCount = 0;
     debugServer->GraphsCapacity = graphCapa;
-
+#ifndef NO_FIBERS
     ARENA_ARRAY_INIT(worker_context_t*, debugServer->Workers, &debugServer->Allocator)
-
+#endif
    return 0;
 }
 
