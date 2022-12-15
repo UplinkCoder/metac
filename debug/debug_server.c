@@ -107,9 +107,11 @@ MHD_HANDLER (handleCurrentScope)
             continue;
         else
         {
+            metac_identifier_ptr_t idPtr = slot->Ptr;
             responseSize +=
                 snprintf(responseString, ARRAYSIZE(responseString) - responseSize,
-                    "%s <br/>", IdentifierPtrFromSemaDecl(debugServer->CurrentIdentifierTable, slot->Ptr));
+                    "%s <br/>", IdentifierPtrToCharPtr(
+                            debugServer->CurrentIdentifierTable, idPtr));
         }
     }
 
