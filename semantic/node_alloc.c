@@ -253,7 +253,7 @@ sema_decl_variable_t* AllocNewSemaVariable(metac_sema_state_t* self,
     variable.Kind = decl_variable;
     variable.Serial = INC(_nodeCounter);
 
-    result = self->Variables + INC(self->VariablesCount) - 1;
+    result = self->Variables + INC(self->VariablesCount);
     (*result) = variable;
     (*result_ptr) = (metac_sema_decl_t*)result;
 
