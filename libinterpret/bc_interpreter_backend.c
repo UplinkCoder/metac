@@ -2106,9 +2106,22 @@ LendSearch2:{}
                     void* arg1 = (void*) BCInterpreter_toRealPointer(&state, heapPtr, unrealAddresses[1]);
                     void* arg2 = (void*) BCInterpreter_toRealPointer(&state, heapPtr, unrealAddresses[2]);
 */
-                   void* arg0 = (void*) call.args[0].voidStar;
-                   void* arg1 = (void*) call.args[1].voidStar;
-                   void* arg2 = (void*) call.args[2].voidStar;
+                   void* arg0;
+                   void* arg1;
+                   void* arg2;
+
+                   switch(call.n_args)
+                   {
+                        default:
+                            assert(!"More than 3 args not suppoerted");
+                        case 3:
+                            arg2 = call.args[2].voidStar;
+                        case 2:
+                            arg1 = call.args[1].voidStar;
+                        case 1:
+                            arg0 = call.args[0].voidStar;
+                        case 0: break;
+                   }
 
                    switch(call.n_args)
                    {
@@ -2126,8 +2139,8 @@ LendSearch2:{}
                         break;
                         default: assert(0);
                     }
-                    const char* msg = ((const char* (*)()) frameP[call.fn.stackAddr.addr / 4])();
-                    printf("External Call returned: %s\n", msg);
+
+                    printf("External Call returned: %s\n", (char*)result);
                 }
             }
             break;
