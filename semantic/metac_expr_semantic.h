@@ -20,6 +20,9 @@ void MetaCSemantic_doExprSemantic_Task(task_t* task);
     MetaCSemantic_doExprSemantic_(SELF, ((metac_expr_t*)(NODE)), RESULT, \
                                   __FILE__, __LINE__)
 
+static bool IsAggregateType(metac_type_index_kind_t typeKind);
+
+
 metac_sema_expr_t* MetaCSemantic_doExprSemantic_(metac_sema_state_t* self,
                                                        metac_expr_t* expr,
                                                        metac_sema_expr_t* result,

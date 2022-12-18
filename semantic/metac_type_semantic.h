@@ -7,6 +7,29 @@ typedef struct MetaCSemantic_doTypeSemantic_Fiber_t
     metac_type_index_t Result;
 } MetaCSemantic_doTypeSemantic_Fiber_t;
 
+typedef struct metac_size_computer_t
+{
+    /// CurrentSize.
+    uint32_t CurrentSize;
+    /// CurrentMaxAlignment
+    uint32_t MaxAlignment;
+
+#ifndef NDEBUG
+    uint32_t Debug_FieldIndex;
+#endif
+} metac_size_computer_t;
+
+void MetaCSizeComputer_Init(metac_size_computer_t* self);
+
+void MetaCSizeComputer_BeginSizeOf(metac_size_computer_t* self);
+
+uint32_t MetaCSizeComputer_MemberType(metac_size_computer_t* self,
+                                      metac_sema_state_t* sema,
+                                      metac_type_index_t memberType);
+
+uint32_t MetaCSizeComputer_FinishSizeOf(metac_size_computer_t* self);
+
+
 metac_type_index_t MetaCSemantic_GetTypeIndex(metac_sema_state_t* state,
                                               metac_type_kind_t typeKind,
                                               decl_type_t* type);

@@ -1337,6 +1337,63 @@ metac_type_index_t MetaCSemantic_GetArrayTypeOf(metac_sema_state_t* state,
 
     return result;
 }
+
+void MetaCSizeComputer_Init(metac_size_computer_t* self)
+{
+    self->MaxAlignment = 1;
+    self->CurrentSize = 0;
+
+#ifndef NDEBUG
+    self->Debug_FieldIndex = 0;
+#endif
+}
+
+void MetaCSizeComputer_BeginSizeOf(metac_size_computer_t* self)
+{
+    assert(self->MaxAlignment == 1);
+    assert(self->CurrentSize == 0);
+#ifndef NDEBUG
+    assert(self->Debug_FieldIndex == 0);
+#endif
+}
+
+/// returns the offset of the member
+uint32_t MetaCSizeComputer_MemberType(metac_size_computer_t* self,
+                                      metac_sema_state_t* sema,
+                                      metac_type_index_t memberType)
+{
+    uint32_t requestedAligment =
+        MetaCSemantic_GetTypeAlignment(sema, memberType);
+
+    uint32_t memberOffset = Align(self->CurrentSize, requestedAligment);
+
+    assert(requestedAligment != -1);
+
+    if (requestedAligment > self->MaxAlignment)
+        self->MaxAlignment = requestedAligment;
+
+    self->CurrentSize = (memberOffset
+                         + MetaCSemantic_GetTypeSize(sema, memberType));
+#ifndef NDEBUG
+    self->Debug_FieldIndex++;
+#endif
+    return memberOffset;
+}
+
+// returns the size of the type
+uint32_t MetaCSizeComputer_FinishSizeOf(metac_size_computer_t* self)
+{
+    uint32_t result = self->CurrentSize;
+
+    self->MaxAlignment = 1;
+    self->CurrentSize = 0;
+#ifndef NDEBUG
+    self->Debug_FieldIndex = 0;
+#endif
+    return result;
+}
+
+
 /// Given a list of types compute how a struct would be layed out
 /// if it had a fields comprised of those types in the same order
 uint32_t ComputeStructSize(metac_sema_state_t* self, metac_type_index_t* typeBegin,
