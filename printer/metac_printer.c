@@ -278,7 +278,7 @@ static inline void PrintType(metac_printer_t* self, decl_type_t* type)
         {
             decl_type_typeof_t *typeofType = (decl_type_typeof_t*) type;
             PrintString(self, "typeof (", sizeof("typeof (") - 1);
-            PrintExpr(self, typeofType->Exp);
+            PrintExpr(self, typeofType->Expr);
         } break;
         case decl_type_array:
         {

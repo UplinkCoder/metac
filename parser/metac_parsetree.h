@@ -589,7 +589,7 @@ typedef struct decl_type_typeof_t
 
     TYPE_HEADER
 
-    struct metac_expr_t* Exp;
+    struct metac_expr_t* Expr;
 
     metac_identifier_ptr_t Identifier;
 } decl_type_typeof_t;

@@ -2669,7 +2669,7 @@ decl_type_t* MetaCParser_ParseTypeDecl(metac_parser_t* self, metac_decl_t* paren
             MetaCParser_Match(self, tok_rParen);
 
             decl_type_typeof_t * decl = AllocNewDecl(decl_type_typeof, &result);
-            decl->Exp = typeof_exp;
+            decl->Expr = typeof_exp;
             break;
         }
     }

@@ -983,7 +983,7 @@ metac_type_index_t MetaCSemantic_TypeSemantic(metac_sema_state_t* self,
         decl_type_typeof_t* type_typeof = cast(decl_type_typeof_t*) type;
 
         metac_sema_expr_t* se =
-            MetaCSemantic_doExprSemantic(self, type_typeof->Exp, 0);
+            MetaCSemantic_doExprSemantic(self, type_typeof->Expr, 0);
         result = se->TypeIndex;
     }
     else if (type->Kind == decl_type_enum)
