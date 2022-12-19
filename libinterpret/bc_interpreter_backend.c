@@ -1945,7 +1945,7 @@ LendSearch2:{}
                     self->getTypeInfoFn(self->getTypeInfoCtx, &funcType);
 
                 {
-                    assert(funcTypeInfo.kind == BCTypeInfofKind_Function);
+                    assert(funcTypeInfo.kind == BCTypeInfoKind_Function);
                     assert(funcTypeInfo.functionType.nParameterTypes == 0);
                 }
                 (*opRef) = *lhsRef;

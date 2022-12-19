@@ -227,10 +227,34 @@ void MetaCCodegen_doType(metac_bytecode_ctx_t* ctx, metac_type_index_t typeIdx)
 
 BCTypeInfo MetaCCodegen_GetTypeInfo(metac_bytecode_ctx_t* ctx, BCType* bcType)
 {
-    BCTypeInfo func = {
-      BCTypeInfofKind_Function,
-    };
-    return func;
+    BCType bct = *bcType;
+    BCTypeInfo result = {BCTypeInfoKind_Invalid};
+
+    switch(bct.type)
+    {
+        case BCTypeEnum_Struct:
+        {
+            BCStructType bcStruct = {0};
+            result.kind = BCTypeInfoKind_Struct;
+            metac_type_aggregate_t struct_ =
+                ctx->Sema->StructTypeTable.Slots[bct.typeIndex];
+            result.structType = bcStruct;
+        } break;
+        case BCTypeEnum_Function:
+        {
+            BCFunctionType bcFunc = {0};
+            result.kind = BCTypeInfoKind_Function;
+            metac_type_functiontype_t func =
+                ctx->Sema->FunctionTypeTable.Slots[bct.typeIndex];
+            result.functionType = bcFunc;
+        } break;
+        case BCTypeEnum_Tuple:
+        {
+            result.kind = BCTypeInfoKind_Tuple;
+        } break;
+    }
+
+    return result;
 }
 
 void MetaCCodegen_doGlobal(metac_bytecode_ctx_t* ctx, metac_sema_decl_t* decl, uint32_t idx)

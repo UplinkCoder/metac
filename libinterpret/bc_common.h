@@ -570,13 +570,13 @@ typedef struct BCFunctionType
 
 typedef enum BCTypeInfoKind
 {
-    BCTypeInfofKind_Invalid,
-    BCTypeInfofKind_Enum,
-    BCTypeInfofKind_Ptr,
-    BCTypeInfofKind_Array,
-    BCTypeInfofKind_Struct,
-    BCTypeInfofKind_Function,
-    BCTypeInfofKind_Tuple,
+    BCTypeInfoKind_Invalid,
+    BCTypeInfoKind_Enum,
+    BCTypeInfoKind_Ptr,
+    BCTypeInfoKind_Array,
+    BCTypeInfoKind_Struct,
+    BCTypeInfoKind_Function,
+    BCTypeInfoKind_Tuple,
 } BCTypeInfoKind;
 
 typedef struct BCTypeInfo
