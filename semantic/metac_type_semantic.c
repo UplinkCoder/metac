@@ -397,11 +397,6 @@ uint32_t MetaCSemantic_GetTypeAlignment(metac_sema_state_t* self,
     return result;
 }
 
-static metac_type_index_t* NextTypeTupleElem(metac_type_index_t* typeIndexP)
-{
-    return typeIndexP + 1;
-}
-
 /// Returns size in byte or INVALID_SIZE on error
 uint32_t MetaCSemantic_GetTypeSize(metac_sema_state_t* self,
                                    metac_type_index_t typeIndex)
@@ -475,10 +470,17 @@ uint32_t MetaCSemantic_GetTypeSize(metac_sema_state_t* self,
     else if (TYPE_INDEX_KIND(typeIndex) == type_index_tuple)
     {
         metac_type_tuple_t* tuple = TupleTypePtr(self, TYPE_INDEX_INDEX(typeIndex));
-        uint32_t sz = ComputeStructSize(self, tuple->TypeIndicies, tuple->TypeCount, NextTypeTupleElem);
-        // we now create a struct temporarily so we can use the same
-        // logic we use to determine the size of structs
-        result = sz;
+        metac_size_computer_t sizeComputer;
+        MetaCSizeComputer_Init(&sizeComputer);
+        MetaCSizeComputer_BeginSizeOf(&sizeComputer);
+        {
+            uint32_t i;
+            for(i = 0; i < tuple->TypeCount; i++)
+            {
+                MetaCSizeComputer_MemberType(&sizeComputer, self, tuple->TypeIndicies[i]);
+            }
+        }
+        result = MetaCSizeComputer_FinishSizeOf(&sizeComputer);
     }
     else
     {
@@ -1393,43 +1395,6 @@ uint32_t MetaCSizeComputer_FinishSizeOf(metac_size_computer_t* self)
     return result;
 }
 
-
-/// Given a list of types compute how a struct would be layed out
-/// if it had a fields comprised of those types in the same order
-uint32_t ComputeStructSize(metac_sema_state_t* self, metac_type_index_t* typeBegin,
-    uint32_t nTypes, metac_type_index_t * (*Next) (metac_type_index_t*))
-{
-    uint32_t currentFieldOffset = 0;
-    uint32_t maxAlignment = 0;
-
-    {
-        metac_type_index_t* typ = typeBegin;
-        metac_type_index_t* nextType = Next(typeBegin);
-        uint32_t i;
-
-        for(i = 0; i < nTypes; i++)
-        {
-            uint32_t alignedSize = MetaCSemantic_GetTypeSize(self, *typ);
-            assert(alignedSize != INVALID_SIZE);
-            if (i < nTypes - 1)
-            {
-                uint32_t requestedAligment =
-                    MetaCSemantic_GetTypeAlignment(self, *nextType);
-                assert(requestedAligment != -1);
-                if (requestedAligment > maxAlignment)
-                    maxAlignment = requestedAligment;
-                alignedSize = Align(alignedSize, requestedAligment);
-                assert(((currentFieldOffset + alignedSize) % requestedAligment) == 0);
-            }
-            currentFieldOffset += alignedSize;
-        }
-        typ = Next(typ);
-        nextType = Next(nextType);
-    }
-
-    return Align(currentFieldOffset, maxAlignment);
-}
-
 bool MetaCSemantic_ComputeStructLayout(metac_sema_state_t* self,
                                        decl_type_struct_t* agg,
                                        metac_type_aggregate_t* semaAgg)
@@ -1483,35 +1448,21 @@ bool MetaCSemantic_ComputeStructLayout(metac_sema_state_t* self,
         declField = declField->Next;
     }
 
-    uint32_t maxAlignment = semaAgg->FieldCount ?
-        MetaCSemantic_GetTypeAlignment(self, semaAgg->Fields->Type) :
-        ~0;
-
-    for(metac_type_aggregate_field_t* semaField = semaAgg->Fields;
-        semaField < onePastLast;
-        semaField++)
     {
-        uint32_t alignedSize = MetaCSemantic_GetTypeSize(self, semaField->Type);
-        assert(alignedSize != INVALID_SIZE);
-        if (semaField < (onePastLast - 1))
+        metac_size_computer_t sizeComputer;
+        MetaCSizeComputer_Init(&sizeComputer);
+        MetaCSizeComputer_BeginSizeOf(&sizeComputer);
+
+        for(metac_type_aggregate_field_t* semaField = semaAgg->Fields;
+            semaField < onePastLast;
+            semaField++)
         {
-            metac_type_aggregate_field_t *nextField = semaField + 1;
-            uint32_t requestedAligment =
-                MetaCSemantic_GetTypeAlignment(self, nextField->Type);
-            assert(requestedAligment != -1);
-            if (requestedAligment > maxAlignment)
-                maxAlignment = requestedAligment;
-            alignedSize = Align(alignedSize, requestedAligment);
-            assert(((currentFieldOffset + alignedSize) % requestedAligment) == 0);
+            semaField->Offset = MetaCSizeComputer_MemberType(&sizeComputer, self, semaField->Type);
         }
-        semaField->Offset = currentFieldOffset;
-        currentFieldOffset += alignedSize;
+
+        semaAgg->Alignment = sizeComputer.MaxAlignment;
+        semaAgg->Size = MetaCSizeComputer_FinishSizeOf(&sizeComputer);
     }
-
-    // result =
-    semaAgg->Size = currentFieldOffset;
-    semaAgg->Alignment = maxAlignment;
-
     //fprintf(stderr, "sizeof(struct) = %u\n", semaAgg->Size);//DEBUG
     //fprintf(stderr, "Alignof(struct) = %u\n", semaAgg->Alignment);//DEBUG
 
