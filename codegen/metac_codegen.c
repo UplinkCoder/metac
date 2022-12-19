@@ -242,7 +242,7 @@ BCTypeInfo MetaCCodegen_GetTypeInfo(metac_bytecode_ctx_t* ctx, BCType* bcType)
         } break;
         case BCTypeEnum_Function:
         {
-            BCFunctionType bcFunc = {0};
+            BCFunctionType bcFunc = {{BCTypeEnum_Undef}};
             result.kind = BCTypeInfoKind_Function;
             metac_type_functiontype_t func =
                 ctx->Sema->FunctionTypeTable.Slots[bct.typeIndex];
