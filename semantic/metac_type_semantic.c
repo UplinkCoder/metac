@@ -1344,19 +1344,12 @@ void MetaCSizeComputer_Init(metac_size_computer_t* self)
 {
     self->MaxAlignment = 1;
     self->CurrentSize = 0;
-
-#ifndef NDEBUG
-    self->Debug_FieldIndex = 0;
-#endif
 }
 
 void MetaCSizeComputer_BeginSizeOf(metac_size_computer_t* self)
 {
     assert(self->MaxAlignment == 1);
     assert(self->CurrentSize == 0);
-#ifndef NDEBUG
-    assert(self->Debug_FieldIndex == 0);
-#endif
 }
 
 /// returns the offset of the member
@@ -1376,22 +1369,16 @@ uint32_t MetaCSizeComputer_MemberType(metac_size_computer_t* self,
 
     self->CurrentSize = (memberOffset
                          + MetaCSemantic_GetTypeSize(sema, memberType));
-#ifndef NDEBUG
-    self->Debug_FieldIndex++;
-#endif
-    return memberOffset;
 }
 
 // returns the size of the type
 uint32_t MetaCSizeComputer_FinishSizeOf(metac_size_computer_t* self)
 {
-    uint32_t result = self->CurrentSize;
+    uint32_t result = Align(self->CurrentSize, self->MaxAlignment);
 
     self->MaxAlignment = 1;
     self->CurrentSize = 0;
-#ifndef NDEBUG
-    self->Debug_FieldIndex = 0;
-#endif
+
     return result;
 }
 
