@@ -1427,6 +1427,10 @@ static void MetaCCodegen_doExpr(metac_bytecode_ctx_t* ctx,
                         BCValue val = imm32(cast(int32_t)te.ValueI64);
                         gen.Store32(c, &address, &val);
                     }
+                    else if (te.TypeIndex.v == TYPE_INDEX_V(type_index_basic, type_char))
+                    {
+                        gen.Store8(c, &address, bcValues + i);
+                    }
                     else if (te.TypeIndex.v == TYPE_INDEX_V(type_index_basic, type_int))
                     {
                         gen.Store32(c, &address, bcValues + i);

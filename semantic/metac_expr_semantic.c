@@ -54,6 +54,15 @@ void ConvertTupleElementToExp(metac_sema_state_t* sema,
         dst->TypeIndex = elemType;
         dst->ValueI64 = value;
     }
+    else if (elemType.v == TYPE_INDEX_V(type_index_basic, type_char))
+    {
+        char value = *cast(char*)(heap->heapData + offset);
+        uint32_t charHash = CRC32C_VALUE(~0, value);
+        dst->Kind = expr_char;
+        dst->TypeIndex = elemType;
+        dst->Chars[0] = value;
+        dst->CharKey = CHAR_KEY(charHash, 1);
+    }
     else if (elemType.v == TYPE_INDEX_V(type_index_basic, type_type))
     {
         metac_type_index_t value = *cast(metac_type_index_t*)(heap->heapData + offset);
