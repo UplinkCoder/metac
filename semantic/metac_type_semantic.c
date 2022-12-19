@@ -1369,6 +1369,8 @@ uint32_t MetaCSizeComputer_MemberType(metac_size_computer_t* self,
 
     self->CurrentSize = (memberOffset
                          + MetaCSemantic_GetTypeSize(sema, memberType));
+
+    return memberOffset;
 }
 
 // returns the size of the type
@@ -1390,8 +1392,6 @@ bool MetaCSemantic_ComputeStructLayout(metac_sema_state_t* self,
     bool result = true;
 
     assert(semaAgg->Fields && semaAgg->Fields != emptyPointer);
-
-    uint32_t currentFieldOffset = 0;
 
     metac_type_aggregate_field_t* onePastLast =
         semaAgg->Fields + semaAgg->FieldCount;
