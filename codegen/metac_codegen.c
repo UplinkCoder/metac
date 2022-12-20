@@ -252,6 +252,9 @@ BCTypeInfo MetaCCodegen_GetTypeInfo(metac_bytecode_ctx_t* ctx, BCType* bcType)
         {
             result.kind = BCTypeInfoKind_Tuple;
         } break;
+        default: {
+            assert(0);
+        } break;
     }
 
     return result;

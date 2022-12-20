@@ -125,7 +125,7 @@ static inline void PrintToken(metac_printer_t* self,
 
     switch(tokenType)
     {
-        FOREACH_KEYWORD_TOKEN(CASE_)
+        default:
             assert(0);
 
         case tok_semicolon:

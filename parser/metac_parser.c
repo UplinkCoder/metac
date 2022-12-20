@@ -2026,6 +2026,8 @@ metac_preprocessor_directive_t MetaCParser_ParsePreprocDirective(metac_parser_t*
 
     switch (tokenType)
     {
+        default: break;
+
         case tok_kw_if:
         {
             directive = pp_if;
@@ -2495,6 +2497,7 @@ decl_type_t* MetaCParser_ParseTypeDecl(metac_parser_t* self, metac_decl_t* paren
 
             switch(struct_->TypeKind)
             {
+                default: assert(0);
                 case type_struct:
                     hash = struct_key;
                 break;
@@ -2694,6 +2697,8 @@ decl_type_t* MetaCParser_ParseTypeDecl(metac_parser_t* self, metac_decl_t* paren
 
         switch(tokenType)
         {
+            default: assert(0);
+
             case tok_kw_const:
                 MetaCParser_Match(self, tok_kw_const);
                 nextIsConst = true;
