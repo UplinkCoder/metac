@@ -13,7 +13,7 @@ if [ -z $ACCEL ]; then
     ACCEL=ACCEL_TABLE
 fi
 
-$CC linenoise_repl.c \
+$CC $CFLAGS linenoise_repl.c \
     -DACOSW_EXTERNAL_ASM ../3rd_party/libaco/acosw.S \
     -I.. -DACCEL=$ACCEL \
     -g3 -O0 -march=native -mtune=native \
