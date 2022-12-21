@@ -1505,7 +1505,7 @@ bool MetaCSemantic_ComputeStructLayout(metac_sema_state_t* self,
         semaField++)
     {
         semaField->Identifier  = declField->Field->VarIdentifier;
-        semaField->Header.Kind = decl_field;
+        semaField->Header.Kind = node_decl_field;
 
         semaField->Type =
             MetaCSemantic_doTypeSemantic(self, declField->Field->VarType);
