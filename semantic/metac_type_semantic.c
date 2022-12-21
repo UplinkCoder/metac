@@ -490,6 +490,96 @@ uint32_t MetaCSemantic_GetTypeSize(metac_sema_state_t* self,
     return result;
 }
 
+typedef struct scope_and_fields_t
+{
+    metac_scope_t* Scope;
+    metac_type_aggregate_field_t* Fields;
+    uint32_t FieldCount;
+} scope_and_fields_t;
+
+scope_and_fields_t AllocateAggregateScopeAndFields(metac_alloc_t* alloc, uint32_t nFields)
+{
+
+    uint32_t nSlots = nFields + ((nFields < 16) ? 4 : (nFields >> 2));
+
+    const uint32_t scopeTableSize =
+        ALIGN16(NEXTPOW2(nSlots) * sizeof(metac_scope_table_slot_t))
+        + ALIGN16(sizeof(metac_scope_t));
+
+    const uint32_t aggregateMemorySize =
+        ALIGN16(nFields * sizeof(metac_type_aggregate_field_t))
+        + scopeTableSize;
+
+    arena_ptr_t arenaPtr = AllocateArena(alloc, aggregateMemorySize);
+    tagged_arena_t* aggregateArena = &alloc->Arenas[arenaPtr.Index];
+    metac_type_aggregate_field_t* aggFields = cast(metac_type_aggregate_field_t*)
+        aggregateArena->Memory;
+
+    metac_scope_t* scope_ = cast(metac_scope_t*) (aggFields + nFields);
+    metac_scope_table_slot_t* slots = (metac_scope_table_slot_t*) (scope_ + 1);
+    scope_and_fields_t result = {scope_, aggFields, nFields};
+
+    memset(scope_, 0, scopeTableSize);
+    memset(aggFields, 0, nFields * sizeof(metac_type_aggregate_field_t));
+
+    scope_->ScopeTable.Slots = slots;
+    scope_->ScopeTable.SlotCount_Log2 = LOG2(nSlots);
+
+    return result;
+}
+
+void PopulateTemporaryAggregateScope(metac_sema_state_t* self,
+                                     metac_type_aggregate_t* tmpSemaAgg,
+                                     decl_type_struct_t* agg)
+{
+    uint32_t nFields = agg->FieldCount;
+    scope_and_fields_t scopeAndFields =
+        AllocateAggregateScopeAndFields(&self->TempAlloc, nFields);
+
+    metac_type_aggregate_field_t* fields = scopeAndFields.Fields;
+
+    // ??? do we want to the the parent like this?
+    // scopeAndFields.Scope->Parent = self->CurrentScope;
+    // or do we want the aggregate scope to exist in isolation ...
+    // I think we want it in isolation.
+
+    tmpSemaAgg->Scope = scopeAndFields.Scope;
+    tmpSemaAgg->Fields = fields;
+    tmpSemaAgg->FieldCount = nFields;
+    decl_field_t* aggField = agg->Fields;
+
+    MetaCSemantic_MountScope(self, tmpSemaAgg->Scope);
+
+    for(uint32_t i = 0; i < nFields; i++)
+    {
+        metac_type_aggregate_field_t* semaField = &fields[i];
+        metac_identifier_ptr_t fieldName = aggField->Field->VarIdentifier;
+        // ??? should we Register this identifier in the semanticIdentifierTable
+        // and using a pointer to that in the sema node?
+
+        uint32_t declNodePtr = 42;
+        semaField->Header.Kind = node_decl_field;
+
+        semaField->Identifier = fieldName;
+        // placeholder while we don't have hash-table for decl_node pointers
+        semaField->Index = cast(uint16_t) i;
+        semaField->Type.v = TYPE_INDEX_V(type_index_unknown, declNodePtr);
+        //metac_sema_identifier_t
+        //    semaId = MetaCSemantic_RegisterIdentifier(agg->Fields[i].Field.VarIdentifier);
+        scope_insert_error_t inserted =
+            MetaCSemantic_RegisterInScope(self, fieldName,
+                                          cast(metac_node_t)semaField);
+        if (inserted != success)
+        {
+            SemanticError(0, "%s could not be inserted",
+                IdentifierPtrToCharPtr(self->ParserIdentifierTable, fieldName));
+        }
+
+        aggField = aggField->Next;
+    }
+
+    MetaCSemantic_UnmountScope(self);
+}
 
 /// this is where we also populate the scope
 metac_type_aggregate_t* MetaCSemantic_PersistTemporaryAggregateAndPopulateScope(metac_sema_state_t* self,
@@ -571,6 +661,7 @@ metac_type_aggregate_t* MetaCSemantic_PersistTemporaryAggregateAndPopulateScope(
 
     return semaAgg;
 }
+
 #define BeginTaskBarrier()
 #define EndTaskBarrier()
 
@@ -994,7 +1085,12 @@ metac_type_index_t MetaCSemantic_TypeSemantic(metac_sema_state_t* self,
     }
     else if (IsAggregateTypeDecl(type->Kind))
     {
+        STACK_ARENA_ARRAY(metac_type_aggregate_field_t, tmpFields, 128, &self->TempAlloc)
+
         decl_type_struct_t* agg = (decl_type_struct_t*) type;
+        metac_type_aggregate_t tmpSemaAggMem = {(metac_decl_kind_t)0};
+        metac_type_aggregate_t* tmpSemaAgg = &tmpSemaAggMem;
+
         if (type->Kind == decl_type_struct)
             typeKind = type_struct;
         else if (type->Kind == decl_type_union)
@@ -1002,23 +1098,28 @@ metac_type_index_t MetaCSemantic_TypeSemantic(metac_sema_state_t* self,
         else
             assert(0);
 
-        STACK_ARENA_ARRAY(metac_type_aggregate_field_t, tmpFields, 128, &self->TempAlloc);
         ARENA_ARRAY_ENSURE_SIZE(tmpFields, agg->FieldCount);
 
-        metac_type_aggregate_t tmpSemaAggMem = {(metac_decl_kind_t)0};
-        metac_type_aggregate_t* tmpSemaAgg = &tmpSemaAggMem;
         tmpSemaAgg->Header.Kind = agg->Kind;
         tmpSemaAgg->Identifier = agg->Identifier;
         tmpSemaAgg->Fields = tmpFields;
         tmpSemaAgg->FieldCount = agg->FieldCount;
 
+        PopulateTemporaryAggregateScope(self, tmpSemaAgg, agg);
+
         switch(typeKind)
         {
             case type_struct:
             {
+                uint32_t hash = 0;
+                MetaCSemantic_MountScope(self, tmpSemaAgg->Scope);
+
                 MetaCSemantic_ComputeStructLayout(self, agg, tmpSemaAgg);
 
-                uint32_t hash = AggregateHash(tmpSemaAgg);
+                MetaCSemantic_UnmountScope(self);
+
+                hash = AggregateHash(tmpSemaAgg);
+
                 tmpSemaAgg->Header.Hash = hash;
 
                 result =
@@ -1388,9 +1489,10 @@ bool MetaCSemantic_ComputeStructLayout(metac_sema_state_t* self,
                                        decl_type_struct_t* agg,
                                        metac_type_aggregate_t* semaAgg)
 {
-    // XXX make this use the compute structSize above
     bool result = true;
 
+    assert(self->CurrentScope == semaAgg->Scope);
+    // make sure the scope is mounted.
     assert(semaAgg->Fields && semaAgg->Fields != emptyPointer);
 
     metac_type_aggregate_field_t* onePastLast =

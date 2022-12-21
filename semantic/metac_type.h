@@ -75,7 +75,7 @@ typedef metac_type_header_t* metac_type_t;
 
 typedef struct metac_type_aggregate_field_t
 {
-    metac_type_header_t Header;
+    metac_node_header_t Header;
 
     metac_type_index_t Type;
 
