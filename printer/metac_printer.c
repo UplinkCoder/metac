@@ -279,6 +279,7 @@ static inline void PrintType(metac_printer_t* self, decl_type_t* type)
             decl_type_typeof_t *typeofType = (decl_type_typeof_t*) type;
             PrintString(self, "typeof (", sizeof("typeof (") - 1);
             PrintExpr(self, typeofType->Expr);
+            PrintChar(self, ')');
         } break;
         case decl_type_array:
         {
@@ -727,6 +728,7 @@ static inline void PrintStmt(metac_printer_t* self, metac_stmt_t* stmt)
             PrintIndent(self);
             PrintStmt(self, stmt_while->DoWhileBody);
             PrintKeyword(self, tok_kw_while);
+            PrintSpace(self);
             PrintChar(self, '(');
             PrintExpr(self, stmt_while->DoWhileExp);
             PrintChar(self, ')');
