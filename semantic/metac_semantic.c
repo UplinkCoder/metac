@@ -321,7 +321,12 @@ metac_scope_t* MetaCSemantic_MountScope(metac_sema_state_t* self,
 
 metac_scope_t* MetaCSemantic_UnmountScope(metac_sema_state_t* self)
 {
-    assert(self->MountParent);
+    // it might be that the parent-scope we capture when mounting the scope
+    // is null.
+    // Therefore the assert below doesn't hold
+    // We might want to make it hold in all cases by making the global scope explicit
+
+    //assert(self->MountParent);
     assert(self->CurrentScope->ScopeFlags & scope_flag_mounted);
 
     U32(self->CurrentScope->ScopeFlags) &= ~scope_flag_mounted;

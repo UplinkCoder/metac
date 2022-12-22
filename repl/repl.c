@@ -1315,7 +1315,7 @@ void Repl_Fiber(void)
 #endif
     }
 
-    CompletionTrie_PrintStats(&repl->CompletionTrie);
+    // CompletionTrie_PrintStats(&repl->CompletionTrie);
     ERRORMSG("Repl_Loop exited this should only happen on quit\n");
 #ifndef NO_FIBERS
     aco_exit1(GET_CO());
