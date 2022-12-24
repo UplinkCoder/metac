@@ -860,19 +860,28 @@ static inline uint32_t OpToPrecedence(metac_expr_kind_t exp)
     {
         return 14;
     }
-    else if (exp == expr_deref || exp == expr_arrow || exp == expr_dot || exp == expr_addr
-          || exp == expr_increment || exp == expr_decrement)
+    else if (exp == expr_deref
+          || exp == expr_arrow
+          || exp == expr_dot
+          || exp == expr_addr
+          || exp == expr_increment
+          || exp == expr_decrement)
     {
         return 15;
     }
-    else if (exp == expr_call || exp == expr_index
-          || exp == expr_compl || exp == expr_post_increment
-          || exp == expr_post_decrement || exp == expr_template_instance)
+    else if (exp == expr_call
+          || exp == expr_index
+          || exp == expr_compl
+          || exp == expr_post_increment
+          || exp == expr_post_decrement
+          || exp == expr_template_instance)
     {
         return 16;
     }
-    else if (exp == expr_umin   || exp == expr_unary_dot
-          || exp == expr_sizeof || exp == expr_not)
+    else if (exp == expr_umin
+          || exp == expr_unary_dot
+          || exp == expr_sizeof
+          || exp == expr_not)
     {
         return 17;
     }
@@ -2109,8 +2118,8 @@ metac_preprocessor_directive_t MetaCParser_ParsePreprocDirective(metac_parser_t*
 #endif
 
 metac_expr_t* MetaCParser_ParseExpr(metac_parser_t* self,
-                                                parse_expr_flags_t eflags,
-                                                metac_expr_t* prev)
+                                    parse_expr_flags_t eflags,
+                                    metac_expr_t* prev)
 {
     metac_expr_t* result = 0;
     metac_token_t* currentToken = 0;
@@ -3365,8 +3374,10 @@ static decl_type_array_t* ParseArraySuffix(metac_parser_t* self, decl_type_t* ty
         MetaCParser_Match(self, tok_rBracket);
         type = (decl_type_t*)arrayType;
     }
+
     arrayType->Hash = hash;
     assert(arrayType);
+
     return arrayType;
 }
 
@@ -3836,51 +3847,6 @@ static stmt_block_t* MetaCParser_ParseBlockStmt(metac_parser_t* self,
 
     return result;
 }
-
-/// static lexer for using in the g_lineParser
-metac_lexer_t g_lineLexer = {
-    g_lineLexer.inlineTokens,     0, ARRAY_SIZE(g_lineLexer.inlineTokens),
-    {g_lineLexer.inlineLocations, 0, ARRAY_SIZE(g_lineLexer.inlineLocations)}
-};
-/// There can only be one LineParser as it uses static storage
-
-/*
-void LineLexerInit(void)
-{
-    g_lineParser.CurrentTokenIndex = 0;
-    g_lineLexer.TokenCount = 0;
-    g_lineLexer.LocationStorage.LocationSize = 0;
-
-    ACCEL_INIT(g_lineLexer, Identifier, IDENTIFIER_LENGTH_SHIFT, 9);
-    ACCEL_INIT(g_lineLexer, String, STRING_LENGTH_SHIFT, 9);
-
-    if (g_lineParser.SpecialNamePtr_Compiler.v == 0)
-    {
-        ACCEL_INIT(g_lineParser, Identifier, IDENTIFIER_LENGTH_SHIFT, 9);
-        ACCEL_INIT(g_lineParser, String, STRING_LENGTH_SHIFT, 9);
-        InitSpecialIdentifier(&g_lineParser);
-    }
-
-    if (!g_lineParser.BlockStmtStack)
-    {
-        g_lineParser.BlockStmtStackCapacity = 8;
-        g_lineParser.BlockStmtStackCount = 0;
-        g_lineParser.BlockStmtStack = (stmt_block_t**)
-            malloc(sizeof(stmt_block_t*) * g_lineParser.BlockStmtStackCapacity);
-    }
-
-    if (!g_lineParser.DebugPrinter.StringMemory)
-    {
-        MetaCPrinter_Init(&g_lineParser.DebugPrinter,
-                          &g_lineParser.IdentifierTable,
-                          &g_lineParser.StringTable);
-    }
-
-#if !defined(NO_PREPROCESSOR)
-    g_lineParser.Preprocessor = 0;
-#endif
-}
-*/
 #include <stdio.h>
 
 

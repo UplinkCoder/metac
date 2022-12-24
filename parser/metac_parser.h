@@ -99,7 +99,6 @@ typedef struct metac_parser_t
 
 bool IsExprNode(metac_node_kind_t Kind);
 
-extern metac_parser_t g_lineParser;
 bool IsBinaryAssignExp(metac_expr_kind_t expr_kind);
 bool IsBinaryExp(metac_expr_kind_t expr_kind);
 
