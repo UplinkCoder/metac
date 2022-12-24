@@ -98,14 +98,13 @@
     \
     FOREACH_CMP_EXP(M)
 
-#define FOREACH_EXP(M) \
-    M(expr_invalid) \
-    \
-    M(expr_identifier) \
+#define FOREACH_LITERAL_EXP(M) \
     M(expr_string) \
     M(expr_char) \
     M(expr_signed_integer) \
-    M(expr_float) \
+    M(expr_float)
+
+#define FOREACH_UNARY_EXP(M) \
     M(expr_increment) \
     M(expr_decrement) \
     M(expr_post_increment) \
@@ -122,7 +121,18 @@
     M(expr_deref) \
     M(expr_not) \
     M(expr_compl) \
-    M(expr_umin) \
+    M(expr_umin)
+
+
+#define FOREACH_EXP(M) \
+    M(expr_invalid) \
+    \
+    M(expr_identifier) \
+    \
+    FOREACH_LITERAL_EXP(M) \
+    \
+    FOREACH_UNARY_EXP(M) \
+    \
     M(expr_run) \
     \
     M(expr_paren) \

@@ -320,6 +320,6 @@ void MetaCSemantic_PopTemporaryScope_(metac_sema_state_t* self,
 //                                      metac_scope_t* tmpScope,
                                       uint32_t line,
                                       const char* file);
-void MetaCSemantic_ConstantFold(metac_sema_state_t* self, metac_sema_expr_t* exp);
+bool MetaCSemantic_ConstantFold(metac_sema_state_t* self, metac_sema_expr_t* exp);
 
 #endif

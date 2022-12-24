@@ -1,9 +1,11 @@
-#include "metac_semantic.h"
+#include "../semantic/metac_semantic.h"
 #include "../codegen/metac_codegen.h"
 
 #ifndef NO_FIBERS
 #  include "../os/metac_task.h"
 #endif
+
+#include "../semantic/metac_expr_fold.c"
 
 #ifndef _emptyPointer
 #  define _emptyPointer (void*)0x1
@@ -160,12 +162,17 @@ EvaluateExpr(metac_sema_state_t* sema,
     return result;
 }
 
-void
-MetaCSemantic_ConstantFold(metac_sema_state_t* self, metac_sema_expr_t* exp)
+bool MetaCSemantic_ConstantFold(metac_sema_state_t* self, metac_sema_expr_t* exp)
 {
     bool couldFold = false;
 
-    (*exp) = EvaluateExpr(self, exp, 0);
+    if (IsConstant(self, exp))
+    {
+        couldFold = true;
+        (*exp) = EvaluateExpr(self, exp, 0);
+    }
+
+    return couldFold;
 }
 
 static inline int32_t GetConstI32(metac_sema_state_t* self, metac_sema_expr_t* index, bool *errored)

@@ -39,9 +39,12 @@ int main(int argc, const char* argv[])
             }
 
             MetaCPrinter_PrintForHeader(&lpp.Parser.DebugPrinter, decl);
+            printf("%.*s\n", (int) lpp.Parser.DebugPrinter.StringMemorySize, lpp.Parser.DebugPrinter.StringMemory);
+            memset(lpp.Parser.DebugPrinter.StringMemory, ' ', lpp.Parser.DebugPrinter.StringMemorySize);
+            lpp.Parser.DebugPrinter.StringMemorySize = 0;
         }
 
-        printf("%.*s\n", (int) lpp.Parser.DebugPrinter.StringMemorySize, lpp.Parser.DebugPrinter.StringMemory);
+    //    printf("%.*s\n", (int) lpp.Parser.DebugPrinter.StringMemorySize, lpp.Parser.DebugPrinter.StringMemory);
     }
 
 }
