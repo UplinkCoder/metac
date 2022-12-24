@@ -596,7 +596,7 @@ static inline void PrintStmt(metac_printer_t* self, metac_stmt_t* stmt)
                 }
                 else
                 {
-                    self->SupressNewlineAfterDecl = true;
+                    self->SuppressNewlineAfterDecl = true;
                     PrintDecl(self, (metac_decl_t*)stmt_for->ForInit, 0);
                     PrintSpace(self);
                 }
@@ -627,11 +627,13 @@ static inline void PrintStmt(metac_printer_t* self, metac_stmt_t* stmt)
         {
             stmt_break_t* stmt_break = cast(stmt_break_t*) stmt;
             PrintKeyword(self, tok_kw_break);
+            PrintToken(self, tok_semicolon);
         } break;
         case stmt_continue:
         {
             stmt_continue_t* stmt_continue = cast(stmt_continue_t*) stmt;
             PrintKeyword(self, tok_kw_continue);
+            PrintToken(self, tok_semicolon);
         } break;
         case stmt_case:
         {
@@ -781,6 +783,14 @@ static inline void PrintDecl(metac_printer_t* self,
                                     uint32_t level)
 {
     bool printSemicolon = true;
+    bool printingTypedef = false;
+    // remove the for-typedef flag at the top
+    // since we don't want it to propagate to members
+    if (self->ForTypedef)
+    {
+        self->ForTypedef = false;
+        printingTypedef = true;
+    }
 
     switch (decl->Kind)
     {
@@ -839,9 +849,11 @@ static inline void PrintDecl(metac_printer_t* self,
             decl_type_typedef_t* typdef = (decl_type_typedef_t*) decl;
             PrintString(self, "typedef ", sizeof("typedef ") - 1);
             level++;
+            self->ForTypedef = true;
             PrintDecl(self, (metac_decl_t*)typdef->Type, level);
             if (typdef->Identifier.v != empty_identifier.v)
             {
+                PrintSpace(self);
                 PrintIdentifier(self, typdef->Identifier);
             }
             level--;
@@ -931,10 +943,13 @@ static inline void PrintDecl(metac_printer_t* self,
             PrintChar(self, ':');
         } break;
     }
-    if (!!printSemicolon) PrintToken(self, tok_semicolon);
-    if (self->SupressNewlineAfterDecl)
+    if ((!!printSemicolon) & (!printingTypedef))
     {
-        self->SupressNewlineAfterDecl = false;
+        PrintToken(self, tok_semicolon);
+    }
+    if (self->SuppressNewlineAfterDecl || printingTypedef)
+    {
+        self->SuppressNewlineAfterDecl = false;
     }
     else
     {
@@ -1010,9 +1025,9 @@ static inline void PrintExpr(metac_printer_t* self, metac_expr_t* expr)
     }
     else if (expr->Kind == expr_type)
     {
-        PrintChar(self, '(');
+        // PrintChar(self, '(');
         PrintType(self, expr->TypeExp);
-        PrintChar(self, ')');
+        // PrintChar(self, ')');
     }
     else if (expr->Kind == expr_identifier)
     {
@@ -1922,7 +1937,7 @@ static inline void PrintSemaStmt(metac_printer_t* self, metac_sema_state_t* sema
                 }
                 else
                 {
-                    self->SupressNewlineAfterDecl = true;
+                    self->SuppressNewlineAfterDecl = true;
                     PrintSemaDecl(self, sema, (cast(metac_sema_decl_t*)stmt_for->ForInit), self->IndentLevel);
                 }
             }
@@ -1949,11 +1964,13 @@ static inline void PrintSemaStmt(metac_printer_t* self, metac_sema_state_t* sema
         {
             sema_stmt_break_t* stmt_break = cast(sema_stmt_break_t*) stmt;
             PrintKeyword(self, tok_kw_break);
+            PrintToken(self, tok_semicolon);
         } break;
         case stmt_continue:
         {
             sema_stmt_continue_t* stmt_continue = cast(sema_stmt_continue_t*) stmt;
             PrintKeyword(self, tok_kw_continue);
+            PrintToken(self, tok_semicolon);
         } break;
         case stmt_case:
         {
@@ -2133,8 +2150,9 @@ void MetaCPrinter_InitSz(metac_printer_t* self,
     self->StringMemoryCapacity = initialSize;
     self->StringMemory = (char*)malloc(self->StringMemoryCapacity);
     self->StringMemorySize = self->StringMemoryCapacity;
-    self->SupressNewlineAfterDecl = false;
+    self->SuppressNewlineAfterDecl = false;
     self->AsType = false;
+    self->ForTypedef = false;
     MetaCPrinter_Reset(self);
 
     self->IdentifierTable = identifierTable;

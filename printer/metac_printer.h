@@ -29,8 +29,9 @@ typedef struct metac_printer_t
     uint16_t CurrentColumn;
 
     uint16_t StartColumn;
-    bool SupressNewlineAfterDecl;
+    bool SuppressNewlineAfterDecl;
     bool AsType;
+    bool ForTypedef;
 } metac_printer_t;
 
 
