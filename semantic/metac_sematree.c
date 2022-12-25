@@ -1,13 +1,14 @@
 #include "metac_sematree.h"
 #include "metac_semantic.h"
 #include "../hash/crc32c.h"
+
 #undef walker_fn
 
 int MetaCSemaTree_Walk_Debug(metac_sema_decl_t* decl, struct metac_sema_decl_state_t* sema,
                              const char* fn_name, walker_function_t walker_fn, void* ctx)
 {
     // make sure the context confusion cookie is set
-    printf("fn_name: %s\n", fn_name);
+    // printf("fn_name: %s\n", fn_name);
     assert((*(uint32_t*) ctx) == crc32c_nozero(~0, fn_name, strlen(fn_name)));
 
     return MetaCSemaTree_Walk_Real(decl, sema, walker_fn, ctx);
@@ -94,6 +95,15 @@ int MetaCSemaTree_Walk_Real(metac_sema_decl_t* decl, struct metac_sema_state_t* 
                 return result;
 
             result = walker_fn(e->E2, ctx);
+            if (result)
+                return result;
+        } break;
+
+        FOREACH_UNARY_EXP(CASE_)
+        case expr_paren:
+        {
+            metac_sema_expr_t* e = (metac_sema_expr_t*) decl;
+            result = walker_fn(e->E1, ctx);
             if (result)
                 return result;
         } break;

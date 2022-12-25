@@ -29,7 +29,7 @@ typedef struct constant_fold_result_t
 
 bool IsConstant(metac_sema_state_t* sema, metac_sema_expr_t* e);
 
-void ConstantFold_ReplaceInParent (metac_node_t parent, metac_sema_expr_t* child, metac_sema_expr_t* replacement);
+void ConstantFold_ReplaceInParent (metac_node_t parent, metac_sema_expr_t* child, metac_sema_expr_t replacement);
 
 void ConstantFold_AddReplacement (constant_fold_ctx_t* ctx, metac_sema_expr_t* e, metac_sema_expr_t replacement);
 
