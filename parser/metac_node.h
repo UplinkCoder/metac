@@ -123,13 +123,15 @@
     M(expr_compl) \
     M(expr_umin)
 
+#define FOREACH_PRIMARY_EXP(M) \
+    M(expr_identifier) \
+    FOREACH_LITERAL_EXP(M)
+
 
 #define FOREACH_EXP(M) \
     M(expr_invalid) \
     \
-    M(expr_identifier) \
-    \
-    FOREACH_LITERAL_EXP(M) \
+    FOREACH_PRIMARY_EXP(M) \
     \
     FOREACH_UNARY_EXP(M) \
     \
@@ -200,8 +202,8 @@
 
 #define FOREACH_NODE_KIND(M) \
     FOREACH_EXP(M) \
-    FOREACH_STMT_KIND(M) \
-    FOREACH_DECL_KIND(M)
+    FOREACH_STMT_KIND_(M) \
+    FOREACH_DECL_KIND_(M)
 
 /// Omits hash and serial
 #define METAC_COPY_HEADER(SRCP, DSTP) do { \

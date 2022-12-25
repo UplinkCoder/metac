@@ -14,8 +14,9 @@ typedef struct MetaCSemantic_doExprSemantic_task_context_t
 } MetaCSemantic_doExprSemantic_task_context_t;
 
 void MetaCSemantic_doExprSemantic_Task(task_t* task);
-#endif
 #endif // _METAC_EXPR_SEMANTIC_H_
+#endif // !NO_FIBERS
+
 #define MetaCSemantic_doExprSemantic(SELF, NODE, RESULT) \
     MetaCSemantic_doExprSemantic_(SELF, ((metac_expr_t*)(NODE)), RESULT, \
                                   __FILE__, __LINE__)
@@ -33,3 +34,9 @@ void MetaCSemantic_PushExpr(metac_sema_state_t* self, metac_sema_expr_t* expr);
 void MetaCSemantic_PopExpr(metac_sema_state_t* self,  metac_sema_expr_t* expr);
 
 bool MetaCSemantic_CanHaveAddress(metac_sema_state_t* self, metac_sema_expr_t* expr);
+
+typedef struct BCHeap BCHeap;
+
+metac_sema_expr_t EvaluateExpr(metac_sema_state_t* sema,
+                               metac_sema_expr_t* e,
+                               BCHeap* heap);

@@ -7,6 +7,8 @@
 #include "metac_scope.h"
 #include "../parser/metac_parsetree.h"
 
+typedef struct metac_sema_state_t metac_sema_state_t;
+
 #define ERROR_PARENT_INDEX_V -1
 
 #define SEMA_EXPR_HEADER \
@@ -533,3 +535,12 @@ typedef struct metac_sema_decl_t
 #pragma pack(pop)
 
 #endif // _METAC_SEMATREE_H_
+
+#ifdef NDEBUG
+#  define MetaCSemaTree_Walk(DECL, SEMA, FUNC, CTX) \
+      MetaCSemaTree_Walk_Real(DECL, SEMA, FUNC, (void*)CTX)
+#else
+  int MetaCSemaTree_Debug(metac_node_t node, metac_sema_state_t* sema, const char* fn_name, walker_function_t walker_fn, void* ctx);
+#  define MetaCSemaTree_Walk(DECL, SEMA, FUNC, CTX) \
+      MetaCSemaTree_Walk_Debug(DECL, SEMA, #FUNC, FUNC, (void*)CTX)
+#endif

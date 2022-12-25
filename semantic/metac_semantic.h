@@ -6,7 +6,6 @@
 #include "../parser/metac_parsetree.h"
 #include "../parser/metac_parser.h"
 #include "metac_type_table.h"
-#include "metac_sematree.h"
 #include "metac_scope.h"
 
 #include "../os/metac_coro.h"

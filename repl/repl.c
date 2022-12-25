@@ -878,6 +878,8 @@ LswitchMode:
                 metac_sema_expr_t* result =
                     MetaCSemantic_doExprSemantic(&repl->SemanticState, exp, 0);
 
+                ConstantFold_SubExps(&repl->SemanticState, result);
+
                 if (!result)
                     goto LnextLine;
 

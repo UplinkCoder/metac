@@ -2104,11 +2104,11 @@ const char* MetaCPrinter_PrintSemaNode(metac_printer_t* self,
     {
         PrintSemaExpr(self, sema,  (metac_sema_expr_t*) node);
     }
-    else if (node->Kind > stmt_min && node->Kind < stmt_max)
+    else if (node->Kind > node_stmt_min && node->Kind < node_stmt_max)
     {
         PrintSemaStmt(self, sema, (metac_sema_stmt_t*) node);
     }
-    else if (node->Kind > decl_min && node->Kind < decl_max)
+    else if (node->Kind > node_decl_min && node->Kind < node_decl_max)
     {
         PrintSemaDecl(self, sema, (metac_sema_decl_t*) node, 0);
     }
