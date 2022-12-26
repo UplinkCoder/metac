@@ -1345,6 +1345,43 @@ metac_expr_t* MetacParser_PopExpr(metac_parser_t* self)
     return result;
 }
 
+metac_expr_t* MetacParser_TopExpr(metac_parser_t* self)
+{
+    const uint32_t stackCount = self->ExprParser.ExprStackCount;
+    metac_expr_t* result = 0;
+
+    if (stackCount)
+    {
+        result = self->ExprParser.ExprStack[stackCount - 1];
+    }
+    return result;
+}
+
+
+void MetaCParser_PushOp(metac_parser_t* self, metac_expr_kind_t op)
+{
+    ARENA_ARRAY_ADD(self->ExprParser.OpStack, op);
+}
+
+metac_expr_kind_t MetaCParser_PopOp(metac_parser_t* self)
+{
+    metac_expr_kind_t result = self->ExprParser.OpStack[--self->ExprParser.OpStackCount];
+
+    return result;
+}
+
+metac_expr_kind_t MetaCParser_TopOp(metac_parser_t* self)
+{
+    const uint32_t stackCount = self->ExprParser.OpStackCount;
+    metac_expr_kind_t result = expr_invalid;
+
+    if (stackCount)
+    {
+        result = self->ExprParser.OpStack[stackCount - 1];
+    }
+    return result;
+}
+
 parse_expr_flags_t MetaCParser_CurrentEFlags(metac_parser_t* self)
 {
     parse_expr_flags_t result = expr_flags_none;
@@ -1357,37 +1394,14 @@ parse_expr_flags_t MetaCParser_CurrentEFlags(metac_parser_t* self)
     return result;
 }
 
-metac_expr_t* MetaCParser_ParseBinaryExpr2(metac_parser_t* self)
+metac_expr_t* MetaCParser_ParseExpr2(metac_parser_t* self)
 {
     metac_expr_t* result = 0;
 
-//    metac_location_t* startLocation =
-//        self->Lexer->LocationStorage.Locations + (left->LocationIdx - 4);
-
-    metac_token_t* peekToken;
-    metac_token_enum_t peekTokenType;
-    metac_expr_t* left = &self->ExprParser.ExprStack[self->ExprParser.ExprStackCount - 1];
-    metac_location_t loc =
-        self->LocationStorage.Locations[left->LocationIdx - 4];
-
-    assert(self->ExprParser.ExprStackCount != 0);
-
-    peekToken = MetaCParser_PeekToken(self, 1);
-    peekTokenType = (peekToken ? peekToken->TokenType : tok_eof);
-    assert(IsBinaryOperator(peekTokenType, MetaCParser_CurrentEFlags(self)));
-    
-    
-}
-
-
-metac_expr_t* MetaCParser_ParseExpr2(metac_parser_t* self) 
-{
-    metac_expr_t* result = 0;
-    
     metac_token_t* currentToken = 0;
     metac_token_enum_t tokenType = tok_invalid;
     metac_location_t loc =  {0};
-    
+
     for(;;)
     {
         currentToken = MetaCParser_PeekToken(self, 1);
@@ -1409,33 +1423,52 @@ metac_expr_t* MetaCParser_ParseExpr2(metac_parser_t* self)
         else if (IsBinaryOperator(tokenType, MetaCParser_CurrentEFlags(self)))
         {
             uint32_t oldStackCount = self->ExprParser.ExprStackCount;
-            metac_expr_t* e;// = MetaCParser_ParseBinaryExpr2(self);
-/*
+            metac_expr_kind_t eKind = BinExpTypeFromTokenType(tokenType);
             {
-                metac_expr_t* left = &self->ExprParser.ExprStack[self->ExprParser.ExprStackCount - 1];
-                uint32_t prec = OpToPrecedence(left->Kind);
-                while (IsBinaryOperator(peekTokenType, eflags)
-                    && OpToPrecedence(BinExpTypeFromTokenType(peekTokenType) <= prec)
+                metac_expr_kind_t leftOp = MetaCParser_TopOp(self);
+                uint32_t prec = (leftOp != expr_invalid) ? OpToPrecedence(leftOp) : 0;
+
+                if (OpToPrecedence(eKind) > prec)
                 {
-                    
+                    // if the percence of the the operator
+                    // is higher than what's on the top of the stack.
+                    MetaCParser_Match(self, tokenType);
+                    MetaCParser_PushOp(self, eKind);
+                }
+                else
+                {
+                    // if not pop 2 of the expressions on the exp stack
+                    // and combine it with the top of the opStack to from
+                    // an new binary expression node
+//TODO: let's try working without the label
+LPopOp:
+                    leftOp = MetaCParser_PopOp(self);
+                    metac_expr_t* e = 0;
+                    assert(leftOp != expr_invalid);
+                    e = AllocNewExpr(leftOp);
+                    e->E2 = MetacParser_PopExpr(self);
+                    e->E1 = MetacParser_PopExpr(self);
+                    MetacParser_PushExpr(self, e);
                 }
             }
-*/
-            assert(self->ExprParser.ExprStackCount < oldStackCount);
-            MetacParser_PushExpr(self, e);
+//            assert(self->ExprParser.ExprStackCount < oldStackCount);
         } else
         // Termination condition return top of stack
         {
-            if (self->ExprParser.ExprStackCount)
+            if (self->ExprParser.ExprStackCount == 1)
             {
                 result = MetacParser_PopExpr(self);
             }
-            break; 
+            else
+            {
+                goto LPopOp;
+            }
+            break;
         }
     }
-    
+
     return result;
-    
+
 }
 
 metac_expr_t* MetaCParser_ParseExpr(metac_parser_t* self,

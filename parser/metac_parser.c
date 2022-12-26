@@ -95,6 +95,7 @@ void MetaCParser_Init(metac_parser_t* self, metac_alloc_t* allocator)
 
     ARENA_ARRAY_INIT(metac_expr_t*, self->ExprParser.ExprStack, allocator)
     ARENA_ARRAY_INIT(parse_expr_flags_t, self->ExprParser.ExprFlagsStack, allocator)
+    ARENA_ARRAY_INIT(metac_expr_kind_t, self->ExprParser.OpStack, allocator)
 
     ARENA_ARRAY_INIT_SZ(identifier_callback_t, self->IdentifierCallbacks, allocator, 4)
 }

@@ -844,6 +844,8 @@ LswitchMode:
             case repl_mode_e2:
             {
                 exp = MetaCLPP_ParseExpr2FromString(&repl->LPP, repl->Line);
+                MSGF("expr = %s\n", MetaCPrinter_PrintExpr(&repl->printer, exp));
+                MetaCPrinter_Reset(&repl->printer);
             } goto LnextLine;
 
             case repl_mode_preproc:

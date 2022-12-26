@@ -55,6 +55,7 @@ typedef struct metac_expr_parser_t
 {
     ARENA_ARRAY(metac_expr_t*, ExprStack)
     ARENA_ARRAY(parse_expr_flags_t, ExprFlagsStack)
+    ARENA_ARRAY(metac_expr_kind_t, OpStack)
 } metac_expr_parser_t;
 
 typedef struct metac_parser_t
