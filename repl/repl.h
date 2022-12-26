@@ -10,6 +10,7 @@ typedef enum repl_mode_t
     repl_mode_decl,
     repl_mode_stmt,
     repl_mode_expr,
+    repl_mode_e2,
     repl_mode_lex_file,
     repl_mode_preproc,
 

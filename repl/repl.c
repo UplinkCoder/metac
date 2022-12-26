@@ -398,6 +398,9 @@ void Repl_SwtichMode(repl_state_t* self)
     case repl_mode_ee:
         self->Promt = "EE>";
         break;
+    case repl_mode_e2:
+        self->Promt = "E2>";
+        break;
     case repl_mode_es:
         self->Promt = "ES>";
         break;
@@ -730,6 +733,9 @@ LswitchMode:
                 case 'e':
                     repl->ParseMode = repl_mode_ee;
                     goto LswitchMode;
+                case '2':
+                    repl->ParseMode = repl_mode_e2;
+                    goto LswitchMode;
                 case 's':
                     repl->ParseMode = repl_mode_es;
                     goto LswitchMode;
@@ -835,6 +841,10 @@ LswitchMode:
                 MetaCPrinter_Reset(&repl->printer);
                 goto LnextLine;
             }
+            case repl_mode_e2:
+            {
+                exp = MetaCLPP_ParseExpr2FromString(&repl->LPP, repl->Line);
+            } goto LnextLine;
 
             case repl_mode_preproc:
             {

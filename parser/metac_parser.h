@@ -51,6 +51,12 @@ typedef struct identifier_callback_t
     void* Ctx;
 } identifier_callback_t;
 
+typedef struct metac_expr_parser_t
+{
+    ARENA_ARRAY(metac_expr_t*, ExprStack)
+    ARENA_ARRAY(parse_expr_flags_t, ExprFlagsStack)
+} metac_expr_parser_t;
+
 typedef struct metac_parser_t
 {
     metac_lexer_t* Lexer;
@@ -72,6 +78,8 @@ typedef struct metac_parser_t
     uint16_t* PackStack;
     /// -1 means empty
     int32_t  PackStackTop;
+
+    metac_expr_parser_t ExprParser;
 
     stmt_block_t** BlockStmtStack;
     uint32_t BlockStmtStackCount;
@@ -129,4 +137,16 @@ metac_token_t* MetaCParser_Match_(metac_parser_t* self, metac_token_enum_t type,
                                   const char* filename, uint32_t lineNumber);
 
 const char* MetaCNodeKind_toChars(metac_node_kind_t type);
+
+static inline metac_location_t LocationFromToken(metac_parser_t* self,
+                                                 metac_token_t* tok);
+
+metac_identifier_ptr_t RegisterString(metac_parser_t* self,
+                                      metac_token_t* token);
+
+metac_identifier_ptr_t RegisterIdentifier(metac_parser_t* self,
+                                          metac_token_t* token);
+
+bool IsTypeToken(metac_token_enum_t tokenType);
+
 #endif

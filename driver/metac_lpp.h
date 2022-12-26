@@ -26,6 +26,8 @@ void MetaCLPP_Init(metac_lpp_t* lpp, metac_alloc_t* allocator, metac_file_storag
 
 metac_expr_t* MetaCLPP_ParseExprFromString(metac_lpp_t* lpp, const char* exp);
 
+metac_expr_t* MetaCLPP_ParseExpr2FromString(metac_lpp_t* lpp, const char* exp);
+
 metac_stmt_t* MetaCLPP_ParseStmtFromString(metac_lpp_t* lpp, const char* stmt);
 
 metac_decl_t* MetaCLPP_ParseDeclFromString(metac_lpp_t* lpp, const char* decl);
