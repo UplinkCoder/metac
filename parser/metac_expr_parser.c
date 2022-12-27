@@ -924,6 +924,66 @@ static inline metac_expr_t* ParseUnaryDotExpr(metac_parser_t* self)
 #define CRC32C_STAR  0xe6dd0a48
 #define CRC32C_HASH  0xe3069283
 
+parse_expr_flags_t MetaCParser_CurrentEFlags(metac_parser_t* self)
+{
+    parse_expr_flags_t result = expr_flags_none;
+    const uint32_t flagsCount = self->ExprParser.ExprFlagsStackCount;
+    if (flagsCount)
+    {
+        self->ExprParser.ExprFlagsStack[flagsCount - 1];
+    }
+
+    return result;
+}
+
+
+static inline metac_expr_t* ParseRunExpr(metac_parser_t* self, int vers)
+{
+    metac_expr_t* result = 0;
+
+    uint32_t hash = run_key;
+    bool isStmt = false;
+    metac_token_t* peek = 0;
+
+    MetaCParser_Match(self, tok_at);
+    MetaCParser_Match(self, tok_identifier);
+    result = AllocNewExpr(expr_run);
+    peek = MetaCParser_PeekToken(self, 1);
+    // if there is a { following the run expression
+    // we need to scan for a ; before the closing }
+    if (peek->TokenType == tok_lBrace)
+    {
+        uint32_t peekN = 2;
+        while(peek && peek->TokenType != tok_rBrace)
+        {
+            peek = MetaCParser_PeekToken(self, peekN++);
+            if (peek->TokenType == tok_semicolon)
+            {
+                isStmt = true;
+            }
+        }
+    }
+
+    if (isStmt)
+    {
+        metac_stmt_t* runStmt = MetaCParser_ParseStmt(self, 0, 0);
+        // introduce function body expression
+        assert(!"Not implemented yet");
+    }
+    else
+    {
+        if (vers == 2)
+            result->E1 = MetaCParser_ParseExpr2(self);
+        else
+            result->E1 =
+                MetaCParser_ParseExpr(self, MetaCParser_CurrentEFlags(self), 0);
+    }
+    hash = CRC32C_VALUE(hash, result->E1->Hash);
+    result->Hash = hash;
+
+    return result;
+}
+
 
 
 metac_expr_t* MetaCParser_ParseUnaryExpr(metac_parser_t* self)
@@ -1110,43 +1170,7 @@ metac_expr_t* MetaCParser_ParseUnaryExpr(metac_parser_t* self)
         if (peek->TokenType == tok_identifier
          && peek->IdentifierKey == run_key)
         {
-            uint32_t hash = run_key;
-            bool isStmt = false;
-            MetaCParser_Match(self, tok_at);
-            MetaCParser_Match(self, tok_identifier);
-            result = AllocNewExpr(expr_run);
-            peek = MetaCParser_PeekToken(self, 1);
-            // if there is a { following the run expression
-            // we need to scan for a ; before the closing }
-            if (peek->TokenType == tok_lBrace)
-            {
-                uint32_t peekN = 2;
-                while(peek && peek->TokenType != tok_rBrace)
-                {
-                    peek = MetaCParser_PeekToken(self, peekN++);
-                    if (peek->TokenType == tok_semicolon)
-                    {
-                        isStmt = true;
-                    }
-                }
-            }
-
-            if (isStmt)
-            {
-                metac_stmt_t* runStmt = MetaCParser_ParseStmt(self, 0, 0);
-                // introduce function body expression
-                assert(!"Not implemented yet");
-            }
-            else
-            {
-                result->E1 = MetaCParser_ParseExpr(self,
-                    cast(parse_expr_flags_t)(expr_flags_unary | (eflags & expr_flags_pp)),
-                    0
-                );
-
-            }
-            hash = CRC32C_VALUE(hash, result->E1->Hash);
-            result->Hash = hash;
+            result = ParseRunExpr(self, 1);
         }
     }
     else if (IsPrimaryExprToken(tokenType))
@@ -1413,7 +1437,7 @@ void MetaCParser_PushExpr(metac_parser_t* self, metac_expr_t *e)
     ARENA_ARRAY_ADD(self->ExprParser.ExprStack, e);
 }
 
-metac_expr_t* MetacParser_PopExpr(metac_parser_t* self)
+metac_expr_t* MetaCParser_PopExpr(metac_parser_t* self)
 {
     metac_expr_t* result = self->ExprParser.ExprStack[--self->ExprParser.ExprStackCount];
 
@@ -1457,24 +1481,16 @@ metac_expr_kind_t MetaCParser_TopOp(metac_parser_t* self)
     return result;
 }
 
-parse_expr_flags_t MetaCParser_CurrentEFlags(metac_parser_t* self)
-{
-    parse_expr_flags_t result = expr_flags_none;
-    const uint32_t flagsCount = self->ExprParser.ExprFlagsStackCount;
-    if (flagsCount)
-    {
-        self->ExprParser.ExprFlagsStack[flagsCount - 1];
-    }
-
-    return result;
-}
-
 metac_expr_t* MetaCParser_ParseExpr2(metac_parser_t* self)
 {
     metac_expr_t* result = 0;
 
     metac_token_t* currentToken = 0;
     metac_token_enum_t tokenType = tok_invalid;
+    metac_expr_kind_t leftOp = expr_invalid;
+    metac_expr_kind_t op = expr_invalid;
+    uint32_t prec = 0;
+    uint32_t opPrec = 0;
     metac_location_t loc =  {0};
 
     for(;;)
@@ -1505,23 +1521,23 @@ metac_expr_t* MetaCParser_ParseExpr2(metac_parser_t* self)
         }
         else if (self->ExprParser.ExprStackCount == 0)
         {
-            metac_expr_kind_t eKind = UnaExpTypeFromTokenType(tokenType, 0);
-            if (eKind != expr_invalid)
+            op = UnaExpTypeFromTokenType(tokenType, 0);
+            if (op != expr_invalid)
             {
-                metac_expr_kind_t leftOp = MetaCParser_TopOp(self);
-                uint32_t prec = (leftOp != expr_invalid) ? OpToPrecedence(leftOp) : 0;
-                uint32_t ePrec = OpToPrecedence(eKind);
+                leftOp = MetaCParser_TopOp(self);
+                prec = (leftOp != expr_invalid) ? OpToPrecedence(leftOp) : 0;
+                opPrec = OpToPrecedence(op);
 /*
                 printf("topOp('%s').prec: %d\n", MetaCExprKind_toChars(leftOp), prec);
                 printf("eKind('%s').prec: %d\n", MetaCExprKind_toChars(eKind), ePrec);
 */
-                if (ePrec >= prec)
+                if (opPrec >= prec)
                 {
                     // if the percence of the the operator
                     // is higher than what's on the top of the stack.
                     //printf("eKind prec higher. Pushing up\n");
                     MetaCParser_Match(self, tokenType);
-                    MetaCParser_PushOp(self, eKind);
+                    MetaCParser_PushOp(self, op);
                 }
                 else
 LPopUnaryOp:
@@ -1530,7 +1546,7 @@ LPopUnaryOp:
                     metac_expr_t* e = 0;
                     assert(leftOp != expr_invalid);
                     e = AllocNewExpr(leftOp);
-                    e->E1 = MetacParser_PopExpr(self);
+                    e->E1 = MetaCParser_PopExpr(self);
                     MetaCParser_PushExpr(self, e);
                 }
             }
@@ -1539,17 +1555,18 @@ LPopUnaryOp:
 LParseBinary:
         {
             int32_t oldStackCount = self->ExprParser.ExprStackCount;
-            metac_expr_kind_t eKind = BinExpTypeFromTokenType(tokenType);
+            op = BinExpTypeFromTokenType(tokenType);
             {
-                metac_expr_kind_t leftOp = MetaCParser_TopOp(self);
-                uint32_t prec = (leftOp != expr_invalid) ? OpToPrecedence(leftOp) : 0;
+                leftOp = MetaCParser_TopOp(self);
+                prec = (leftOp != expr_invalid) ? OpToPrecedence(leftOp) : 0;
+                opPrec = OpToPrecedence(op);
 
-                if (OpToPrecedence(eKind) >= prec)
+                if (opPrec >= prec)
                 {
                     // if the percence of the the operator
                     // is higher than what's on the top of the stack.
                     MetaCParser_Match(self, tokenType);
-                    MetaCParser_PushOp(self, eKind);
+                    MetaCParser_PushOp(self, op);
                 }
                 else
 LPopBinaryOp:
@@ -1562,18 +1579,44 @@ LPopBinaryOp:
                     metac_expr_t* e = 0;
                     assert(leftOp != expr_invalid);
                     e = AllocNewExpr(leftOp);
-                    e->E2 = MetacParser_PopExpr(self);
-                    e->E1 = MetacParser_PopExpr(self);
+                    e->E2 = MetaCParser_PopExpr(self);
+                    e->E1 = MetaCParser_PopExpr(self);
                     MetaCParser_PushExpr(self, e);
                 }
             }
 //            assert(self->ExprParser.ExprStackCount < oldStackCount);
         }
+        else if (IsPostfixOperator(tokenType))
+        {
+            op = expr_invalid;
+
+            if (tokenType == tok_plusplus)
+                op = expr_post_increment;
+            else if (tokenType == tok_minusminus)
+                op = expr_post_decrement;
+
+            MetaCParser_Match(self, tokenType);
+            MetaCParser_PushOp(self, op);
+/*
+            leftOp = MetaCParser_PopOp(self);
+            metac_expr_t* e = 0;
+            assert(leftOp != expr_invalid);
+            e = AllocNewExpr(leftOp);
+            e->E1 = MetaCParser_PopExpr(self);
+            MetaCParser_PushExpr(self, e);
+*/
+        }
         else if(tokenType == tok_rParen)
         {
             assert(0);
         }
-         else
+        else if (tokenType == tok_rBracket)
+        {
+            assert(MetaCParser_TopOp(self) == expr_index);
+            MetaCParser_Match(self, tok_rBracket);
+            goto LPopBinaryOp;
+        }
+        else
         // Termination condition return top of stack
         {
             if (self->ExprParser.OpStackCount > 0)
@@ -1585,10 +1628,16 @@ LPopBinaryOp:
             }
             else if (self->ExprParser.ExprStackCount == 1)
             {
-                result = MetacParser_PopExpr(self);
+                result = MetaCParser_PopExpr(self);
             }
-
             break;
+        }
+        while (false)
+LParseIndex:
+        {
+            metac_expr_t* index = 0;
+            MetaCParser_Match(self, tok_lBracket);
+            MetaCParser_PushOp(self, expr_index);
         }
         while (false)
 LParseCall:
