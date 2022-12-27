@@ -303,7 +303,6 @@ static inline uint32_t OpToPrecedence(metac_expr_kind_t exp)
         return 14;
     }
     else if (exp == expr_deref
-          || exp == expr_arrow
           || exp == expr_dot
           || exp == expr_addr
           || exp == expr_increment
@@ -312,6 +311,7 @@ static inline uint32_t OpToPrecedence(metac_expr_kind_t exp)
         return 15;
     }
     else if (exp == expr_call
+          || exp == expr_arrow
           || exp == expr_index
           || exp == expr_compl
           || exp == expr_post_increment
@@ -1526,6 +1526,7 @@ metac_expr_t* MetaCParser_ApplyOp(metac_parser_t* self, metac_expr_kind_t op)
     assert(op != expr_invalid);
     e = AllocNewExpr(op);
 
+    printf("Applying: %s\n", MetaCExprKind_toChars(op));
     if(IsBinaryExp(op))
     {
         e->E2 = MetaCParser_PopExpr(self);
@@ -1587,7 +1588,8 @@ metac_expr_t* MetaCParser_ParseExpr2(metac_parser_t* self)
             MetaCParser_PushExpr(self, e);
             eflags &= ~expr_flags_binary;
         }
-        else if (IsBinaryOperator(tokenType, eflags))
+        else if (MetaCParser_TopExpr(self) != expr_invalid
+            && IsBinaryOperator(tokenType, eflags))
 LParseBinary:
         {
             int32_t oldStackCount = self->ExprParser.ExprStackCount;
