@@ -63,6 +63,79 @@ const char* BinExpTypeToChars(metac_binary_expr_kind_t t)
     assert(0);
     return 0;
 }
+metac_expr_kind_t UnaExpTypeFromTokenType(metac_token_enum_t tokenType,
+                                          metac_token_t* peek2)
+{
+    metac_expr_kind_t result = expr_invalid;
+
+    if (tokenType == tok_kw_eject)
+    {
+        result = expr_eject;
+    }
+    else if (tokenType == tok_kw_inject)
+    {
+        result = expr_inject;
+    }
+    else if (tokenType == tok_kw_typeof)
+    {
+        result = expr_typeof;
+    }
+    // sizeof is possibly special
+    else if (tokenType == tok_kw_sizeof)
+    {
+        result = expr_sizeof;
+    }
+    else if (tokenType == tok_kw_assert)
+    {
+        result = expr_assert;
+    }
+    else if (tokenType == tok_minus)
+    {
+        result = expr_umin;
+    }
+    else if (tokenType == tok_minusminus)
+    {
+        result = expr_decrement;
+    }
+    else if (tokenType == tok_plusplus)
+    {
+        result = expr_increment;
+    }
+    else if (tokenType == tok_and)
+    {
+        result = expr_addr;
+    }
+
+    else if (tokenType == tok_star)
+    {
+        result = expr_deref;
+    }
+    else if (tokenType == tok_dollar)
+    {
+        result = expr_outer;
+    }
+
+    else if (tokenType == tok_tilde)
+    {
+        result = expr_compl;
+    }
+    else if (tokenType == tok_tilde)
+    {
+        result = expr_compl;
+    }
+#define run_key 0x3809a6
+    else if (tokenType == tok_at)
+    {
+        if (peek2 && peek2->TokenType == tok_identifier
+         && peek2->IdentifierKey == run_key)
+        {
+            result = expr_run;
+        }
+    }
+
+    return result;
+}
+
 
 metac_expr_kind_t BinExpTypeFromTokenType(metac_token_enum_t tokenType)
 {
@@ -851,6 +924,8 @@ static inline metac_expr_t* ParseUnaryDotExpr(metac_parser_t* self)
 #define CRC32C_STAR  0xe6dd0a48
 #define CRC32C_HASH  0xe3069283
 
+
+
 metac_expr_t* MetaCParser_ParseUnaryExpr(metac_parser_t* self)
 {
     metac_expr_t* result = 0;
@@ -1333,7 +1408,7 @@ bool IsBinaryAssignExp(metac_expr_kind_t kind)
    return (kind >= expr_add_ass && kind <= expr_rsh_ass);
 }
 
-void MetacParser_PushExpr(metac_parser_t* self, metac_expr_t *e)
+void MetaCParser_PushExpr(metac_parser_t* self, metac_expr_t *e)
 {
     ARENA_ARRAY_ADD(self->ExprParser.ExprStack, e);
 }
@@ -1404,6 +1479,9 @@ metac_expr_t* MetaCParser_ParseExpr2(metac_parser_t* self)
 
     for(;;)
     {
+        assert (self->ExprParser.OpStackCount < 20);
+        assert (self->ExprParser.ExprStackCount < 2000);
+
         currentToken = MetaCParser_PeekToken(self, 1);
         if (currentToken)
             loc = LocationFromToken(self, currentToken);
@@ -1412,23 +1490,61 @@ metac_expr_t* MetaCParser_ParseExpr2(metac_parser_t* self)
 
         if (IsPrimaryExprToken(tokenType))
         {
+            // special case for lParen since it might be a call
+            if (tokenType == tok_lParen)
+            {
+                // if lParen is a encountered with a non-empty
+                // expression stack it's' likely a call.
+                if (self->ExprParser.ExprStackCount != 0)
+                {
+                    goto LParseCall;
+                }
+            }
             metac_expr_t* e = MetaCParser_ParsePrimaryExpr(self, expr_flags_none);
-            MetacParser_PushExpr(self, e);
+            MetaCParser_PushExpr(self, e);
         }
         else if (self->ExprParser.ExprStackCount == 0)
         {
-            metac_expr_t* e = MetaCParser_ParseUnaryExpr(self);
-            MetacParser_PushExpr(self, e);
+            metac_expr_kind_t eKind = UnaExpTypeFromTokenType(tokenType, 0);
+            if (eKind != expr_invalid)
+            {
+                metac_expr_kind_t leftOp = MetaCParser_TopOp(self);
+                uint32_t prec = (leftOp != expr_invalid) ? OpToPrecedence(leftOp) : 0;
+                uint32_t ePrec = OpToPrecedence(eKind);
+/*
+                printf("topOp('%s').prec: %d\n", MetaCExprKind_toChars(leftOp), prec);
+                printf("eKind('%s').prec: %d\n", MetaCExprKind_toChars(eKind), ePrec);
+*/
+                if (ePrec >= prec)
+                {
+                    // if the percence of the the operator
+                    // is higher than what's on the top of the stack.
+                    //printf("eKind prec higher. Pushing up\n");
+                    MetaCParser_Match(self, tokenType);
+                    MetaCParser_PushOp(self, eKind);
+                }
+                else
+LPopUnaryOp:
+                {
+                    leftOp = MetaCParser_PopOp(self);
+                    metac_expr_t* e = 0;
+                    assert(leftOp != expr_invalid);
+                    e = AllocNewExpr(leftOp);
+                    e->E1 = MetacParser_PopExpr(self);
+                    MetaCParser_PushExpr(self, e);
+                }
+            }
         }
         else if (IsBinaryOperator(tokenType, MetaCParser_CurrentEFlags(self)))
+LParseBinary:
         {
-            uint32_t oldStackCount = self->ExprParser.ExprStackCount;
+            int32_t oldStackCount = self->ExprParser.ExprStackCount;
             metac_expr_kind_t eKind = BinExpTypeFromTokenType(tokenType);
             {
                 metac_expr_kind_t leftOp = MetaCParser_TopOp(self);
                 uint32_t prec = (leftOp != expr_invalid) ? OpToPrecedence(leftOp) : 0;
 
-                if (OpToPrecedence(eKind) > prec)
+                if (OpToPrecedence(eKind) >= prec)
                 {
                     // if the percence of the the operator
                     // is higher than what's on the top of the stack.
@@ -1436,39 +1552,63 @@ metac_expr_t* MetaCParser_ParseExpr2(metac_parser_t* self)
                     MetaCParser_PushOp(self, eKind);
                 }
                 else
+LPopBinaryOp:
                 {
                     // if not pop 2 of the expressions on the exp stack
                     // and combine it with the top of the opStack to from
                     // an new binary expression node
 //TODO: let's try working without the label
-LPopOp:
                     leftOp = MetaCParser_PopOp(self);
                     metac_expr_t* e = 0;
                     assert(leftOp != expr_invalid);
                     e = AllocNewExpr(leftOp);
                     e->E2 = MetacParser_PopExpr(self);
                     e->E1 = MetacParser_PopExpr(self);
-                    MetacParser_PushExpr(self, e);
+                    MetaCParser_PushExpr(self, e);
                 }
             }
 //            assert(self->ExprParser.ExprStackCount < oldStackCount);
-        } else
+        }
+        else if(tokenType == tok_rParen)
+        {
+            assert(0);
+        }
+         else
         // Termination condition return top of stack
         {
-            if (self->ExprParser.ExprStackCount == 1)
+            if (self->ExprParser.OpStackCount > 0)
+            {
+                if (IsBinaryExp(MetaCParser_TopOp(self)))
+                    goto LPopBinaryOp;
+                else
+                    goto LPopUnaryOp;
+            }
+            else if (self->ExprParser.ExprStackCount == 1)
             {
                 result = MetacParser_PopExpr(self);
             }
-            else
-            {
-                goto LPopOp;
-            }
+
             break;
+        }
+        while (false)
+LParseCall:
+        {
+            expr_argument_t* args = 0;
+            metac_token_t* rParen;
+            MetaCParser_Match(self, tok_lParen);
+            MetaCParser_PushOp(self, expr_call);
+            args = MetaCParser_ParseArgumentList(self);
+            MetaCParser_PushExpr(self, (metac_expr_t*) args);
+            rParen = MetaCParser_Match(self, tok_rParen);
+/*
+            MetaCLocation_Expand(&rhsLoc,
+                LocationFromToken(self, rParen));
+*/
+            goto LPopBinaryOp;
         }
     }
 
     return result;
-
 }
 
 metac_expr_t* MetaCParser_ParseExpr(metac_parser_t* self,
