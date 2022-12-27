@@ -855,7 +855,7 @@ metac_expr_t* MetaCParser_ParseUnaryExpr(metac_parser_t* self)
 {
     metac_expr_t* result = 0;
     static const metac_location_t nullLoc = {0};
-    parse_expr_flags_t eflags = 0;
+    parse_expr_flags_t eflags = expr_flags_none;
     if (self->ExprParser.ExprFlagsStackCount)
     {
         eflags = self->ExprParser.ExprFlagsStack[self->ExprParser.ExprFlagsStackCount - 1];
@@ -1412,7 +1412,7 @@ metac_expr_t* MetaCParser_ParseExpr2(metac_parser_t* self)
 
         if (IsPrimaryExprToken(tokenType))
         {
-            metac_expr_t* e = MetaCParser_ParsePrimaryExpr(self, 0);
+            metac_expr_t* e = MetaCParser_ParsePrimaryExpr(self, expr_flags_none);
             MetacParser_PushExpr(self, e);
         }
         else if (self->ExprParser.ExprStackCount == 0)

@@ -78,7 +78,7 @@ void ConstantFold_ReplaceInParent(metac_node_t parent,
                                   metac_sema_expr_t* child,
                                   metac_sema_expr_t replacement)
 {
-    metac_sema_expr_t** childP = FindInParentExpr(parent, child);
+    metac_sema_expr_t** childP = FindInParentExpr((metac_sema_expr_t*)parent, child);
     if (childP)
     {
         **childP = replacement;
@@ -115,7 +115,7 @@ void ConstantFold_ApplyReplacements(constant_fold_ctx_t* ctx)
         const replacement_pair_t p = pairs[i];
 #ifdef PRINT_REPLACEMENTS
         const char* orig = MetaCPrinter_PrintSemaNode(&printer, ctx->Sema, p.Child);
-        const char* replaced = MetaCPrinter_PrintSemaNode(&printer, ctx->Sema, (metac_node_t)&p.ReplacementChild);
+        const char* replaced = MetaCPrinter_PrintSemaNode(&printer, ctx->Sema, ((metac_node_t)&p.ReplacementChild));
         printf("%s -> %s\n", orig, replaced);
 #endif
         ConstantFold_ReplaceInParent(p.Parent, p.Child, p.ReplacementChild);

@@ -4,14 +4,14 @@
 
 #undef walker_fn
 
-int MetaCSemaTree_Walk_Debug(metac_sema_decl_t* decl, struct metac_sema_decl_state_t* sema,
+int MetaCSemaTree_Walk_Debug(metac_node_t node, struct metac_sema_state_t* sema,
                              const char* fn_name, walker_function_t walker_fn, void* ctx)
 {
     // make sure the context confusion cookie is set
     // printf("fn_name: %s\n", fn_name);
     assert((*(uint32_t*) ctx) == crc32c_nozero(~0, fn_name, strlen(fn_name)));
 
-    return MetaCSemaTree_Walk_Real(decl, sema, walker_fn, ctx);
+    return MetaCSemaTree_Walk_Real(node, sema, walker_fn, ctx);
 }
 
 metac_type_t TypePtrToNode(metac_type_index_t typeIdx,metac_sema_state_t* sema)
@@ -54,42 +54,42 @@ metac_type_t TypePtrToNode(metac_type_index_t typeIdx,metac_sema_state_t* sema)
     return result;
 }
 
-int MetaCSemaTree_Walk_Real(metac_sema_decl_t* decl, struct metac_sema_state_t* sema,
+int MetaCSemaTree_Walk_Real(metac_node_t node, struct metac_sema_state_t* sema,
                             walker_function_t walker_fn, void* ctx)
 {
 
-#define walker_fn(DECL, CTX) \
-    walker_fn((metac_node_t) DECL, CTX)
+#define walker_fn(NODE, CTX) \
+    walker_fn((metac_node_t)NODE, CTX)
 
-#define MetaCSemaTree_Walk_Real(DECL, SEMA, FN, CTX) \
-    MetaCSemaTree_Walk_Real((metac_sema_decl_t*) DECL, SEMA, FN, CTX)
+#define MetaCSemaTree_Walk_Real(NODE, SEMA, FN, CTX) \
+    MetaCSemaTree_Walk_Real((metac_node_t)NODE, SEMA, FN, CTX)
 
 #define emptyNode \
     ((metac_node_t) 0x1)
 
-    if(((metac_node_t)decl) == emptyNode)
+    if(((metac_node_t)node) == emptyNode)
         return 0;
 
-    int result = walker_fn(decl, ctx);
+    int result = walker_fn(node, ctx);
 
     if (result)
         return result;
 
-    switch(decl->Kind)
+    switch(node->Kind)
     {
 #define CASE_(EXP) \
-    case EXP:
+    case node_ ## EXP:
 
         default:
-        case decl_min:
-        case decl_max:
+        case node_decl_min:
+        case node_decl_max:
             assert(0);
         FOREACH_PRIMARY_EXP(CASE_)
             break;
 
         FOREACH_BINARY_EXP(CASE_)
         {
-            metac_sema_expr_t* e = (metac_sema_expr_t*) decl;
+            metac_sema_expr_t* e = (metac_sema_expr_t*) node;
             result = walker_fn(e->E1, ctx);
             if (result)
                 return result;
@@ -100,37 +100,37 @@ int MetaCSemaTree_Walk_Real(metac_sema_decl_t* decl, struct metac_sema_state_t* 
         } break;
 
         FOREACH_UNARY_EXP(CASE_)
-        case expr_paren:
+        case node_expr_paren:
         {
-            metac_sema_expr_t* e = (metac_sema_expr_t*) decl;
+            metac_sema_expr_t* e = (metac_sema_expr_t*) node;
             result = walker_fn(e->E1, ctx);
             if (result)
                 return result;
         } break;
 
-        case decl_variable:
+        case node_decl_variable:
         {
-            sema_decl_variable_t* variable = (sema_decl_variable_t*) decl;
+            sema_decl_variable_t* variable = (sema_decl_variable_t*) node;
             // result = MetaCSemaTree_Walk_Real(variable->, sema, walker_fn, ctx);
             if (result)
                 return result;
         } break;
-        case decl_enum_member:
+        case node_decl_enum_member:
         {
-            sema_decl_enum_member_t* enum_member = (sema_decl_enum_member_t*) decl;
+            sema_decl_enum_member_t* enum_member = (sema_decl_enum_member_t*) node;
             result = walker_fn(enum_member->Value, ctx);
             if (result)
                 return result;
         } break;
-        case decl_type:
+        case node_decl_type:
         {
-            sema_decl_type_t* type = (sema_decl_type_t*) decl;
+            sema_decl_type_t* type = (sema_decl_type_t*) node;
             if (result)
                 return result;
         } break;
-        case decl_type_struct:
+        case node_decl_type_struct:
         {
-            metac_type_aggregate_t* type_struct = (metac_type_aggregate_t*) decl;
+            metac_type_aggregate_t* type_struct = (metac_type_aggregate_t*) node;
 
             for(uint32_t i = 0; i < type_struct->FieldCount; i++)
             {
@@ -144,23 +144,23 @@ int MetaCSemaTree_Walk_Real(metac_sema_decl_t* decl, struct metac_sema_state_t* 
             if (result)
                 return result;
         } break;
-        case decl_type_union:
+        case node_decl_type_union:
         {
-            sema_decl_type_union_t* type_union = (sema_decl_type_union_t*) decl;
+            sema_decl_type_union_t* type_union = (sema_decl_type_union_t*) node;
             result = MetaCSemaTree_Walk_Real(type_union->Fields, sema, walker_fn, ctx);
             if (result)
                 return result;
         } break;
-        case decl_type_enum:
+        case node_decl_type_enum:
         {
-            sema_decl_type_enum_t* type_enum = (sema_decl_type_enum_t*) decl;
+            sema_decl_type_enum_t* type_enum = (sema_decl_type_enum_t*) node;
             result = MetaCSemaTree_Walk_Real(type_enum->Members, sema, walker_fn, ctx);
             if (result)
                 return result;
         } break;
-        case decl_type_array:
+        case node_decl_type_array:
         {
-            sema_decl_type_array_t* type_array = (sema_decl_type_array_t*) decl;
+            sema_decl_type_array_t* type_array = (sema_decl_type_array_t*) node;
             result = MetaCSemaTree_Walk_Real(type_array->ElementType, sema, walker_fn, ctx);
             if (result)
                 return result;
@@ -168,17 +168,17 @@ int MetaCSemaTree_Walk_Real(metac_sema_decl_t* decl, struct metac_sema_state_t* 
             if (result)
                 return result;
         } break;
-        case decl_type_ptr:
+        case node_decl_type_ptr:
         {
-            sema_decl_type_ptr_t* type_ptr = (sema_decl_type_ptr_t*) decl;
+            sema_decl_type_ptr_t* type_ptr = (sema_decl_type_ptr_t*) node;
             metac_type_t typePtr = TypePtrToNode(type_ptr->ElementType, sema);
             result = MetaCSemaTree_Walk_Real(typePtr, sema, walker_fn, ctx);
             if (result)
                 return result;
         } break;
-        case decl_type_functiontype:
+        case node_decl_type_functiontype:
         {
-            sema_decl_type_functiontype_t* type_functiontype = (sema_decl_type_functiontype_t*) decl;
+            sema_decl_type_functiontype_t* type_functiontype = (sema_decl_type_functiontype_t*) node;
             metac_type_t returnType = TypePtrToNode(type_functiontype->ReturnType, sema);
             result = MetaCSemaTree_Walk_Real(returnType, sema, walker_fn, ctx);
             if (result)
@@ -194,17 +194,17 @@ int MetaCSemaTree_Walk_Real(metac_sema_decl_t* decl, struct metac_sema_state_t* 
             if (result)
                 return result;
         } break;
-        case decl_type_typedef:
+        case node_decl_type_typedef:
         {
-            sema_decl_type_typedef_t* typedef_ = (sema_decl_type_typedef_t*) decl;
+            sema_decl_type_typedef_t* typedef_ = (sema_decl_type_typedef_t*) node;
             metac_type_t type = TypePtrToNode(typedef_->Type, sema);
             result = MetaCSemaTree_Walk_Real(type, sema, walker_fn, ctx);
             if (result)
                 return result;
         } break;
-        case decl_function:
+        case node_decl_function:
         {
-            sema_decl_function_t* function_ = (sema_decl_function_t*) decl;
+            sema_decl_function_t* function_ = (sema_decl_function_t*) node;
 
             metac_type_functiontype_t* functionType =
                 (metac_type_functiontype_t*)TypePtrToNode(function_->TypeIndex, sema);

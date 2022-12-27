@@ -5,7 +5,7 @@
 #  include "../os/metac_task.h"
 #endif
 
-#include "../semantic/metac_expr_fold.c"
+// #include "../semantic/metac_expr_fold.c"
 
 #ifndef _emptyPointer
 #  define _emptyPointer (void*)0x1
@@ -161,6 +161,41 @@ EvaluateExpr(metac_sema_state_t* sema,
 
     return result;
 }
+
+#define CASE_(EXP) \
+    case EXP:
+
+bool IsLiteral(metac_expr_kind_t kind)
+{
+    switch(kind)
+    {
+        default: return false;
+
+        FOREACH_LITERAL_EXP(CASE_)
+            return true;
+    }
+}
+
+bool IsConstant(metac_sema_state_t* sema, metac_sema_expr_t* expr)
+{
+    switch(expr->Kind)
+    {
+        default:
+            return false;
+
+        FOREACH_LITERAL_EXP(CASE_)
+            return true;
+
+        FOREACH_UNARY_EXP(CASE_)
+            return IsConstant(sema, expr->E1);
+
+        FOREACH_BINARY_EXP(CASE_)
+            return (IsConstant(sema, expr->E1) && IsConstant(sema, expr->E2));
+    }
+}
+
+#undef CASE_
+
 
 bool MetaCSemantic_ConstantFold(metac_sema_state_t* self, metac_sema_expr_t* exp)
 {
