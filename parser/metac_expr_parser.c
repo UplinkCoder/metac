@@ -256,51 +256,51 @@ static inline uint32_t OpToPrecedence(metac_expr_kind_t exp)
     }
     else if (exp >= expr_assign && exp <= expr_rsh_ass)
     {
-        return 2;
+        return 3;
     }
     else if (exp == expr_ternary)
     {
-        return 3;
+        return 5;
     }
     else if (exp == expr_oror)
     {
-        return 4;
+        return 7;
     }
     else if (exp == expr_andand)
     {
-        return 5;
+        return 9;
     }
     else if (exp == expr_or)
     {
-        return 7;
+        return 11;
     }
     else if (exp == expr_xor)
     {
-        return 8;
+        return 13;
     }
     else if (exp == expr_and)
     {
-        return 9;
+        return 15;
     }
     else if (exp == expr_eq || exp == expr_neq)
     {
-        return 10;
+        return 17;
     }
     else if (exp >= expr_lt && exp <= expr_ge)
     {
-        return 11;
+        return 19;
     }
     else if (exp == expr_rsh || exp == expr_lsh)
     {
-        return 12;
+        return 21;
     }
     else if (exp == expr_add || exp == expr_sub)
     {
-        return 13;
+        return 23;
     }
     else if (exp == expr_div || exp == expr_mul || exp == expr_rem)
     {
-        return 14;
+        return 25;
     }
     else if (exp == expr_deref
           || exp == expr_dot
@@ -308,24 +308,27 @@ static inline uint32_t OpToPrecedence(metac_expr_kind_t exp)
           || exp == expr_increment
           || exp == expr_decrement)
     {
-        return 15;
+        return 27;
+    }
+    else if (exp == expr_arrow)
+    {
+        return 28;
     }
     else if (exp == expr_call
-          || exp == expr_arrow
           || exp == expr_index
           || exp == expr_compl
           || exp == expr_post_increment
           || exp == expr_post_decrement
           || exp == expr_template_instance)
     {
-        return 16;
+        return 29;
     }
     else if (exp == expr_umin
           || exp == expr_unary_dot
           || exp == expr_sizeof
           || exp == expr_not)
     {
-        return 17;
+        return 31;
     }
     else if (exp == expr_paren
           || exp == expr_signed_integer
@@ -336,7 +339,7 @@ static inline uint32_t OpToPrecedence(metac_expr_kind_t exp)
           || exp == expr_tuple
           || exp == expr_type)
     {
-        return 18;
+        return 33;
     }
     assert(0);
     return 0;
