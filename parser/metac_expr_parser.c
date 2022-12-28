@@ -1495,8 +1495,6 @@ metac_expr_t* MetaCParser_PopExpr(metac_parser_t* self)
     return result;
 }
 
-
-
 void MetaCParser_PushOp(metac_parser_t* self, metac_expr_kind_t op)
 {
     printf("Pushing Op: %s\n", MetaCExprKind_toChars(op));
@@ -1582,14 +1580,14 @@ metac_expr_t* MetaCParser_ParseExpr2(metac_parser_t* self)
                 {
                     if (self->ExprParser.OpStackCount == 0
                      || !IsBinaryExp(MetaCParser_TopOp(self)))
-                     {
+                    {
                         goto LParseCall;
-                     }
+                    }
                 }
             }
             metac_expr_t* e = MetaCParser_ParsePrimaryExpr(self, expr_flags_none);
             MetaCParser_PushExpr(self, e);
-            eflags &= ~expr_flags_binary;
+            U32(eflags) &= ~expr_flags_binary;
         }
         else if (MetaCParser_TopExpr(self) != expr_invalid
             && IsBinaryOperator(tokenType, eflags))
@@ -1618,7 +1616,7 @@ LPopBinaryOp:
                     // an new binary expression node
                     leftOp = MetaCParser_PopOp(self);
                     MetaCParser_ApplyOp(self, leftOp);
-                    eflags &= ~expr_flags_binary;
+                    U32(eflags) &= ~expr_flags_binary;
                 }
             }
 //            assert(self->ExprParser.ExprStackCount < oldStackCount);
@@ -1628,7 +1626,7 @@ LPopBinaryOp:
             leftOp = MetaCParser_TopOp(self);
             prec = (leftOp != expr_invalid) ? OpToPrecedence(leftOp) : 0;
             opPrec = OpToPrecedence(op);
-            eflags &= (~expr_flags_binary);
+            U32(eflags) &= (~expr_flags_binary);
 /*
             printf("topOp('%s').prec: %d\n", MetaCExprKind_toChars(leftOp), prec);
             printf("eKind('%s').prec: %d\n", MetaCExprKind_toChars(eKind), ePrec);
@@ -1676,6 +1674,7 @@ LPopUnaryOp:
             break;
         }
         // postfixn'
+LParsePostfix:
         {
             currentToken = MetaCParser_PeekToken(self, 1);
             if (currentToken)
@@ -1685,6 +1684,9 @@ LPopUnaryOp:
 
             if (IsPostfixOperator(tokenType) && op != expr_invalid)
             {
+                leftOp = MetaCParser_TopOp(self);
+                prec = (leftOp != expr_invalid) ? OpToPrecedence(leftOp) : 0;
+
                 op = expr_invalid;
 
                 if (tokenType == tok_plusplus)
@@ -1692,16 +1694,20 @@ LPopUnaryOp:
                 else if (tokenType == tok_minusminus)
                     op = expr_post_decrement;
 
-                MetaCParser_Match(self, tokenType);
-                MetaCParser_PushOp(self, op);
-    /*
-                leftOp = MetaCParser_PopOp(self);
-                metac_expr_t* e = 0;
-                assert(leftOp != expr_invalid);
-                e = AllocNewExpr(leftOp);
-                e->E1 = MetaCParser_PopExpr(self);
-                MetaCParser_PushExpr(self, e);
-    */
+                opPrec = OpToPrecedence(op);
+                if (opPrec > prec)
+                {
+                    MetaCParser_Match(self, tokenType);
+                    MetaCParser_PushOp(self, op);
+                }
+                else
+                {
+                    MetaCParser_Match(self, tokenType);
+                    leftOp = MetaCParser_PopOp(self);
+                    metac_expr_t *e1 =
+                        MetaCParser_ApplyOp(self, leftOp);
+                    MetaCParser_PushOp(self, op);
+                }
             }
         }
 
