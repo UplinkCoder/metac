@@ -1589,7 +1589,7 @@ metac_expr_t* MetaCParser_ParseExpr2(metac_parser_t* self)
             MetaCParser_PushExpr(self, e);
             U32(eflags) &= ~expr_flags_binary;
         }
-        else if (MetaCParser_TopExpr(self) != expr_invalid
+        else if (MetaCParser_TopExpr(self) != 0
             && IsBinaryOperator(tokenType, eflags))
 LParseBinary:
         {
@@ -1606,7 +1606,7 @@ LParseBinary:
                     // is higher than what's on the top of the stack.
                     MetaCParser_Match(self, tokenType);
                     MetaCParser_PushOp(self, op);
-                    eflags |= expr_flags_binary;
+                    U32(eflags) |= expr_flags_binary;
                 }
                 else
 LPopBinaryOp:
@@ -1644,7 +1644,7 @@ LPopUnaryOp:
             {
                 leftOp = MetaCParser_PopOp(self);
                 MetaCParser_ApplyOp(self, leftOp);
-                eflags &= ~expr_flags_binary;
+                U32(eflags) &= ~expr_flags_binary;
             }
         }
         else if(tokenType == tok_rParen)
