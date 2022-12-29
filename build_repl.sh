@@ -2,4 +2,4 @@
 
 set -euo pipefail
 
-cd repl && ./build.sh
+cd repl && ./build.sh $@

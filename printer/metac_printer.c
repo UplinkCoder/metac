@@ -1072,6 +1072,18 @@ static inline void PrintExpr(metac_printer_t* self, metac_expr_t* expr)
         PrintExpr(self, expr->E2);
         PrintToken(self, tok_rBracket);
     }
+    else if (expr->Kind == expr_call)
+    {
+        PrintExpr(self, expr->E1);
+        if (METAC_NODE(expr->E2) != emptyPointer)
+        {
+            PrintExpr(self, expr->E2);
+        }
+        else
+        {
+            PrintString(self, "()", 2);
+        }
+    }
     else if (IsBinaryExp(expr->Kind))
     {
         PrintChar(self, '(');
@@ -1093,18 +1105,6 @@ static inline void PrintExpr(metac_printer_t* self, metac_expr_t* expr)
         PrintChar(self, ')');
 
         PrintExpr(self, expr->CastExp);
-    }
-    else if (expr->Kind == expr_call)
-    {
-        PrintExpr(self, expr->E1);
-        if (METAC_NODE(expr->E2) != emptyPointer)
-        {
-            PrintExpr(self, expr->E2);
-        }
-        else
-        {
-            PrintString(self, "()", 2);
-        }
     }
     else if (expr->Kind == expr_template_instance)
     {

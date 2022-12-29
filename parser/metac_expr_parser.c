@@ -56,9 +56,11 @@ const char* BinExpTypeToChars(metac_binary_expr_kind_t t)
         case expr_gt        : return ">";
         case expr_ge        : return ">=";
         case expr_spaceship : return "<=>";
+        case expr_template_instance: return "!";
     }
 
-    //printf("Not a binary operator: %s\n", MetaCExprKind_toChars(t));
+    printf("Not a binary operator: %s\n",
+        MetaCExprKind_toChars( cast(metac_expr_kind_t)t ));
     assert(0);
     return 0;
 }
@@ -104,7 +106,6 @@ metac_expr_kind_t UnaExpTypeFromTokenType(metac_token_enum_t tokenType,
     {
         result = expr_addr;
     }
-
     else if (tokenType == tok_star)
     {
         result = expr_deref;
@@ -113,10 +114,9 @@ metac_expr_kind_t UnaExpTypeFromTokenType(metac_token_enum_t tokenType,
     {
         result = expr_outer;
     }
-
-    else if (tokenType == tok_tilde)
+    else if (tokenType == tok_bang)
     {
-        result = expr_compl;
+        result = expr_not;
     }
     else if (tokenType == tok_tilde)
     {
@@ -303,16 +303,11 @@ static inline uint32_t OpToPrecedence(metac_expr_kind_t exp)
         return 25;
     }
     else if (exp == expr_deref
-          || exp == expr_dot
           || exp == expr_addr
           || exp == expr_increment
           || exp == expr_decrement)
     {
         return 27;
-    }
-    else if (exp == expr_arrow)
-    {
-        return 28;
     }
     else if (exp == expr_call
           || exp == expr_index
@@ -322,6 +317,10 @@ static inline uint32_t OpToPrecedence(metac_expr_kind_t exp)
           || exp == expr_template_instance)
     {
         return 29;
+    }
+    else if (exp == expr_arrow || exp == expr_dot)
+    {
+        return 30;
     }
     else if (exp == expr_umin
           || exp == expr_unary_dot
@@ -341,6 +340,8 @@ static inline uint32_t OpToPrecedence(metac_expr_kind_t exp)
     {
         return 33;
     }
+
+    fprintf(stderr, "There's no percednce for %s\n", MetaCExprKind_toChars(exp));
     assert(0);
     return 0;
 }
@@ -1428,8 +1429,10 @@ metac_expr_t* MetaCParser_ParseBinaryExpr(metac_parser_t* self,
 
 static bool IsBinaryExp(metac_expr_kind_t kind)
 {
-    return ((kind >= FIRST_BINARY_EXP(TOK_SELF)) && (kind <= LAST_BINARY_EXP(TOK_SELF))
-            || kind == expr_index);
+    return ((kind >= FIRST_BINARY_EXP(TOK_SELF)) & (kind <= LAST_BINARY_EXP(TOK_SELF))
+            | (kind == expr_index)
+            | (kind == expr_call)
+            | (kind == expr_template_instance) );
 }
 
 static bool IsUnaryExp(metac_expr_kind_t kind)
@@ -1542,8 +1545,29 @@ metac_expr_t* MetaCParser_ApplyOp(metac_parser_t* self, metac_expr_kind_t op)
         assert(0);
     }
     MetaCParser_PushExpr(self, e);
+
     return e;
 }
+
+
+metac_expr_t* MetaCParser_ApplyOpsUntil(metac_parser_t* self, metac_expr_kind_t op)
+{
+    for (;;)
+    {
+        uint32_t opPrec = OpToPrecedence(op);
+        metac_expr_kind_t leftOp = MetaCParser_TopOp(self);
+        uint32_t leftPrec = (leftOp != expr_invalid ? OpToPrecedence(leftOp) : 0);
+
+        if (opPrec > leftPrec)
+        {
+            break;
+        }
+
+        MetaCParser_ApplyOp(self, leftOp);
+        MetaCParser_PopOp(self);
+    }
+}
+
 
 metac_expr_t* MetaCParser_ParseExpr2(metac_parser_t* self)
 {
@@ -1576,13 +1600,9 @@ metac_expr_t* MetaCParser_ParseExpr2(metac_parser_t* self)
             {
                 // if lParen is a encountered with a non-empty
                 // expression stack it's likely a call.
-                if (self->ExprParser.ExprStackCount != 0)
+                if (self->ExprParser.ExprStackCount != 0 && !(eflags & expr_flags_binary))
                 {
-                    if (self->ExprParser.OpStackCount == 0
-                     || !IsBinaryExp(MetaCParser_TopOp(self)))
-                    {
-                        goto LParseCall;
-                    }
+                    goto LParseCall;
                 }
             }
             metac_expr_t* e = MetaCParser_ParsePrimaryExpr(self, expr_flags_none);
@@ -1599,6 +1619,7 @@ LParseBinary:
                 leftOp = MetaCParser_TopOp(self);
                 prec = (leftOp != expr_invalid) ? OpToPrecedence(leftOp) : 0;
                 opPrec = OpToPrecedence(op);
+                assert(op != expr_invalid);
 
                 if (opPrec > prec)
                 {
@@ -1614,8 +1635,9 @@ LPopBinaryOp:
                     // if not pop 2 of the expressions on the exp stack
                     // and combine it with the top of the opStack to from
                     // an new binary expression node
-                    leftOp = MetaCParser_PopOp(self);
-                    MetaCParser_ApplyOp(self, leftOp);
+                    //leftOp = MetaCParser_PopOp(self);
+                    //MetaCParser_ApplyOp(self, leftOp);
+                    MetaCParser_ApplyOpsUntil(self, op);
                     U32(eflags) &= ~expr_flags_binary;
                 }
             }
@@ -1627,6 +1649,8 @@ LPopBinaryOp:
             prec = (leftOp != expr_invalid) ? OpToPrecedence(leftOp) : 0;
             opPrec = OpToPrecedence(op);
             U32(eflags) &= (~expr_flags_binary);
+
+            // we need more speical casing
 /*
             printf("topOp('%s').prec: %d\n", MetaCExprKind_toChars(leftOp), prec);
             printf("eKind('%s').prec: %d\n", MetaCExprKind_toChars(eKind), ePrec);
@@ -1643,7 +1667,7 @@ LPopBinaryOp:
 LPopUnaryOp:
             {
                 leftOp = MetaCParser_PopOp(self);
-                MetaCParser_ApplyOp(self, leftOp);
+                metac_expr_t* e = MetaCParser_ApplyOp(self, leftOp);
                 U32(eflags) &= ~expr_flags_binary;
             }
         }
@@ -1653,21 +1677,21 @@ LPopUnaryOp:
         }
         else if (tokenType == tok_rBracket)
         {
-            assert(MetaCParser_TopOp(self) == expr_index);
+            MetaCParser_ApplyOpsUntil(self, expr_index);
+            //assert(MetaCParser_TopOp(self) == expr_index);
             MetaCParser_Match(self, tok_rBracket);
-            goto LPopBinaryOp;
+            //goto LPopBinaryOp;
         }
         else
         // Termination condition return top of stack
         {
-            if (self->ExprParser.OpStackCount > 0)
+            while (self->ExprParser.OpStackCount > 0)
             {
-                if (IsBinaryExp(MetaCParser_TopOp(self)))
-                    goto LPopBinaryOp;
-                else
-                    goto LPopUnaryOp;
+                MetaCParser_ApplyOp(self, MetaCParser_TopOp(self));
+                MetaCParser_PopOp(self);
             }
-            else if (self->ExprParser.ExprStackCount == 1)
+
+            if (self->ExprParser.ExprStackCount == 1)
             {
                 result = MetaCParser_PopExpr(self);
             }
@@ -1712,18 +1736,12 @@ LParsePostfix:
         }
 
         while (false)
-LParseIndex:
-        {
-            metac_expr_t* index = 0;
-            MetaCParser_Match(self, tok_lBracket);
-            MetaCParser_PushOp(self, expr_index);
-        }
-        while (false)
 LParseCall:
         {
             expr_argument_t* args = 0;
             metac_token_t* rParen;
             MetaCParser_Match(self, tok_lParen);
+            op = expr_call;
             MetaCParser_PushOp(self, expr_call);
             args = MetaCParser_ParseArgumentList(self);
             MetaCParser_PushExpr(self, (metac_expr_t*) args);

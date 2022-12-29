@@ -883,7 +883,7 @@ LswitchMode:
             case repl_mode_ee:
             {
                 exp =
-                    MetaCLPP_ParseExprFromString(&repl->LPP, repl->Line);
+                    MetaCLPP_ParseExpr2FromString(&repl->LPP, repl->Line);
 
                 const char* str = MetaCPrinter_PrintExpr(&repl->printer, exp);
 
