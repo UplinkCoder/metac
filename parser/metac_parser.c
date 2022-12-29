@@ -917,7 +917,7 @@ decl_type_t* MetaCParser_ParseTypeDecl(metac_parser_t* self, metac_decl_t* paren
             decl_type_array_t* typeArray = AllocNewDecl(decl_type_array, &result);
             if(!MetaCParser_PeekMatch(self, tok_rBracket, 1))
             {
-                typeArray->Dim = MetaCParser_ParseExpr(self, expr_flags_none, 0);
+                typeArray->Dim = MetaCParser_ParseExpr2(self, expr_flags_none);
                 MetaCParser_Match(self, tok_rBracket);
             }
             else
@@ -1180,7 +1180,7 @@ decl_type_t* MetaCParser_ParseTypeDecl(metac_parser_t* self, metac_decl_t* paren
                     else
                     {
                         MetaCParser_Match(self, tok_assign);
-                        member->Value = MetaCParser_ParseExpr(self, expr_flags_enum, 0);
+                        member->Value = MetaCParser_ParseExpr2(self, expr_flags_enum);
                         assert(member->Value->Hash != 0);
                         hash = CRC32C_VALUE(hash, member->Value->Hash);
                     }
@@ -1201,7 +1201,7 @@ decl_type_t* MetaCParser_ParseTypeDecl(metac_parser_t* self, metac_decl_t* paren
 
             MetaCParser_Match(self, tok_lParen);
             metac_expr_t* typeof_exp =
-                MetaCParser_ParseExpr(self, expr_flags_none, 0);
+                MetaCParser_ParseExpr2(self, expr_flags_none);
             MetaCParser_Match(self, tok_rParen);
 
             decl_type_typeof_t * decl = AllocNewDecl(decl_type_typeof, &result);
@@ -1251,7 +1251,7 @@ decl_type_t* MetaCParser_ParseTypeDecl(metac_parser_t* self, metac_decl_t* paren
                 array->Hash = hash = CRC32C_VALUE(CRC32C_BRACKETS, hash);
                 if (tokenType == tok_lBracket)
                 {
-                    array->Dim = MetaCParser_ParseExpr(self, expr_flags_none, 0);
+                    array->Dim = MetaCParser_ParseExpr2(self, expr_flags_none);
                     MetaCParser_Match(self, tok_rBracket);
                 }
                 else
@@ -1648,17 +1648,17 @@ metac_decl_t* MetaCParser_ParseDecl(metac_parser_t* self, metac_decl_t* parent)
         else if (dirc == pp_if)
         {
             //TODO handle this #if properly!
-            MetaCParser_ParseExpr(self, expr_flags_pp, 0);
+            MetaCParser_ParseExpr2(self, expr_flags_pp);
         }
         else if (dirc == pp_elif)
         {
             //TODO handle this #elif properly!
-            MetaCParser_ParseExpr(self, expr_flags_pp, 0);
+            MetaCParser_ParseExpr2(self, expr_flags_pp);
         }
         else if (dirc == pp_else)
         {
             //TODO handle this #else properly!
-            // MetaCParser_ParseExpr(self, expr_flags_pp, 0);
+            // MetaCParser_ParseExpr2(self, expr_flags_pp, 0);
         }
         else if (dirc == pp_endif)
         {
@@ -1856,7 +1856,7 @@ metac_decl_t* MetaCParser_ParseDecl(metac_parser_t* self, metac_decl_t* parent)
                 if (MetaCParser_PeekMatch(self, tok_assign, 1))
                 {
                     MetaCParser_Match(self, tok_assign);
-                    varDecl->VarInitExpr = MetaCParser_ParseExpr(self, expr_flags_none, 0);
+                    varDecl->VarInitExpr = MetaCParser_ParseExpr2(self, expr_flags_none);
                 }
             }
         }
@@ -1882,7 +1882,7 @@ static decl_type_array_t* ParseArraySuffix(metac_parser_t* self, decl_type_t* ty
         //TODO ErrorMessage array must have numeric dimension
         arrayType->ElementType = type;
 
-        arrayType->Dim = MetaCParser_ParseExpr(self, expr_flags_none, 0);
+        arrayType->Dim = MetaCParser_ParseExpr2(self, expr_flags_none);
         uint32_t dimToHash = 0;
         if (arrayType->Dim->Kind == expr_signed_integer)
         {
@@ -1973,7 +1973,7 @@ metac_stmt_t* MetaCParser_ParseStmt(metac_parser_t* self,
         }
         MetaCParser_Match(self, tok_lParen);
         if_stmt->IfCond =
-            MetaCParser_ParseExpr(self, expr_flags_none, 0);
+            MetaCParser_ParseExpr2(self, expr_flags_none);
         hash = CRC32C_VALUE(hash, if_stmt->IfCond->Hash);
         MetaCParser_Match(self, tok_rParen);
         if_stmt->IfBody = MetaCParser_ParseStmt(self, (metac_stmt_t*)result, 0);
@@ -1998,7 +1998,7 @@ metac_stmt_t* MetaCParser_ParseStmt(metac_parser_t* self,
         MetaCParser_Match(self, tok_kw_while);
         MetaCParser_Match(self, tok_lParen);
         while_stmt->WhileExp =
-            MetaCParser_ParseExpr(self, expr_flags_none, 0);
+            MetaCParser_ParseExpr2(self, expr_flags_none);
         hash = CRC32C_VALUE(hash, while_stmt->WhileExp->Hash);
         MetaCParser_Match(self, tok_rParen);
         while_stmt->WhileBody =
@@ -2026,7 +2026,7 @@ metac_stmt_t* MetaCParser_ParseStmt(metac_parser_t* self,
             }
             else
             {
-                for_->ForInit = (metac_node_t)MetaCParser_ParseExpr(self, expr_flags_none, 0);
+                for_->ForInit = (metac_node_t)MetaCParser_ParseExpr2(self, expr_flags_none);
                 MetaCParser_Match(self, tok_semicolon);
             }
 
@@ -2039,7 +2039,7 @@ metac_stmt_t* MetaCParser_ParseStmt(metac_parser_t* self,
         }
         if (!MetaCParser_PeekMatch(self, tok_semicolon, 1))
         {
-            for_->ForCond = MetaCParser_ParseExpr(self, expr_flags_none, 0);
+            for_->ForCond = MetaCParser_ParseExpr2(self, expr_flags_none);
             hash = CRC32C_VALUE(hash, for_->ForCond->Hash);
         }
         else
@@ -2050,7 +2050,7 @@ metac_stmt_t* MetaCParser_ParseStmt(metac_parser_t* self,
 
         if (!MetaCParser_PeekMatch(self, tok_rParen, 1))
         {
-            for_->ForPostLoop = MetaCParser_ParseExpr(self, expr_flags_none, 0);
+            for_->ForPostLoop = MetaCParser_ParseExpr2(self, expr_flags_none);
             hash = CRC32C_VALUE(hash, for_->ForPostLoop->Hash);
         }
         else
@@ -2069,7 +2069,7 @@ metac_stmt_t* MetaCParser_ParseStmt(metac_parser_t* self,
         MetaCParser_Match(self, tok_kw_switch);
         MetaCParser_Match(self, tok_lParen);
         switch_->SwitchExp =
-            MetaCParser_ParseExpr(self, expr_flags_none, 0);
+            MetaCParser_ParseExpr2(self, expr_flags_none);
         hash = CRC32C_VALUE(hash, switch_->SwitchExp->Hash);
         MetaCParser_Match(self, tok_rParen);
         if (!MetaCParser_PeekMatch(self, tok_lBrace, 0))
@@ -2131,7 +2131,7 @@ metac_stmt_t* MetaCParser_ParseStmt(metac_parser_t* self,
         if (isCase)
         {
             case_->CaseExp =
-                MetaCParser_ParseExpr(self, expr_flags_none, 0);
+                MetaCParser_ParseExpr2(self, expr_flags_none);
 
             hash = CRC32C_VALUE(hash, case_->CaseExp->Hash);
         }
@@ -2173,7 +2173,7 @@ metac_stmt_t* MetaCParser_ParseStmt(metac_parser_t* self,
         }
         else
         {
-            return_->ReturnExp = MetaCParser_ParseExpr(self, expr_flags_none, 0);
+            return_->ReturnExp = MetaCParser_ParseExpr2(self, expr_flags_none);
             hash = CRC32C_VALUE(hash, return_->ReturnExp->Hash);
         }
         return_->Hash = hash;
@@ -2189,7 +2189,7 @@ metac_stmt_t* MetaCParser_ParseStmt(metac_parser_t* self,
         }
         else
         {
-            yield_->YieldExp = MetaCParser_ParseExpr(self, expr_flags_none, 0);
+            yield_->YieldExp = MetaCParser_ParseExpr2(self, expr_flags_none);
             hash = CRC32C_VALUE(hash, yield_->YieldExp->Hash);
         }
         yield_->Hash = hash;
@@ -2205,7 +2205,7 @@ metac_stmt_t* MetaCParser_ParseStmt(metac_parser_t* self,
         MetaCParser_Match(self, tok_kw_while);
 
         MetaCParser_Match(self, tok_lParen);
-        doWhile->DoWhileExp = MetaCParser_ParseExpr(self, expr_flags_none, 0);
+        doWhile->DoWhileExp = MetaCParser_ParseExpr2(self, expr_flags_none);
         hash = CRC32C_VALUE(hash, doWhile->DoWhileExp->Hash);
         MetaCParser_Match(self, tok_rParen);
 
@@ -2255,11 +2255,11 @@ metac_stmt_t* MetaCParser_ParseStmt(metac_parser_t* self,
     if (!result || result == emptyPointer)
 LparseAsExpr:
     {
-        metac_expr_t* exp = MetaCParser_ParseExpr(self, expr_flags_none, 0);
+        metac_expr_t* exp = MetaCParser_ParseExpr2(self, expr_flags_none);
         stmt_exp_t* expStmt = AllocNewStmt(stmt_exp, &result);
         expStmt->Expr = exp;
         result->Hash = exp->Hash;
-        //result = MetaCParser_ParseExprStmt(self, parent);
+        //result = MetaCParser_ParseExpr2Stmt(self, parent);
     }
 LdoneWithStmt:
     if (prev)
@@ -2439,23 +2439,26 @@ void TestParseExprssion(void)
     );
     metac_expr_t* expr;
 
-    expr = MetaCLPP_ParseExprFromString(&LPP, "12 - 16 - 99");
+    expr = MetaCLPP_ParseExpr2FromString(&LPP, "12 - 16 - 99");
     TEST_STR_EQ(MetaCPrinter_PrintExpr(&printer, expr), "((12 - 16) - 99)");
 
-    expr = MetaCLPP_ParseExprFromString(&LPP, "2 * 12 + 10");
+    expr = MetaCLPP_ParseExpr2FromString(&LPP, "2 * 12 + 10");
     TEST_STR_EQ(MetaCPrinter_PrintExpr(&printer, expr), "((2 * 12) + 10)");
 
-    expr = MetaCLPP_ParseExprFromString(&LPP, "2 + 10 * 2");
+    expr = MetaCLPP_ParseExpr2FromString(&LPP, "2 + 10 * 2");
     TEST_STR_EQ(MetaCPrinter_PrintExpr(&printer, expr), "(2 + (10 * 2))");
 
-    expr = MetaCLPP_ParseExprFromString(&LPP, "a = b(c)");
-    TEST_STR_EQ(MetaCPrinter_PrintExpr(&printer, expr), "((a) = (b)((c)))");
+    expr = MetaCLPP_ParseExpr2FromString(&LPP, "a = b(c)");
+    TEST_STR_EQ(MetaCPrinter_PrintExpr(&printer, expr), "(a = b(c))");
 
-    expr = MetaCLPP_ParseExprFromString(&LPP, "((x + ((((a + b))))) + d)");
-    TEST_STR_EQ(MetaCPrinter_PrintExpr(&printer, expr), "(((x) + (((((a) + (b)))))) + (d))");
+    expr = MetaCLPP_ParseExpr2FromString(&LPP, "((x + ((((a + b))))) + d)");
+    TEST_STR_EQ(MetaCPrinter_PrintExpr(&printer, expr), "((x + ((((a + b))))) + d)");
 
-    expr = MetaCLPP_ParseExprFromString(&LPP, "x + y * 6737203");
-    TEST_STR_EQ(MetaCPrinter_PrintExpr(&printer, expr), "((x) + (y * 6737203))");
+    expr = MetaCLPP_ParseExpr2FromString(&LPP, "x + y * 6737203");
+    TEST_STR_EQ(MetaCPrinter_PrintExpr(&printer, expr), "(x + (y * 6737203))");
+
+    expr = MetaCLPP_ParseExpr2FromString(&LPP, "a++ + b->c++");
+    TEST_STR_EQ(MetaCPrinter_PrintExpr(&printer, expr), "((a)++ + (b -> c)++)");
 }
 
 void TestParseDecl(void)

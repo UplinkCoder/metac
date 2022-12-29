@@ -982,7 +982,7 @@ static inline metac_expr_t* ParseRunExpr(metac_parser_t* self, int vers)
     else
     {
         if (vers == 2)
-            result->E1 = MetaCParser_ParseExpr2(self);
+            result->E1 = MetaCParser_ParseExpr2(self, MetaCParser_CurrentEFlags(self));
         else
             result->E1 =
                 MetaCParser_ParseExpr(self, MetaCParser_CurrentEFlags(self), 0);
@@ -1576,7 +1576,7 @@ metac_expr_t* MetaCParser_ApplyOpsUntil(metac_parser_t* self, metac_expr_kind_t 
 }
 
 
-metac_expr_t* MetaCParser_ParseExpr2(metac_parser_t* self)
+metac_expr_t* MetaCParser_ParseExpr2(metac_parser_t* self, parse_expr_flags_t flags)
 {
     metac_expr_t* result = 0;
 
@@ -1586,7 +1586,7 @@ metac_expr_t* MetaCParser_ParseExpr2(metac_parser_t* self)
     metac_expr_kind_t op = expr_invalid;
     uint32_t prec = 0;
     uint32_t opPrec = 0;
-    parse_expr_flags_t eflags = expr_flags_none;
+    parse_expr_flags_t eflags = flags;
     metac_location_t loc =  {0};
 
     for(;;)

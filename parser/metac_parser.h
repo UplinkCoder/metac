@@ -124,7 +124,7 @@ void MetaCParser_InitFromLexer(metac_parser_t* self, metac_lexer_t* lexer, metac
 metac_token_t* MetaCParser_PeekToken_(metac_parser_t* self, int32_t p, uint32_t line);
 uint32_t MetaCParser_HowMuchLookahead(metac_parser_t* self);
 metac_expr_t* MetaCParser_ParseExpr(metac_parser_t* self, parse_expr_flags_t flags, metac_expr_t* prev);
-metac_expr_t* MetaCParser_ParseExpr2(metac_parser_t* self);
+metac_expr_t* MetaCParser_ParseExpr2(metac_parser_t* self, parse_expr_flags_t flags);
 metac_expr_t* MetaCParser_ParseExprFromString(const char* exp);
 metac_expr_t* MetaCParser_ParseExpr2FromString(const char* exp);
 metac_decl_t* MetaCParser_ParseDecl(metac_parser_t* self, metac_decl_t* parent);
