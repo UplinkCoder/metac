@@ -1533,15 +1533,16 @@ metac_expr_t* MetaCParser_ApplyOp(metac_parser_t* self, metac_expr_kind_t op)
     assert(op != expr_invalid);
     e = AllocNewExpr(op);
 
-    printf("Applying: %s\n", MetaCExprKind_toChars(op));
     if(IsBinaryExp(op))
     {
         e->E2 = MetaCParser_PopExpr(self);
         e->E1 = MetaCParser_PopExpr(self);
+        e->Hash = CRC32C_VALUE(e->E1->Hash, e->E2->Hash);
     }
     else if (IsUnaryExp(op))
     {
         e->E1 = MetaCParser_PopExpr(self);
+        e->Hash = e->E1->Hash;
     }
     else
     {
@@ -1588,6 +1589,14 @@ metac_expr_t* MetaCParser_ParseExpr2(metac_parser_t* self, parse_expr_flags_t fl
     uint32_t opPrec = 0;
     parse_expr_flags_t eflags = flags;
     metac_location_t loc =  {0};
+
+    currentToken = MetaCParser_PeekToken(self, 1);
+    if (currentToken && currentToken->TokenType == tok_dot)
+    {
+        MetaCParser_Match(self, tok_dot);
+        result = ParseUnaryDotExpr(self);
+        MetaCParser_PushExpr(self, result);
+    }
 
     for(;;)
     {
