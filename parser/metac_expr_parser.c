@@ -309,25 +309,28 @@ static inline uint32_t OpToPrecedence(metac_expr_kind_t exp)
     {
         return 27;
     }
-    else if (exp == expr_call
-          || exp == expr_index
-          || exp == expr_compl
-          || exp == expr_post_increment
-          || exp == expr_post_decrement
-          || exp == expr_template_instance)
+    else if (exp == expr_post_increment
+          || exp == expr_post_decrement)
     {
         return 29;
     }
-    else if (exp == expr_arrow || exp == expr_dot)
+    else if (exp == expr_call
+          || exp == expr_index
+          || exp == expr_compl
+          || exp == expr_template_instance)
     {
         return 30;
+    }
+    else if (exp == expr_arrow || exp == expr_dot)
+    {
+        return 31;
     }
     else if (exp == expr_umin
           || exp == expr_unary_dot
           || exp == expr_sizeof
           || exp == expr_not)
     {
-        return 31;
+        return 32;
     }
     else if (exp == expr_paren
           || exp == expr_signed_integer
@@ -1467,7 +1470,7 @@ bool IsBinaryAssignExp(metac_expr_kind_t kind)
 
 void MetaCParser_PushExpr(metac_parser_t* self, metac_expr_t *e)
 {
-    printf("Pushing Expr: %s\n", MetaCPrinter_PrintExpr(&self->DebugPrinter, e));
+    // printf("Pushing Expr: %s\n", MetaCPrinter_PrintExpr(&self->DebugPrinter, e));
     ARENA_ARRAY_ADD(self->ExprParser.ExprStack, e);
 }
 
@@ -1488,11 +1491,11 @@ metac_expr_t* MetaCParser_PopExpr(metac_parser_t* self)
     metac_expr_t* result = 0;
 
     metac_expr_t* top = MetaCParser_TopExpr(self);
-
+/*
     printf("Poping ExprStack(%d): %s\n",
         self->ExprParser.ExprStackCount,
         top ? MetaCPrinter_PrintExpr(&self->DebugPrinter, top) : "null");
-
+*/
     result = self->ExprParser.ExprStack[--self->ExprParser.ExprStackCount];
 
     return result;
@@ -1500,14 +1503,14 @@ metac_expr_t* MetaCParser_PopExpr(metac_parser_t* self)
 
 void MetaCParser_PushOp(metac_parser_t* self, metac_expr_kind_t op)
 {
-    printf("Pushing Op: %s\n", MetaCExprKind_toChars(op));
+    // printf("Pushing Op: %s\n", MetaCExprKind_toChars(op));
     ARENA_ARRAY_ADD(self->ExprParser.OpStack, op);
 }
 
 metac_expr_kind_t MetaCParser_PopOp(metac_parser_t* self)
 {
     metac_expr_kind_t result = self->ExprParser.OpStack[--self->ExprParser.OpStackCount];
-    printf("Popping Op: %s\n", MetaCExprKind_toChars(result));
+    // printf("Popping Op: %s\n", MetaCExprKind_toChars(result));
 
     return result;
 }
@@ -1552,6 +1555,8 @@ metac_expr_t* MetaCParser_ApplyOp(metac_parser_t* self, metac_expr_kind_t op)
 
 metac_expr_t* MetaCParser_ApplyOpsUntil(metac_parser_t* self, metac_expr_kind_t op)
 {
+    metac_expr_t* result = 0;
+
     for (;;)
     {
         uint32_t opPrec = OpToPrecedence(op);
@@ -1563,9 +1568,11 @@ metac_expr_t* MetaCParser_ApplyOpsUntil(metac_parser_t* self, metac_expr_kind_t 
             break;
         }
 
-        MetaCParser_ApplyOp(self, leftOp);
+        result = MetaCParser_ApplyOp(self, leftOp);
         MetaCParser_PopOp(self);
     }
+
+    return result;
 }
 
 
@@ -1687,8 +1694,8 @@ LPopUnaryOp:
         {
             while (self->ExprParser.OpStackCount > 0)
             {
-                MetaCParser_ApplyOp(self, MetaCParser_TopOp(self));
-                MetaCParser_PopOp(self);
+                metac_expr_kind_t op = MetaCParser_PopOp(self);
+                MetaCParser_ApplyOp(self, op);
             }
 
             if (self->ExprParser.ExprStackCount == 1)
@@ -1740,17 +1747,35 @@ LParseCall:
         {
             expr_argument_t* args = 0;
             metac_token_t* rParen;
+
+            leftOp = MetaCParser_TopOp(self);
+            prec = (leftOp != expr_invalid) ? OpToPrecedence(leftOp) : 0;
+
             MetaCParser_Match(self, tok_lParen);
             op = expr_call;
-            MetaCParser_PushOp(self, expr_call);
+            opPrec = OpToPrecedence(op);
             args = MetaCParser_ParseArgumentList(self);
-            MetaCParser_PushExpr(self, (metac_expr_t*) args);
             rParen = MetaCParser_Match(self, tok_rParen);
+
+            if (opPrec > prec)
+            {
+                MetaCParser_PushOp(self, op);
+                MetaCParser_PushExpr(self, (metac_expr_t*) args);
+            }
+            else
+            {
+                MetaCParser_ApplyOpsUntil(self, op);
+                metac_expr_t *call = AllocNewExpr(expr_call);
+                call->E1 = MetaCParser_PopExpr(self);
+                call->E2 = (metac_expr_t*) args;
+                MetaCParser_PushExpr(self, call);
+            }
+            goto LParsePostfix;
+
 /*
             MetaCLocation_Expand(&rhsLoc,
                 LocationFromToken(self, rParen));
 */
-            goto LPopBinaryOp;
         }
     }
 
