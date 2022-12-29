@@ -1615,6 +1615,8 @@ metac_expr_t* MetaCParser_ParseExpr2(metac_parser_t* self)
             metac_expr_t* e = MetaCParser_ParsePrimaryExpr(self, expr_flags_none);
             MetaCParser_PushExpr(self, e);
             U32(eflags) &= ~expr_flags_binary;
+            op = e->Kind;
+            goto LParsePostfix;
         }
         else if (MetaCParser_TopExpr(self) != 0
             && IsBinaryOperator(tokenType, eflags))
