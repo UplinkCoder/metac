@@ -523,6 +523,7 @@ metac_sema_expr_t* MetaCSemantic_doExprSemantic_(metac_sema_state_t* self,
         && (   expr->Kind != expr_arrow
             && expr->Kind != expr_dot
             && expr->Kind != expr_index
+            && expr->Kind != expr_call
         ) ||   expr->Kind == expr_ternary
     )
     {

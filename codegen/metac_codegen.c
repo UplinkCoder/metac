@@ -1214,7 +1214,7 @@ static void MetaCCodegen_doExpr(metac_bytecode_ctx_t* ctx,
             MetaCCodegen_doExpr(ctx, exp->E1, &lhs, (opIsPostIncDec ? _Lvalue : _Rvalue));
         }
     }
-    else if (IsBinaryExp(op) && op != expr_comma)
+    else if (IsBinaryExp(op) && op != expr_comma && op != expr_call)
     {
         if (!doBinAss && exp->E1->Kind != expr_signed_integer)
         {
