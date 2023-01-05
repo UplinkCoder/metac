@@ -933,7 +933,7 @@ static inline metac_expr_t* ParseUnaryDotExpr(metac_parser_t* self)
 #define CRC32C_STAR  0xe6dd0a48
 #define CRC32C_HASH  0xe3069283
 
-parse_expr_flags_t MetaCParser_CurrentEFlags(metac_parser_t* self)
+parse_expr_flags_t MetaCParser_CurrentExprFlags(metac_parser_t* self)
 {
     parse_expr_flags_t result = expr_flags_none;
     const uint32_t flagsCount = self->ExprParser.ExprFlagsStackCount;
@@ -982,10 +982,10 @@ static inline metac_expr_t* ParseRunExpr(metac_parser_t* self, int vers)
     else
     {
         if (vers == 2)
-            result->E1 = MetaCParser_ParseExpr2(self, MetaCParser_CurrentEFlags(self));
+            result->E1 = MetaCParser_ParseExpr2(self, MetaCParser_CurrentExprFlags(self));
         else
             result->E1 =
-                MetaCParser_ParseExpr(self, MetaCParser_CurrentEFlags(self), 0);
+                MetaCParser_ParseExpr(self, MetaCParser_CurrentExprFlags(self), 0);
     }
     hash = CRC32C_VALUE(hash, result->E1->Hash);
     result->Hash = hash;
@@ -993,17 +993,12 @@ static inline metac_expr_t* ParseRunExpr(metac_parser_t* self, int vers)
     return result;
 }
 
-
-
 metac_expr_t* MetaCParser_ParseUnaryExpr(metac_parser_t* self)
 {
     metac_expr_t* result = 0;
     static const metac_location_t nullLoc = {0};
-    parse_expr_flags_t eflags = expr_flags_none;
-    if (self->ExprParser.ExprFlagsStackCount)
-    {
-        eflags = self->ExprParser.ExprFlagsStack[self->ExprParser.ExprFlagsStackCount - 1];
-    }
+    parse_expr_flags_t eflags = MetaCParser_CurrentExprFlags(self);
+
     metac_token_t* currentToken = MetaCParser_PeekToken(self, 1);
     metac_token_enum_t tokenType =
         (currentToken ? currentToken->TokenType : tok_eof);
