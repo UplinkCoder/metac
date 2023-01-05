@@ -1245,6 +1245,33 @@ static void MetaCCodegen_doExpr(metac_bytecode_ctx_t* ctx,
 
     switch(op)
     {
+    Lboolify:
+        {
+            if (lhs.vType != BCValueType_Temporary)
+            {
+                BCValue lhsTmp = gen.GenTemporary(c, lhs.type);
+                gen.Set(c, &lhsTmp, &lhs);
+                lhs = lhsTmp;
+            }
+            if (rhs.vType != BCValueType_Temporary)
+            {
+                BCValue rhsTmp = gen.GenTemporary(c, rhs.type);
+                gen.Set(c, &rhsTmp, &rhs);
+                rhs = rhsTmp;
+            }
+            const BCValue zero = imm32(0);
+            gen.Neq3(c, &lhs, &lhs, &zero);
+            gen.Neq3(c, &rhs, &rhs, &zero);
+            switch (op)
+            {
+                case expr_andand:
+                    goto Lexpr_and;
+                case expr_oror:
+                    goto Lexpr_or;
+                default:
+                    assert(0);
+            }
+        }
         case expr_dot_compiler:
         {
             printf("ignoring unprocessed .compiler expression\n");
@@ -1532,12 +1559,20 @@ static void MetaCCodegen_doExpr(metac_bytecode_ctx_t* ctx,
             gen.Mod3(c, result, &lhs, &rhs);
         } break;
         case expr_andand:
+        {
+            goto Lboolify;
+        }
+        Lexpr_and:
         case expr_and:
         {
             gen.And3(c, result, &lhs, &rhs);
         } break;
 
         case expr_oror:
+        {
+            goto Lboolify;
+        }
+        Lexpr_or:
         case expr_or:
         {
             gen.Or3(c, result, &lhs, &rhs);
