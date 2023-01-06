@@ -24,9 +24,11 @@
     M(type_index_typedef       , 0xA) \
     M(type_index_tuple         , 0xB) \
     \
+    M(type_index_unresolved    , 0xD) \
     M(type_index_extended      , 0xE) \
     M(type_index_invalid       , 0xF)
 
+    
 #define TYPE_INDEX_MEMBER(KIND, VALUE) \
     KIND = VALUE,
 

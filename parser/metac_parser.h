@@ -21,15 +21,16 @@
 
 typedef enum parse_expr_flags_t
 {
-    expr_flags_none   = 0,
-    expr_flags_unary  = (1 << 0),
-    expr_flags_binary = (1 << 1),
-    expr_flags_call   = (1 << 2),
-    expr_flags_enum   = (1 << 3),
-    expr_flags_type   = (1 << 4),
-    expr_flags_addr   = (1 << 5),
-    expr_flags_sizeof = (1 << 6),
-    expr_flags_pp     = (1 << 7),
+    expr_flags_none    = 0,
+    expr_flags_unary   = (1 << 0),
+    expr_flags_binary  = (1 << 1),
+    expr_flags_call    = (1 << 2),
+    expr_flags_enum    = (1 << 3),
+    expr_flags_type    = (1 << 4),
+    expr_flags_addr    = (1 << 5),
+    expr_flags_sizeof  = (1 << 6),
+    expr_flags_pp      = (1 << 7),
+    expr_flags_ternary = (1 << 8),
 } parse_expr_flags_t;
 
 typedef struct metac_define_t
@@ -57,6 +58,10 @@ typedef struct metac_expr_parser_t
     ARENA_ARRAY(metac_expr_t*, ExprStack)
     ARENA_ARRAY(parse_expr_flags_t, ExprFlagsStack)
     ARENA_ARRAY(metac_expr_kind_t, OpStack)
+    ARENA_ARRAY(uint32_t, ExprStackBottomStack)
+
+    uint32_t OpenParens;
+    uint32_t LBracketCount;
 } metac_expr_parser_t;
 
 typedef struct metac_parser_t
@@ -87,7 +92,6 @@ typedef struct metac_parser_t
     uint32_t BlockStmtStackCount;
     uint32_t BlockStmtStackCapacity;
 
-    uint32_t OpenParens;
     uint32_t PackStackCapacity;
 
     metac_token_t CurrentComment;

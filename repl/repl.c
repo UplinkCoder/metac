@@ -844,7 +844,14 @@ LswitchMode:
             case repl_mode_e2:
             {
                 exp = MetaCLPP_ParseExpr2FromString(&repl->LPP, repl->Line);
-                MSGF("expr = %s\n", MetaCPrinter_PrintExpr(&repl->printer, exp));
+                if (exp)
+                {
+                    MSGF("expr = %s\n", MetaCPrinter_PrintExpr(&repl->printer, exp));
+                }
+                else
+                {
+                    MSG("Couldn't parse expression\n");
+                }
                 MetaCPrinter_Reset(&repl->printer);
             } goto LnextLine;
 
@@ -884,32 +891,36 @@ LswitchMode:
             {
                 exp =
                     MetaCLPP_ParseExpr2FromString(&repl->LPP, repl->Line);
-
-                const char* str = MetaCPrinter_PrintExpr(&repl->printer, exp);
-
-                metac_sema_expr_t* result =
-                    MetaCSemantic_doExprSemantic(&repl->SemanticState, exp, 0);
-
-                // ConstantFold_SubExps(&repl->SemanticState, result);
-
-                if (!result)
-                    goto LnextLine;
-
-                metac_sema_expr_t eval_exp = EvaluateExpr(&repl->SemanticState, result, &repl->Heap);
-                result = &eval_exp;
-
-                const char* result_str;
-                if (eval_exp.Kind == expr_type)
+                if (exp)
                 {
-                    result_str = MetaCPrinter_PrintSemaNode(&repl->printer, &repl->SemanticState, cast(metac_node_t)&eval_exp);
-                }
-                else
-                {
-                    result_str = MetaCPrinter_PrintSemaNode(&repl->printer, &repl->SemanticState, cast(metac_node_t)&eval_exp);
-                }
-                MSGF("%s = %s\n", str, result_str);
-                MetaCPrinter_Reset(&repl->printer);
+                    const char* str = MetaCPrinter_PrintExpr(&repl->printer, exp);
 
+                    metac_sema_expr_t* result = 0;
+                    
+                    result =
+                        MetaCSemantic_doExprSemantic(&repl->SemanticState, exp, 0);
+
+                    // ConstantFold_SubExps(&repl->SemanticState, result);
+
+                    if (!result)
+                        goto LnextLine;
+                    {
+                        metac_sema_expr_t eval_exp = EvaluateExpr(&repl->SemanticState, result, &repl->Heap);
+                        result = &eval_exp;
+
+                        const char* result_str;
+                        if (eval_exp.Kind == expr_type)
+                        {
+                            result_str = MetaCPrinter_PrintSemaNode(&repl->printer, &repl->SemanticState, cast(metac_node_t)&eval_exp);
+                        }
+                        else
+                        {
+                            result_str = MetaCPrinter_PrintSemaNode(&repl->printer, &repl->SemanticState, cast(metac_node_t)&eval_exp);
+                        }
+                        MSGF("%s = %s\n", str, result_str);
+                        MetaCPrinter_Reset(&repl->printer);
+                    }
+                }
                 goto LnextLine;
             }
 

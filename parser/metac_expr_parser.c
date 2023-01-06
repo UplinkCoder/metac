@@ -703,7 +703,7 @@ metac_expr_t* MetaCParser_ParsePrimaryExpr(metac_parser_t* self, parse_expr_flag
     }
     else if (tokenType == tok_lParen)
     {
-        self->OpenParens++;
+        self->ExprParser.OpenParens++;
         MetaCParser_Match(self, tok_lParen);
         result = AllocNewExpr(expr_paren);
         {
@@ -723,7 +723,7 @@ metac_expr_t* MetaCParser_ParsePrimaryExpr(metac_parser_t* self, parse_expr_flag
         metac_token_t* endParen =
             MetaCParser_Match(self, tok_rParen);
         MetaCLocation_Expand(&loc, LocationFromToken(self, endParen));
-        self->OpenParens--;
+        self->ExprParser.OpenParens--;
         //PopOperator(expr_paren);
     }
     else if (tokenType == tok_lBrace)
@@ -1539,6 +1539,12 @@ metac_expr_t* MetaCParser_ApplyOp(metac_parser_t* self, metac_expr_kind_t op)
         e->E1 = MetaCParser_PopExpr(self);
         e->Hash = e->E1->Hash;
     }
+    else if (op == expr_ternary)
+    {
+        e->E2 = MetaCParser_PopExpr(self);
+        e->E1 = MetaCParser_PopExpr(self);
+        e->Econd = MetaCParser_PopExpr(self);
+    }
     else
     {
         assert(0);
@@ -1559,7 +1565,7 @@ metac_expr_t* MetaCParser_ApplyOpsUntil(metac_parser_t* self, metac_expr_kind_t 
         metac_expr_kind_t leftOp = MetaCParser_TopOp(self);
         uint32_t leftPrec = (leftOp != expr_invalid ? OpToPrecedence(leftOp) : 0);
 
-        if (opPrec > leftPrec)
+        if (opPrec > leftPrec || op == leftOp)
         {
             break;
         }
@@ -1571,6 +1577,15 @@ metac_expr_t* MetaCParser_ApplyOpsUntil(metac_parser_t* self, metac_expr_kind_t 
     return result;
 }
 
+bool IsPrefixExp(metac_expr_kind_t Kind)
+{
+    if (Kind == expr_increment || Kind == expr_decrement)
+    {
+        return true;
+    }
+
+    return false;
+}
 
 metac_expr_t* MetaCParser_ParseExpr2(metac_parser_t* self, parse_expr_flags_t flags)
 {
@@ -1604,6 +1619,18 @@ metac_expr_t* MetaCParser_ParseExpr2(metac_parser_t* self, parse_expr_flags_t fl
         tokenType =
             (currentToken ? currentToken->TokenType : tok_invalid);
 
+        //TODO nested ternary expressions
+        if (eflags & expr_flags_ternary)
+        {
+            if (tokenType == tok_colon)
+            {
+                MetaCParser_Match(self, tok_colon);
+                MetaCParser_ApplyOpsUntil(self, expr_ternary);
+                eflags &= (~expr_flags_ternary);
+                continue;
+            }
+        }
+
         if (IsPrimaryExprToken(tokenType))
         {
             // special case for lParen since it might be a call
@@ -1611,7 +1638,8 @@ metac_expr_t* MetaCParser_ParseExpr2(metac_parser_t* self, parse_expr_flags_t fl
             {
                 // if lParen is a encountered with a non-empty
                 // expression stack it's likely a call.
-                if (self->ExprParser.ExprStackCount != 0 && !(eflags & expr_flags_binary))
+                if (self->ExprParser.ExprStackCount != 0
+                    && !(eflags & expr_flags_binary))
                 {
                     goto LParseCall;
                 }
@@ -1621,6 +1649,25 @@ metac_expr_t* MetaCParser_ParseExpr2(metac_parser_t* self, parse_expr_flags_t fl
             U32(eflags) &= ~expr_flags_binary;
             op = e->Kind;
             goto LParsePostfix;
+        }
+        else if (tokenType == tok_question)
+        {
+            prec  = OpToPrecedence(MetaCParser_TopOp(self));
+            MetaCParser_Match(self, tok_question);
+            op = expr_ternary;
+            eflags |= expr_flags_ternary;
+            opPrec = OpToPrecedence(op);
+            if (opPrec > prec)
+            {
+                // We are pushing the operator below
+                // So there's nothing to do here
+            }
+            else
+            {
+                MetaCParser_ApplyOpsUntil(self, op);
+            }
+            MetaCParser_PushOp(self, expr_ternary);
+            continue;
         }
         else if (MetaCParser_TopExpr(self) != 0
             && IsBinaryOperator(tokenType, eflags))
@@ -1634,10 +1681,11 @@ LParseBinary:
                 opPrec = OpToPrecedence(op);
                 assert(op != expr_invalid);
 
-                if (opPrec > prec)
+                if ((opPrec > prec) || (eflags & expr_flags_ternary))
                 {
-                    // if the percence of the the operator
+                    // if the precedence of the the operator
                     // is higher than what's on the top of the stack.
+                    // push the operator to the stack and move on
                     MetaCParser_Match(self, tokenType);
                     MetaCParser_PushOp(self, op);
                     U32(eflags) |= expr_flags_binary;
@@ -1651,7 +1699,7 @@ LPopBinaryOp:
                     //leftOp = MetaCParser_PopOp(self);
                     //MetaCParser_ApplyOp(self, leftOp);
                     MetaCParser_ApplyOpsUntil(self, op);
-                    U32(eflags) &= ~expr_flags_binary;
+                    // U32(eflags) &= ~expr_flags_binary;
                 }
             }
 //            assert(self->ExprParser.ExprStackCount < oldStackCount);
@@ -1686,17 +1734,35 @@ LPopUnaryOp:
         }
         else if(tokenType == tok_rParen)
         {
-            assert(0);
+            if (self->ExprParser.OpenParens != 0)
+            {
+                MetaCParser_Match(self, tok_rParen);
+                --self->ExprParser.OpenParens;
+            }
+            else
+            {
+                goto LTerminate;
+            }
         }
         else if (tokenType == tok_rBracket)
         {
-            MetaCParser_ApplyOpsUntil(self, expr_index);
-            //assert(MetaCParser_TopOp(self) == expr_index);
-            MetaCParser_Match(self, tok_rBracket);
+            if (self->ExprParser.LBracketCount != 0)
+            {
+                MetaCParser_ApplyOpsUntil(self, expr_index);
+                //assert(MetaCParser_TopOp(self) == expr_index);
+                MetaCParser_Match(self, tok_rBracket);
+                --self->ExprParser.LBracketCount;
+                goto LParsePostfix;
+            }
+            else
+            {
+                goto LTerminate;
+            }
             //goto LPopBinaryOp;
         }
         else
         // Termination condition return top of stack
+LTerminate:
         {
             while (self->ExprParser.OpStackCount > 0)
             {
@@ -1719,7 +1785,8 @@ LParsePostfix:
             tokenType =
                 (currentToken ? currentToken->TokenType : tok_invalid);
 
-            if (IsPostfixOperator(tokenType) && op != expr_invalid)
+            if (IsPostfixOperator(tokenType) && op != expr_invalid && 
+                !IsPrefixExp(op))
             {
                 leftOp = MetaCParser_TopOp(self);
                 prec = (leftOp != expr_invalid) ? OpToPrecedence(leftOp) : 0;
@@ -1727,10 +1794,18 @@ LParsePostfix:
                 op = expr_invalid;
 
                 if (tokenType == tok_plusplus)
+                {
                     op = expr_post_increment;
+                }
                 else if (tokenType == tok_minusminus)
+                {
                     op = expr_post_decrement;
-
+                }
+                else if (tokenType == tok_question)
+                {
+                    op = expr_ternary;
+                    eflags |= expr_flags_ternary;
+                }
                 opPrec = OpToPrecedence(op);
                 if (opPrec > prec)
                 {

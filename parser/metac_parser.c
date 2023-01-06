@@ -82,7 +82,8 @@ void MetaCParser_Init(metac_parser_t* self, metac_alloc_t* allocator)
     self->BlockStmtStack = (stmt_block_t**)
         malloc(sizeof(stmt_block_t*) * self->BlockStmtStackCapacity);
 
-    self->OpenParens = 0;
+    self->ExprParser.OpenParens = 0;
+    self->ExprParser.LBracketCount = 0;
 
     MetaCLocationStorage_Init(&self->LocationStorage);
 
@@ -1764,7 +1765,7 @@ metac_decl_t* MetaCParser_ParseDecl(metac_parser_t* self, metac_decl_t* parent)
             // this might be a function pointer
             MetaCParser_Match(self, tok_lParen);
             decl_variable_t* fPtrVar;
-            self->OpenParens++;
+            // self->OpenParens++;
             if (MetaCParser_PeekMatch(self, tok_star, 1))
             {
                 MetaCParser_Match(self, tok_star);
@@ -1782,7 +1783,7 @@ metac_decl_t* MetaCParser_ParseDecl(metac_parser_t* self, metac_decl_t* parent)
 
                     fPtrVar->VarIdentifier = RegisterIdentifier(self, fPtrid);
                     MetaCParser_Match(self, tok_rParen);
-                    self->OpenParens--;
+                    // self->OpenParens--;
                     // we eat the paren before we do the parameterList
                     //TODO maybe paramter list parsing should eat both parens
                     MetaCParser_Match(self, tok_lParen);
