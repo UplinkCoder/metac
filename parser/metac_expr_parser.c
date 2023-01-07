@@ -1465,8 +1465,13 @@ bool IsBinaryAssignExp(metac_expr_kind_t kind)
 
 void MetaCParser_PushExpr(metac_parser_t* self, metac_expr_t *e)
 {
-    // printf("Pushing Expr: %s\n", MetaCPrinter_PrintExpr(&self->DebugPrinter, e));
+    printf("Pushing Expr: %s\n", MetaCPrinter_PrintExpr(&self->DebugPrinter, e));
     ARENA_ARRAY_ADD(self->ExprParser.ExprStack, e);
+}
+
+MetaCParser_PushExprStackBottom(metac_parser_t* self, uint32_t bottom)
+{
+    ARENA_ARRAY_ADD(self->ExprParser.ExprStackBottomStack, bottom);
 }
 
 metac_expr_t* MetaCParser_TopExpr(metac_parser_t* self)
@@ -1599,6 +1604,9 @@ metac_expr_t* MetaCParser_ParseExpr2(metac_parser_t* self, parse_expr_flags_t fl
     uint32_t opPrec = 0;
     parse_expr_flags_t eflags = flags;
     metac_location_t loc =  {0};
+
+
+    MetaCParser_PushExprStackBottom(self, self->ExprParser.ExprStackCount);
 
     currentToken = MetaCParser_PeekToken(self, 1);
     if (currentToken && currentToken->TokenType == tok_dot)
@@ -1785,7 +1793,7 @@ LParsePostfix:
             tokenType =
                 (currentToken ? currentToken->TokenType : tok_invalid);
 
-            if (IsPostfixOperator(tokenType) && op != expr_invalid && 
+            if (IsPostfixOperator(tokenType) && op != expr_invalid &&
                 !IsPrefixExp(op))
             {
                 leftOp = MetaCParser_TopOp(self);
