@@ -1660,7 +1660,8 @@ metac_expr_t* MetaCParser_ParseExpr2(metac_parser_t* self, parse_expr_flags_t fl
         }
         else if (tokenType == tok_question)
         {
-            prec  = OpToPrecedence(MetaCParser_TopOp(self));
+            leftOp = MetaCParser_TopOp(self);
+            prec  = ((leftOp == expr_invalid) ? 0 : OpToPrecedence(leftOp));
             MetaCParser_Match(self, tok_question);
             op = expr_ternary;
             eflags |= expr_flags_ternary;
