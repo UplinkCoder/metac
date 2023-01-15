@@ -255,7 +255,6 @@ static inline int32_t MetaCPreProcessor_EvalExp(metac_preprocessor_t* self,
                                                 metac_expr_t* e,
                                                 metac_parser_t* parser)
 {
-
     int32_t result;
     int32_t e1;
     int32_t e2;
@@ -673,14 +672,22 @@ MetaCPreProcessor_ParseDefine(metac_preprocessor_t *self, metac_parser_t* parser
 
     metac_token_t* currentToken;
     uint32_t peek1 = 1;
+    bool matchNewline = false;
 
     for(;;)
     {
         const char* s = 0;
 
         currentToken = MetaCParser_PeekToken(parser, peek1++);
-        if (!currentToken || currentToken->TokenType == tok_newline)
+        if (!currentToken)
+        {
             break;
+        }
+        else if (currentToken->TokenType == tok_newline)
+        {
+            matchNewline = true;
+            break;
+        }
 
         if (currentToken->TokenType == tok_identifier)
         {

@@ -1,15 +1,4 @@
-#define cast_key 0x4520d2
-#define CRC32C_QUESTION 0xc372d93b
-#define CRC32C_PLUSPLUS 0x61d225eb
-#define CRC32C_MINUSMINUS 0x2ebc9331
-
-#define U32(VAR) \
-    (*(uint32_t*)(&VAR))
-
-#ifndef _emptyPointer
-#  define _emptyPointer (void*)0x1
-#  define emptyNode (metac_node_t) _emptyPointer
-#endif
+#include "../parser/metac_expr_parser.h"
 
 const char* BinExpTypeToChars(metac_binary_expr_kind_t t)
 {
@@ -317,6 +306,7 @@ static inline uint32_t OpToPrecedence(metac_expr_kind_t exp)
     else if (exp == expr_call
           || exp == expr_index
           || exp == expr_compl
+          || exp == expr_assert
           || exp == expr_template_instance)
     {
         return 30;
@@ -1226,6 +1216,7 @@ expr_argument_t* MetaCParser_ParseArgumentList(metac_parser_t* self)
     expr_argument_t** nextArgument = &arguments;
     uint32_t nArguments = 0;
     uint32_t hash = ~0;
+    MetaCParser_PushExprStackBottom(self, self->ExprParser.ExprStackCount);
 
     while (!MetaCParser_PeekMatch(self, tok_rParen, 1))
     {
@@ -1233,7 +1224,7 @@ expr_argument_t* MetaCParser_ParseArgumentList(metac_parser_t* self)
         assert((*nextArgument) == _emptyPointer);
 
         (*nextArgument) = (expr_argument_t*)AllocNewExpr(expr_argument);
-        metac_expr_t* exp = MetaCParser_ParseExpr(self, expr_flags_call, 0);
+        metac_expr_t* exp = MetaCParser_ParseExpr2(self, expr_flags_call);
         ((*nextArgument)->Expr) = exp;
         assert(exp->Hash);
         hash = CRC32C_VALUE(hash, exp->Hash);
@@ -1244,6 +1235,8 @@ expr_argument_t* MetaCParser_ParseArgumentList(metac_parser_t* self)
             MetaCParser_Match(self, tok_comma);
         }
     }
+
+    MetaCParser_PopExprStackBottom(self);
 
     if (arguments != emptyPointer)
     {
@@ -1469,9 +1462,14 @@ void MetaCParser_PushExpr(metac_parser_t* self, metac_expr_t *e)
     ARENA_ARRAY_ADD(self->ExprParser.ExprStack, e);
 }
 
-MetaCParser_PushExprStackBottom(metac_parser_t* self, uint32_t bottom)
+void MetaCParser_PushExprStackBottom(metac_parser_t* self, uint32_t bottom)
 {
     ARENA_ARRAY_ADD(self->ExprParser.ExprStackBottomStack, bottom);
+}
+
+void MetaCParser_PopExprStackBottom(metac_parser_t* self)
+{
+    self->ExprParser.ExprStackBottomStackCount--;
 }
 
 metac_expr_t* MetaCParser_TopExpr(metac_parser_t* self)
@@ -1539,7 +1537,7 @@ metac_expr_t* MetaCParser_ApplyOp(metac_parser_t* self, metac_expr_kind_t op)
         e->E1 = MetaCParser_PopExpr(self);
         e->Hash = CRC32C_VALUE(e->E1->Hash, e->E2->Hash);
     }
-    else if (IsUnaryExp(op))
+    else if (IsUnaryExp(op) || op == expr_assert)
     {
         e->E1 = MetaCParser_PopExpr(self);
         e->Hash = e->E1->Hash;
