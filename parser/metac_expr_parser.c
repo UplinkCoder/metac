@@ -1645,7 +1645,7 @@ metac_expr_t* MetaCParser_ParseExpr2(metac_parser_t* self, parse_expr_flags_t fl
             {
                 MetaCParser_Match(self, tok_colon);
                 MetaCParser_ApplyOpsUntil(self, expr_ternary);
-                eflags &= (~expr_flags_ternary);
+                U32(eflags) &= (~expr_flags_ternary);
                 continue;
             }
         }
@@ -1676,7 +1676,7 @@ metac_expr_t* MetaCParser_ParseExpr2(metac_parser_t* self, parse_expr_flags_t fl
             prec  = ((leftOp == expr_invalid) ? 0 : OpToPrecedence(leftOp));
             MetaCParser_Match(self, tok_question);
             op = expr_ternary;
-            eflags |= expr_flags_ternary;
+            U32(eflags) |= expr_flags_ternary;
             opPrec = OpToPrecedence(op);
             if (opPrec > prec)
             {
@@ -1828,7 +1828,7 @@ LParsePostfix:
                 else if (tokenType == tok_question)
                 {
                     op = expr_ternary;
-                    eflags |= expr_flags_ternary;
+                    U32(eflags) |= expr_flags_ternary;
                 }
                 opPrec = OpToPrecedence(op);
                 if (opPrec > prec)
