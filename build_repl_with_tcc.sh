@@ -2,4 +2,4 @@
 
 set -euo pipefail
 
-cd repl && ./fastbuild.sh -shared
+cd repl && ./fastbuild.sh 
