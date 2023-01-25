@@ -1786,14 +1786,19 @@ LPopUnaryOp:
         // Termination condition return top of stack
 LTerminate:
         {
-            while (self->ExprParser.OpStackCount > 0)
-            {
-                metac_expr_kind_t op = MetaCParser_PopOp(self);
-                MetaCParser_ApplyOp(self, op);
-            }
-
             uint32_t n_exprs =
                 (self->ExprParser.ExprStackCount - MetaCParser_TopExprStackBottom(self));
+
+            if (n_exprs > 1)
+            {
+                while (self->ExprParser.OpStackCount > 0)
+                {
+                    metac_expr_kind_t op = MetaCParser_PopOp(self);
+                    MetaCParser_ApplyOp(self, op);
+                }
+                n_exprs =
+                    (self->ExprParser.ExprStackCount - MetaCParser_TopExprStackBottom(self));
+            }
 
             if (n_exprs == 1)
             {
