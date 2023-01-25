@@ -32,14 +32,39 @@ BCTypeInfo* LookupTypeinfo(JsBackend* self, BCType bct)
     return result;
 }
 
-static inline void PrintF(JsBackend* self, const char* format, ...)
+static inline int PrintF(JsBackend* self, const char* format, ...)
 {
-    if ((cast(int32_t) (self->CodeCapacity - self->CodeCount)) < 1024)
+    va_list args;
+    int n;
+    int32_t sizeLeft = cast(int32_t) (self->CodeCapacity - self->CodeCount);
+    va_start (args, format);
+
+    if (sizeLeft < 1024)
+    LGrow:
     {
+
         uint32_t newCapa = (self->CodeCapacity * 1.3f);
         self->Code = realloc(self->Code, newCapa);
         self->CodeCapacity = newCapa;
+        sizeLeft = cast(int32_t) (self->CodeCapacity - self->CodeCount);
     }
+
+
+    n = vsnprintf(self->Code + self->CodeCount, sizeLeft,
+                  format, args);
+
+    if (n > sizeLeft)
+    {
+        goto LGrow;
+    }
+
+    self->CodeCount += n;
+    self->Code += n;
+
+    va_end (args);
+
+
+    return n;
 }
 
 static inline const char* GetVarName(JsBackend* self, BCValue* val)
