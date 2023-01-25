@@ -1216,6 +1216,7 @@ expr_argument_t* MetaCParser_ParseArgumentList(metac_parser_t* self)
     expr_argument_t** nextArgument = &arguments;
     uint32_t nArguments = 0;
     uint32_t hash = ~0;
+
     MetaCParser_PushExprStackBottom(self, self->ExprParser.ExprStackCount);
 
     for (;;)
@@ -1796,6 +1797,7 @@ LTerminate:
 
             if (n_exprs == 1)
             {
+                MetaCParser_PopExprStackBottom(self);
                 result = MetaCParser_PopExpr(self);
             }
             break;
