@@ -334,7 +334,7 @@ static inline uint32_t OpToPrecedence(metac_expr_kind_t exp)
         return 33;
     }
 
-    fprintf(stderr, "There's no percednce for %s\n", MetaCExprKind_toChars(exp));
+    fprintf(stderr, "There's no precedence for %s\n", MetaCExprKind_toChars(exp));
     assert(0);
     return 0;
 }
@@ -1464,7 +1464,7 @@ bool IsBinaryAssignExp(metac_expr_kind_t kind)
 
 void MetaCParser_PushExpr(metac_parser_t* self, metac_expr_t *e)
 {
-    printf("Pushing Expr: %s\n", MetaCPrinter_PrintExpr(&self->DebugPrinter, e));
+    // printf("Pushing Expr: %s\n", MetaCPrinter_PrintExpr(&self->DebugPrinter, e));
     ARENA_ARRAY_ADD(self->ExprParser.ExprStack, e);
 }
 
