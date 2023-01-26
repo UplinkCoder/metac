@@ -115,6 +115,11 @@ BCType MetaCCodegen_GetBCType(metac_bytecode_ctx_t* ctx, metac_type_index_t type
         result.type = BCTypeEnum_Ptr;
         result.typeIndex = typeIdx.Index;
     }
+    else if (typeKind == type_index_array)
+    {
+        result.type = BCTypeEnum_Array;
+        result.typeIndex = typeIdx.Index;
+    }
     else if (typeKind == type_index_enum)
     {
 #if 0
