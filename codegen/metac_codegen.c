@@ -141,6 +141,7 @@ BCType MetaCCodegen_GetBCType(metac_bytecode_ctx_t* ctx, metac_type_index_t type
 }
 extern const BackendInterface Lightning_interface;
 extern const BackendInterface BCGen_interface;
+extern const BackendInterface JsBackend_interface;
 
 static metac_type_index_t GetTypeIndex(BCType bcType)
 {
@@ -404,6 +405,19 @@ void* MetaCCodegen_AllocMemory(metac_bytecode_ctx_t* self, uint32_t size, sema_d
     return 0;
 }
 
+static BackendInterface* defaultInterface = 0;
+
+void MetaCCodegen_SetDefaultInterface(const BackendInterface* defInterface)
+{
+    assert(defInterface != 0);
+    // defaultInterface = defInterface;
+}
+
+void MetaCCodegen_UnsetDefaultInterface(void)
+{
+    defaultInterface = 0;
+}
+
 void MetaCCodegen_Init(metac_bytecode_ctx_t* self, metac_alloc_t* parentAlloc)
 {
     //TODO we might want a cheaper initialisation?
@@ -412,14 +426,23 @@ void MetaCCodegen_Init(metac_bytecode_ctx_t* self, metac_alloc_t* parentAlloc)
 
     (*self) = initValue;
     //TODO take BC as a parameter
+    if (defaultInterface)
+    {
+        self->gen = defaultInterface;
+    }
+    else
+    {
     // bc = &Lightning_interface;
 #if BC_PRINTER
-    self->gen = &Printer_interface;
+        self->gen = &Printer_interface;
 #elif BC_LIGHTNING
-    self->gen = &Lightning_interface;
+        self->gen = &Lightning_interface;
+#elif BC_JS
+        self->gen = &JsBackend_interface;
 #else
-    self->gen = &BCGen_interface;
+        self->gen = &BCGen_interface;
 #endif
+    }
 
     const BackendInterface gen = *self->gen;
 
