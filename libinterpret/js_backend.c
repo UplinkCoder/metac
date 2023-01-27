@@ -15,6 +15,8 @@ typedef struct JsBackend
     uint16_t ParamterCount;
 
     uint16_t TemporaryCount;
+    uint16_t LabelCount;
+    uint16_t staticBfUsed;
 
     bool InFunction;
 
@@ -23,6 +25,9 @@ typedef struct JsBackend
 
     get_typeinfo_fn_t getTypeInfoFn;
     void* getTypeInfoCtx;
+
+    char staticBf[256];
+
 } JsBackend;
 
 BCTypeInfo* LookupTypeinfo(JsBackend* self, BCType bct)
@@ -49,7 +54,7 @@ static inline int PrintF(JsBackend* self, const char* format, ...)
         sizeLeft = cast(int32_t) (self->CodeCapacity - self->CodeCount);
     }
 
-
+/*
     n = vsnprintf(self->Code + self->CodeCount, sizeLeft,
                   format, args);
 
@@ -60,6 +65,9 @@ static inline int PrintF(JsBackend* self, const char* format, ...)
 
     self->CodeCount += n;
     self->Code += n;
+*/
+    vprintf(format, args);
+    self->staticBfUsed = 0;
 
     va_end (args);
 
@@ -75,7 +83,22 @@ static inline const char* GetVarName(JsBackend* self, BCValue* val)
 
 static inline const char* GetValue(JsBackend* self, BCValue* val)
 {
-    return 0;
+    const char* result = 0;
+
+    uint32_t sz = 0;
+
+    switch(val->type.type)
+    {
+        case BCTypeEnum_i32:
+        {
+            result = self->staticBf + self->staticBfUsed;
+            sz = sprintf(result, "%d", val->imm32.imm32);
+            self->staticBfUsed += sz + 1;
+        }
+        break;
+    }
+
+    return result;
 }
 
 static inline const char* GetFunctionName(JsBackend* self, BCValue* fn)
@@ -117,12 +140,11 @@ static inline bool DirectEmit(BCType t1, BCType t2)
 static inline void JsBackend_Initialize(JsBackend* self, uint32_t n_args, ...)
 {
     self->CodeCount = 0;
-    self->CodeCapacity = 4096;
-    self->Code = malloc(self->CodeCapacity);
     self->CurrentFunctionId = 0;
     self->ParamterCount = 0;
     self->TemporaryCount = 0;
     self->InFunction = 0;
+    self->LabelCount = 0;
 }
 
 const char* JsInitializer(JsBackend* self, BCType bct)
@@ -246,7 +268,7 @@ static inline void JsBackend_Set(JsBackend* self, BCValue *lhs, const BCValue* r
     const char* varName = GetVarName(self, lhs);
     const char* value = GetValue(self, rhs);
 
-    PrintF("%s = %s;\n", varName, value);
+    PrintF(self, "%s = %s;\n", varName, value);
 }
 
 static inline void JsBackend_Ult3(JsBackend* self, BCValue *result, const BCValue* lhs, const BCValue* rhs)
@@ -255,7 +277,7 @@ static inline void JsBackend_Ult3(JsBackend* self, BCValue *result, const BCValu
     const char* e2 = GetValue(self, rhs);
     const char* targetVar = result ? GetValue(self, result) : "_Flag";
 
-    PrintF("%s = _Runtime.ult(%s, %s));\n", targetVar, e1, e2);
+    PrintF(self, "%s = _Runtime.ult(%s, %s));\n", targetVar, e1, e2);
 }
 
 static inline void JsBackend_Ule3(JsBackend* self, BCValue *result, const BCValue* lhs, const BCValue* rhs)
@@ -264,7 +286,7 @@ static inline void JsBackend_Ule3(JsBackend* self, BCValue *result, const BCValu
     const char* e2 = GetValue(self, rhs);
     const char* targetVar = result ? GetValue(self, result) : "_Flag";
 
-    PrintF("%s = _Runtime.ule(%s, %s));\n", targetVar, e1, e2);
+    PrintF(self, "%s = _Runtime.ule(%s, %s));\n", targetVar, e1, e2);
 }
 
 static inline void JsBackend_Lt3(JsBackend* self, BCValue *result, const BCValue* lhs, const BCValue* rhs)
@@ -275,11 +297,11 @@ static inline void JsBackend_Lt3(JsBackend* self, BCValue *result, const BCValue
 
     if (DirectEmit(lhs->type, rhs->type))
     {
-        PrintF("%s = (%s < %s);\n", targetVar, e1, e2);
+        PrintF(self, "%s = (%s < %s);\n", targetVar, e1, e2);
     }
     else
     {
-        PrintF("%s = _Runtime.lt(%s, %s));\n", targetVar, e1, e2);
+        PrintF(self, "%s = _Runtime.lt(%s, %s));\n", targetVar, e1, e2);
     }
 }
 
@@ -291,11 +313,11 @@ static inline void JsBackend_Le3(JsBackend* self, BCValue *result, const BCValue
 
     if (DirectEmit(lhs->type, rhs->type))
     {
-        PrintF("%s = (%s <= %s);\n", targetVar, e1, e2);
+        PrintF(self, "%s = (%s <= %s);\n", targetVar, e1, e2);
     }
     else
     {
-        PrintF("%s = _Runtime.le(%s, %s));\n", targetVar, e1, e2);
+        PrintF(self, "%s = _Runtime.le(%s, %s));\n", targetVar, e1, e2);
     }
 }
 
@@ -305,7 +327,7 @@ static inline void JsBackend_Ugt3(JsBackend* self, BCValue *result, const BCValu
     const char* e2 = GetValue(self, rhs);
     const char* targetVar = result ? GetValue(self, result) : "_Flag";
 
-    PrintF("%s = _Runtime.ugt(%s, %s));\n", targetVar, e1, e2);
+    PrintF(self, "%s = _Runtime.ugt(%s, %s));\n", targetVar, e1, e2);
 }
 
 static inline void JsBackend_Uge3(JsBackend* self, BCValue *result, const BCValue* lhs, const BCValue* rhs)
@@ -314,7 +336,7 @@ static inline void JsBackend_Uge3(JsBackend* self, BCValue *result, const BCValu
     const char* e2 = GetValue(self, rhs);
     const char* targetVar = result ? GetValue(self, result) : "_Flag";
 
-    PrintF("%s = _Runtime.uge(%s, %s));\n", targetVar, e1, e2);
+    PrintF(self, "%s = _Runtime.uge(%s, %s));\n", targetVar, e1, e2);
 }
 
 static inline void JsBackend_Gt3(JsBackend* self, BCValue *result, const BCValue* lhs, const BCValue* rhs)
@@ -325,11 +347,11 @@ static inline void JsBackend_Gt3(JsBackend* self, BCValue *result, const BCValue
 
     if (DirectEmit(lhs->type, rhs->type))
     {
-        PrintF("%s = (%s > %s);\n", targetVar, e1, e2);
+        PrintF(self, "%s = (%s > %s);\n", targetVar, e1, e2);
     }
     else
     {
-        PrintF("%s = _Runtime.gt(%s, %s));\n", targetVar, e1, e2);
+        PrintF(self, "%s = _Runtime.gt(%s, %s));\n", targetVar, e1, e2);
     }
 
 }
@@ -342,11 +364,11 @@ static inline void JsBackend_Ge3(JsBackend* self, BCValue *result, const BCValue
 
     if (DirectEmit(lhs->type, rhs->type))
     {
-        PrintF("%s = (%s >= %s);\n", targetVar, e1, e2);
+        PrintF(self, "%s = (%s >= %s);\n", targetVar, e1, e2);
     }
     else
     {
-        PrintF("%s = _Runtime.ge(%s, %s));\n", targetVar, e1, e2);
+        PrintF(self, "%s = _Runtime.ge(%s, %s));\n", targetVar, e1, e2);
     }
 
 }
@@ -359,11 +381,11 @@ static inline void JsBackend_Eq3(JsBackend* self, BCValue *result, const BCValue
 
     if (DirectEmit(lhs->type, rhs->type))
     {
-        PrintF("%s = (%s == %s);\n", targetVar, e1, e2);
+        PrintF(self, "%s = (%s == %s);\n", targetVar, e1, e2);
     }
     else
     {
-        PrintF("%s = _Runtime.ule(%s, %s));\n", targetVar, e1, e2);
+        PrintF(self, "%s = _Runtime.ule(%s, %s));\n", targetVar, e1, e2);
     }
 
 }
@@ -376,11 +398,11 @@ static inline void JsBackend_Neq3(JsBackend* self, BCValue *result, const BCValu
 
     if (DirectEmit(lhs->type, rhs->type))
     {
-        PrintF("%s = (%s != %s);\n", targetVar, e1, e2);
+        PrintF(self, "%s = (%s != %s);\n", targetVar, e1, e2);
     }
     else
     {
-        PrintF("%s = _Runtime.ule(%s, %s));\n", targetVar, e1, e2);
+        PrintF(self, "%s = _Runtime.ule(%s, %s));\n", targetVar, e1, e2);
     }
 }
 
@@ -392,11 +414,11 @@ static inline void JsBackend_Add3(JsBackend* self, BCValue *result, const BCValu
 
     if (DirectEmit(lhs->type, rhs->type))
     {
-        PrintF("%s = (%s + %s);\n", targetVar, e1, e2);
+        PrintF(self, "%s = (%s + %s);\n", targetVar, e1, e2);
     }
     else
     {
-        PrintF("%s = _Runtime.add(%s, %s));\n", targetVar, e1, e2);
+        PrintF(self, "%s = _Runtime.add(%s, %s));\n", targetVar, e1, e2);
     }
 }
 
@@ -408,11 +430,11 @@ static inline void JsBackend_Sub3(JsBackend* self, BCValue *result, const BCValu
 
     if (DirectEmit(lhs->type, rhs->type))
     {
-        PrintF("%s = (%s - %s);\n", targetVar, e1, e2);
+        PrintF(self, "%s = (%s - %s);\n", targetVar, e1, e2);
     }
     else
     {
-        PrintF("%s = _Runtime.sub(%s, %s));\n", targetVar, e1, e2);
+        PrintF(self, "%s = _Runtime.sub(%s, %s));\n", targetVar, e1, e2);
     }
 }
 
@@ -424,11 +446,11 @@ static inline void JsBackend_Mul3(JsBackend* self, BCValue *result, const BCValu
 
     if (DirectEmit(lhs->type, rhs->type))
     {
-        PrintF("%s = (%s * %s);\n", targetVar, e1, e2);
+        PrintF(self, "%s = (%s * %s);\n", targetVar, e1, e2);
     }
     else
     {
-        PrintF("%s = _Runtime.mul(%s, %s));\n", targetVar, e1, e2);
+        PrintF(self, "%s = _Runtime.mul(%s, %s));\n", targetVar, e1, e2);
     }
 }
 
@@ -440,11 +462,11 @@ static inline void JsBackend_Div3(JsBackend* self, BCValue *result, const BCValu
 
     if (DirectEmit(lhs->type, rhs->type))
     {
-        PrintF("%s = (%s / %s);\n", targetVar, e1, e2);
+        PrintF(self, "%s = (%s / %s);\n", targetVar, e1, e2);
     }
     else
     {
-        PrintF("%s = _Runtime.div(%s, %s));\n", targetVar, e1, e2);
+        PrintF(self, "%s = _Runtime.div(%s, %s));\n", targetVar, e1, e2);
     }
 }
 
@@ -455,7 +477,7 @@ static inline void JsBackend_Udiv3(JsBackend* self, BCValue *result, const BCVal
     const char* targetVar = result ? GetValue(self, result) : "_Flag";
 
     {
-        PrintF("%s = _Runtime.udiv(%s, %s));\n", targetVar, e1, e2);
+        PrintF(self, "%s = _Runtime.udiv(%s, %s));\n", targetVar, e1, e2);
     }
 }
 
@@ -467,7 +489,7 @@ static inline void JsBackend_And3(JsBackend* self, BCValue *result, const BCValu
 
     if (DirectEmit(lhs->type, rhs->type))
     {
-        PrintF("%s = (%s & %s);\n", targetVar, e1, e2);
+        PrintF(self, "%s = (%s & %s);\n", targetVar, e1, e2);
     }
 }
 
@@ -479,8 +501,13 @@ static inline void JsBackend_Or3(JsBackend* self, BCValue *result, const BCValue
 
     if (AreSmallIntegers(lhs->type, rhs->type))
     {
-        PrintF("%s = (%s | %s);\n", targetVar, e1, e2);
+        PrintF(self, "%s = (%s | %s);\n", targetVar, e1, e2);
     }
+    else
+    {
+        PrintF(self, "%s = _Runtime.or(%s, %s));\n", targetVar, e1, e2);
+    }
+
 }
 
 static inline void JsBackend_Xor3(JsBackend* self, BCValue *result, const BCValue* lhs, const BCValue* rhs)
@@ -491,8 +518,13 @@ static inline void JsBackend_Xor3(JsBackend* self, BCValue *result, const BCValu
 
     if (AreSmallIntegers(lhs->type, rhs->type))
     {
-        PrintF("%s = (%s ^ %s);\n", targetVar, e1, e2);
+        PrintF(self, "%s = (%s ^ %s);\n", targetVar, e1, e2);
     }
+    else
+    {
+        PrintF(self, "%s = _Runtime.xor(%s, %s));\n", targetVar, e1, e2);
+    }
+
 }
 
 static inline void JsBackend_Lsh3(JsBackend* self, BCValue *result, const BCValue* lhs, const BCValue* rhs)
@@ -503,8 +535,13 @@ static inline void JsBackend_Lsh3(JsBackend* self, BCValue *result, const BCValu
 
     if (AreSmallIntegers(lhs->type, rhs->type))
     {
-        PrintF("%s = (%s << %s);\n", targetVar, e1, e2);
+        PrintF(self, "%s = (%s << %s);\n", targetVar, e1, e2);
     }
+    else
+    {
+        PrintF(self, "%s = _Runtime.lsh(%s, %s));\n", targetVar, e1, e2);
+    }
+
 }
 
 static inline void JsBackend_Rsh3(JsBackend* self, BCValue *result, const BCValue* lhs, const BCValue* rhs)
@@ -515,7 +552,11 @@ static inline void JsBackend_Rsh3(JsBackend* self, BCValue *result, const BCValu
 
     if (AreSmallIntegers(lhs->type, rhs->type))
     {
-        PrintF("%s = (%s >> %s);\n", targetVar, e1, e2);
+        PrintF(self, "%s = (%s >> %s);\n", targetVar, e1, e2);
+    }
+    else
+    {
+        PrintF(self, "%s = _Runtime.rsh(%s, %s));\n", targetVar, e1, e2);
     }
 }
 
@@ -527,11 +568,11 @@ static inline void JsBackend_Mod3(JsBackend* self, BCValue *result, const BCValu
 
     if (DirectEmit(lhs->type, rhs->type))
     {
-        PrintF("%s = (%s % %s);\n", targetVar, e1, e2);
+        PrintF(self, "%s = (%s % %s);\n", targetVar, e1, e2);
     }
     else
     {
-        PrintF("%s = _Runtime.mod(%s, %s));\n", targetVar, e1, e2);
+        PrintF(self, "%s = _Runtime.mod(%s, %s));\n", targetVar, e1, e2);
     }
 }
 
@@ -541,7 +582,7 @@ static inline void JsBackend_Umod3(JsBackend* self, BCValue *result, const BCVal
     const char* e2 = GetValue(self, rhs);
     const char* targetVar = result ? GetValue(self, result) : "_Flag";
 
-    PrintF("%s = _Runtime.umod(%s, %s));\n", targetVar, e1, e2);
+    PrintF(self, "%s = _Runtime.umod(%s, %s));\n", targetVar, e1, e2);
 }
 
 static inline void JsBackend_Not(JsBackend* self, BCValue *result, const BCValue* val)
@@ -551,11 +592,11 @@ static inline void JsBackend_Not(JsBackend* self, BCValue *result, const BCValue
 
     if (SMALLINT(val->type))
     {
-        PrintF("%s = ~(%s);\n", targetVar, e1);
+        PrintF(self, "%s = ~(%s);\n", targetVar, e1);
     }
     else
     {
-        PrintF("%s = _Runtime.not(%s);\n", targetVar, e1);
+        PrintF(self, "%s = _Runtime.not(%s);\n", targetVar, e1);
     }
 }
 
@@ -587,6 +628,8 @@ static inline void JsBackend_Call(JsBackend* self, BCValue *result, const BCValu
 
 static inline BCLabel JsBackend_GenLabel(JsBackend* self)
 {
+    BCLabel result =  {{self->LabelCount++}};
+    PrintF(self, "L%04d: ", result.addr.addr);
 }
 
 static inline void JsBackend_Jmp(JsBackend* self, BCLabel target)
@@ -680,7 +723,14 @@ static inline void JsBackend_PopCatch(JsBackend* self)
 static inline void JsBackend_Ret(JsBackend* self, const BCValue* val)
 {
     const char* v = GetValue(self, val);
-    PrintF(self, "retrun %s;\n", v);
+    if (val->vType != BCValueType_Unknown)
+    {
+        PrintF(self, "return %s;\n", v);
+    }
+    else
+    {
+        PrintF(self, "return ;\n");
+    }
 }
 
 static inline void JsBackend_IToF32(JsBackend* self, BCValue *result, const BCValue* rhs)
@@ -730,12 +780,15 @@ static inline uint32_t JsBackend_sizeof_instance(JsBackend* self)
     return sizeof(JsBackend);
 }
 
-static inline void JsBackend_clear_instance(JsBackend* selftance)
+static inline void JsBackend_clear_instance(JsBackend* instance)
 {
+    free(instance->Code);
 }
 
-static inline void JsBackend_init_instance(JsBackend* selfstance)
+static inline void JsBackend_init_instance(JsBackend* instance)
 {
+    instance->CodeCapacity = 4096;
+    instance->Code = malloc(instance->CodeCapacity);
 }
 
 static inline void JsBackend_fini_instance(JsBackend* selftance)
