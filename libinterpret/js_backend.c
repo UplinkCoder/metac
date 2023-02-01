@@ -87,17 +87,41 @@ static inline const char* GetValue(JsBackend* self, BCValue* val)
 
     uint32_t sz = 0;
 
-    switch(val->type.type)
+    if (val->vType == BCValueType_Immediate)
     {
-        case BCTypeEnum_i32:
+        switch(val->type.type)
         {
-            result = self->staticBf + self->staticBfUsed;
-            sz = sprintf(result, "%d", val->imm32.imm32);
-            self->staticBfUsed += sz + 1;
+            case BCTypeEnum_i32:
+            {
+                result = self->staticBf + self->staticBfUsed;
+                sz = sprintf(result, "%d", *(int32_t*)&val->imm32.imm32);
+                self->staticBfUsed += sz + 1;
+            }
+            break;
+            case BCTypeEnum_u32:
+            {
+                result = self->staticBf + self->staticBfUsed;
+                sz = sprintf(result, "%u", val->imm32.imm32);
+                self->staticBfUsed += sz + 1;
+            }
+            break;
+            default:
+            {
+                printf("GetValue for val->type.type (%s) not implemented\n", BCTypeEnum_toChars(&val->type.type));
+            }
+            break;
         }
-        break;
     }
-
+    else if (val->vType == BCValueType_Temporary)
+    {
+        result = self->staticBf + self->staticBfUsed;
+        sz = sprintf(result, "tmp_%x", val->temporaryIndex);
+        self->staticBfUsed += sz + 1;
+    }
+    else
+    {
+        assert(0);
+    }
     return result;
 }
 
@@ -163,7 +187,8 @@ static inline void JsBackend_Finalize(JsBackend* self)
 static inline uint32_t JsBackend_BeginFunction(JsBackend* self, uint32_t fnId, const void* fd)
 {
     assert(self->CurrentFunctionId == 0);
-
+    PrintF(self, "var __retval;\n");
+    PrintF(self, "var __sp = _Runtime.StackOffset;\n");
 }
 
 static inline void* JsBackend_EndFunction(JsBackend* self, uint32_t fnIdx)
@@ -172,7 +197,15 @@ static inline void* JsBackend_EndFunction(JsBackend* self, uint32_t fnIdx)
 
 static inline BCValue JsBackend_GenTemporary(JsBackend* self, BCType bct)
 {
-    PrintF(self, "var tmp_%x = %s;\n", ++self->TemporaryCount, JsInitializer(self, bct));
+    BCValue result = {BCValueType_Temporary};
+    uint16_t tmpId = ++self->TemporaryCount;
+
+    result.type = bct;
+    result.temporaryIndex = tmpId;
+
+    PrintF(self, "var tmp_%x;\n", tmpId);
+
+    return result;
 }
 
 static inline void JsBackend_DestroyTemporary(JsBackend* self, BCValue* tmp)
@@ -611,6 +644,15 @@ static inline void JsBackend_Call(JsBackend* self, BCValue *result, const BCValu
     if (fn->vType == BCValueType_Immediate)
     {
         func = GetFunctionName(self, fn);
+    }
+
+    if (func)
+    {
+        PrintF(self, "%s", func);
+    }
+    else
+    {
+        PrintF(self, "%s", GetValue(self, fn));
     }
 
     PrintF(self, "(");
