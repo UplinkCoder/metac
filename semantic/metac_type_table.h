@@ -10,6 +10,7 @@ uint32_t UntangleInts(uint32_t tangled);
 typedef struct metac_type_table_slot_t
 {
     METAC_TYPE_HEADER
+    decl_type_t* origin;
 } metac_type_table_slot_t;
 
 typedef struct  metac_type_table_t

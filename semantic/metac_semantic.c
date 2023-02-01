@@ -1039,6 +1039,8 @@ metac_type_t NodeFromTypeIndex(metac_sema_state_t* sema,
     const uint32_t index = TYPE_INDEX_INDEX(typeIndex);
     switch(TYPE_INDEX_KIND(typeIndex))
     {
+        case type_index_ptr:
+            return cast(metac_type_t) PtrTypePtr(sema, index);
         case type_index_struct:
             return cast(metac_type_t) StructPtr(sema, index);
         case type_index_union:
@@ -1051,6 +1053,8 @@ metac_type_t NodeFromTypeIndex(metac_sema_state_t* sema,
             return cast(metac_type_t) TypeBasicPtr(typeIndex);
         case type_index_tuple:
             return cast(metac_type_t) TupleTypePtr(sema, index);
+        case type_index_functiontype:
+            return cast(metac_type_t) FunctiontypePtr(sema, index);
     }
 
     return 0;

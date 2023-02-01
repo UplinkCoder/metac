@@ -1409,6 +1409,13 @@ metac_type_index_t MetaCSemantic_doTypeSemantic_(metac_sema_state_t* self,
 #endif
     }
 
+    if (result.Kind != type_index_invalid
+     && result.Kind != type_index_basic
+     && result.Kind != type_index_unknown)
+    {
+        NodeFromTypeIndex(self, result)->Origin = type;
+    }
+
     return result;
 }
 

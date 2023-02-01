@@ -1217,6 +1217,12 @@ expr_argument_t* MetaCParser_ParseArgumentList(metac_parser_t* self)
     uint32_t nArguments = 0;
     uint32_t hash = ~0;
 
+    if (peekToken->TokenType == tok_rParen)
+    {
+        MetaCParser_Match(self, tok_rParen);
+        return arguments;
+    }
+
     MetaCParser_PushExprStackBottom(self, self->ExprParser.ExprStackCount);
 
     for (;;)
@@ -1549,7 +1555,15 @@ metac_expr_t* MetaCParser_ApplyOp(metac_parser_t* self, metac_expr_kind_t op)
     {
         e->E2 = MetaCParser_PopExpr(self);
         e->E1 = MetaCParser_PopExpr(self);
-        e->Hash = CRC32C_VALUE(e->E1->Hash, e->E2->Hash);
+        if (op == expr_call && ((void*)e->E2) == emptyPointer)
+        {
+            e->Hash = e->E1->Hash;
+        }
+        else
+        {
+            e->Hash = CRC32C_VALUE(e->E1->Hash, e->E2->Hash);
+        }
+
     }
     else if (IsUnaryExp(op) || op == expr_assert)
     {

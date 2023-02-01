@@ -71,6 +71,7 @@ typedef struct metac_type_index_t
 typedef struct metac_type_header_t
 {
     METAC_TYPE_HEADER
+    decl_type_t* Origin;
 } metac_type_header_t;
 
 typedef metac_type_header_t* metac_type_t;

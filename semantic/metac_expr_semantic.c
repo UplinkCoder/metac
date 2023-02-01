@@ -450,23 +450,48 @@ void ResolveIdentifierToExp(metac_sema_state_t* self,
 
 metac_sema_expr_t* UnwrapParen(metac_sema_expr_t* e)
 {
-    while(e->Kind == expr_paren)
+    metac_sema_expr_t* result = e;
+
+    while(result->Kind == expr_paren)
     {
-        e = e->E1;
+        result = result->E1;
     }
 
-    return e;
+    return result;
 }
 
 metac_sema_expr_t* ExtractCastExp(metac_sema_expr_t* e)
 {
-    while(e->Kind == expr_cast)
+    metac_sema_expr_t* result = e;
+
+    while(result->Kind == expr_cast)
     {
-        e = e->CastExp;
+        result = result->CastExp;
     }
 
-    return e;
+    return result;
 }
+
+/// Strips casts and parens
+metac_sema_expr_t* UnwrapCastExp(metac_sema_expr_t* e)
+{
+    metac_sema_expr_t* result = e;
+
+    while(result->Kind == expr_paren || result->Kind == expr_cast)
+    {
+        if (e->Kind == expr_cast)
+        {
+            result->CastExp;
+        }
+        else if (e->Kind == expr_paren)
+        {
+            result = result->E1;
+        }
+    }
+
+    return result;
+}
+
 
 void MetaCSemantic_doAssignSemantic(metac_sema_state_t* self,
                                     metac_expr_t* expr,
@@ -510,12 +535,50 @@ void MetaCSemantic_PushResultType(metac_sema_state_t* self, metac_type_index_t t
 
 }
 
-metac_sema_expr_t* MetaCSemantic_doExprSemantic_(metac_sema_state_t* self,
-                                                       metac_expr_t* expr,
-                                                       metac_sema_expr_t* result,
-                                                       const char* callFun,
-                                                       uint32_t callLine)
+decl_type_t* MetaCSemantic_DeclTypeFromTypeIndex(metac_sema_state_t* self, metac_type_index_t typeIndex)
 {
+    return NodeFromTypeIndex(self, typeIndex)->Origin;
+}
+
+metac_expr_t* RewriteAndtoAddrIfNeeded(metac_sema_state_t* self, metac_expr_t* expr)
+{
+    metac_expr_t* result = expr;
+    assert(expr->Kind == expr_and);
+
+    // check if lhs of & exp could be a parenthesized type
+    // in which case we have a cast followed by an address of
+    if (expr->E1->Kind == expr_paren
+     && expr->E1->E1->Kind == expr_type)
+    {
+        metac_sema_expr_t E1 = {0};
+        MetaCSemantic_doExprSemantic(self, expr->E1->E1, &E1);
+        if (E1.Kind == expr_type)
+        {
+            result = AllocNewExpr(expr_cast);
+            result->LocationIdx = expr->LocationIdx;
+            result->CastType = MetaCSemantic_DeclTypeFromTypeIndex(self, E1.TypeExp);
+            result->CastExp = expr->E2;
+        }
+    }
+    else
+    {
+
+    }
+
+    return result;
+}
+
+metac_sema_expr_t* MetaCSemantic_doExprSemantic_(metac_sema_state_t* self,
+                                                 metac_expr_t* expr,
+                                                 metac_sema_expr_t* result,
+                                                 const char* callFun,
+                                                 uint32_t callLine)
+{
+    if (expr->Kind == expr_and)
+    {
+        expr = RewriteAndtoAddrIfNeeded(self, expr);
+    }
+
     if (!result)
     {
         result = AllocNewSemaExpr(self, expr);
@@ -615,6 +678,8 @@ LswitchIdKey:
         case expr_deref:
         {
             result->E1 = MetaCSemantic_doExprSemantic(self, expr->E1, 0);
+            result->E1 = UnwrapParen(result->E1);
+
             metac_type_index_t e1type = result->E1->TypeIndex;
             if (TYPE_INDEX_KIND(e1type) == type_index_ptr)
             {
@@ -1044,6 +1109,7 @@ LswitchIdKey:
                 hash = type_key;
                 metac_type_index_t typeIdx
                     = MetaCSemantic_doTypeSemantic(self, expr->TypeExp);
+                result->Kind = expr_type;
                 result->TypeExp = typeIdx;
                 result->TypeIndex.v = TYPE_INDEX_V(type_index_basic, type_type);
                 hash = CRC32C_VALUE(hash, typeIdx);
@@ -1140,6 +1206,9 @@ LswitchIdKey:
             else
             {
                 result->TypeIndex = MetaCSemantic_GetPtrTypeOf(self, result->E1->TypeIndex);
+                metac_sema_expr_t* varExp = UnwrapCastExp(result->E1);
+                assert(varExp->Kind == expr_variable);
+                varExp->Variable->VarFlags |= variable_address_taken;
             }
         } break;
     }
@@ -1168,10 +1237,7 @@ void MetaCSemantic_PopExpr(metac_sema_state_t* self,  metac_sema_expr_t* expr)
 bool MetaCSemantic_CanHaveAddress(metac_sema_state_t* self,
                                   metac_sema_expr_t* expr)
 {
-    expr = ExtractCastExp(expr);
-    expr = UnwrapParen(expr);
-    expr = ExtractCastExp(expr);
-    expr = UnwrapParen(expr);
+    expr = UnwrapCastExp(expr);
 
     switch (expr->Kind)
     {
