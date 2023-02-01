@@ -56,6 +56,13 @@ void ConvertTupleElementToExp(metac_sema_state_t* sema,
         dst->TypeIndex = elemType;
         dst->ValueI64 = value;
     }
+    else if (elemType.v == TYPE_INDEX_V(type_index_basic, type_unsigned_int))
+    {
+        uint32_t value = *cast(uint32_t*)(heap->heapData + offset);
+        dst->Kind = expr_signed_integer;
+        dst->TypeIndex = elemType;
+        dst->ValueI64 = value;
+    }
     else if (elemType.v == TYPE_INDEX_V(type_index_basic, type_char))
     {
         char value = *cast(char*)(heap->heapData + offset);
@@ -73,6 +80,7 @@ void ConvertTupleElementToExp(metac_sema_state_t* sema,
         dst->TypeExp = value;
     }
 }
+
 extern const BackendInterface BCGen_interface;
 metac_sema_expr_t
 EvaluateExpr(metac_sema_state_t* sema,
@@ -904,8 +912,28 @@ LswitchIdKey:
                 LENGTH_FROM_STRING_KEY(expr->StringKey) + 1);
         break;
         case expr_signed_integer :
+        {
+            decl_type_t typeInfo = {0};
+            metac_type_kind_t baseType = type_int;
+
             hash = CRC32C_VALUE(expr_signed_integer, expr->ValueU64);
-            result->TypeIndex = MetaCSemantic_GetTypeIndex(self, type_int, (decl_type_t*)emptyPointer);
+            if (expr->NumberFlags & number_flag_unsigned)
+            {
+                U32(typeInfo.TypeModifiers) |= typemod_unsigned;
+            }
+            if (expr->NumberFlags & number_flag_long)
+            {
+                baseType = type_long;
+            }
+            if (expr->NumberFlags & number_flag_long_long)
+            {
+                baseType = type_long_long;
+            }
+
+            typeInfo.TypeKind = baseType;
+            result->TypeIndex =
+                MetaCSemantic_GetTypeIndex(self, baseType, &typeInfo);
+        }
         break;
         case expr_float :
             hash = CRC32C_VALUE(expr_float, expr->ValueF23);

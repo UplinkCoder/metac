@@ -12,6 +12,9 @@
 #include "../os/compat.h"
 #include "../hash/crc32c.h"
 
+#define U32(VAR) \
+    (*(uint32_t*)(&VAR))
+
 static inline metac_token_enum_t MetaCLexFixedLengthToken(const char _chrs[3])
 {
     switch (_chrs[0])
@@ -932,7 +935,7 @@ LcontinueLexnig:
             else if (IsNumericChar(c))
             {
                 token.TokenType = tok_uint;
-                parse_number_flag_t parseFlags = parse_number_flag_none;
+                parse_number_flag_t numberFlags = parse_number_flag_none;
                 uint64_t value;
                 uint32_t initialPos = eatenChars;
 //             LparseDigits:
@@ -992,7 +995,7 @@ LcontinueLexnig:
                     float fValue;
                     if (ParseFloat(&text, &eatenChars, &fValue))
                     {
-                        (*(uint32_t*)&parseFlags) |= (uint32_t)parse_number_flag_float;
+                        (*(uint32_t*)&numberFlags) |= (uint32_t)parse_number_flag_float;
                         token.ValueF23 = fValue;
                         token.TokenType = tok_float;
                         c = *text;
@@ -1011,16 +1014,30 @@ LcontinueLexnig:
                 {
                     while (c == 'u' ||  c == 'l')
                     {
+                        if (c == 'u')
+                        {
+                            U32(numberFlags) |= parse_number_flag_unsigned;
+                        }
+                        else if (c == 'l')
+                        {
+                            if ((numberFlags & parse_number_flag_long) != 0)
+                            {
+                                U32(numberFlags) |= parse_number_flag_long_long;
+                            }
+                            U32(numberFlags) |= parse_number_flag_long;
+                        }
                         eatenChars++;
                         c = (*text++ | 32);
                     }
                 }
-                if ((parseFlags & parse_number_flag_float) == 0)
+
+                if ((numberFlags & parse_number_flag_float) == 0)
                 {
                     token.ValueU64 = value;
                 }
 
                 token.ValueLength = eatenChars - initialPos;
+                token.NumberFlags = numberFlags;
                 state->Column += eatenChars;
             }
             else if (c == '\'')

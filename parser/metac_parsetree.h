@@ -9,6 +9,13 @@
 
 #pragma pack(push, 1)
 
+typedef enum number_flags_t
+{
+    number_flag_unsigned =  (1 << 2),
+    number_flag_long =      (1 << 3),
+    number_flag_long_long = (1 << 4)
+} number_flags_t;
+
 #define EXPR_HEADER \
     metac_expr_kind_t Kind; \
     uint32_t LocationIdx; \
@@ -109,12 +116,19 @@ typedef struct metac_expr_t
             char Chars[8];
         };
 
-        // case expr_signed_integer :
-        int64_t ValueI64;
-        // case expr_unsigned_integer :
-        uint64_t ValueU64;
-        // case expr_float:
-        float ValueF23;
+        struct {
+            union {
+                // case expr_signed_integer :
+                int64_t ValueI64;
+                // case expr_unsigned_integer :
+                uint64_t ValueU64;
+                // case expr_float:
+                float ValueF23;
+                // case expr_double:
+                double ValueF52;
+            };
+            number_flags_t NumberFlags;
+        };
     };
 } metac_expr_t;
 

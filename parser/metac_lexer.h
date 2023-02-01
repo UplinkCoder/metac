@@ -215,6 +215,24 @@ typedef enum metac_token_enum_t
 
 #undef WITH_COMMA
 
+#define FOREACH_PARSE_NUMBER_FLAG(M)       \
+    M(parse_number_flag_none,           0) \
+    M(parse_number_flag_hex,       1 << 0) \
+    M(parse_number_flag_float,     1 << 1) \
+    M(parse_number_flag_unsigned,  1 << 2) \
+    M(parse_number_flag_long,      1 << 3) \
+    M(parse_number_flag_long_long, 1 << 4)
+
+#define DEF_MEMBER(NAME, VALUE) \
+    NAME = VALUE,
+
+typedef enum parse_number_flag_t
+{
+    FOREACH_PARSE_NUMBER_FLAG(DEF_MEMBER)
+} parse_number_flag_t;
+
+#undef DEF_MEMBER
+
 typedef struct metac_token_t {
     metac_token_enum_t TokenType;
 
@@ -252,27 +270,13 @@ typedef struct metac_token_t {
                 float ValueF23;
                 double ValueF52;
             };
-            uint32_t ValueLength;
+            uint32_t ValueLength            : 32 - 8;
+            parse_number_flag_t NumberFlags : 8;
         };
         // case tok_macro_parameter:
         uint32_t MacroParameterIndex;
     };
 } metac_token_t;
-
-#define FOREACH_PARSE_NUMBER_FLAG(M) \
-    M(parse_number_flag_none, 0) \
-    M(parse_number_flag_hex, 1 << 0) \
-    M(parse_number_flag_float, 1 << 1)
-
-#define DEF_MEMBER(NAME, VALUE) \
-    NAME = VALUE,
-
-typedef enum parse_number_flag_t
-{
-    FOREACH_PARSE_NUMBER_FLAG(DEF_MEMBER)
-} parse_number_flag_t;
-
-#undef DEF_MEMBER
 
 static const char* ParseNumberFlag_toChars(parse_number_flag_t flag)
 {

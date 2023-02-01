@@ -638,6 +638,7 @@ metac_expr_t* MetaCParser_ParsePrimaryExpr(metac_parser_t* self, parse_expr_flag
         MetaCParser_Match(self, tok_uint);
         result = AllocNewExpr(expr_signed_integer);
         result->ValueI64 = currentToken->ValueI64;
+        result->NumberFlags = (number_flags_t)currentToken->NumberFlags;
         int32_t val32 = (int32_t)currentToken->ValueI64;
         // only hash 32bit if the value could fit into an i32
         if (val32 == currentToken->ValueI64)
