@@ -134,20 +134,28 @@ int MetaCSemaTree_Walk_Real(metac_node_t node, struct metac_sema_state_t* sema,
 
             for(uint32_t i = 0; i < type_struct->FieldCount; i++)
             {
-                metac_type_aggregate_field_t* field;
+                metac_type_aggregate_field_t* field = &type_struct->Fields[i];
                 result = walker_fn(field, ctx);
                 if (result)
                     return result;
-
             }
+
             result = MetaCSemaTree_Walk_Real(type_struct->Fields, sema, walker_fn, ctx);
             if (result)
                 return result;
         } break;
         case node_decl_type_union:
         {
-            sema_decl_type_union_t* type_union = (sema_decl_type_union_t*) node;
-            result = MetaCSemaTree_Walk_Real(type_union->Fields, sema, walker_fn, ctx);
+            metac_type_aggregate_t* type_union = (metac_type_aggregate_t*) node;
+
+            for(uint32_t i = 0; i < type_union->FieldCount; i++)
+            {
+                metac_type_aggregate_field_t* field = &type_union->Fields[i];
+                result = walker_fn(field, ctx);
+                if (result)
+                    return result;
+            }
+
             if (result)
                 return result;
         } break;
