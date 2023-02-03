@@ -195,7 +195,7 @@
     \
     M(stmt_empty) \
     \
-    M(stmt_exp) \
+    M(stmt_expr) \
     M(stmt_decl) \
     M(stmt_comment)
 

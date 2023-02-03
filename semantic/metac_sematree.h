@@ -261,12 +261,12 @@ typedef struct sema_stmt_goto_t
     metac_identifier_ptr_t GotoLabel;
 } sema_stmt_goto_t;
 
-typedef struct sema_stmt_exp_t
+typedef struct sema_stmt_expr_t
 {
     SEMA_STMT_HEADER
 
     metac_sema_expr_t* Expr;
-} sema_stmt_exp_t;
+} sema_stmt_expr_t;
 
 typedef struct sema_stmt_decl_t
 {
@@ -310,8 +310,8 @@ typedef struct sema_stmt_do_while_t
 {
     SEMA_STMT_HEADER
 
-    metac_sema_expr_t* WhileExp;
-    struct metac_sema_stmt_t* WhileBody;
+    metac_sema_expr_t* DoWhileExp;
+    struct metac_sema_stmt_t* DoWhileBody;
 } sema_stmt_do_while_t;
 
 typedef struct metac_sema_stmt_t
@@ -326,7 +326,7 @@ typedef struct metac_sema_stmt_t
         // case stmt_if :
         sema_stmt_if_t sema_stmt_if;
         // case stmt_exp :
-        sema_stmt_exp_t sema_stmt_exp;
+        sema_stmt_expr_t sema_stmt_expr;
         // case stmt_block :
         sema_stmt_block_t sema_stmt_block;
         // case stmt_label :

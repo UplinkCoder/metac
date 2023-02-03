@@ -2257,7 +2257,7 @@ metac_stmt_t* MetaCParser_ParseStmt(metac_parser_t* self,
 LparseAsExpr:
     {
         metac_expr_t* exp = MetaCParser_ParseExpr2(self, expr_flags_none);
-        stmt_exp_t* expStmt = AllocNewStmt(stmt_exp, &result);
+        stmt_expr_t* expStmt = AllocNewStmt(stmt_expr, &result);
         expStmt->Expr = exp;
         result->Hash = exp->Hash;
         //result = MetaCParser_ParseExpr2Stmt(self, parent);

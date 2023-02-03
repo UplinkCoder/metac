@@ -223,6 +223,129 @@ int MetaCSemaTree_Walk_Real(metac_node_t node, struct metac_sema_state_t* sema,
             if (result)
                 return result;
         } break;
+
+
+        case node_stmt_block:
+        {
+            sema_stmt_block_t* sema_stmt_block = cast(sema_stmt_block_t*) node;
+        } break;
+
+        case node_stmt_break:
+        {
+            sema_stmt_break_t* sema_stmt_break = cast(sema_stmt_break_t*) node;
+        } break;
+
+        case node_stmt_continue:
+        {
+            sema_stmt_continue_t* sema_stmt_continue = cast(sema_stmt_continue_t*) node;
+        } break;
+
+        case node_stmt_yield:
+        {
+            sema_stmt_yield_t* sema_stmt_yield = cast(sema_stmt_yield_t*) node;
+            if (METAC_NODE(sema_stmt_yield->YieldExp) != emptyNode)
+                result = walker_fn(sema_stmt_yield->YieldExp, ctx);
+             if(result)
+                 return result;
+        } break;
+
+        case node_stmt_scope:
+        {
+            sema_stmt_scope_t* sema_stmt_scope = cast(sema_stmt_scope_t*) node;
+        } break;
+
+        case node_stmt_for:
+        {
+            sema_stmt_for_t* sema_stmt_for = cast(sema_stmt_for_t*) node;
+            if (METAC_NODE(sema_stmt_for->ForCond) != emptyNode)
+                result = walker_fn(sema_stmt_for->ForCond, ctx);
+             if(result)
+                 return result;
+            if (METAC_NODE(sema_stmt_for->ForPostLoop) != emptyNode)
+                result = walker_fn(sema_stmt_for->ForPostLoop, ctx);
+             if(result)
+                 return result;
+        } break;
+
+        case node_stmt_while:
+        {
+            sema_stmt_while_t* sema_stmt_while = cast(sema_stmt_while_t*) node;
+            if (METAC_NODE(sema_stmt_while->WhileExp) != emptyNode)
+                result = walker_fn(sema_stmt_while->WhileExp, ctx);
+             if(result)
+                 return result;
+        } break;
+
+        case node_stmt_case:
+        {
+            sema_stmt_case_t* sema_stmt_case = cast(sema_stmt_case_t*) node;
+            if (METAC_NODE(sema_stmt_case->CaseExp) != emptyNode)
+                result = walker_fn(sema_stmt_case->CaseExp, ctx);
+             if(result)
+                 return result;
+        } break;
+
+        case node_stmt_goto:
+        {
+            sema_stmt_goto_t* sema_stmt_goto = cast(sema_stmt_goto_t*) node;
+        } break;
+
+        case node_stmt_expr:
+        {
+            sema_stmt_expr_t* sema_stmt_expr = cast(sema_stmt_expr_t*) node;
+            if (METAC_NODE(sema_stmt_expr->Expr) != emptyNode)
+                result = walker_fn(sema_stmt_expr->Expr, ctx);
+             if(result)
+                 return result;
+        } break;
+
+        case node_stmt_decl:
+        {
+            sema_stmt_decl_t* sema_stmt_decl = cast(sema_stmt_decl_t*) node;
+        } break;
+
+        case node_stmt_if:
+        {
+            sema_stmt_if_t* sema_stmt_if = cast(sema_stmt_if_t*) node;
+        } break;
+
+        case node_stmt_label:
+        {
+            sema_stmt_label_t* sema_stmt_label = cast(sema_stmt_label_t*) node;
+        } break;
+
+        case node_stmt_return:
+        {
+            sema_stmt_return_t* sema_stmt_return = cast(sema_stmt_return_t*) node;
+            if (METAC_NODE(sema_stmt_return->ReturnExp) != emptyNode)
+                result = walker_fn(sema_stmt_return->ReturnExp, ctx);
+             if(result)
+                 return result;
+        } break;
+
+        case node_stmt_switch:
+        {
+            sema_stmt_switch_t* sema_stmt_switch = cast(sema_stmt_switch_t*) node;
+            if (METAC_NODE(sema_stmt_switch->SwitchExp) != emptyNode)
+                result = walker_fn(sema_stmt_switch->SwitchExp, ctx);
+             if(result)
+                 return result;
+        } break;
+
+        case node_stmt_do_while:
+        {
+            sema_stmt_do_while_t* sema_stmt_do_while = cast(sema_stmt_do_while_t*) node;
+            if (METAC_NODE(sema_stmt_do_while->DoWhileExp) != emptyNode)
+                result = walker_fn(sema_stmt_do_while->DoWhileExp, ctx);
+             if(result)
+                 return result;
+        } break;
+
+        case node_stmt_comment:
+        {
+            stmt_comment_t* stmt_comment = cast(stmt_comment_t*) node;
+        } break;
+
     }
 
     return 0;

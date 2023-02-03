@@ -1959,11 +1959,11 @@ void MetaCCodegen_doStmt(metac_bytecode_ctx_t* ctx,
             gen.Ret(c, &retVal);
         } break;
 
-        case stmt_exp:
+        case stmt_expr:
         {
-            sema_stmt_exp_t* expStmt = cast(sema_stmt_exp_t*) stmt;
+            sema_stmt_expr_t* exprStmt = cast(sema_stmt_expr_t*) stmt;
             BCValue dontCare = {BCValueType_Unknown};
-            MetaCCodegen_doExpr(ctx, expStmt->Expr, &dontCare, _Discard);
+            MetaCCodegen_doExpr(ctx, exprStmt->Expr, &dontCare, _Discard);
         } break;
 
         case stmt_if:

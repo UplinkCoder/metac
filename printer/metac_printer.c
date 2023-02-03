@@ -572,9 +572,9 @@ static inline void PrintStmt(metac_printer_t* self, metac_stmt_t* stmt)
                 PrintIndent(self);
             }
         } break;
-        case stmt_exp :
+        case stmt_expr :
         {
-            stmt_exp_t* expr_stmt = cast(stmt_exp_t*) stmt;
+            stmt_expr_t* expr_stmt = cast(stmt_expr_t*) stmt;
             PrintExpr(self, expr_stmt->Expr);
             PrintToken(self, tok_semicolon);
         } break;
@@ -1913,9 +1913,9 @@ static inline void PrintSemaStmt(metac_printer_t* self, metac_sema_state_t* sema
                 PrintIndent(self);
             }
         } break;
-        case stmt_exp :
+        case stmt_expr :
         {
-            sema_stmt_exp_t* expr_stmt = cast(sema_stmt_exp_t*) stmt;
+            sema_stmt_expr_t* expr_stmt = cast(sema_stmt_expr_t*) stmt;
             PrintSemaExpr(self, sema, expr_stmt->Expr);
             PrintToken(self, tok_semicolon);
         } break;

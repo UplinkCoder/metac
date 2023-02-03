@@ -462,13 +462,13 @@ metac_sema_stmt_t* MetaCSemantic_doStmtSemantic_(metac_sema_state_t* self,
             }
         } break;
 
-        case stmt_exp:
+        case stmt_expr:
         {
-            hash ^= stmt_exp;
-            stmt_exp_t* expStmt = (stmt_exp_t*) stmt;
-            sema_stmt_exp_t* sse = AllocNewSemaStmt(self, stmt_exp, cast(void**)&result);
+            hash ^= stmt_expr;
+            stmt_expr_t* exprStmt = (stmt_expr_t*) stmt;
+            sema_stmt_expr_t* sse = AllocNewSemaStmt(self, stmt_expr, cast(void**)&result);
             sse->Expr =
-                MetaCSemantic_doExprSemantic(self, expStmt->Expr, 0);
+                MetaCSemantic_doExprSemantic(self, exprStmt->Expr, 0);
             hash = CRC32C_VALUE(hash, sse->Hash);
         } break;
 

@@ -225,12 +225,12 @@ typedef struct stmt_goto_t
     metac_identifier_ptr_t GotoLabel;
 } stmt_goto_t;
 
-typedef struct stmt_exp_t
+typedef struct stmt_expr_t
 {
     STMT_HEADER
 
     metac_expr_t* Expr;
-} stmt_exp_t;
+} stmt_expr_t;
 
 typedef struct stmt_decl_t
 {
