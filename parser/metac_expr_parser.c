@@ -237,6 +237,24 @@ typedef enum precedence_level_t
     prec_max
 } precedence_level_t;
 
+void MetaCParser_PushOpStackBottom(metac_parser_t* self, uint32_t bottom)
+{
+    ARENA_ARRAY_ADD(self->ExprParser.OpStackBottomStack, bottom);
+}
+
+void MetaCParser_PopOpStackBottom(metac_parser_t* self)
+{
+    self->ExprParser.OpStackBottomStackCount--;
+}
+
+uint32_t MetaCParser_TopOpStackBottom(metac_parser_t* self)
+{
+    return (self->ExprParser.OpStackBottomStackCount ?
+        self->ExprParser.OpStackBottomStack[
+            self->ExprParser.OpStackBottomStackCount - 1
+        ] : 0);
+}
+
 static inline uint32_t OpToPrecedence(metac_expr_kind_t exp)
 {
     if (exp == expr_comma)
@@ -1225,6 +1243,7 @@ expr_argument_t* MetaCParser_ParseArgumentList(metac_parser_t* self)
     }
 
     MetaCParser_PushExprStackBottom(self, self->ExprParser.ExprStackCount);
+    MetaCParser_PushOpStackBottom(self, self->ExprParser.OpStackCount);
 
     for (;;)
     {
@@ -1250,6 +1269,7 @@ expr_argument_t* MetaCParser_ParseArgumentList(metac_parser_t* self)
     }
 
     MetaCParser_PopExprStackBottom(self);
+    MetaCParser_PopOpStackBottom(self);
 
     if (arguments != emptyPointer)
     {
@@ -1634,6 +1654,7 @@ metac_expr_t* MetaCParser_ParseExpr2(metac_parser_t* self, parse_expr_flags_t fl
 
 
     MetaCParser_PushExprStackBottom(self, self->ExprParser.ExprStackCount);
+    MetaCParser_PushOpStackBottom(self, self->ExprParser.OpStackCount);
 
     currentToken = MetaCParser_PeekToken(self, 1);
     if (currentToken && currentToken->TokenType == tok_dot)
@@ -1660,7 +1681,7 @@ metac_expr_t* MetaCParser_ParseExpr2(metac_parser_t* self, parse_expr_flags_t fl
             if (tokenType == tok_colon)
             {
                 MetaCParser_Match(self, tok_colon);
-                MetaCParser_ApplyOpsUntil(self, expr_ternary);
+                // MetaCParser_ApplyOpsUntil(self, expr_ternary);
                 U32(eflags) &= (~expr_flags_ternary);
                 continue;
             }
@@ -1671,10 +1692,14 @@ metac_expr_t* MetaCParser_ParseExpr2(metac_parser_t* self, parse_expr_flags_t fl
             // special case for lParen since it might be a call
             if (tokenType == tok_lParen)
             {
+                uint32_t n_exprs =
+                    (self->ExprParser.ExprStackCount -
+                     MetaCParser_TopExprStackBottom(self));
+
                 self->ExprParser.OpenParens++;
                 // if lParen is a encountered with a non-empty
                 // expression stack it's likely a call.
-                if (self->ExprParser.ExprStackCount != 0
+                if (n_exprs != 0
                     && !(eflags & expr_flags_binary))
                 {
                     goto LParseCall;
@@ -1803,10 +1828,12 @@ LTerminate:
         {
             uint32_t n_exprs =
                 (self->ExprParser.ExprStackCount - MetaCParser_TopExprStackBottom(self));
+            uint32_t n_ops =
+                (self->ExprParser.OpStackCount - MetaCParser_TopOpStackBottom(self));
 
-            if (n_exprs > 1)
+            if (n_ops >= 1)
             {
-                while (self->ExprParser.OpStackCount > 0)
+                while (n_ops-- > 0)
                 {
                     metac_expr_kind_t op = MetaCParser_PopOp(self);
                     MetaCParser_ApplyOp(self, op);
@@ -1818,6 +1845,7 @@ LTerminate:
             if (n_exprs == 1)
             {
                 MetaCParser_PopExprStackBottom(self);
+                MetaCParser_PopOpStackBottom(self);
                 result = MetaCParser_PopExpr(self);
             }
             break;

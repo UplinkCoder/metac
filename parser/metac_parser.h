@@ -59,6 +59,7 @@ typedef struct metac_expr_parser_t
     ARENA_ARRAY(parse_expr_flags_t, ExprFlagsStack)
     ARENA_ARRAY(metac_expr_kind_t, OpStack)
     ARENA_ARRAY(uint32_t, ExprStackBottomStack)
+    ARENA_ARRAY(uint32_t, OpStackBottomStack)
 
     uint32_t OpenParens;
     uint32_t LBracketCount;
