@@ -203,6 +203,19 @@ int MetaCNode_TreeWalk_Real(metac_node_t node, walker_function_t walker_fn, void
                  return result;
         } break;
 
+        case node_expr_tuple:
+        {
+            expr_tuple_t* e = (cast(metac_expr_t*)node)->TupleExprList;
+
+            while(METAC_NODE(e) != emptyNode)
+            {
+                result = walker_fn(e->Expr, ctx);
+                e = e->Next;
+                if (result)
+                    return result;
+            }
+        } break;
+
         case expr_run:
         {
             metac_expr_t *expr_run = cast(metac_expr_t*) node;

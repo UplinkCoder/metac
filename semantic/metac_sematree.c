@@ -108,6 +108,21 @@ int MetaCSemaTree_Walk_Real(metac_node_t node, struct metac_sema_state_t* sema,
                 return result;
         } break;
 
+        case node_expr_tuple:
+        {
+            metac_sema_expr_t* e = (metac_sema_expr_t*) node;
+
+            uint32_t elemIdx;
+            for(elemIdx = 0; elemIdx < e->TupleExprCount; elemIdx++)
+            {
+                struct metac_sema_expr_t* elem;
+                elem = e->TupleExprs[elemIdx];
+                result = walker_fn(elem, ctx);
+                if (result)
+                    return result;
+            }
+        }
+
         case node_decl_variable:
         {
             sema_decl_variable_t* variable = (sema_decl_variable_t*) node;
