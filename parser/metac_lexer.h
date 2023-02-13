@@ -372,6 +372,9 @@ metac_location_t MetaCLocationStorage_FromPair(metac_location_t_array *srcStorag
                                                metac_location_ptr startLocIdx,
                                                metac_location_ptr endLocIdx);
 
+metac_location_t MetaCLocationStorage_FromPtr(metac_location_t_array *srcStorage,
+                                              metac_location_ptr locIdx);
+
 metac_location_ptr MetaCLocationStorage_Store(metac_location_t_array* self,
                                               metac_location_t loc);
 

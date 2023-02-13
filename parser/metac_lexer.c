@@ -780,6 +780,16 @@ metac_location_t MetaCLocationStorage_FromPair(metac_location_t_array *srcStorag
     return result;
 }
 
+metac_location_t MetaCLocationStorage_FromPtr(metac_location_t_array *srcStorage,
+                                              metac_location_ptr locIdx)
+{
+    metac_location_t result;
+
+    result = srcStorage->Locations[locIdx - 4];
+
+    return result;
+}
+
 metac_token_t* MetaCLexerLexNextToken(metac_lexer_t* self,
                                       metac_lexer_state_t* state,
                                       const char* text, uint32_t len)
