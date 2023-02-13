@@ -57,7 +57,7 @@ typedef struct metac_alloc_t
     uint32_t FreelistCount;
     uint32_t FreelistCapacity;
 
-    uint8_t Padding[8];
+    const char* Name;
 } metac_alloc_t;
 
 
@@ -152,9 +152,9 @@ arena_ptr_t ReallocArenaArray(tagged_arena_t* arena, metac_alloc_t* alloc, uint3
 } while(0)
 
 #define Allocator_Init(ALLOC, PARENT, ...) \
-    Allocator_Init_((ALLOC), (PARENT), __FILE__, __LINE__)
+    Allocator_Init_((ALLOC), (PARENT), __FILE__, __LINE__, #ALLOC)
 void Allocator_Init_(metac_alloc_t* allocator, metac_alloc_t* parent,
-                     const char* file, uint32_t line);
+                     const char* file, uint32_t line, const char* allocName);
 
 #define Allocator_Calloc(ALLOC, TYPE, ELEM_COUNT) \
     (cast(TYPE*)Allocator_Calloc_((ALLOC), sizeof(TYPE), ELEM_COUNT, __FILE__, __LINE__))

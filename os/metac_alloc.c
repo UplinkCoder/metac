@@ -23,13 +23,14 @@ metac_alloc_t*           g_allocators = 0;
 uint32_t                 g_allocatorCount = 0;
 
 void Allocator_Init_(metac_alloc_t* allocator, metac_alloc_t* parent,
-                     const char* file, uint32_t line)
+                     const char* file, uint32_t line, const char* allocName)
 {
 #ifdef DEBUG_SERVER
     Debug_Allocator(g_DebugServer, allocator);
 #endif
     allocator->Parent = parent;
-
+    allocator->Name = ((allocName && allocName[0] == '&')
+                    ? allocName + 1 : allocName);
     allocator->Freelist = 0;
     allocator->FreelistCount = 0;
     allocator->FreelistCapacity = 0;

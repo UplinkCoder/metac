@@ -317,7 +317,7 @@ MHD_HANDLER(handleArenas)
     debug_server_t *debugServer = cast(debug_server_t*) cls;
     const char *allocIdxStr =
         MHD_lookup_connection_value(connection, MHD_GET_ARGUMENT_KIND, "allocIdx");
-    uint32_t allocIdx = atoi(allocIdxStr);
+    uint32_t allocIdx = allocIdxStr ? atoi(allocIdxStr) : 0;
     metac_alloc_t* alloc = ((allocIdx && allocIdx <= (debugServer->AllocatorsCount))
         ? debugServer->Allocators[allocIdx - 1] : 0);
 
