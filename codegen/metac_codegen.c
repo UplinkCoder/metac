@@ -32,6 +32,11 @@ BCType MetaCCodegen_GetBCType(metac_bytecode_ctx_t* ctx, metac_type_index_t type
     BCType result = {BCTypeEnum_Undef};
     metac_type_index_kind_t typeKind = TYPE_INDEX_KIND(typeIdx);
 
+    if (typeKind == type_index_unknown || typeKind == type_index_unresolved)
+    {
+        goto Lret;
+    }
+
     if (typeKind == type_index_basic)
     {
         switch(typeIdx.Index)
@@ -136,7 +141,7 @@ BCType MetaCCodegen_GetBCType(metac_bytecode_ctx_t* ctx, metac_type_index_t type
                                     TYPE_INDEX_INDEX(typeIdx));
         assert(0);
     }
-
+Lret:
     return  result;
 }
 extern const BackendInterface Lightning_interface;
