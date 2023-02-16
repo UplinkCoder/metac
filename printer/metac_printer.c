@@ -1551,10 +1551,11 @@ static inline void PrintSemaDecl(metac_printer_t* self,
             }
         } break;
     }
+
     if (!self->AsType)
     {
         if (!!printSemicolon) PrintToken(self, tok_semicolon);
-        PrintNewline(self);
+        if (!self->SuppressNewlineAfterDecl) PrintNewline(self);
     }
 }
 
@@ -1937,8 +1938,11 @@ static inline void PrintSemaStmt(metac_printer_t* self, metac_sema_state_t* sema
                 }
                 else
                 {
+                    //TODO use a stack for printer options
                     self->SuppressNewlineAfterDecl = true;
                     PrintSemaDecl(self, sema, (cast(metac_sema_decl_t*)stmt_for->ForInit), self->IndentLevel);
+                    self->SuppressNewlineAfterDecl = false;
+                    assert(!self->SuppressNewlineAfterDecl);
                 }
             }
             else
