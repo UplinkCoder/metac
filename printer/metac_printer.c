@@ -1235,12 +1235,16 @@ static inline void PrintExpr(metac_printer_t* self, metac_expr_t* expr)
         }
 
         if (!IsBinaryExp(expr->E1->Kind))
+        {
            PrintChar(self, '(');
+        }
 
         PrintExpr(self, expr->E1);
 
         if (!IsBinaryExp(expr->E1->Kind))
+        {
             PrintChar(self, ')');
+        }
     }
     else
     {

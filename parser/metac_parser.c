@@ -2457,6 +2457,9 @@ void TestParseExprssion(void)
 
     expr = MetaCLPP_ParseExpr2FromString(&LPP, "a++ + b->c++");
     TEST_STR_EQ(MetaCPrinter_PrintExpr(&printer, expr), "((a)++ + (b -> c)++)");
+
+    expr = MetaCLPP_ParseExpr2FromString(&LPP, "typeof(*.Compiler)");
+    TEST_STR_EQ(MetaCPrinter_PrintExpr(&printer, expr), "typeof((*(.(Compiler))))");
 }
 
 void TestParseDecl(void)
