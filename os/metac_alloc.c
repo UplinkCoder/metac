@@ -120,7 +120,7 @@ tagged_arena_t nullArena = {0};
 arena_ptr_t Allocate_(metac_alloc_t* allocator, uint32_t size,
                       const char* file, uint32_t line, bool forChild)
 {
-    arena_ptr_t result = {-1};
+    arena_ptr_t result = {((uint32_t)-1)};
     if (!size)
         return result;
 

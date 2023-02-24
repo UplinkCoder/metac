@@ -893,8 +893,9 @@ decl_type_t* MetaCParser_ParseTypeDecl(metac_parser_t* self, metac_decl_t* paren
     {
         if (tokenType == tok_lBrace)
         {
-            MetaCParser_Match(self, tok_lBrace);
             STACK_ARENA_ARRAY(decl_type_t*, types, 16, &self->Allocator)
+
+            MetaCParser_Match(self, tok_lBrace);
             decl_type_tuple_t* typeTuple = AllocNewDecl(decl_type_tuple, &result);
             type = (decl_type_t*) typeTuple;
             typeTuple->TypeKind = type_tuple;

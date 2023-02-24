@@ -105,7 +105,7 @@ static inline void PrintIdentifier(metac_printer_t* self,
         assert(0); // One is not supposed to print the empty identifier
     const char* ident = IdentifierPtrToCharPtr(self->IdentifierTable, idPtr);
 
-    PrintString(self, ident, strlen(ident));
+    PrintString(self, ident, (uint32_t)strlen(ident));
 }
 
 static void PrintKeyword(metac_printer_t* self,
@@ -114,7 +114,7 @@ static void PrintKeyword(metac_printer_t* self,
     const char * str =
         MetaCTokenEnum_toChars(keyword) + sizeof("tok_kw");
 
-    PrintString(self, str, strlen(str));
+    PrintString(self, str, (uint32_t)strlen(str));
 }
 
 static inline void PrintToken(metac_printer_t* self,
@@ -1091,7 +1091,7 @@ static inline void PrintExpr(metac_printer_t* self, metac_expr_t* expr)
 
         PrintSpace(self);
         const char* op = BinExpTypeToChars((metac_binary_expr_kind_t)expr->Kind);
-        PrintString(self, op, strlen(op));
+        PrintString(self, op, (uint32_t)strlen(op));
         PrintSpace(self);
 
         PrintExpr(self, expr->E2);
@@ -1149,7 +1149,7 @@ static inline void PrintExpr(metac_printer_t* self, metac_expr_t* expr)
             else if (expr->Kind == expr_umin)
                 op = "-";
 
-            PrintString(self, op, strlen(op));
+            PrintString(self, op, (uint32_t)strlen(op));
         }
 
         if (!IsBinaryExp(expr->E1->Kind))
@@ -1182,7 +1182,7 @@ static inline void PrintExpr(metac_printer_t* self, metac_expr_t* expr)
 
         assert(op);
 
-        PrintString(self, op, strlen(op));
+        PrintString(self, op, (uint32_t)strlen(op));
 
         if (!IsBinaryExp(expr->E1->Kind))
             PrintChar(self, '(');
@@ -1210,7 +1210,7 @@ static inline void PrintExpr(metac_printer_t* self, metac_expr_t* expr)
         if (!IsBinaryExp(expr->E1->Kind))
             PrintChar(self, ')');
 
-        PrintString(self, op, strlen(op));
+        PrintString(self, op, (uint32_t)strlen(op));
     }
     else if (expr->Kind == expr_inject || expr->Kind == expr_eject
           || expr->Kind == expr_typeof || expr->Kind == expr_assert
@@ -1231,7 +1231,7 @@ static inline void PrintExpr(metac_printer_t* self, metac_expr_t* expr)
 
             assert(op);
 
-            PrintString(self, op, strlen(op));
+            PrintString(self, op, (uint32_t)strlen(op));
         }
 
         if (!IsBinaryExp(expr->E1->Kind))
@@ -1640,7 +1640,7 @@ static inline void PrintSemaExpr(metac_printer_t* self,
 
         PrintSpace(self);
         const char* op = BinExpTypeToChars((metac_binary_expr_kind_t)semaExpr->Kind);
-        PrintString(self, op, strlen(op));
+        PrintString(self, op, (uint32_t)strlen(op));
         PrintSpace(self);
 
         PrintSemaExpr(self, sema,  semaExpr->E2);
@@ -1705,7 +1705,7 @@ static inline void PrintSemaExpr(metac_printer_t* self,
             else if (semaExpr->Kind == expr_umin)
                 op = "-";
 
-            PrintString(self, op, strlen(op));
+            PrintString(self, op, (uint32_t)strlen(op));
         }
 
         if (!IsBinaryExp(semaExpr->E1->Kind))
@@ -1734,7 +1734,7 @@ static inline void PrintSemaExpr(metac_printer_t* self,
         if (!IsBinaryExp(semaExpr->E1->Kind))
             PrintChar(self, ')');
 
-        PrintString(self, op, strlen(op));
+        PrintString(self, op, (uint32_t)strlen(op));
     }
     else if (semaExpr->Kind == expr_inject || semaExpr->Kind == expr_eject
           || semaExpr->Kind == expr_typeof || semaExpr->Kind == expr_assert
@@ -1755,7 +1755,7 @@ static inline void PrintSemaExpr(metac_printer_t* self,
 
             assert(op);
 
-            PrintString(self, op, strlen(op));
+            PrintString(self, op, (uint32_t)strlen(op));
         }
 
         if (!IsBinaryExp(semaExpr->E1->Kind))
@@ -2179,7 +2179,7 @@ void MetaCPrinter_Free(metac_printer_t* self)
 
 void MetacPrinter_PrintStringLiteral(metac_printer_t* self, const char* str)
 {
-    PrintString(self, str, strlen(str));
+    PrintString(self, str, (uint32_t)strlen(str));
 }
 
 void MetacPrinter_PrintI64(metac_printer_t* self, int64_t val)

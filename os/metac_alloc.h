@@ -94,7 +94,7 @@ arena_ptr_t ReallocArenaArray(tagged_arena_t* arena, metac_alloc_t* alloc, uint3
     uint32_t NAME##Count = 0; \
     metac_alloc_t* NAME##Alloc = (ALLOC); \
     bool NAME##FreeMemory = true; \
-    arena_ptr_t NAME##ArenaPtr = {-1}; \
+    arena_ptr_t NAME##ArenaPtr = {((uint32_t)-1)}; \
     tagged_arena_t NAME##Arena = { \
         cast(void*) NAME##Stack, 0, sizeof(NAME##Stack), \
         0, __FILE__, __LINE__ \
