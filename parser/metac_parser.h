@@ -31,6 +31,7 @@ typedef enum parse_expr_flags_t
     expr_flags_sizeof  = (1 << 6),
     expr_flags_pp      = (1 << 7),
     expr_flags_ternary = (1 << 8),
+    expr_flags_typeof  = (1 << 9),
 } parse_expr_flags_t;
 
 typedef struct metac_define_t

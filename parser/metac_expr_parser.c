@@ -336,6 +336,7 @@ static inline uint32_t OpToPrecedence(metac_expr_kind_t exp)
     else if (exp == expr_umin
           || exp == expr_unary_dot
           || exp == expr_sizeof
+          || exp == expr_typeof
           || exp == expr_not)
     {
         return 32;
@@ -360,7 +361,7 @@ static inline uint32_t OpToPrecedence(metac_expr_kind_t exp)
 static inline bool IsPrimaryExprToken(metac_token_enum_t tokenType)
 {
 #ifdef TYPE_EXP
-    if (IsTypeToken(tokenType) && tokenType != tok_star)
+    if (IsTypeToken(tokenType) && tokenType != tok_star && tokenType != tok_kw_typeof)
         return true;
 #endif
     switch(tokenType)
@@ -1042,35 +1043,35 @@ metac_expr_t* MetaCParser_ParseUnaryExpr(metac_parser_t* self)
     }
     else if (tokenType == tok_kw_typeof)
     {
+        parse_expr_flags_t flags = cast(parse_expr_flags_t)
+            ((eflags & expr_flags_pp) | expr_flags_typeof);
+
         MetaCParser_Match(self, tok_kw_typeof);
         result = AllocNewExpr(expr_typeof);
         //PushOperator(expr_typeof);
-        metac_token_t* nextToken = MetaCParser_PeekToken(self, 1);
-        if (!nextToken || nextToken->TokenType != tok_lParen)
-        {
-            ParseError(loc, "Expected typeof to be followed by '('");
-        }
-
-        metac_expr_t* parenExp = MetaCParser_ParseExpr(self, expr_flags_none, 0);
+        MetaCParser_Match(self, tok_lParen);
+        result->E1 = MetaCParser_ParseExpr(self, flags, 0);
+        MetaCParser_Match(self, tok_rParen);
         //PopOperator(expr_typeof);
-        assert(parenExp->Kind == expr_paren);
-        result->E1 = parenExp->E1;
         result->Hash = CRC32C_VALUE(typeof_key, result->E1->Hash);
 
     }
     else if (tokenType == tok_kw_sizeof)
     {
+        metac_token_t* nextToken;
+        bool wasParen = false;
+        parse_expr_flags_t flags = cast(parse_expr_flags_t)
+            ((eflags & expr_flags_pp) | expr_flags_sizeof);
+
         MetaCParser_Match(self, tok_kw_sizeof);
         result = AllocNewExpr(expr_sizeof);
-        metac_token_t* nextToken = MetaCParser_PeekToken(self, 1);
-        bool wasParen = false;
+        nextToken = MetaCParser_PeekToken(self, 1);
+
         if (nextToken->TokenType == tok_lParen)
         {
             wasParen = true;
             MetaCParser_Match(self, tok_lParen);
         }
-        parse_expr_flags_t flags = cast(parse_expr_flags_t)
-            ((eflags & expr_flags_pp) | expr_flags_sizeof);
 
         result->E1 = MetaCParser_ParseExpr(self, flags, 0);
         if (wasParen)

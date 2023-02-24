@@ -1199,13 +1199,8 @@ decl_type_t* MetaCParser_ParseTypeDecl(metac_parser_t* self, metac_decl_t* paren
         }
         else if (tokenType == tok_kw_typeof)
         {
-            MetaCParser_Match(self, tok_kw_typeof);
-            bool hasParens = false;
-
-            MetaCParser_Match(self, tok_lParen);
             metac_expr_t* typeof_exp =
                 MetaCParser_ParseExpr2(self, expr_flags_none);
-            MetaCParser_Match(self, tok_rParen);
 
             decl_type_typeof_t * decl = AllocNewDecl(decl_type_typeof, &result);
             decl->Expr = typeof_exp;
