@@ -101,7 +101,7 @@ EvaluateExpr(metac_sema_state_t* sema,
         MetaCCodegen_doGlobal(&ctx, sema->Globals[i], i);
     }
 
-    MetaCCodegen_Begin(&ctx, sema->ParserIdentifierTable, sema);
+    MetaCCodegen_Begin(&ctx, sema->ParserIdentifierTable, sema->ParserStringTable, sema);
 
     metac_bytecode_function_t fCode =
         MetaCCodegen_GenerateFunctionFromExp(&ctx, e);
