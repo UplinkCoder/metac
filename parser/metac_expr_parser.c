@@ -237,6 +237,42 @@ typedef enum precedence_level_t
     prec_max
 } precedence_level_t;
 
+void MetaCParser_PushOpenParens(metac_parser_t* self)
+{
+    ARENA_ARRAY_ADD(self->ExprParser.OpenParensStack,
+                    self->ExprParser.OpenParens);
+    self->ExprParser.OpenParens = 0;
+}
+
+void MetaCParser_PopOpenParens(metac_parser_t* self)
+{
+    assert(self->ExprParser.OpenParensStackCount >= 1);
+
+    self->ExprParser.OpenParens =
+        self->ExprParser.OpenParensStack[
+            --self->ExprParser.OpenParensStackCount
+        ];
+}
+
+void MetaCParser_PushFlags(metac_parser_t* self, parse_expr_flags_t flags)
+{
+    ARENA_ARRAY_ADD(self->ExprParser.ExprFlagsStack, flags);
+}
+
+void MetaCParser_PopFlags(metac_parser_t* self)
+{
+    assert(self->ExprParser.ExprFlagsStackCount >= 1);
+    self->ExprParser.ExprFlagsStackCount--;
+}
+
+parse_expr_flags_t MetaCParser_TopFlags(metac_parser_t* self)
+{
+    assert(self->ExprParser.ExprFlagsStackCount >= 1);
+    return self->ExprParser.ExprFlagsStack[
+        self->ExprParser.ExprFlagsStackCount - 1
+    ];
+}
+
 void MetaCParser_PushOpStackBottom(metac_parser_t* self, uint32_t bottom)
 {
     ARENA_ARRAY_ADD(self->ExprParser.OpStackBottomStack, bottom);
@@ -719,7 +755,8 @@ metac_expr_t* MetaCParser_ParsePrimaryExpr(metac_parser_t* self, parse_expr_flag
         {
             if (!MetaCParser_PeekMatch(self, tok_rParen, 1))
             {
-                result->E1 = MetaCParser_ParseExpr(self, expr_flags_none, 0);
+                result->E1 = MetaCParser_ParseExpr2(self, expr_flags_none);
+                // result->E1 = MetaCParser_ParseExpr(self, expr_flags_none, 0);
                 // printf("E1: %s\n", MetaCExprKind_toChars(result->E1->Kind));
             }
             else
@@ -943,7 +980,7 @@ static inline metac_expr_t* ParseUnaryDotExpr(metac_parser_t* self)
 #define CRC32C_STAR  0xe6dd0a48
 #define CRC32C_HASH  0xe3069283
 
-parse_expr_flags_t MetaCParser_CurrentExprFlags(metac_parser_t* self)
+parse_expr_flags_t MetaCParser_TopExprFlags(metac_parser_t* self)
 {
     parse_expr_flags_t result = expr_flags_none;
     const uint32_t flagsCount = self->ExprParser.ExprFlagsStackCount;
@@ -992,10 +1029,10 @@ static inline metac_expr_t* ParseRunExpr(metac_parser_t* self, int vers)
     else
     {
         if (vers == 2)
-            result->E1 = MetaCParser_ParseExpr2(self, MetaCParser_CurrentExprFlags(self));
+            result->E1 = MetaCParser_ParseExpr2(self, MetaCParser_TopExprFlags(self));
         else
             result->E1 =
-                MetaCParser_ParseExpr(self, MetaCParser_CurrentExprFlags(self), 0);
+                MetaCParser_ParseExpr(self, MetaCParser_TopExprFlags(self), 0);
     }
     hash = CRC32C_VALUE(hash, result->E1->Hash);
     result->Hash = hash;
@@ -1007,7 +1044,7 @@ metac_expr_t* MetaCParser_ParseUnaryExpr(metac_parser_t* self)
 {
     metac_expr_t* result = 0;
     static const metac_location_t nullLoc = {0};
-    parse_expr_flags_t eflags = MetaCParser_CurrentExprFlags(self);
+    parse_expr_flags_t eflags = MetaCParser_TopExprFlags(self);
 
     metac_token_t* currentToken = MetaCParser_PeekToken(self, 1);
     metac_token_enum_t tokenType =
@@ -1226,7 +1263,7 @@ metac_expr_t* MetaCParser_ParseUnaryExpr(metac_parser_t* self)
     return result;
 }
 
-expr_argument_t* MetaCParser_ParseArgumentList(metac_parser_t* self)
+expr_argument_t* MetaCParser_ParseArgumentList(metac_parser_t* self, parse_expr_flags_t flags)
 {
     metac_location_t loc =
         LocationFromToken(self, MetaCParser_PeekToken(self, 0));
@@ -1245,6 +1282,8 @@ expr_argument_t* MetaCParser_ParseArgumentList(metac_parser_t* self)
 
     MetaCParser_PushExprStackBottom(self, self->ExprParser.ExprStackCount);
     MetaCParser_PushOpStackBottom(self, self->ExprParser.OpStackCount);
+    MetaCParser_PushOpenParens(self);
+    MetaCParser_PushFlags(self, flags);
 
     for (;;)
     {
@@ -1271,6 +1310,8 @@ expr_argument_t* MetaCParser_ParseArgumentList(metac_parser_t* self)
 
     MetaCParser_PopExprStackBottom(self);
     MetaCParser_PopOpStackBottom(self);
+    MetaCParser_PopOpenParens(self);
+    MetaCParser_PopFlags(self);
 
     if (arguments != emptyPointer)
     {
@@ -1279,6 +1320,7 @@ expr_argument_t* MetaCParser_ParseArgumentList(metac_parser_t* self)
         MetaCLocation_Expand(&loc, LocationFromToken(self, rParen));
         arguments->LocationIdx =
             MetaCLocationStorage_Store(&self->LocationStorage, loc);
+        MetaCParser_Match(self, tok_rParen);
     }
 
     return arguments;
@@ -1385,14 +1427,12 @@ metac_expr_t* MetaCParser_ParseBinaryExpr(metac_parser_t* self,
             else if (expr_right == expr_call)
             {
             LparseArgumentList:
-                rhs = (metac_expr_t*)MetaCParser_ParseArgumentList(self);
+                rhs = (metac_expr_t*)MetaCParser_ParseArgumentList(self, expr_flags_call);
                 if ((metac_node_t)rhs != emptyPointer)
                     rhsIsArgs = true;
 
-                metac_token_t* rParen =
-                    MetaCParser_Match(self, tok_rParen);
                 MetaCLocation_Expand(&rhsLoc,
-                    LocationFromToken(self, rParen));
+                    LocationFromIndex(self, rhs->LocationIdx));
             }
             else
             {
@@ -1483,8 +1523,6 @@ static bool IsUnaryExp(metac_expr_kind_t kind)
     }
 }
 
-
-
 bool IsBinaryAssignExp(metac_expr_kind_t kind)
 {
    return (kind >= expr_add_ass && kind <= expr_rsh_ass);
@@ -1517,11 +1555,15 @@ uint32_t MetaCParser_TopExprStackBottom(metac_parser_t* self)
 metac_expr_t* MetaCParser_TopExpr(metac_parser_t* self)
 {
     const uint32_t stackCount = self->ExprParser.ExprStackCount;
+    const uint32_t stackBottom = MetaCParser_TopExprStackBottom(self);
+
     metac_expr_t* result = 0;
 
-    if (stackCount)
+    assert(stackCount >= stackBottom);
+
+    if (stackCount - stackBottom)
     {
-        result = self->ExprParser.ExprStack[stackCount - 1];
+        result = self->ExprParser.ExprStack[stackCount - stackBottom - 1];
     }
     return result;
 }
@@ -1557,7 +1599,9 @@ metac_expr_kind_t MetaCParser_PopOp(metac_parser_t* self)
 
 metac_expr_kind_t MetaCParser_TopOp(metac_parser_t* self)
 {
-    const uint32_t stackCount = self->ExprParser.OpStackCount;
+    const uint32_t stackCount = self->ExprParser.OpStackCount
+                              + MetaCParser_TopOpStackBottom(self);
+
     metac_expr_kind_t result = expr_invalid;
 
     if (stackCount)
@@ -1653,9 +1697,9 @@ metac_expr_t* MetaCParser_ParseExpr2(metac_parser_t* self, parse_expr_flags_t fl
     parse_expr_flags_t eflags = flags;
     metac_location_t loc =  {0};
 
-
     MetaCParser_PushExprStackBottom(self, self->ExprParser.ExprStackCount);
     MetaCParser_PushOpStackBottom(self, self->ExprParser.OpStackCount);
+    MetaCParser_PushFlags(self, flags);
 
     currentToken = MetaCParser_PeekToken(self, 1);
     if (currentToken && currentToken->TokenType == tok_dot)
@@ -1797,10 +1841,10 @@ LPopUnaryOp:
         }
         else if(tokenType == tok_rParen)
         {
-            if (self->ExprParser.OpenParens != 0)
+            if (self->ExprParser.OpenParens > 0)
             {
                 MetaCParser_Match(self, tok_rParen);
-                --self->ExprParser.OpenParens;
+                self->ExprParser.OpenParens--;
             }
             else
             {
@@ -1847,7 +1891,13 @@ LTerminate:
             {
                 MetaCParser_PopExprStackBottom(self);
                 MetaCParser_PopOpStackBottom(self);
+                MetaCParser_PopFlags(self);
                 result = MetaCParser_PopExpr(self);
+            }
+            else
+            {
+                // I think if we end up here it's a bug
+                assert(0);
             }
             break;
         }
@@ -1902,7 +1952,6 @@ LParsePostfix:
 LParseCall:
         {
             expr_argument_t* args = 0;
-            metac_token_t* rParen;
 
             leftOp = MetaCParser_TopOp(self);
             prec = (leftOp != expr_invalid) ? OpToPrecedence(leftOp) : 0;
@@ -1910,8 +1959,7 @@ LParseCall:
             MetaCParser_Match(self, tok_lParen);
             op = expr_call;
             opPrec = OpToPrecedence(op);
-            args = MetaCParser_ParseArgumentList(self);
-//            rParen = MetaCParser_Match(self, tok_rParen);
+            args = MetaCParser_ParseArgumentList(self, flags);
 
             if (opPrec > prec)
             {
@@ -1927,11 +1975,6 @@ LParseCall:
                 MetaCParser_PushExpr(self, call);
             }
             goto LParsePostfix;
-
-/*
-            MetaCLocation_Expand(&rhsLoc,
-                LocationFromToken(self, rParen));
-*/
         }
     }
 

@@ -615,8 +615,39 @@ Lerror:
     }
 }
 
+/*
+# 1 "metac_expr_parser.c"
+# 1 "../parser/metac_expr_parser.h" 1
+# 15 "../parser/metac_expr_parser.h"
+*/
+
+metac_preprocessor_source_indicator_t
+MetaCPreProcessor_ParseSourceIndicator(metac_preprocessor_t *self,
+                                       metac_parser_t* parser)
+{
+    metac_preprocessor_source_indicator_t result = {0};
+
+    metac_token_t* lineNumber = MetaCParser_Match(parser, tok_uint);
+    metac_token_t* fileName = MetaCParser_Match(parser, tok_string);
+    metac_token_t* stackNo = 0;
+
+    if (MetaCParser_PeekToken(self, 1)->TokenType == tok_uint)
+    {
+        stackNo = MetaCParser_Match(parser, tok_uint);
+    }
+
+    result.LineNumber = lineNumber->ValueU32;
+
+    result.FileNameString =
+        GetOrAddIdentifier(&parser->StringTable,
+                           fileName->StringKey,
+                           LENGTH_FROM_STRING_KEY(fileName->StringKey));
+
+}
+
 metac_preprocessor_define_ptr_t
-MetaCPreProcessor_ParseDefine(metac_preprocessor_t *self, metac_parser_t* parser)
+MetaCPreProcessor_ParseDefine(metac_preprocessor_t *self,
+                              metac_parser_t* parser)
 {
     assert(self);
     metac_token_t* defineName = MetaCParser_Match(parser, tok_identifier);

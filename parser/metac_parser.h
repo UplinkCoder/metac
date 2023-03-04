@@ -59,11 +59,12 @@ typedef struct metac_expr_parser_t
     ARENA_ARRAY(metac_expr_t*, ExprStack)
     ARENA_ARRAY(parse_expr_flags_t, ExprFlagsStack)
     ARENA_ARRAY(metac_expr_kind_t, OpStack)
-    ARENA_ARRAY(uint32_t, ExprStackBottomStack)
-    ARENA_ARRAY(uint32_t, OpStackBottomStack)
+    ARENA_ARRAY(int32_t, ExprStackBottomStack)
+    ARENA_ARRAY(int32_t, OpStackBottomStack)
+    ARENA_ARRAY(int32_t, OpenParensStack)
 
-    uint32_t OpenParens;
-    uint32_t LBracketCount;
+    int32_t OpenParens;
+    int32_t LBracketCount;
 } metac_expr_parser_t;
 
 typedef struct metac_parser_t
@@ -151,6 +152,9 @@ const char* MetaCNodeKind_toChars(metac_node_kind_t type);
 
 static inline metac_location_t LocationFromToken(metac_parser_t* self,
                                                  metac_token_t* tok);
+
+static inline metac_location_t LocationFromIndex(metac_parser_t* self,
+                                                 uint32_t LocationIdx);
 
 metac_identifier_ptr_t RegisterString(metac_parser_t* self,
                                       metac_token_t* token);

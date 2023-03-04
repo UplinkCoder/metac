@@ -98,8 +98,9 @@ void MetaCParser_Init(metac_parser_t* self, metac_alloc_t* allocator)
     ARENA_ARRAY_INIT(parse_expr_flags_t, self->ExprParser.ExprFlagsStack, allocator)
     ARENA_ARRAY_INIT(metac_expr_kind_t, self->ExprParser.OpStack, allocator)
 
-    ARENA_ARRAY_INIT(uint32_t, self->ExprParser.ExprStackBottomStack, allocator)
-    ARENA_ARRAY_INIT(uint32_t, self->ExprParser.OpStackBottomStack, allocator)
+    ARENA_ARRAY_INIT(int32_t, self->ExprParser.ExprStackBottomStack, allocator)
+    ARENA_ARRAY_INIT(int32_t, self->ExprParser.OpStackBottomStack, allocator)
+    ARENA_ARRAY_INIT(int32_t, self->ExprParser.OpenParensStack, allocator)
 
     ARENA_ARRAY_INIT_SZ(identifier_callback_t, self->IdentifierCallbacks, allocator, 4)
 }
@@ -135,6 +136,17 @@ static inline metac_location_t LocationFromToken(metac_parser_t* self,
         return nullLocation;
 
     return self->Lexer->LocationStorage.Locations[tok->LocationId - 4];
+
+}
+
+static inline metac_location_t LocationFromIndex(metac_parser_t* self,
+                                                 uint32_t locationIdx)
+{
+    static const metac_location_t nullLocation = {0};
+    if (!locationIdx)
+        return nullLocation;
+
+    return self->Lexer->LocationStorage.Locations[locationIdx - 4];
 }
 
 metac_identifier_ptr_t RegisterIdentifier(metac_parser_t* self,
@@ -1663,6 +1675,12 @@ metac_decl_t* MetaCParser_ParseDecl(metac_parser_t* self, metac_decl_t* parent)
         {
             //TODO handle this #endif properly!
         }
+        else if (dirc == pp_source_indicator)
+        {
+            metac_preprocessor_source_indicator_t sourceIndicator =
+                MetaCPreProcessor_ParseSourceIndicator(self->Preprocessor, self);
+            // MetaCParser_SetSource(self, )
+        }
         else
         {
             printf("Saw preprocssor directive %s\n", Preprocessor_Directive_toChars(dirc));
@@ -2458,6 +2476,9 @@ void TestParseExprssion(void)
 
     expr = MetaCLPP_ParseExpr2FromString(&LPP, "a++ + b->c++");
     TEST_STR_EQ(MetaCPrinter_PrintExpr(&printer, expr), "((a)++ + (b -> c)++)");
+
+    expr = MetaCLPP_ParseExpr2FromString(&LPP, "f(g(), (h() + 12), j(), l(k(1, 2, 3)))");
+    TEST_STR_EQ(MetaCPrinter_PrintExpr(&printer, expr), "f(g(), (h() + 12), j(), l(k(1, 2, 3)))");
 
     expr = MetaCLPP_ParseExpr2FromString(&LPP, "typeof(*.Compiler)");
     TEST_STR_EQ(MetaCPrinter_PrintExpr(&printer, expr), "typeof((*(.(Compiler))))");

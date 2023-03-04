@@ -123,6 +123,13 @@ typedef struct metac_define_table_t
     uint32_t DefineMemoryCapacity;
 } metac_define_table_t;
 
+typedef struct metac_preprocessor_source_indicator_t
+{
+    uint32_t LineNumber;
+    metac_identifier_ptr_t FileNameString;
+    uint32_t StackDepth;
+} metac_preprocessor_source_indicator_t;
+
 typedef struct metac_preprocessor_t
 {
     metac_file_storage_t* FileStorage;
@@ -154,7 +161,12 @@ void MetaCPreProcessor_Init(metac_preprocessor_t *self, metac_lexer_t* lexer,
                             metac_file_storage_t* fs, const char* filepath);
 
 metac_preprocessor_define_ptr_t
-MetaCPreProcessor_ParseDefine(metac_preprocessor_t *self, struct metac_parser_t* parser);
+MetaCPreProcessor_ParseDefine(metac_preprocessor_t *self,
+                              struct metac_parser_t* parser);
+
+metac_preprocessor_source_indicator_t
+MetaCPreProcessor_ParseSourceIndicator(metac_preprocessor_t *self,
+                                       struct metac_parser_t* parser);
 
 metac_preprocessor_define_ptr_t MetaCPreProcessor_GetDefine(metac_preprocessor_t* self,
                                                             uint32_t identifierKey,
