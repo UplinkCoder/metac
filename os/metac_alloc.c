@@ -25,9 +25,6 @@ uint32_t                 g_allocatorCount = 0;
 void Allocator_Init_(metac_alloc_t* allocator, metac_alloc_t* parent,
                      const char* file, uint32_t line, const char* allocName)
 {
-#ifdef DEBUG_SERVER
-    Debug_Allocator(g_DebugServer, allocator);
-#endif
     allocator->Parent = parent;
     allocator->Name = ((allocName && allocName[0] == '&')
                     ? allocName + 1 : allocName);
@@ -73,6 +70,9 @@ void Allocator_Init_(metac_alloc_t* allocator, metac_alloc_t* parent,
     }
 
     allocator->AllocatedBlocks = allocated / BLOCK_SIZE;
+#endif
+#ifdef DEBUG_SERVER
+    Debug_Allocator(g_DebugServer, allocator);
 #endif
 }
 

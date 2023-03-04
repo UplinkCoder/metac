@@ -3,6 +3,10 @@
 #ifndef CURSES_UI
 #define LINENOISE_UI
 
+#ifdef DEBUG_SERVER
+#  include "../debug/debug_server.c"
+#endif
+
 #include "repl.c"
 #include "../3rd_party/linenoise/linenoise.c"
 //#include "../3rd_party/debugbreak/debugbreak.h"
@@ -129,8 +133,7 @@ int main(int argc, const char* argv[])
     aco_global_init();
 #endif
 #ifdef DEBUG_SERVER
-    g_DebugServer = &dbgSrv;
-    Debug_Init(g_DebugServer, 8180);
+    Debug_Init(&dbgSrv, 8180);
 #endif
     ctx.UiInterface = &LinenoiseUiInterface;
     ctx.UiState = &uiState;

@@ -6,7 +6,7 @@
 #include <string.h>
 #include "../os/bsf.h"
 
-debug_server_t* g_DebugServer;
+debug_server_t* g_DebugServer = 0;
 
 #ifndef ARRAYSIZE
 #define ARRAYSIZE(ARR) \
@@ -428,7 +428,8 @@ MHD_HANDLER(handleTasks)
     worker_context_t* worker = ((workerIdx && workerIdx <= (debugServer->WorkersCount))
         ? debugServer->Workers[workerIdx - 1] : 0);
 
-    const uint32_t inProgress = __builtin_popcount(~worker->FiberPool->FreeBitfield);
+    const uint32_t freeBitfield = worker ? worker->FiberPool->FreeBitfield : ~0;
+    const uint32_t inProgress = __builtin_popcount(~freeBitfield);
 
     p += snprintf(body + p, ARRAYSIZE(body) - p, "<tr>");
     for(uint32_t i = 0; i < ARRAYSIZE(headers); i++)
@@ -442,7 +443,7 @@ MHD_HANDLER(handleTasks)
     BF |= (1 << IDX);
 
     {
-        uint32_t inProgressBf = worker->FiberPool->FreeBitfield;
+        uint32_t inProgressBf = freeBitfield;
         uint32_t currentIdx;
         while (inProgressBf != ~0)
         {
@@ -527,6 +528,7 @@ static MHD_COMPLETED_CB (MhdCompletionCallback)
 
 int Debug_Init(debug_server_t* debugServer, unsigned short port) {
     struct MHD_Daemon *d;
+    assert(!g_DebugServer);
 #ifdef WIN32
     WSADATA wd;
     if (WSAStartup (MAKEWORD (2, 2), &wd) != 0)
@@ -566,6 +568,8 @@ int Debug_Init(debug_server_t* debugServer, unsigned short port) {
 #ifndef NO_FIBERS
     ARENA_ARRAY_INIT(worker_context_t*, debugServer->Workers, &debugServer->Allocator)
 #endif
+
+    g_DebugServer = debugServer;
    return 0;
 }
 
