@@ -1784,7 +1784,7 @@ static inline void PrintSemaExpr(metac_printer_t* self,
         if (!IsBinaryExp(semaExpr->E1->Kind))
             PrintChar(self, ')');
     }
-    else if (semaExpr->Kind == decl_enum_member)
+    else if ((cast(metac_node_kind_t)semaExpr->Kind) == node_decl_enum_member)
     {
         metac_enum_member_t* enumMember = cast(metac_enum_member_t*) semaExpr;
         //PrintSemaDecl(self, sema, enumMember, self->IndentLevel);
@@ -2230,11 +2230,11 @@ const char* MetaCPrinter_PrintNode(metac_printer_t* self, metac_node_t node, uin
     {
         PrintExpr(self, (metac_expr_t*) node);
     }
-    else if (node->Kind > stmt_min && node->Kind < stmt_max)
+    else if ((cast(metac_stmt_kind_t)node->Kind) > stmt_min && (cast(metac_stmt_kind_t) node->Kind) < stmt_max)
     {
         PrintStmt(self, (metac_stmt_t*) node);
     }
-    else if (node->Kind > decl_min && node->Kind < decl_max)
+    else if ((cast(metac_decl_kind_t)node->Kind) > decl_min && (cast(metac_decl_kind_t)node->Kind) < decl_max)
     {
         PrintDecl(self, (metac_decl_t*) node, level);
     }

@@ -990,7 +990,7 @@ metac_type_index_t TypeEnumSemantic(metac_sema_state_t* self,
 #define ISOLATED_ENUM_SCOPE 0
     if (!ISOLATED_ENUM_SCOPE)
     {
-        assert(TYPE_INDEX_KIND(self->CurrentScope->Owner) == scope_owner_module);
+        assert(self->CurrentScope->Owner.Kind == scope_owner_module);
 
         for(uint32_t memberIndex = 0;
             memberIndex < tmpSemaEnum.MemberCount;
@@ -1254,8 +1254,8 @@ LtryAgian: {}
                 meWaiter->FuncHash = CRC32C_S("MetaCSemantic_LookupIdentifier");
                 meWaiter->NodeHash = CRC32C_VALUE(~0, type->TypeIdentifier);
                 meWaiter->Continuation = me;
-                task->TaskFlags |= Task_Waiting;
-                task->TaskFlags &= (~Task_Running);
+                U32(task->TaskFlags) |= Task_Waiting;
+                U32(task->TaskFlags) &= (~Task_Running);
                 YIELD(WaitOnResolve);
                 printf("Trying agian after yielding\n");
                 goto LtryAgian;

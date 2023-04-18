@@ -645,6 +645,7 @@ MetaCPreProcessor_ParseSourceIndicator(metac_preprocessor_t *self,
         GetOrAddIdentifier(&parser->StringTable,
                            fileName->StringKey, stringChars);
 
+    return result;
 }
 
 metac_preprocessor_define_ptr_t
