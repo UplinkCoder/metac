@@ -128,12 +128,14 @@ void MetaCParser_InitFromLexer(metac_parser_t* self, metac_lexer_t* lexer, metac
 #define HandlePreprocessor(...)
 #define IsMacro(...) false
 
+static const metac_location_t invalidLocation = {0,0,0,0,0};
+
+
 static inline metac_location_t LocationFromToken(metac_parser_t* self,
                                                  metac_token_t* tok)
 {
-    static const metac_location_t nullLocation = {0};
-    if (tok->TokenType == tok_newline)
-        return nullLocation;
+     if (tok->TokenType == tok_newline)
+        return invalidLocation;
 
     return self->Lexer->LocationStorage.Locations[tok->LocationId - 4];
 
@@ -716,10 +718,19 @@ decl_type_t* MetaCParser_ParseTypeDecl(metac_parser_t* self,
                                               metac_decl_t* parent,
                                               metac_decl_t* prev);
 
-static const metac_location_t invalidLocation = {0,0,0,0,0};
-
 decl_type_t* MetaCParser_ParseTypeDecl(metac_parser_t* self, metac_decl_t* parent, metac_decl_t* prev);
 
+metac_location_t MetaCParser_CurrentLocation(metac_parser_t* self)
+{
+    metac_token_t* currentToken = MetaCParser_PeekToken(self, 0);
+
+    metac_location_t loc = (currentToken ?
+        LocationFromToken(self, currentToken) :
+        invalidLocation
+    );
+
+    return loc;
+}
 
 
 #ifndef NO_PREPROCESSOR

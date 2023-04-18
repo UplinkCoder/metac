@@ -630,18 +630,20 @@ MetaCPreProcessor_ParseSourceIndicator(metac_preprocessor_t *self,
     metac_token_t* lineNumber = MetaCParser_Match(parser, tok_uint);
     metac_token_t* fileName = MetaCParser_Match(parser, tok_string);
     metac_token_t* stackNo = 0;
+    const char* stringChars = 0;
 
-    if (MetaCParser_PeekToken(self, 1)->TokenType == tok_uint)
+    if (MetaCParser_PeekToken(parser, 1)->TokenType == tok_uint)
     {
         stackNo = MetaCParser_Match(parser, tok_uint);
     }
 
     result.LineNumber = lineNumber->ValueU32;
 
+    stringChars = IdentifierPtrToCharPtr(&parser->Lexer->StringTable,
+                                         fileName->StringPtr);
     result.FileNameString =
         GetOrAddIdentifier(&parser->StringTable,
-                           fileName->StringKey,
-                           LENGTH_FROM_STRING_KEY(fileName->StringKey));
+                           fileName->StringKey, stringChars);
 
 }
 

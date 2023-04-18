@@ -1119,18 +1119,33 @@ metac_expr_t* MetaCParser_ParseUnaryExpr(metac_parser_t* self)
     }
     else if (tokenType == tok_kw_assert)
     {
+        metac_location_t startLoc = MetaCParser_CurrentLocation(self);
+
+        metac_expr_t* assertValue = 0;
+        metac_expr_t* assertMessage = 0;
+
         MetaCParser_Match(self, tok_kw_assert);
         result = AllocNewExpr(expr_assert);
         //PushOperator(expr_assert);
-        metac_token_t* nextToken = MetaCParser_PeekToken(self, 1);
-        if (!nextToken || nextToken->TokenType != tok_lParen)
+        MetaCParser_Match(self, tok_lParen);
+        assertValue = MetaCParser_ParseExpr(self, expr_flags_none, 0);
+        MetaCParser_Match(self, tok_rParen);
+        if (assertValue->Kind == expr_comma)
         {
-            ParseError(loc, "Expected assert to be followed by '('");
+            // if the expression within the assert is a comma expression
+            // we assert that the right hand side of the comma expr is a string.
+            assertMessage = assertValue->E2;
+            assertValue = assertValue->E1;
+            if (assertMessage->Kind != expr_string)
+            {
+                metac_location_t loc = MetaCParser_CurrentLocation(self);
+                MetaCLocation_Expand(&startLoc, loc);
+                ParseError(startLoc, "the second argument of assert is supposed to be a string");
+                return 0;
+            }
         }
-        metac_expr_t* parenExp = MetaCParser_ParseExpr(self, expr_flags_none, 0);
         //PopOperator(expr_assert);
-        assert(parenExp->Kind == expr_paren);
-        result->E1 = parenExp->E1;
+        result->E1 = assertValue;
         result->Hash = CRC32C_VALUE(assert_key, result->E1->Hash);
     }
     else if (tokenType == tok_minus)
@@ -1631,7 +1646,11 @@ metac_expr_t* MetaCParser_ApplyOp(metac_parser_t* self, metac_expr_kind_t op)
         }
 
     }
-    else if (IsUnaryExp(op) || op == expr_assert)
+    else if (op == expr_assert)
+    {
+       
+    }
+    else if (IsUnaryExp(op))
     {
         e->E1 = MetaCParser_PopExpr(self);
         e->Hash = e->E1->Hash;
@@ -1699,6 +1718,7 @@ metac_expr_t* MetaCParser_ParseExpr2(metac_parser_t* self, parse_expr_flags_t fl
 
     MetaCParser_PushExprStackBottom(self, self->ExprParser.ExprStackCount);
     MetaCParser_PushOpStackBottom(self, self->ExprParser.OpStackCount);
+    MetaCParser_PushOpenParens(self);
     MetaCParser_PushFlags(self, flags);
 
     currentToken = MetaCParser_PeekToken(self, 1);
@@ -1871,15 +1891,19 @@ LPopUnaryOp:
         // Termination condition return top of stack
 LTerminate:
         {
-            uint32_t n_exprs =
+            int32_t n_exprs =
                 (self->ExprParser.ExprStackCount - MetaCParser_TopExprStackBottom(self));
-            uint32_t n_ops =
+            int32_t n_ops =
                 (self->ExprParser.OpStackCount - MetaCParser_TopOpStackBottom(self));
+
+            assert(self->ExprParser.ExprStackCount >= MetaCParser_TopExprStackBottom(self));
+            assert(self->ExprParser.OpStackCount >= MetaCParser_TopOpStackBottom(self));
 
             if (n_ops >= 1)
             {
                 while (n_ops-- > 0)
                 {
+                    assert(n_ops >= 0);
                     metac_expr_kind_t op = MetaCParser_PopOp(self);
                     MetaCParser_ApplyOp(self, op);
                 }
@@ -1892,6 +1916,7 @@ LTerminate:
                 MetaCParser_PopExprStackBottom(self);
                 MetaCParser_PopOpStackBottom(self);
                 MetaCParser_PopFlags(self);
+                MetaCParser_PopOpenParens(self);
                 result = MetaCParser_PopExpr(self);
             }
             else

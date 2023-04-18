@@ -1088,7 +1088,7 @@ const char* doDeclSemantic_PrintFunction(task_t* task)
 metac_sema_decl_t* MetaCSemantic_declSemantic(metac_sema_state_t* self,
                                                      metac_decl_t* decl)
 {
-    metac_sema_decl_t* result = cast(metac_sema_decl_t*)0xFEFEFEFE;
+    metac_sema_decl_t* result = cast(metac_sema_decl_t*)(intptr_t)0xFEFEFEFE;
     metac_identifier_ptr_t declId = {0};
 
     switch(decl->Kind)

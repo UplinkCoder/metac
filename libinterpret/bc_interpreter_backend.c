@@ -1144,7 +1144,7 @@ BCValue BCGen_interpret(BCGen* self, uint32_t fnIdx, BCValue* args, uint32_t n_a
         const int32_t imm32c = *(cast(int32_t*)&((codeP)[state.ip + 1]));
         state.ip += 2;
 
-        if (IS_CMP_INST(lw & INSTMASK) && (state.mode & MODE_STICKY_MASK))
+        if (IS_CMP_INST((lw & INSTMASK)) && (state.mode & MODE_STICKY_MASK))
         {
             switch(state.mode & MODE_STICKY_MASK)
             {
