@@ -64,8 +64,10 @@ int MetaCSemaTree_Walk_Real(metac_node_t node, struct metac_sema_state_t* sema,
 #define MetaCSemaTree_Walk_Real(NODE, SEMA, FN, CTX) \
     MetaCSemaTree_Walk_Real((metac_node_t)NODE, SEMA, FN, CTX)
 
+#ifndef emptyNode
 #define emptyNode \
     ((metac_node_t) 0x1)
+#endif
 
     if(((metac_node_t)node) == emptyNode)
         return 0;

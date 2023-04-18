@@ -481,7 +481,7 @@ void MetaCRepl_ExprSemantic_Task(task_t* task)
     ENQUEUE_TASK(result, MetaCSemantic_doExprSemantic_,
                  (&ctx->Repl->SemanticState), ctx->Exp, 0);
 
-    task->TaskFlags |= Task_Waiting;
+    U32(task->TaskFlags) |= Task_Waiting;
     // MSG("Just before yield\n");
     YIELD(WaitForExprSemantic);
 
@@ -1092,7 +1092,7 @@ LswitchMode:
                 DeclSemaTask.TaskFunction = MetaCSemantic_doDeclSemantic_Task;
                 DeclSemaTask.Context = ctxPtr;
                 DeclSemaTask.ContextSize = sizeof(ctx);
-                DeclSemaTask.TaskFlags |= Task_Continuation_Func;
+                U32(DeclSemaTask.TaskFlags) |= Task_Continuation_Func;
                 DeclSemaTask.ContinuationFunc = cast(void (*)(void*)) Repl_doDeclSemantic_cont;
 
                 worker_context_t* replWorker = CurrentWorker();

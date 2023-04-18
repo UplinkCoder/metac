@@ -6,6 +6,10 @@
 #include "../libinterpret/bc_interpreter_backend.c"
 #include "../libinterpret/printer_backend.c"
 
+#ifndef emptyNode
+#  define emptyNode ((metac_node_t) 0x1)
+#endif
+
 #ifdef _WIN32
 #  define INT32_MAX 0x7fffffff
 #  define INT32_MIN (~INT32_MAX)
@@ -815,8 +819,8 @@ static void LoadFromHeapRef(metac_bytecode_ctx_t* ctx, BCValue* hrv, uint32_t ab
     {
         BCTypeEnum types[] = {BCTypeEnum_u64, BCTypeEnum_i64, BCTypeEnum_f52};
         if(BCTypeEnum_anyOf(hrv->type.type, types, ARRAY_SIZE(types)))
+Lload64:
         {
-Lload64: {}
             BCValue hr = BCValue_fromHeapref(hrv->heapRef);
             gen.Load64(c, hrv, &hr);
             return ;
@@ -831,8 +835,8 @@ Lload64: {}
             BCTypeEnum_f23
         };
         if(BCTypeEnum_anyOf(hrv->type.type, types, ARRAY_SIZE(types)))
+Lload32:
         {
-Lload32: {}
             BCValue hr = BCValue_fromHeapref(hrv->heapRef);
             gen.Load32(c, hrv, &hr);
             return ;
