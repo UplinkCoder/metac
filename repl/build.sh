@@ -16,7 +16,8 @@ fi
 $CC $CFLAGS linenoise_repl.c \
     -DACOSW_EXTERNAL_ASM ../3rd_party/libaco/acosw.S \
     -I.. -DACCEL=$ACCEL \
-    -g3 -O0 -march=native -mtune=native \
+    -g3 -O0 \
+    -mtune=core2 -march=core2 \
     -lm -lpthread \
     -o repl $@
-# -mtune=core2 -march=core2
+#-march=native -mtune=native \

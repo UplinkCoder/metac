@@ -767,10 +767,13 @@ metac_expr_t* MetaCParser_ParsePrimaryExpr(metac_parser_t* self, parse_expr_flag
         //PushOperator(expr_paren);
         result->Hash = CRC32C_VALUE(crc32c_nozero(~0, "()", 2), result->E1->Hash);
         //PushOperand(result);
+/*
         metac_token_t* endParen =
             MetaCParser_Match(self, tok_rParen);
         MetaCLocation_Expand(&loc, LocationFromToken(self, endParen));
+*/
         self->ExprParser.OpenParens--;
+
         //PopOperator(expr_paren);
     }
     else if (tokenType == tok_lBrace)
@@ -1331,11 +1334,11 @@ expr_argument_t* MetaCParser_ParseArgumentList(metac_parser_t* self, parse_expr_
     if (arguments != emptyPointer)
     {
         arguments->Hash = hash;
+
         metac_token_t* rParen = MetaCParser_PeekToken(self, 0);
         MetaCLocation_Expand(&loc, LocationFromToken(self, rParen));
         arguments->LocationIdx =
-            MetaCLocationStorage_Store(&self->LocationStorage, loc);
-        MetaCParser_Match(self, tok_rParen);
+                MetaCLocationStorage_Store(&self->LocationStorage, loc);
     }
 
     return arguments;
@@ -1569,10 +1572,12 @@ uint32_t MetaCParser_TopExprStackBottom(metac_parser_t* self)
 
 metac_expr_t* MetaCParser_TopExpr(metac_parser_t* self)
 {
-    const uint32_t stackCount = self->ExprParser.ExprStackCount;
-    const uint32_t stackBottom = MetaCParser_TopExprStackBottom(self);
+    const int32_t stackCount = self->ExprParser.ExprStackCount;
+    const int32_t stackBottom = MetaCParser_TopExprStackBottom(self);
 
     metac_expr_t* result = 0;
+
+    // printf("stackBottom: %d\n", stackBottom);
 
     assert(stackCount >= stackBottom);
 

@@ -145,7 +145,7 @@ int main(int argc, const char* argv[])
     compiler.Message = doUiMessage;
 #endif
     g_uiContext = &ctx;
-#ifndef NO_FIBERS
+#if !defined(NO_FIBERS)
     worker_context_t replWorkerContext = {0};
     worker_context_t* ctxPtr = &replWorkerContext;
     THREAD_CONTEXT_SET(ctxPtr);

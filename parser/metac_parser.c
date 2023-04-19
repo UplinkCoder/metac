@@ -715,10 +715,8 @@ static inline bool IsDeclFirstToken(metac_token_enum_t tokenType)
 static metac_type_modifiers ParseTypeModifiers(metac_parser_t* self);
 
 decl_type_t* MetaCParser_ParseTypeDecl(metac_parser_t* self,
-                                              metac_decl_t* parent,
-                                              metac_decl_t* prev);
-
-decl_type_t* MetaCParser_ParseTypeDecl(metac_parser_t* self, metac_decl_t* parent, metac_decl_t* prev);
+                                       metac_decl_t* parent,
+                                       metac_decl_t* prev);
 
 metac_location_t MetaCParser_CurrentLocation(metac_parser_t* self)
 {
@@ -1790,9 +1788,10 @@ metac_decl_t* MetaCParser_ParseDecl(metac_parser_t* self, metac_decl_t* parent)
         if (MetaCParser_PeekMatch(self, tok_lParen, 1))
         {
             // this might be a function pointer
-            MetaCParser_Match(self, tok_lParen);
             decl_variable_t* fPtrVar;
+            MetaCParser_Match(self, tok_lParen);
             // self->OpenParens++;
+
             if (MetaCParser_PeekMatch(self, tok_star, 1))
             {
                 MetaCParser_Match(self, tok_star);
@@ -2446,6 +2445,10 @@ const char* MetaCNodeKind_toChars(metac_node_kind_t type)
         fprintf(stderr, "[+%d %s] failing '%s' != '%s'\n", __LINE__, __FILE__, \
                                                            _given, _expected); \
     } \
+    else \
+    { \
+        fprintf(stderr, "[+%d %s] passed '%s'\n", __LINE__, __FILE__, _given); \
+    } \
 }
 
 #include "../printer/metac_printer.h"
@@ -2467,31 +2470,31 @@ void TestParseExprssion(void)
     );
     metac_expr_t* expr;
 
-    expr = MetaCLPP_ParseExpr2FromString(&LPP, "12 - 16 - 99");
+    expr = MetaCLPP_ParseExpr2FromString(&LPP,          "12 - 16 - 99");
     TEST_STR_EQ(MetaCPrinter_PrintExpr(&printer, expr), "((12 - 16) - 99)");
 
-    expr = MetaCLPP_ParseExpr2FromString(&LPP, "2 * 12 + 10");
+    expr = MetaCLPP_ParseExpr2FromString(&LPP,          "2 * 12 + 10");
     TEST_STR_EQ(MetaCPrinter_PrintExpr(&printer, expr), "((2 * 12) + 10)");
 
-    expr = MetaCLPP_ParseExpr2FromString(&LPP, "2 + 10 * 2");
+    expr = MetaCLPP_ParseExpr2FromString(&LPP,          "2 + 10 * 2");
     TEST_STR_EQ(MetaCPrinter_PrintExpr(&printer, expr), "(2 + (10 * 2))");
 
-    expr = MetaCLPP_ParseExpr2FromString(&LPP, "a = b(c)");
+    expr = MetaCLPP_ParseExpr2FromString(&LPP,          "a = b(c)");
     TEST_STR_EQ(MetaCPrinter_PrintExpr(&printer, expr), "(a = b(c))");
 
-    expr = MetaCLPP_ParseExpr2FromString(&LPP, "((x + ((((a + b))))) + d)");
+    expr = MetaCLPP_ParseExpr2FromString(&LPP,          "((x + ((((a + b))))) + d)");
     TEST_STR_EQ(MetaCPrinter_PrintExpr(&printer, expr), "((x + ((((a + b))))) + d)");
 
-    expr = MetaCLPP_ParseExpr2FromString(&LPP, "x + y * 6737203");
+    expr = MetaCLPP_ParseExpr2FromString(&LPP,          "x + y * 6737203");
     TEST_STR_EQ(MetaCPrinter_PrintExpr(&printer, expr), "(x + (y * 6737203))");
 
-    expr = MetaCLPP_ParseExpr2FromString(&LPP, "a++ + b->c++");
+    expr = MetaCLPP_ParseExpr2FromString(&LPP,          "a++ + b->c++");
     TEST_STR_EQ(MetaCPrinter_PrintExpr(&printer, expr), "((a)++ + (b -> c)++)");
 
-    expr = MetaCLPP_ParseExpr2FromString(&LPP, "f(g(), (h() + 12), j(), l(k(1, 2, 3)))");
+    expr = MetaCLPP_ParseExpr2FromString(&LPP,          "f(g(), (h() + 12), j(), l(k(1, 2, 3)))");
     TEST_STR_EQ(MetaCPrinter_PrintExpr(&printer, expr), "f(g(), (h() + 12), j(), l(k(1, 2, 3)))");
 
-    expr = MetaCLPP_ParseExpr2FromString(&LPP, "typeof(*.Compiler)");
+    expr = MetaCLPP_ParseExpr2FromString(&LPP,          "typeof(*.Compiler)");
     TEST_STR_EQ(MetaCPrinter_PrintExpr(&printer, expr), "typeof((*(.(Compiler))))");
 }
 

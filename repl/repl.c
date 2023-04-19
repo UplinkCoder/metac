@@ -896,7 +896,7 @@ LswitchMode:
                     const char* str = MetaCPrinter_PrintExpr(&repl->printer, exp);
 
                     metac_sema_expr_t* result = 0;
-                    
+
                     result =
                         MetaCSemantic_doExprSemantic(&repl->SemanticState, exp, 0);
 
