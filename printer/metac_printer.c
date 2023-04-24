@@ -195,22 +195,37 @@ static inline void PrintType(metac_printer_t* self, decl_type_t* type);
 static inline void PrintParameterList(metac_printer_t* self,
                                      decl_parameter_t* Parameters);
 
+static inline void PrintFunctionTypeWithIdentifier(metac_printer_t* self,
+                                                   decl_type_t* type,
+                                                   metac_identifier_ptr_t identifier)
+{
+    decl_type_functiontype_t *funcType =
+        (decl_type_functiontype_t*) type;
+
+    assert(type->Kind == decl_type_functiontype);
+
+    PrintType(self, funcType->ReturnType);
+    PrintSpace(self);
+    PrintChar(self, '(');
+    PrintChar(self, '*');
+    if (identifier.v != empty_identifier.v)
+    {
+        PrintIdentifier(self, identifier);
+    }
+    PrintChar(self, ')');
+    PrintSpace(self);
+    PrintParameterList(self, funcType->Parameters);
+}
+
+
 static inline void PrintVariable(metac_printer_t* self,
                                  decl_variable_t* variable)
 {
     if (variable->VarType->Kind == decl_type_functiontype)
     {
-        decl_type_functiontype_t *funcType =
-            (decl_type_functiontype_t*) variable->VarType;
-
-        PrintType(self, funcType->ReturnType);
-        PrintSpace(self);
-        PrintChar(self, '(');
-        PrintChar(self, '*');
-        PrintIdentifier(self, variable->VarIdentifier);
-        PrintChar(self, ')');
-        PrintSpace(self);
-        PrintParameterList(self, funcType->Parameters);
+        PrintFunctionTypeWithIdentifier(self,
+                                        variable->VarType,
+                                        variable->VarIdentifier);
     }
     else
     {
@@ -229,8 +244,8 @@ static inline void PrintVariable(metac_printer_t* self,
 }
 
 static inline void PrintDecl(metac_printer_t* self,
-                                    metac_decl_t* decl,
-                                    uint32_t level);
+                             metac_decl_t* decl,
+                             uint32_t level);
 
 static inline void PrintField(metac_printer_t* self,
                               decl_variable_t* field)
@@ -418,13 +433,7 @@ static inline void PrintType(metac_printer_t* self, decl_type_t* type)
         break;
         case decl_type_functiontype:
         {
-            decl_type_functiontype_t *funcType = (decl_type_functiontype_t*) type;
-            PrintType(self, funcType->ReturnType);
-            PrintSpace(self);
-            PrintChar(self, '(');
-            PrintChar(self, '*');
-            PrintString(self, "function) ", sizeof("function) ") - 1);
-            PrintParameterList(self, funcType->Parameters);
+            PrintFunctionTypeWithIdentifier(self, type, empty_identifier);
         } break;
         case decl_type_enum :
         {
@@ -844,41 +853,58 @@ static inline void PrintDecl(metac_printer_t* self,
             PrintNewline(self);
             PrintToken(self, tok_rBrace);
         } break;
+
         case decl_type_typedef:
         {
             decl_type_typedef_t* typdef = (decl_type_typedef_t*) decl;
             PrintString(self, "typedef ", sizeof("typedef ") - 1);
             level++;
             self->ForTypedef = true;
-            PrintDecl(self, (metac_decl_t*)typdef->Type, level);
-            if (typdef->Identifier.v != empty_identifier.v)
+            if (typdef->Type->Kind == decl_type_functiontype)
             {
-                PrintSpace(self);
-                PrintIdentifier(self, typdef->Identifier);
+                PrintFunctionTypeWithIdentifier(self, typdef->Type, typdef->Identifier);
+            }
+            else
+            {
+                PrintDecl(self, (metac_decl_t*)typdef->Type, level);
+                if (typdef->Identifier.v != empty_identifier.v)
+                {
+                    PrintSpace(self);
+                    PrintIdentifier(self, typdef->Identifier);
+                }
             }
             level--;
         } break;
+
         case decl_type:
+        case decl_type_array:
         {
             PrintType(self, (decl_type_t*) decl);
         }  break;
+
         case decl_type_union :
         case decl_type_struct :
         {
             decl_type_struct_t* struct_ = (decl_type_struct_t*) decl;
+            decl_field_t* f = struct_->Fields;
             PrintKeyword(self, AggToken(decl->Kind));
             if (struct_->Identifier.v != empty_identifier.v)
             {
                 PrintSpace(self);
                 PrintIdentifier(self, struct_->Identifier);
             }
+
+            if (METAC_NODE(f) == emptyNode)
+            {
+                break;
+            }
+
             PrintSpace(self);
             PrintToken(self, tok_lBrace);
             ++level;
             ++self->IndentLevel;
             PrintNewline(self);
             PrintIndent(self);
-            decl_field_t* f = struct_->Fields;
             for(uint32_t memberIndex = 0;
                 memberIndex < struct_->FieldCount;
                 memberIndex++)
@@ -899,10 +925,14 @@ static inline void PrintDecl(metac_printer_t* self,
             else
                 PrintSpace(self);
         } break;
-        case decl_type_array:
+
+        case decl_type_functiontype:
         {
-            PrintType(self, (decl_type_t*)decl);
+            // printing function type for a typedef should have been done already.
+            assert(!printingTypedef);
+            PrintFunctionTypeWithIdentifier(self, (decl_type_t*)decl, empty_identifier);
         } break;
+
         case decl_field :
         {
             decl_field_t* field = (decl_field_t*) decl;
@@ -930,6 +960,7 @@ static inline void PrintDecl(metac_printer_t* self,
                 printSemicolon = false;
             }
         } break;
+
         case decl_comment:
         {
             decl_comment_t* comment = (decl_comment_t*) decl;
