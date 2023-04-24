@@ -1690,6 +1690,11 @@ metac_decl_t* MetaCParser_ParseDecl(metac_parser_t* self, metac_decl_t* parent)
                 MetaCPreProcessor_ParseSourceIndicator(self->Preprocessor, self);
             // MetaCParser_SetSource(self, )
         }
+        else if (dirc == pp_pragma)
+        {
+            metac_preprocessor_pragma_t pragma =
+                MetaCPreProcessor_ParsePragma(self->Preprocessor, self);
+        }
         else
         {
             printf("Saw preprocssor directive %s\n", Preprocessor_Directive_toChars(dirc));

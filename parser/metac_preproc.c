@@ -621,6 +621,27 @@ Lerror:
 # 15 "../parser/metac_expr_parser.h"
 */
 
+static metac_preprocessor_linemarker_flag_t LinemarkerFlag(metac_token_t* flagToken)
+{
+     metac_preprocessor_linemarker_flag_t result = linemarker_none;
+
+    if ((flagToken->TokenType == tok_uint)
+     && ((flagToken->ValueU32 <= 4) & (flagToken->ValueU32 >= 1)))
+    {
+        switch (flagToken->ValueU32)
+        {
+        // docs: https://gcc.gnu.org/onlinedocs/gcc-4.1.2/cpp/Preprocessor-Output.html
+#define CASE(NAME, VALUE) \
+        case VALUE : result = NAME; break;
+
+        FOREACH_LINEMARKER_FLAG(CASE)
+
+#undef CASE
+        }
+    }
+    return result;
+}
+
 metac_preprocessor_source_indicator_t
 MetaCPreProcessor_ParseSourceIndicator(metac_preprocessor_t *self,
                                        metac_parser_t* parser)
@@ -629,21 +650,31 @@ MetaCPreProcessor_ParseSourceIndicator(metac_preprocessor_t *self,
 
     metac_token_t* lineNumber = MetaCParser_Match(parser, tok_uint);
     metac_token_t* fileName = MetaCParser_Match(parser, tok_string);
-    metac_token_t* stackNo = 0;
+    metac_token_t* flagToken = 0;
     const char* stringChars = 0;
 
-    if (MetaCParser_PeekToken(parser, 1)->TokenType == tok_uint)
-    {
-        stackNo = MetaCParser_Match(parser, tok_uint);
-    }
-
     result.LineNumber = lineNumber->ValueU32;
-
     stringChars = IdentifierPtrToCharPtr(&parser->Lexer->StringTable,
                                          fileName->StringPtr);
     result.FileNameString =
         GetOrAddIdentifier(&parser->StringTable,
                            fileName->StringKey, stringChars);
+
+
+    while (MetaCParser_PeekToken(parser, 1)->TokenType == tok_uint)
+    {
+        metac_preprocessor_linemarker_flag_t linemarkerFlag;
+        flagToken = MetaCParser_Match(parser, tok_uint);
+        if ((linemarkerFlag = LinemarkerFlag(flagToken)) != linemarker_none)
+        {
+            U32(result.Flags) |= linemarkerFlag;
+        }
+        else
+        {
+            // TODO error instead of assert.
+            assert(!"unknown linemarker flag ... handle as error");
+        }
+    }
 
     return result;
 }
@@ -841,6 +872,18 @@ BCValue MetaCPreProcessor_Defined(void* ctx, uint32_t nVals, BCValue* vals)
 
 }
 #endif
+
+metac_preprocessor_pragma_t MetaCPreProcessor_ParsePragma(metac_preprocessor_t* self,
+                                                          metac_parser_t* parser)
+{
+    metac_preprocessor_pragma_t result = {0};
+    metac_token_t* currentToken = 0;
+
+    currentToken = MetaCParser_PeekToken(parser, 1);
+    assert(!"Not Implemented");
+
+    return result;
+}
 
 uint32_t MetaCPreProcessor_Eval(metac_preprocessor_t* self, struct metac_parser_t* parser)
 {

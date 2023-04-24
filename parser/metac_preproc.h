@@ -24,6 +24,7 @@
 #include "metac_identifier_table.h"
 #include "../os/metac_file.h"
 #include "metac_array.h"
+#include <string.h>
 
 #define FOREACH_PREPROC_DIRECTIVE(M) \
     M(pp_invalid) \
@@ -55,9 +56,8 @@
 typedef enum metac_preprocessor_directive_t
 {
     FOREACH_PREPROC_DIRECTIVE(WITH_COMMA)
+    pp_max
 } metac_preprocessor_directive_t;
-
-#undef WITH_COMMA
 
 static const char* Preprocessor_Directive_toChars(metac_preprocessor_directive_t directive)
 {
@@ -73,6 +73,76 @@ static const char* Preprocessor_Directive_toChars(metac_preprocessor_directive_t
 
     return result;
 }
+
+#define FOREACH_LINEMARKER_FLAG(M) \
+    M(linemarker_none, 0) \
+    M(linemarker_newfile, 1) \
+    M(linemarker_returntofile, 2) \
+    M(linemarker_systemheader, 3) \
+    M(linemarker_externc, 4)
+
+#define DEFINE_LINEMARKER(NAME, VALUE) \
+    NAME = LINEMARKER_VALUE(VALUE),
+
+#define LINEMARKER_VALUE(VALUE) \
+    ((VALUE != 0) ? (1 << VALUE) : 0)
+
+#define LINEMARKER_MAX(_, VALUE) \
+    LINEMARKER_VALUE(VALUE) |
+
+#define LINEMARKER_MAX_STRING_LENGTH_(NAME, _) \
+    sizeof(#NAME) +
+
+#define LINEMARKER_MAX_STRING_LENGTH \
+    (FOREACH_LINEMARKER_FLAG(LINEMARKER_MAX_STRING_LENGTH_) 1)
+
+typedef enum metac_preprocessor_linemarker_flag_t
+{
+    FOREACH_LINEMARKER_FLAG(DEFINE_LINEMARKER)
+    linemarker_max = (FOREACH_LINEMARKER_FLAG(LINEMARKER_MAX) 0)
+} metac_preprocessor_linemarker_flag_t;
+
+static const char* Preprocessor_LinemarkerFlag_toChars(metac_preprocessor_linemarker_flag_t flag)
+{
+    static char result[LINEMARKER_MAX_STRING_LENGTH];
+
+    uint32_t currentFlag = BSF(flag);
+    while(flag)
+    {
+        flag &= (~(1 << currentFlag));
+        switch(currentFlag)
+        {
+// strcat can be used safely here since the max string length
+// is computed at compile_time
+#define CASE(NAME,VALUE) \
+            case VALUE: strcat(result, (#NAME "|")); break;
+
+        FOREACH_LINEMARKER_FLAG(CASE)
+#undef CASE
+        }
+    }
+
+    return result;
+}
+
+#define FOREACH_KNOWN_PRAGMA(M) \
+    M(metac_pragma_unknown) \
+    M(metac_pragma_pack) \
+    M(metac_pragma_once)
+
+typedef enum metac_preprocessor_pragma_enum_t
+{
+    FOREACH_KNOWN_PRAGMA(WITH_COMMA)
+    metac_pragma_max
+} metac_preprocessor_pragma_enum_t;
+
+#undef WITH_COMMA
+
+
+typedef struct metac_preprocessor_pragma_t
+{
+    metac_preprocessor_pragma_enum_t KnownPragma;
+} metac_preprocessor_pragma_t;
 
 typedef struct metac_preprocessor_define_ptr_t
 {
@@ -127,7 +197,7 @@ typedef struct metac_preprocessor_source_indicator_t
 {
     uint32_t LineNumber;
     metac_identifier_ptr_t FileNameString;
-    uint32_t StackDepth;
+    metac_preprocessor_linemarker_flag_t Flags;
 } metac_preprocessor_source_indicator_t;
 
 typedef struct metac_preprocessor_t
@@ -167,6 +237,10 @@ MetaCPreProcessor_ParseDefine(metac_preprocessor_t *self,
 metac_preprocessor_source_indicator_t
 MetaCPreProcessor_ParseSourceIndicator(metac_preprocessor_t *self,
                                        struct metac_parser_t* parser);
+
+metac_preprocessor_pragma_t
+MetaCPreProcessor_ParsePragma(metac_preprocessor_t* self,
+                              struct metac_parser_t* parser);
 
 metac_preprocessor_define_ptr_t MetaCPreProcessor_GetDefine(metac_preprocessor_t* self,
                                                             uint32_t identifierKey,
