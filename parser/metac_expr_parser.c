@@ -970,7 +970,7 @@ static inline metac_expr_t* ParseUnaryDotExpr(metac_parser_t* self)
         MetaCParser_Match(self, tok_uint);
         //bool static ParseFloat(const char** textP, int32_t* eatenCharsP, float* valueP)
         char vBuffer[32];
-        char* p = vBuffer;
+        const char* p = vBuffer;
         int32_t unused;
         float value;
         snprintf(vBuffer, sizeof(vBuffer), "0.%u", peek->ValueU32);
