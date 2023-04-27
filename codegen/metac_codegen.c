@@ -1416,10 +1416,9 @@ static void MetaCCodegen_doExpr(metac_bytecode_ctx_t* ctx,
                 gen.GenExternal(c, MetaCCodegen_GetBCType(ctx, exp->TypeIndex), str);
 
             uint32_t sz = LENGTH_FROM_STRING_KEY(exp->StringKey);
-            gen.MapExternal(c, &strPtr, str, sz);
-            //TODO this is a memory corruption waiting to happen.
-            //we are referencing stack memory
-            result = &strPtr;
+            gen.MapExternal(c, &strPtr, cast(void*)str, sz);
+
+            (*result) = strPtr;
 
 
             // this should not happen, we should have made it into a pointer I think
