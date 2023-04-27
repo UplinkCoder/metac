@@ -679,6 +679,30 @@ MetaCPreProcessor_ParseSourceIndicator(metac_preprocessor_t *self,
     return result;
 }
 
+static const char* Preprocessor_LinemarkerFlag_toChars(metac_preprocessor_linemarker_flag_t flag)
+{
+	static char result[LINEMARKER_MAX_STRING_LENGTH];
+
+	uint32_t currentFlag = BSF(flag);
+	while (flag)
+	{
+		U32(flag) &= (~(1 << currentFlag));
+		switch (currentFlag)
+		{
+			// strcat can be used safely here since the max string length
+			// is computed at compile_time
+#define CASE(NAME,VALUE) \
+            case VALUE: strcat(result, (#NAME "|")); break;
+
+			FOREACH_LINEMARKER_FLAG(CASE)
+#undef CASE
+		}
+	}
+
+	return result;
+}
+
+
 metac_preprocessor_define_ptr_t
 MetaCPreProcessor_ParseDefine(metac_preprocessor_t *self,
                               metac_parser_t* parser)

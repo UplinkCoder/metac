@@ -102,28 +102,7 @@ typedef enum metac_preprocessor_linemarker_flag_t
     linemarker_max = (FOREACH_LINEMARKER_FLAG(LINEMARKER_MAX) 0)
 } metac_preprocessor_linemarker_flag_t;
 
-static const char* Preprocessor_LinemarkerFlag_toChars(metac_preprocessor_linemarker_flag_t flag)
-{
-    static char result[LINEMARKER_MAX_STRING_LENGTH];
-
-    uint32_t currentFlag = BSF(flag);
-    while(flag)
-    {
-        flag &= (~(1 << currentFlag));
-        switch(currentFlag)
-        {
-// strcat can be used safely here since the max string length
-// is computed at compile_time
-#define CASE(NAME,VALUE) \
-            case VALUE: strcat(result, (#NAME "|")); break;
-
-        FOREACH_LINEMARKER_FLAG(CASE)
-#undef CASE
-        }
-    }
-
-    return result;
-}
+static const char* Preprocessor_LinemarkerFlag_toChars(metac_preprocessor_linemarker_flag_t flag);
 
 #define FOREACH_KNOWN_PRAGMA(M) \
     M(metac_pragma_unknown) \
