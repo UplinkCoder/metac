@@ -1468,7 +1468,7 @@ uint32_t HashDecl(metac_decl_t* decl)
         case decl_comment:
         {
             decl_comment_t* comment = cast(decl_comment_t*) decl;
-            result = crc32c(CRC32C_SLASH_SLASH, comment->Text, comment->Length);
+            result = crc32c_nozero(CRC32C_SLASH_SLASH, comment->Text, comment->Length);
         } break;
         case decl_type_typedef:
         {
@@ -1746,7 +1746,7 @@ metac_decl_t* MetaCParser_ParseDecl(metac_parser_t* self, metac_decl_t* parent)
         decl_comment_t* comment = AllocNewDecl(decl_comment, &result);
         comment->Text = self->CurrentComment.CommentBegin;
         comment->Length = self->CurrentComment.CommentLength;
-        result->Hash = crc32c(CRC32C_SLASH_SLASH, comment->Text, comment->Length);
+        result->Hash = crc32c_nozero(CRC32C_SLASH_SLASH, comment->Text, comment->Length);
         return result;
     }
 
@@ -1989,9 +1989,8 @@ metac_stmt_t* MetaCParser_ParseStmt(metac_parser_t* self,
         stmt_comment_t* comment = AllocNewStmt(stmt_comment, &result);
         comment->Text = self->CurrentComment.CommentBegin;
         comment->Length = self->CurrentComment.CommentLength;
-        comment->Hash = crc32c(CRC32C_SLASH_SLASH, comment->Text, comment->Length);
+        comment->Hash = crc32c_nozero(CRC32C_SLASH_SLASH, comment->Text, comment->Length);
         metac_token_t* tok2 = MetaCParser_PeekToken(self, 1);
-        int k = 12;
     }
     else if (tokenType == tok_kw_if)
     {
