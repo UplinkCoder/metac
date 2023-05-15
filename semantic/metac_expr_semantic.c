@@ -558,7 +558,7 @@ metac_expr_t* RewriteAndtoAddrIfNeeded(metac_sema_state_t* self, metac_expr_t* e
     if (expr->E1->Kind == expr_paren
      && expr->E1->E1->Kind == expr_type)
     {
-        metac_sema_expr_t E1 = {0};
+        metac_sema_expr_t E1 = {(metac_expr_kind_t)0};
         MetaCSemantic_doExprSemantic(self, expr->E1->E1, &E1);
         if (E1.Kind == expr_type)
         {
@@ -913,7 +913,7 @@ LswitchIdKey:
         break;
         case expr_signed_integer :
         {
-            decl_type_t typeInfo = {0};
+            decl_type_t typeInfo = {(metac_decl_kind_t)0};
             metac_type_kind_t baseType = type_int;
 
             hash = CRC32C_VALUE(expr_signed_integer, expr->ValueU64);

@@ -2,6 +2,7 @@
 #define  _METAC_VSTORE_H_
 
 #include "../parser/metac_identifier_table.h"
+#include "../semantic/metac_sematree.h"
 
 typedef struct variable_t
 {

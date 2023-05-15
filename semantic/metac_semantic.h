@@ -321,4 +321,6 @@ void MetaCSemantic_PopTemporaryScope_(metac_sema_state_t* self,
                                       const char* file);
 bool MetaCSemantic_ConstantFold(metac_sema_state_t* self, metac_sema_expr_t* exp);
 
+metac_type_index_t MetaCSemantic_GetType(metac_sema_state_t* self, metac_node_t node);
+
 #endif

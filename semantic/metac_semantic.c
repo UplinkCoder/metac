@@ -813,8 +813,8 @@ scope_insert_error_t MetaCSemantic_RegisterInScope(metac_sema_state_t* self,
             task_t* waitingTask = cast(task_t*)waiter->Continuation->arg;
             // assert(waitingTask->TaskFlags == Task_Waiting);
             printf("Found matching waiter\n");
-            waitingTask->TaskFlags &= (~Task_Waiting);
-            waitingTask->TaskFlags |= Task_Resumable;
+            U32(waitingTask->TaskFlags) &= (~Task_Waiting);
+            U32(waitingTask->TaskFlags) |= Task_Resumable;
             // Worker_EnqueueTask(worker, waitingTask);
             //RWLOCK(&self->Waiters.WaiterLock);
             {
@@ -1240,7 +1240,7 @@ metac_sema_decl_t* MetaCSemantic_doDeclSemantic_(metac_sema_state_t* self,
         printf("We should yield now\n");
         declTask.Continuation = currentTask;
         TaskQueue_Push(q, &declTask);
-        currentTask->TaskFlags |= Task_Waiting;
+        U32(currentTask->TaskFlags) |= Task_Waiting;
 
         YIELD(waiting_for_declSemantic);
 

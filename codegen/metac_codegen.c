@@ -1,13 +1,25 @@
+#include "../os/compat.h"
 #include "../os/metac_alloc.h"
+#include "../parser/metac_node.h"
+#include "../semantic/metac_semantic.h"
 #include "../libinterpret/bc_common.h"
 #include "../libinterpret/backend_interface_funcs.h"
 #include "../libinterpret/bc_common.c"
-
 #include "../libinterpret/bc_interpreter_backend.c"
 #include "../libinterpret/printer_backend.c"
+#include "../printer/metac_printer.h"
+
+#ifndef U32
+#define U32(VAR) \
+    (*(uint32_t*)&VAR)
+#endif
 
 #ifndef emptyNode
 #  define emptyNode ((metac_node_t) 0x1)
+#endif
+
+#ifndef emptyPointer
+#  define emptyPointer ((void*) 0x1)
 #endif
 
 #ifdef _WIN32
@@ -496,7 +508,9 @@ void MetaCCodegen_Free(metac_bytecode_ctx_t* self)
 {
     self->gen->fini_instance(self->c);
     // Allocator_Remove(self->Allocator)
+#if defined(DEBUG_SERVER) && DEBUG_SERVER
     Debug_RemoveAllocator(g_DebugServer, &self->Allocator);
+#endif
 }
 
 void MetaCCodegen_Begin(metac_bytecode_ctx_t* self,

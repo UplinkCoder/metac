@@ -1928,7 +1928,7 @@ LendSearch2:{}
                 external.size = mapSize;
                 external.addr = (void*) addrInt;
                 external.mapAddr = state.mapPtr | externalAddrMask;
-                state.mapPtr += ALIGN16(external.size);
+                state.mapPtr += align4(external.size);
 
                 state.externals[state.externalsCount++] = external;
                 (*opRef) = external.mapAddr;

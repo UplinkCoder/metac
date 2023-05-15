@@ -29,6 +29,8 @@ uint32_t MetaCSizeComputer_MemberType(metac_size_computer_t* self,
 
 uint32_t MetaCSizeComputer_FinishSizeOf(metac_size_computer_t* self);
 
+sema_decl_type_t* MetaCSemantic_GetTypeNode(metac_sema_state_t* self,
+                                            metac_type_index_t typeIndex);
 
 metac_type_index_t MetaCSemantic_GetTypeIndex(metac_sema_state_t* state,
                                               metac_type_kind_t typeKind,

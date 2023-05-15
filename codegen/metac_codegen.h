@@ -3,7 +3,9 @@
 
 #include "../os/compat.h"
 #include "../os/metac_alloc.h"
+#include "../parser/metac_parser.h"
 #include "../semantic/metac_sematree.h"
+#include "../semantic/metac_semantic.h"
 #include "../codegen/metac_vstore.h"
 
 #ifndef AT
