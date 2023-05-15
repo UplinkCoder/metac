@@ -149,6 +149,9 @@ metac_token_t* MetaCParser_Match_(metac_parser_t* self, metac_token_enum_t type,
                                   const char* filename, uint32_t lineNumber);
 
 const char* MetaCNodeKind_toChars(metac_node_kind_t type);
+const char* MetaCExprKind_toChars(metac_expr_kind_t type);
+
+bool IsExprNode(metac_node_kind_t Kind);
 
 static inline metac_location_t LocationFromToken(metac_parser_t* self,
                                                  metac_token_t* tok);

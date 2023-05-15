@@ -3,6 +3,7 @@
 #include "../hash/crc32c.h"
 #include "../parser/metac_parser_obj.c"
 #include "../semantic/metac_semantic_obj.c"
+#include "../codegen/metac_codegen.c"
 #include "../driver/metac_driver.c"
 #include "../3rd_party/tracy/TracyC.h"
 
