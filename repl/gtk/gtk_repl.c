@@ -1,6 +1,6 @@
 #include <gtk/gtk.h>
 #include <gdk/gdkkeysyms.h>
-#include <repl.c>
+#include "../repl.c"
 
 // Callback function for the "activate" signal of the text entry widget
 static void on_entry_activate(GtkEntry *entry, gpointer user_data) {
@@ -53,45 +53,73 @@ static gboolean on_entry_key_press(GtkWidget *widget, GdkEventKey *event, gpoint
   return FALSE;
 }
 
+typedef struct gtk_ui_state_t
+{
+    GtkWidget *Window;
+    GtkWidget *Notebook;
+    GtkWidget *ReplTab;
+    GtkWidget *ReplBox;
+    // Scrolled text area
+    GtkWidget *Textview;
+    GtkTextBuffer *Textbuffer;
+    GtkWidget *ScrolledWindow;
+    GtkWidget *Entry;
+} gtk_ui_state_t;
+
+gtk_ui_state_t build_ui()
+{
+    gtk_ui_state_t result;
+
+    result.Window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
+    result.Notebook = gtk_notebook_new();
+    result.ReplTab = gtk_label_new("REPL");
+    result.ReplBox = gtk_vbox_new(FALSE, 0);
+    // Scrolled text area
+    result.Textview = gtk_text_view_new();
+    result.Textbuffer = gtk_text_view_get_buffer(GTK_TEXT_VIEW(result.Textview));
+    result.ScrolledWindow = gtk_scrolled_window_new(NULL, NULL);
+    result.Entry = gtk_entry_new();
+    // Create the main window
+
+    gtk_window_set_default_size(GTK_WINDOW(result.Window), 640, 480);
+    gtk_window_set_title(GTK_WINDOW(result.Window), "REPL");
+
+    g_signal_connect(G_OBJECT(result.Window), "destroy", G_CALLBACK(gtk_main_quit), NULL);
+
+    // Create the notebook widget
+    gtk_container_add(GTK_CONTAINER(result.Window), result.Notebook);
+
+    // Add a new tab to the notebook for the REPL
+    gtk_notebook_append_page(GTK_NOTEBOOK(result.Notebook), result.ReplBox, result.ReplTab);
+
+    gtk_text_view_set_editable(GTK_TEXT_VIEW(result.Textview), FALSE);
+    gtk_text_view_set_cursor_visible(GTK_TEXT_VIEW(result.Textview), FALSE);
+    gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(result.ScrolledWindow), GTK_POLICY_AUTOMATIC, GTK_POLICY_ALWAYS);
+    gtk_container_add(GTK_CONTAINER(result.ScrolledWindow), result.Textview);
+    gtk_box_pack_start(GTK_BOX(result.ReplBox), result.ScrolledWindow, TRUE, TRUE, 0);
+
+    // Create the text entry widget for the REPL
+    gtk_box_pack_start(GTK_BOX(result.ReplBox), result.Entry, TRUE, TRUE, 0);
+
+    // Connect the "activate" signal of the text entry widget to the callback function
+    g_signal_connect(result.Entry, "activate", G_CALLBACK(on_entry_activate), NULL);
+
+    // Connect the "key-press-event" signal of the text entry widget to the callback function
+    g_signal_connect(result.Entry, "key-press-event", G_CALLBACK(on_entry_key_press), NULL);
+
+    return result;
+}
+
 int main(int argc, char *argv[]) {
     // Initialize GTK
     gtk_init(&argc, &argv);
 
-    // Create the main window
-    GtkWidget *window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
-    gtk_window_set_default_size(GTK_WINDOW(window), 640, 480);
-    gtk_window_set_title(GTK_WINDOW(window), "REPL");
+#ifdef DEBUG_SERVER
+    debug_server_t dbgSrv = {0};
+#endif
 
-    g_signal_connect(G_OBJECT(window), "destroy", G_CALLBACK(gtk_main_quit), NULL);
 
-    // Create the notebook widget
-    GtkWidget *notebook = gtk_notebook_new();
-    gtk_container_add(GTK_CONTAINER(window), notebook);
-
-    // Add a new tab to the notebook for the REPL
-    GtkWidget *repl_tab = gtk_label_new("REPL");
-    GtkWidget *repl_box = gtk_vbox_new(FALSE, 0);
-    gtk_notebook_append_page(GTK_NOTEBOOK(notebook), repl_box, repl_tab);
-
-    // Scrolled text area
-    GtkWidget *textview = gtk_text_view_new();
-    GtkTextBuffer *textbuffer = gtk_text_view_get_buffer(GTK_TEXT_VIEW(textview));
-    gtk_text_view_set_editable(GTK_TEXT_VIEW(textview), FALSE);
-    gtk_text_view_set_cursor_visible(GTK_TEXT_VIEW(textview), FALSE);
-    GtkWidget *scrolledwindow = gtk_scrolled_window_new(NULL, NULL);
-    gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(scrolledwindow), GTK_POLICY_AUTOMATIC, GTK_POLICY_ALWAYS);
-    gtk_container_add(GTK_CONTAINER(scrolledwindow), textview);
-    gtk_box_pack_start(GTK_BOX(repl_box), scrolledwindow, TRUE, TRUE, 0);
-
-    // Create the text entry widget for the REPL
-    GtkWidget *entry = gtk_entry_new();
-    gtk_box_pack_start(GTK_BOX(repl_box), entry, TRUE, TRUE, 0);
-
-    // Connect the "activate" signal of the text entry widget to the callback function
-    g_signal_connect(entry, "activate", G_CALLBACK(on_entry_activate), NULL);
-
-    // Connect the "key-press-event" signal of the text entry widget to the callback function
-    g_signal_connect(entry, "key-press-event", G_CALLBACK(on_entry_key_press), NULL);
+    gtk_ui_state_t gtkUi = build_ui();
 
     // Enable command history using the Editline library
     /*
@@ -99,7 +127,7 @@ int main(int argc, char *argv[]) {
     stifle_history(1000);
     */
     // Show the main window and start the GTK main loop
-    gtk_widget_show_all(window);
+    gtk_widget_show_all(gtkUi.Window);
     gtk_main();
 
     return 0;
