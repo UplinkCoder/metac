@@ -256,7 +256,9 @@ static inline void PrintField(metac_printer_t* self,
     }
     else
     {
+        self->ForAnonymousField++;
         PrintDecl(self, cast(metac_decl_t*)field->VarType, 0);
+        self->ForAnonymousField--;
     }
 }
 
@@ -927,10 +929,17 @@ static inline void PrintDecl(metac_printer_t* self,
             //PrintNewline(self);
             PrintIndent(self);
             PrintToken(self, tok_rBrace);
-            if (self->IndentLevel)
+            if (self->IndentLevel && (self->ForAnonymousField == 0))
                 PrintNewline(self);
             else
                 PrintSpace(self);
+
+            if (self->ForAnonymousField > 0)
+            {
+                self->SuppressNewlineAfterDecl = true;
+                printSemicolon = false;
+            }
+
         } break;
 
         case decl_type_functiontype:

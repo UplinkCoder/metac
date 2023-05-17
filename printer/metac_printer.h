@@ -32,6 +32,7 @@ typedef struct metac_printer_t
     bool SuppressNewlineAfterDecl;
     bool AsType;
     bool ForTypedef;
+    int32_t ForAnonymousField;
 } metac_printer_t;
 
 
