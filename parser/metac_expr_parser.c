@@ -1682,6 +1682,8 @@ metac_expr_t* MetaCParser_ApplyOp(metac_parser_t* self, metac_expr_kind_t op)
         e->E2 = MetaCParser_PopExpr(self);
         e->E1 = MetaCParser_PopExpr(self);
         e->Econd = MetaCParser_PopExpr(self);
+        e->Hash = CRC32C_VALUE(e->E1->Hash, e->E2->Hash);
+        e->Hash = CRC32C_VALUE(e->Hash, e->Econd);
     }
     else
     {
