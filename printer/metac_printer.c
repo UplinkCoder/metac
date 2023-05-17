@@ -981,6 +981,7 @@ static inline void PrintDecl(metac_printer_t* self,
             PrintChar(self, ':');
         } break;
     }
+
     if ((!!printSemicolon) & (!printingTypedef))
     {
         PrintToken(self, tok_semicolon);
@@ -993,6 +994,8 @@ static inline void PrintDecl(metac_printer_t* self,
     {
         PrintNewline(self);
     }
+
+    self->ForTypedef = false;
 }
 
 void MetaCPrinter_PrintForHeader(metac_printer_t* self, metac_decl_t* decl)
