@@ -361,7 +361,8 @@ static inline uint32_t OpToPrecedence(metac_expr_kind_t exp)
           || exp == expr_index
           || exp == expr_compl
           || exp == expr_assert
-          || exp == expr_template_instance)
+          || exp == expr_template_instance
+          || exp == expr_inject)
     {
         return 30;
     }
@@ -373,7 +374,8 @@ static inline uint32_t OpToPrecedence(metac_expr_kind_t exp)
           || exp == expr_unary_dot
           || exp == expr_sizeof
           || exp == expr_typeof
-          || exp == expr_not)
+          || exp == expr_not
+          || exp == expr_outer)
     {
         return 32;
     }
@@ -1552,6 +1554,8 @@ static bool IsUnaryExp(metac_expr_kind_t kind)
         case expr_addr:
         case expr_sizeof:
         case expr_typeof:
+        case expr_inject:
+        case expr_outer:
             return true;
         default:
             return false;
