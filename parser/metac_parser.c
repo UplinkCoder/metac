@@ -2023,6 +2023,20 @@ metac_stmt_t* MetaCParser_ParseStmt(metac_parser_t* self,
         result->Hash = hash;
         goto LdoneWithStmt;
     }
+    else if (tokenType == tok_at)
+    {
+        peek2 = MetaCParser_PeekToken(self, 2);
+        if (peek2->TokenType == tok_identifier && peek2->IdentifierKey == 0x3809a6)
+        {
+            stmt_run_t* run_stmt = AllocNewStmt(stmt_run, &result);
+            MetaCParser_Match(self, tok_at);
+            MetaCParser_Match(self, tok_identifier);
+            run_stmt->RunBody =
+                MetaCParser_ParseStmt(self, (metac_stmt_t*)run_stmt, 0);
+            hash = 0x3809a6;
+            hash = CRC32C_VALUE(hash, run_stmt->Hash);
+        }
+    }
     else if (tokenType == tok_kw_while)
     {
         stmt_while_t * while_stmt = AllocNewStmt(stmt_while, &result);

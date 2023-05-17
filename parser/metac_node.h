@@ -192,6 +192,7 @@
     M(stmt_continue) \
     M(stmt_goto) \
     M(stmt_return) \
+    M(stmt_run) \
     \
     M(stmt_empty) \
     \

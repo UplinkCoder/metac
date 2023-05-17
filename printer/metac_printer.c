@@ -719,6 +719,13 @@ static inline void PrintStmt(metac_printer_t* self, metac_stmt_t* stmt)
             PrintIndent(self);
             PrintStmt(self, cast(metac_stmt_t*)stmt_switch->SwitchBody);
         } break;
+        case stmt_run:
+        {
+            stmt_run_t* stmt_run = (stmt_run_t*)stmt;
+            PrintString(self, "@run", sizeof("@run")-1);
+            PrintSpace(self);
+            PrintStmt(self, stmt_run->RunBody);
+        } break;
         case stmt_while:
         {
             stmt_while_t* stmt_while = (stmt_while_t*)stmt;

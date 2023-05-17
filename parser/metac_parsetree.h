@@ -210,6 +210,14 @@ typedef struct stmt_while_t
     struct metac_stmt_t* WhileBody;
 } stmt_while_t;
 
+typedef struct stmt_run_t
+{
+    STMT_HEADER
+
+    struct metac_stmt_t* RunBody;
+} stmt_run_t;
+
+
 typedef struct stmt_case_t
 {
     STMT_HEADER
