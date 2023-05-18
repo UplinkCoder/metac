@@ -28,7 +28,7 @@ int MetaCNode_TreeWalk_Real(metac_node_t node, walker_function_t walker_fn, void
     switch(node->Kind)
     {
         default: {
-            printf("%s\n", MetaCNodeKind_toChars(node->Kind));
+            printf("%s should provide a case for node type %s\n", __FUNCTION__, MetaCNodeKind_toChars(node->Kind));
             assert(!"nodeKind not expected to be here\n");
         } break;
 
@@ -227,6 +227,15 @@ int MetaCNode_TreeWalk_Real(metac_node_t node, walker_function_t walker_fn, void
 
         case node_stmt_scope:
             assert(0); // Not implemented currently.
+
+        case node_stmt_run:
+        {
+            stmt_run_t *stmt_run = cast(stmt_run_t*) node;
+            if ((metac_node_t)stmt_run->RunBody != emptyNode)
+                result = MetaCNode_TreeWalk_Real(stmt_run->RunBody, walker_fn, ctx);
+             if(result)
+                 return result;
+        } break;
 
         case node_stmt_for:
         {
