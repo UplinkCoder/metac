@@ -508,18 +508,23 @@ static inline void PrintStmt(metac_printer_t* self, metac_stmt_t* stmt)
         case stmt_block :
         {
             stmt_block_t* stmt_block = cast(stmt_block_t*) stmt;
+            metac_stmt_t* nextStmt = stmt_block->Body;
 
             PrintToken(self, tok_lBrace);
             ++self->IndentLevel;
-            PrintNewline(self);
-            PrintIndent(self);
 
-            for(metac_stmt_t* nextStmt = stmt_block->Body;
+            if (nextStmt != emptyPointer)
+            {
+                PrintNewline(self);
+                PrintIndent(self);
+            }
+
+            for(;
                 nextStmt != emptyPointer;
                 nextStmt = nextStmt->Next)
             {
                 PrintStmt(self, nextStmt);
-                if(nextStmt->Next)
+                if(nextStmt->Next != emptyPointer)
                 {
                     PrintNewline(self);
                     PrintIndent(self);
@@ -527,11 +532,8 @@ static inline void PrintStmt(metac_printer_t* self, metac_stmt_t* stmt)
             }
 
             --self->IndentLevel;
-            if (stmt->Next)
-            {
-                PrintNewline(self);
-                PrintIndent(self);
-            }
+            PrintNewline(self);
+            PrintIndent(self);
             PrintToken(self, tok_rBrace);
         } break;
         case stmt_if :
@@ -599,16 +601,20 @@ static inline void PrintStmt(metac_printer_t* self, metac_stmt_t* stmt)
             stmt_for_t* stmt_for = cast(stmt_for_t*) stmt;
             PrintKeyword(self, tok_kw_for);
             PrintChar(self, '(');
+
             if (stmt_for->ForInit != cast(metac_node_t) emptyPointer)
             {
                 if (IsExprNode(stmt_for->ForInit->Kind))
                 {
                     PrintExpr(self, (metac_expr_t*)stmt_for->ForInit);
+                    PrintToken(self, tok_semicolon);
+                    PrintSpace(self);
                 }
                 else
                 {
                     self->SuppressNewlineAfterDecl = true;
                     PrintDecl(self, (metac_decl_t*)stmt_for->ForInit, 0);
+                    self->SuppressNewlineAfterDecl = false;
                     PrintSpace(self);
                 }
             }
@@ -621,7 +627,13 @@ static inline void PrintStmt(metac_printer_t* self, metac_stmt_t* stmt)
             {
                 PrintExpr(self, stmt_for->ForCond);
             }
+
             PrintToken(self, tok_semicolon);
+            if (stmt_for->ForCond != cast(metac_expr_t*) emptyPointer)
+            {
+                PrintSpace(self);
+            }
+
             if (stmt_for->ForPostLoop != cast(metac_expr_t*) emptyPointer)
             {
                 PrintExpr(self, stmt_for->ForPostLoop);
@@ -1136,16 +1148,21 @@ static inline void PrintExpr(metac_printer_t* self, metac_expr_t* expr)
     }
     else if (IsBinaryExp(expr->Kind))
     {
-        PrintChar(self, '(');
+        const char* op = BinExpTypeToChars((metac_binary_expr_kind_t)expr->Kind);
+
+        //PrintChar(self, '(');
         PrintExpr(self, expr->E1);
 
-        PrintSpace(self);
-        const char* op = BinExpTypeToChars((metac_binary_expr_kind_t)expr->Kind);
+        if (expr->Kind != expr_dot)
+            PrintSpace(self);
+
         PrintString(self, op, (uint32_t)strlen(op));
-        PrintSpace(self);
+
+        if (expr->Kind != expr_dot)
+            PrintSpace(self);
 
         PrintExpr(self, expr->E2);
-        PrintChar(self, ')');
+        //PrintChar(self, ')');
     }
     else if (expr->Kind == expr_cast)
     {
@@ -1201,14 +1218,15 @@ static inline void PrintExpr(metac_printer_t* self, metac_expr_t* expr)
 
             PrintString(self, op, (uint32_t)strlen(op));
         }
-
+/*
         if (!IsBinaryExp(expr->E1->Kind))
             PrintChar(self, '(');
-
+*/
         PrintExpr(self, expr->E1);
-
+/*
         if (!IsBinaryExp(expr->E1->Kind))
             PrintChar(self, ')');
+*/
     }
     else if (expr->Kind == expr_outer)
     {
@@ -1233,14 +1251,15 @@ static inline void PrintExpr(metac_printer_t* self, metac_expr_t* expr)
         assert(op);
 
         PrintString(self, op, (uint32_t)strlen(op));
-
+/*
         if (!IsBinaryExp(expr->E1->Kind))
             PrintChar(self, '(');
-
+*/
         PrintExpr(self, expr->E1);
-
+/*
         if (!IsBinaryExp(expr->E1->Kind))
             PrintChar(self, ')');
+*/
     }
     else if (expr->Kind == expr_post_increment || expr->Kind == expr_post_decrement)
     {
@@ -1989,6 +2008,8 @@ static inline void PrintSemaStmt(metac_printer_t* self, metac_sema_state_t* sema
                 if (IsExprNode(stmt_for->ForInit->Kind))
                 {
                     PrintSemaExpr(self, sema, (cast(metac_sema_expr_t*)stmt_for->ForInit));
+                    PrintToken(self, tok_semicolon);
+                    PrintSpace(self);
                 }
                 else
                 {
@@ -2008,7 +2029,13 @@ static inline void PrintSemaStmt(metac_printer_t* self, metac_sema_state_t* sema
             {
                 PrintSemaExpr(self, sema, stmt_for->ForCond);
             }
+
             PrintToken(self, tok_semicolon);
+            if (stmt_for->ForCond != cast(metac_sema_expr_t*) emptyPointer)
+            {
+                PrintSpace(self);
+            }
+
             if (stmt_for->ForPostLoop != cast(metac_sema_expr_t*) emptyPointer)
             {
                 PrintSemaExpr(self, sema, stmt_for->ForPostLoop);
