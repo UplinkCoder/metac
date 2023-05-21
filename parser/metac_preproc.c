@@ -707,9 +707,11 @@ metac_preprocessor_define_ptr_t
 MetaCPreProcessor_ParseDefine(metac_preprocessor_t *self,
                               metac_parser_t* parser)
 {
-    assert(self);
+    metac_preprocessor_define_ptr_t result = {0};
     metac_token_t* defineName = MetaCParser_Match(parser, tok_identifier);
     bool isMacro = MetaCParser_PeekMatch(parser, tok_lParen, 1);
+    uint32_t defineNameLength =
+        LENGTH_FROM_IDENTIFIER_KEY(defineName->IdentifierKey);
 
     bool isVariadic = false;
     /// macro contains ##
@@ -718,13 +720,27 @@ MetaCPreProcessor_ParseDefine(metac_preprocessor_t *self,
     DEF_STACK_ARRAY(metac_identifier_ptr_t, macroParameter, 16);
 
     DEF_STACK_ARRAY(metac_token_t, defineBodyTokens, 64);
+    assert(self);
+
+    if (isMacro)
+    {
+        metac_token_t* lParen = MetaCParser_PeekToken(parser, 1);
+        uint32_t defineNameEndP = defineName->Position +
+                                  defineNameLength;
+        // Before we accept this define as really being a macro
+        // check that the '(' token is directly at the end of the
+        // identifier preceeding it
+        if (lParen->Position != defineNameEndP)
+        {
+            isMacro = false;
+        }
+    }
 
     if (isMacro)
     {
         MetaCParser_Match(parser, tok_lParen);
         while(MetaCParser_PeekMatch(parser, tok_identifier, 1))
         {
-
             ADD_STACK_ARRAY(macroParameter,
                 MetaCParser_Match(parser, tok_identifier)->IdentifierPtr);
 
@@ -824,7 +840,7 @@ MetaCPreProcessor_ParseDefine(metac_preprocessor_t *self,
     define.HasPaste = hasPaste;
     define.TokenCount = defineBodyTokens.Count;
 
-    metac_preprocessor_define_ptr_t result =
+    result =
         MetaCPreprocessor_RegisterDefine(self, defineKey, define, defineBodyTokens);
 
     return result;
