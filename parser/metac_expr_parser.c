@@ -673,7 +673,7 @@ metac_expr_t* MetaCParser_ParsePrimaryExpr(metac_parser_t* self, parse_expr_flag
         }
         hash = CRC32C_VALUE(hash, result->CastType->Hash);
         MetaCParser_Match(self, tok_rParen);
-        result->CastExp = MetaCParser_ParseExpr(self, flags, 0);
+        result->CastExp = MetaCParser_ParseExpr2(self, flags);
         hash = CRC32C_VALUE(hash, result->CastExp->Hash);
         MetaCLocation_Expand(&loc, self->LocationStorage.Locations[result->CastExp->LocationIdx - 4]);
         result->Hash = hash;
@@ -766,14 +766,15 @@ metac_expr_t* MetaCParser_ParsePrimaryExpr(metac_parser_t* self, parse_expr_flag
                 METAC_NODE(result->E1) = emptyNode;
             }
         }
+
         //PushOperator(expr_paren);
         result->Hash = CRC32C_VALUE(crc32c_nozero(~0, "()", 2), result->E1->Hash);
         //PushOperand(result);
-/*
+
         metac_token_t* endParen =
             MetaCParser_Match(self, tok_rParen);
         MetaCLocation_Expand(&loc, LocationFromToken(self, endParen));
-*/
+
         self->ExprParser.OpenParens--;
 
         //PopOperator(expr_paren);
@@ -793,7 +794,7 @@ metac_expr_t* MetaCParser_ParsePrimaryExpr(metac_parser_t* self, parse_expr_flag
             assert((*nextElement) == _emptyPointer);
 
             (*nextElement) = (expr_tuple_t*)AllocNewExpr(expr_tuple);
-            metac_expr_t* exp = MetaCParser_ParseExpr(self, expr_flags_call, 0);
+            metac_expr_t* exp = MetaCParser_ParseExpr2(self, expr_flags_call);
             hash = CRC32C_VALUE(hash, exp->Hash);
             ((*nextElement)->Expr) = exp;
             nextElement = &((*nextElement)->Next);
@@ -987,7 +988,7 @@ static inline metac_expr_t* ParseUnaryDotExpr(metac_parser_t* self)
     if (!result)
     {
         result = AllocNewExpr(expr_unary_dot);
-        result->E1 = MetaCParser_ParseExpr(self, expr_flags_unary, 0);
+        result->E1 = MetaCParser_ParseExpr2(self, expr_flags_unary);
         result->Hash = CRC32C_VALUE(
             crc32c_nozero(~0, ".", sizeof(".") - 1),
             result->E1->Hash
@@ -1061,7 +1062,7 @@ static inline metac_expr_t* ParseRunExpr(metac_parser_t* self, int vers)
 
     return result;
 }
-
+/*
 metac_expr_t* MetaCParser_ParseUnaryExpr(metac_parser_t* self)
 {
     metac_expr_t* result = 0;
@@ -1299,7 +1300,7 @@ metac_expr_t* MetaCParser_ParseUnaryExpr(metac_parser_t* self)
 
     return result;
 }
-
+*/
 expr_argument_t* MetaCParser_ParseArgumentList(metac_parser_t* self, parse_expr_flags_t flags)
 {
     metac_location_t loc =
@@ -1362,7 +1363,7 @@ expr_argument_t* MetaCParser_ParseArgumentList(metac_parser_t* self, parse_expr_
 
     return arguments;
 }
-
+#if 0
 metac_expr_t* MetaCParser_ParseBinaryExpr(metac_parser_t* self,
                                                       parse_expr_flags_t eflags,
                                                       metac_expr_t* left,
@@ -1528,7 +1529,7 @@ metac_expr_t* MetaCParser_ParseBinaryExpr(metac_parser_t* self,
     }
     return result;
 }
-
+#endif
 static bool IsBinaryExp(metac_expr_kind_t kind)
 {
     return ((kind >= FIRST_BINARY_EXP(TOK_SELF)) & (kind <= LAST_BINARY_EXP(TOK_SELF))
@@ -1789,7 +1790,7 @@ metac_expr_t* MetaCParser_ParseExpr2(metac_parser_t* self, parse_expr_flags_t fl
                     (self->ExprParser.ExprStackCount -
                      MetaCParser_TopExprStackBottom(self));
 
-                self->ExprParser.OpenParens++;
+                // self->ExprParser.OpenParens++;
                 // if lParen is a encountered with a non-empty
                 // expression stack it's likely a call.
                 if (n_exprs != 0
@@ -2033,7 +2034,7 @@ LParseCall:
 
     return result;
 }
-
+#if 0
 metac_expr_t* MetaCParser_ParseExpr(metac_parser_t* self,
                                     parse_expr_flags_t eflags,
                                     metac_expr_t* prev)
@@ -2202,3 +2203,4 @@ LParseExpTop:
 LreturnExp:
     return result;
 }
+#endif

@@ -175,7 +175,7 @@ metac_expr_t* MetaCPreProcessor_ResolveDefineToExp(metac_preprocessor_t* self,
 
     MetaCParser_InitFromLexer(&defineParser, &DefineLexer, &tmpDefineParserAlloc);
 
-    result = MetaCParser_ParseExpr(&defineParser, expr_flags_none, 0);
+    result = MetaCParser_ParseExpr2(&defineParser, expr_flags_none);
 Lret:
     return result;
 }
@@ -783,7 +783,7 @@ MetaCPreProcessor_ParseDefine(metac_preprocessor_t *self,
     {
         const char* s = 0;
 
-        currentToken = MetaCParser_PeekToken(parser, peek1++);
+        currentToken = MetaCParser_PeekToken(parser, 1);
         if (!currentToken)
         {
             break;
@@ -804,6 +804,7 @@ MetaCPreProcessor_ParseDefine(metac_preprocessor_t *self,
                     tok.TokenType = tok_macro_parameter;
                     tok.MacroParameterIndex = i;
                     ADD_STACK_ARRAY(defineBodyTokens, tok);
+                    MetaCParser_Advance(parser);
                     goto Lcontinue;
                 }
             }
@@ -827,6 +828,7 @@ MetaCPreProcessor_ParseDefine(metac_preprocessor_t *self,
             ADD_STACK_ARRAY(defineBodyTokens, *currentToken);
         }
         MetaCPrinter_Reset(&parser->DebugPrinter);
+        MetaCParser_Advance(parser);
     }
 
     if (currentToken && currentToken->TokenType == tok_newline)
@@ -936,7 +938,7 @@ uint32_t MetaCPreProcessor_Eval(metac_preprocessor_t* self, struct metac_parser_
         if (!tok || tok->TokenType == tok_eof)
             return result;
 
-        metac_expr_t* exp = MetaCParser_ParseExpr(parser, expr_flags_pp, 0);
+        metac_expr_t* exp = MetaCParser_ParseExpr2(parser, expr_flags_pp);
         MetaCPrinter_Reset(&parser->DebugPrinter);
         const char* expr_string = MetaCPrinter_PrintExpr(&parser->DebugPrinter, exp);
         printf("#eval '%s'\n", expr_string);
