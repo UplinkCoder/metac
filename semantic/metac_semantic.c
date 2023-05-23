@@ -1274,7 +1274,7 @@ metac_node_t MetaCSemantic_LRU_LookupIdentifier(metac_sema_state_t* self,
     {
         const uint32_t i = BSF(mask);
         // remove the bit we are going to check
-        mask &= ~(i << i);
+        mask &= ~(1 << i);
         if (self->LRU.Slots[i].Ptr.v == idPtr.v)
         {
             result = self->LRU.Slots[i].Node;
