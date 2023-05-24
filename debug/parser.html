@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Parser Web UI</title>
+</head>
+<body>
+    <h1>Parser Web UI</h1>
+    
+    <div>
+        <strong>Token Stream:</strong> <span id="tokenStreamLabel"></span>
+    </div>
+    <div>
+        <strong>Position:</strong> <span id="positionLabel"></span>
+    </div>
+    <br>
+    <div>
+        <div style="display: inline-block; vertical-align: top;">
+            <strong>Expression Stack:</strong>
+            <ul id="expressionStackList"></ul>
+        </div>
+        <div style="display: inline-block; vertical-align: top; margin-left: 20px;">
+            <strong>Operator Stack:</strong>
+            <ul id="operatorStackList"></ul>
+        </div>
+    </div>
+    <br>
+    <div>
+        <button onclick="prevHistory()">Previous</button>
+        <button onclick="nextHistory()">Next</button>
+    </div>
+
+    <script>
+		function locationType(){
+			if( window.location.protocol == 'file:' ){ return 0; }
+			if( !window.location.host.replace( /localhost|127\.0\.0\.1/i, '' ) ){ return 2; }
+			return 1;
+		}
+	
+        var historyIndex = 0;
+        var parserHistory = [
+            // Sample history data for demonstration purposes
+            { tokenStream: "+ 3 * ( 4 - 2 )", position: 0, expressionStack: ["4", "2"], operatorStack: ["+", "*"], selectedExpressionIndex: -1, selectedOperatorIndex: -1 },
+            { tokenStream: "+ 3 * ( 4 - 2 )", position: 1, expressionStack: ["4", "2", "3"], operatorStack: ["+", "*"], selectedExpressionIndex: 2, selectedOperatorIndex: -1 },
+            { tokenStream: "+ 3 * ( 4 - 2 )", position: 2, expressionStack: ["6", "3"], operatorStack: ["+"], selectedExpressionIndex: 0, selectedOperatorIndex: -1 }
+        ];
+
+        // Function to update the UI based on the received data
+        function updateUI() {
+            var data = parserHistory[historyIndex];
+
+            var tokenStreamLabel = document.getElementById('tokenStreamLabel');
+            tokenStreamLabel.textContent = data.tokenStream;
+
+            var positionLabel = document.getElementById('positionLabel');
+            positionLabel.textContent = data.position;
+
+            var expressionStackList = document.getElementById('expressionStackList');
+            expressionStackList.innerHTML = '';
+            data.expressionStack.forEach(function(item, index) {
+                var li = document.createElement('li');
+                li.textContent = item;
+                if (index === data.selectedExpressionIndex) {
+                    li.classList.add('selected');
+                }
+                expressionStackList.appendChild(li);
+            });
+
+            var operatorStackList = document.getElementById('operatorStackList');
+            operatorStackList.innerHTML = '';
+            data.operatorStack.forEach(function(item, index) {
+                var li = document.createElement('li');
+                li.textContent = item;
+                if (index === data.selectedOperatorIndex) {
+                    li.classList.add('selected');
+                }
+                operatorStackList.appendChild(li);
+            });
+
+            // Highlight the current position in the token stream
+            var tokenStreamSpan = tokenStreamLabel.firstChild;
+            tokenStreamSpan.classList.add('highlight');
+        }
+
+        // Function to go to the previous history
+        function prevHistory() {
+            if (historyIndex > 0) {
+                historyIndex--;
+                updateUI();
+            }
+        }
+
+        // Function to go to the next history
+        function nextHistory() {
+            if (historyIndex < parserHistory.length - 1) {
+                historyIndex++;
+                updateUI();
+            }
+        }
+
+        // Function to fetch history updates from the local web server
+        function fetchHistoryUpdates() {
+			if (locationType())
+			{
+				var xhr = new XMLHttpRequest();
+				xhr.open('GET', 'history');
+				xhr.onload = function() {
+					if (xhr.status === 200) {
+						parserHistory = JSON.parse(xhr.responseText);
+						if (parserHistory.length > 0) {
+							historyIndex = parserHistory.length - 1;
+							updateUI();
+						}
+					}
+				};
+				xhr.send();
+			}
+        }
+
+        // Initial fetch of history updates
+        fetchHistoryUpdates();
+    </script>
+
+    <style>
+        .selected {
+            background-color: yellow;
+        }
+        
+        .highlight {
+            background-color: lightblue;
+        }
+    </style>
+</body>
+</html>
