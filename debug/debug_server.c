@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "../os/bsf.h"
+#include <json-c/json.h>
 
 debug_server_t* g_DebugServer = 0;
 
@@ -121,12 +122,57 @@ MHD_HANDLER (handleCurrentScope)
     return send_html(connection, responseString, responseSize);
 }
 
+// Sample history data for demonstration purposes
+char* parserHistory[] = {
+    "{\"tokenStream\": \"+ 3 * ( 4 - 2 )\", \"position\": 0, \"expressionStack\": [\"4\", \"2\"], \"operatorStack\": [\"+\", \"*\"], \"selectedExpressionIndex\": -1, \"selectedOperatorIndex\": -1}",
+    "{\"tokenStream\": \"+ 3 * ( 4 - 2 )\", \"position\": 1, \"expressionStack\": [\"4\", \"2\", \"3\"], \"operatorStack\": [\"+\", \"*\"], \"selectedExpressionIndex\": 2, \"selectedOperatorIndex\": -1}",
+    "{\"tokenStream\": \"+ 3 * ( 4 - 2 )\", \"position\": 2, \"expressionStack\": [\"6\", \"3\"], \"operatorStack\": [\"+\"], \"selectedExpressionIndex\": 0, \"selectedOperatorIndex\": -1}"
+};
+
+MHD_HANDLER(handleHistory)
+{
+    assert(strcmp(url, "/history") == 0 && strcmp(method, "GET") == 0);
+
+    {
+        // Create a JSON array and populate it with the history data
+        json_object* historyArray = json_object_new_array();
+        int numItems = sizeof(parserHistory) / sizeof(parserHistory[0]);
+
+        for (int i = 0; i < numItems; i++)
+        {
+            json_object* historyObj = json_tokener_parse(parserHistory[i]);
+            json_object_array_add(historyArray, historyObj);
+        }
+
+        // Convert the JSON array to a string
+        const char* response = json_object_to_json_string(historyArray);
+
+        // Set the HTTP response headers
+        struct MHD_Response* mhdResponse = MHD_create_response_from_buffer(strlen(response), (void*)response,
+                                                                           MHD_RESPMEM_MUST_COPY);
+        MHD_add_response_header(mhdResponse, "Content-Type", "application/json");
+        int ret = MHD_queue_response(connection, MHD_HTTP_OK, mhdResponse);
+
+        // Cleanup
+        MHD_destroy_response(mhdResponse);
+        json_object_put(historyArray);
+
+        return ret;
+    }
+
+    // Invalid URL or method
+    return MHD_NO;
+}
 
 MHD_HANDLER(handleGraphJs)
 {
     return serveFile("/home/uplink/dev/metac/debug/graph.js", "application/javascript", connection);
 }
 
+MHD_HANDLER(handleParser)
+{
+    return serveFile("/home/uplink/dev/metac/debug/parser.html", "text/html", connection);
+}
 
 MHD_HANDLER(handleLc)
 {
@@ -506,6 +552,17 @@ static MHD_HANDLER(debugServerHandler)
     {
         return handleData(MHD_HANDLER_PASSTHROUGH);
     }
+
+    if (memcmp(url, "/parser", sizeof("/parser") - 1) == 0)
+    {
+        return handleParser(MHD_HANDLER_PASSTHROUGH);
+    }
+
+    if (memcmp(url, "/history", (sizeof("/history") - 1)) == 0)
+    {
+        return handleHistory(MHD_HANDLER_PASSTHROUGH);
+    }
+
 #ifndef NO_FIBERS
     if (memcmp(url, "/tasks", sizeof("/tasks") - 1) == 0)
     {
