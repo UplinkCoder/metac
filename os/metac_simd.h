@@ -35,6 +35,27 @@ typedef struct int16x8_t
 #    error "this can't happen"
 #  endif
 
+// Set all elements of a vector to a 16-bit value
+static int16x8_t Set1_16(int16_t value);
+
+// Perform element-wise bitwise AND operation between two vectors
+static int16x8_t And16(int16x8_t a, int16x8_t b);
+
+// Compare equality of corresponding elements in two vectors
+// returns a mask
+static int16x8_t Eq16(int16x8_t a, int16x8_t b);
+
+// Extract the most significant bit of each element in a vector and concatenate them into a 16-bit integer
+static uint32_t MoveMask16(int16x8_t a);
+
+// Perform element-wise bitwise AND-NOT operation between two vectors
+static int16x8_t Andnot16(int16x8_t a, int16x8_t b);
+
+// Load 8 consecutive 16-bit values from memory address
+static int16x8_t Load16(const int16x8_t* ptr);
+
+// Store 8 consecutive 16-bit values to memory address
+static void Store16(int16x8_t* ptr, int16x8_t value);
 
 #  if defined (SSE2)
 /// taken from https://github.com/AuburnSounds/intel-intrinsics/blob/master/source/inteli/emmintrin.d
