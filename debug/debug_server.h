@@ -66,6 +66,27 @@ typedef struct debug_message_t
     uint32_t Timestamp;
 } debug_message_t;
 
+typedef enum debug_parser_action_kind_t
+{
+    ParserAction_Invalid,
+
+    ParserAction_PeekToken,
+    ParserAction_PeekMatch,
+    ParserAction_Match,
+
+    ParserAction_PushExpr,
+    ParserAction_PopExpr,
+    ParserAction_PushOp,
+    ParserAction_PopOp,
+
+    ParserAction_Max
+} debug_parser_action_kind_t;
+
+typedef struct debug_parser_action_t
+{
+    debug_parser_action_kind_t Kind;
+} debug_parser_action_t;
+
 typedef struct debug_server_t
 {
     struct MHD_Daemon* Daemon;
