@@ -8,6 +8,7 @@
 #include "../os/metac_alloc.h"
 #include "../semantic/metac_scope.h"
 #include "../parser/metac_identifier_table.h"
+#include "../parser/metac_lexer.h"
 
 #ifndef NO_FIBERS
 #  include "../os/metac_task.h"
@@ -112,6 +113,11 @@ typedef struct debug_server_t
     debug_message_t* Messages;
     uint32_t MessagesCount;
     uint32_t MessagesCapacity;
+
+    metac_token_t* TokenStream;
+    uint32_t TokenStreamCount;
+    uint32_t TokenStreamCapacity;
+
 #ifndef NO_FIBERS
     ARENA_ARRAY(worker_context_t*, Workers)
 #endif
@@ -128,6 +134,9 @@ void Debug_GraphValue(debug_server_t* debugServer, const char* name, double valu
 
 void Debug_CurrentScope(debug_server_t* debugServer, metac_scope_t* scopeP);
 void Debug_CurrentIdentifierTable(debug_server_t* debugServer, metac_identifier_table_t* scopeP);
+
+metac_token_t* Debug_PeekToken(debug_server_t* debugServer, metac_token_t* token, uint32_t offset);
+
 #ifndef NO_FIBERS
 void Debug_RegisterWorker(debug_server_t* debugServer, worker_context_t* worker);
 #endif
@@ -144,6 +153,7 @@ extern debug_server_t* g_DebugServer;
 #define Debug_GraphValue(D, N, V)
 #define Debug_CurrentIdentifierTable(D, IT)
 #define Debug_CurrentScope(D, SC)
+#define Debug_PeekToken(D, PARSER, OFFSET)
 #endif
 
 #endif

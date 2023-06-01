@@ -6,6 +6,7 @@
 #include <string.h>
 #include "../os/bsf.h"
 #include <json-c/json.h>
+#include <assert.h>
 
 debug_server_t* g_DebugServer = 0;
 
@@ -96,7 +97,6 @@ MHD_HANDLER (handleCurrentScope)
     {
         return send_html(connection, "<html><body>No CurrentScope set</body></html>", sizeof("<html><body>No CurrentScope set</body></html>") - 1);
     }
-    char* resp = responseString;
 
     responseSize +=
         snprintf(responseString, ARRAYSIZE(responseString) - responseSize,
@@ -585,7 +585,11 @@ static MHD_COMPLETED_CB (MhdCompletionCallback)
 
 int Debug_Init(debug_server_t* debugServer, unsigned short port) {
     struct MHD_Daemon *d;
-    assert(!g_DebugServer);
+    uint32_t allocatorCapa = 64;
+    uint32_t allocationCapa = 256;
+    uint32_t graphCapa = 16;
+    uint32_t tokenCapa = 128;
+
 #ifdef WIN32
     WSADATA wd;
     if (WSAStartup (MAKEWORD (2, 2), &wd) != 0)
@@ -604,9 +608,7 @@ int Debug_Init(debug_server_t* debugServer, unsigned short port) {
 
     debugServer->Daemon = d;
 
-    uint32_t allocatorCapa = 64;
-    uint32_t allocationCapa = 256;
-    uint32_t graphCapa = 16;
+    assert(!g_DebugServer);
 
     debugServer->Allocators = (metac_alloc_t**)
         malloc(sizeof(metac_alloc_t*) * allocatorCapa);
@@ -622,6 +624,11 @@ int Debug_Init(debug_server_t* debugServer, unsigned short port) {
         malloc(sizeof(debug_graph_t) * graphCapa);
     debugServer->GraphsCount = 0;
     debugServer->GraphsCapacity = graphCapa;
+
+    debugServer->TokenStream = (metac_token_t*)
+        malloc(sizeof(metac_token_t) * tokenCapa);
+    debugServer->TokenStreamCount = 0;
+    debugServer->TokenStreamCapacity = tokenCapa;
 #ifndef NO_FIBERS
     ARENA_ARRAY_INIT(worker_context_t*, debugServer->Workers, &debugServer->Allocator)
 #endif
@@ -728,6 +735,11 @@ void Debug_GraphValue(debug_server_t* debugServer, const char* name, double valu
     }
 
     ARENA_ARRAY_ADD(graphP->Values, graphValue);
+}
+
+metac_token_t* Debug_PeekToken(debug_server_t* debugServer, metac_token_t* token, uint32_t offset)
+{
+    return token;
 }
 #ifndef NO_FIBERS
 void Debug_RegisterWorker(debug_server_t* debugServer, worker_context_t* worker)
