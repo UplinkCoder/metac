@@ -84,13 +84,20 @@ void ConvertTupleElementToExp(metac_sema_state_t* sema,
 extern const BackendInterface BCGen_interface;
 metac_sema_expr_t
 EvaluateExpr(metac_sema_state_t* sema,
-                   metac_sema_expr_t* e,
-                   BCHeap* heap)
+             metac_sema_expr_t* e,
+             BCHeap* heap)
 {
     metac_alloc_t interpAlloc;
+    metac_bytecode_ctx_t ctx;
+    metac_sema_expr_t result = {(metac_expr_kind_t)0};
+
+    if (e == cast(metac_sema_expr_t*) emptyPointer)
+    {
+        return result;
+    }
+
     Allocator_Init(&interpAlloc, &sema->TempAlloc, 0);
 
-    metac_bytecode_ctx_t ctx;
     MetaCCodegen_SetDefaultInterface(&BCGen_interface);
 
     MetaCCodegen_Init(&ctx, 0);
@@ -115,7 +122,6 @@ EvaluateExpr(metac_sema_state_t* sema,
 
     MetaCCodegen_Free(&ctx);
 
-    metac_sema_expr_t result = {(metac_expr_kind_t)0};
     // BCGen_printFunction(c);
 
     if (e->TypeIndex.v == TYPE_INDEX_V(type_index_basic, type_type))
@@ -1113,6 +1119,7 @@ LswitchIdKey:
                     MetaCSemantic_LookupIdentifier(self, idPtr);
                 if (node == emptyNode)
                 {
+                    result = cast(metac_sema_expr_t*) emptyNode;
                     // TODO sticky couldn't resolve message
                 }
                 else
@@ -1241,6 +1248,7 @@ LswitchIdKey:
         } break;
     }
 Lret:
+    if (result != (metac_expr_t*)emptyNode)
     {
     //assert(hash != 0);
     result->Hash = hash;
