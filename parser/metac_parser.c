@@ -2013,12 +2013,12 @@ metac_stmt_t* MetaCParser_ParseStmt(metac_parser_t* self,
         if (MetaCParser_PeekMatch(self, tok_kw_else, 1))
         {
             MetaCParser_Match(self, tok_kw_else);
-            if_stmt->ElseBody = (metac_stmt_t*)MetaCParser_ParseStmt(self, (metac_stmt_t*)result, 0);
+            if_stmt->ElseBody = cast(metac_stmt_t*)MetaCParser_ParseStmt(self, (metac_stmt_t*)result, 0);
             hash = CRC32C_VALUE(hash, if_stmt->ElseBody->Hash);
         }
         else
         {
-            if_stmt->ElseBody = (metac_stmt_t*)_emptyPointer;
+            if_stmt->ElseBody = cast(metac_stmt_t*)_emptyPointer;
         }
         result->Hash = hash;
         goto LdoneWithStmt;
@@ -2032,7 +2032,7 @@ metac_stmt_t* MetaCParser_ParseStmt(metac_parser_t* self,
             MetaCParser_Match(self, tok_at);
             MetaCParser_Match(self, tok_identifier);
             run_stmt->RunBody =
-                MetaCParser_ParseStmt(self, (metac_stmt_t*)run_stmt, 0);
+                MetaCParser_ParseStmt(self, cast(metac_stmt_t*)run_stmt, 0);
             hash = 0x3809a6;
             hash = CRC32C_VALUE(hash, run_stmt->Hash);
         }
