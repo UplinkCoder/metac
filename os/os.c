@@ -49,7 +49,7 @@ os_error_t GetTimeStamp(uint32_t* tsp)
     struct timeval now;
     gettimeofday(&now, 0);
     (*tsp) = (((now.tv_sec & 0xffff) << 16) | ((now.tv_usec >> 4) & 0xffff));
-#elif defined(_WIN32)
+#elif defined(WINDOWS)
     uint64_t now;
     GetSystemTimeAsFileTime((FILETIME*)&now);
     (*tsp) = ((((now >> 32) & 0xffff) << 16) | ((now >> 5) & 0xffff));

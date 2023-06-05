@@ -180,6 +180,10 @@ static metac_type_index_t GetTypeIndex(BCType bcType)
         case BCTypeEnum_Ptr:
             kind = type_index_ptr;
         break;
+        case BCTypeEnum_Array:
+            kind = type_index_array;
+        break;
+
 
         case BCTypeEnum_Void:
             result.v = TYPE_INDEX_V(type_index_basic, type_void);

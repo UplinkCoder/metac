@@ -9,7 +9,7 @@
 #  define POSIX
 #endif
 
-#ifdef _MSC_VER
+#if defined(_MSC_VER) || defined(_WIN32)
 #  include <windows.h>
 #  define WINDOWS
 #endif

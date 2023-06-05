@@ -227,10 +227,10 @@ bool MetaCSemantic_ConstantFold(metac_sema_state_t* self, metac_sema_expr_t* exp
 
     return couldFold;
 }
-
+/// a return value of INT32_MIN indicates an error
 static inline int32_t GetConstI32(metac_sema_state_t* self, metac_sema_expr_t* index, bool *errored)
 {
-    int32_t result = ~0;
+    int32_t result = INT32_MIN;
 
     if (index->Kind == expr_signed_integer)
     {
@@ -978,7 +978,8 @@ LswitchIdKey:
             // result->TupleExprCount = tupleExprCount;
             // result->TupleExprs = AllocNewSemaExpr(self, expr);
 
-            bool isTypeTuple = true;
+            // an empty tuple is a value tuple by default
+            bool isTypeTuple = (expr->TupleExprCount != 0);
 
             for(uint32_t i = 0;
                 i < expr->TupleExprCount;
@@ -1248,7 +1249,7 @@ LswitchIdKey:
         } break;
     }
 Lret:
-    if (result != (metac_expr_t*)emptyNode)
+    if (result != cast(metac_sema_expr_t*)emptyNode)
     {
     //assert(hash != 0);
     result->Hash = hash;

@@ -12,7 +12,7 @@
 #  define MM_PAUSE()
 #endif
 
-#if defined(_MSC_VER)
+#if defined(_MSC_VER) || defined(_WIN32)
 #  include <intrin.h>
 #elif defined (__GNUC__)
 #  define _InterlockedIncrement(PTR) \
