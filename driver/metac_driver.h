@@ -20,6 +20,11 @@ void ParseFile(metac_parser_t* parser,
                const char* path,
                decl_array_t* result);
 
+metac_decl_t* FindDecl(decl_array_t decls,
+                       metac_parser_t* parser,
+                       const char* name);
+
+
 extern bool errored;
 
 #endif //_METAC_DRIVER_H_
