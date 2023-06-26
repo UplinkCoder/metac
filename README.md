@@ -14,14 +14,14 @@ It improves on C by providing more extensive meta programming capabilities than 
 
 Upon startup `metac` will try to read a file named `metac_compiler_interface.h` and search for struct definitions in there.
 Currently, it's expected that only one struct is defined.
-It will then put an instance of that struct into the `.` namespace/scope which is accessible as `.compiler`.
+It will then put an instance of that struct into the `.` namespace/scope which is accessible as `.Compiler`.
 Right now, the `.compiler` does not get populated with current compiler-state information, but this is supposed to change.
 
 ## Features
 
 ### Compiler-API
 
-Within the language, you can access a struct of type `metac_compiler_t` by using the special name `.compiler`.
+Within the language, you can access a struct of type `metac_compiler_t` by using the special name `.Compiler`.
 It exposes the functions that you can call.
 
 During compilation you can have functions run and those functions can access the compiler via the API.
@@ -36,7 +36,7 @@ At the time of writing MetaC doesn't do type checking on operations so you can e
 `int - 1` which will result in an integer value (268435467).
 That is because at the time of writing, types are represented as a 32 bit wide bitfield.
 The type kind is in the leftmost (most-significant) bits and an index is in the rightmost (least-significant) bits.
-This is also the reason why `sizeof(typeof(void))` is 4; since the runtime representation of a type is 4 bytes big.
+This is also the reason why `sizeof(typeof(void))` is 4; since the runtime representation of a type is 4 bytes in size (uint32_t).
 We can force an integer to be interpreted as a type by assigning it to a variable of type `type`:
 
 ```C
