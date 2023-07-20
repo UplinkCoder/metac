@@ -64,10 +64,7 @@ void MetaCParser_Init(metac_parser_t* self, metac_alloc_t* allocator)
 
     self->CurrentBlockStmt = 0;
 
-    self->PackStackCapacity = 8;
-    self->PackStack = (uint16_t*)
-        calloc(sizeof(*self->PackStack), self->PackStackCapacity);
-    self->PackStackTop = -1;
+    ARENA_ARRAY_INIT_SZ(uint16_t, self->PackStack, &self->Allocator, 4);
 /*
     self->Defines = self->inlineDefines;
     self->DefineCount = 0;
@@ -77,10 +74,7 @@ void MetaCParser_Init(metac_parser_t* self, metac_alloc_t* allocator)
 #ifndef NO_PREPROCESSOR
     self->Preprocessor = 0;
 #endif
-    self->BlockStmtStackCapacity = 16;
-    self->BlockStmtStackCount = 0;
-    self->BlockStmtStack = (stmt_block_t**)
-        malloc(sizeof(stmt_block_t*) * self->BlockStmtStackCapacity);
+    ARENA_ARRAY_INIT(stmt_block_t*, self->BlockStmtStack, &self->Allocator);
 
     self->ExprParser.OpenParens = 0;
     self->ExprParser.LBracketCount = 0;
@@ -94,23 +88,24 @@ void MetaCParser_Init(metac_parser_t* self, metac_alloc_t* allocator)
 
     Allocator_Init(&self->Allocator, allocator, 0);
 
-    ARENA_ARRAY_INIT(metac_expr_t*, self->ExprParser.ExprStack, allocator)
-    ARENA_ARRAY_INIT(parse_expr_flags_t, self->ExprParser.ExprFlagsStack, allocator)
-    ARENA_ARRAY_INIT(metac_expr_kind_t, self->ExprParser.OpStack, allocator)
+    ARENA_ARRAY_INIT(metac_expr_t*, self->ExprParser.ExprStack, &self->Allocator);
+    ARENA_ARRAY_INIT(parse_expr_flags_t, self->ExprParser.ExprFlagsStack, &self->Allocator);
+    ARENA_ARRAY_INIT(metac_expr_kind_t, self->ExprParser.OpStack, &self->Allocator);
 
-    ARENA_ARRAY_INIT(int32_t, self->ExprParser.ExprStackBottomStack, allocator)
-    ARENA_ARRAY_INIT(int32_t, self->ExprParser.OpStackBottomStack, allocator)
-    ARENA_ARRAY_INIT(int32_t, self->ExprParser.OpenParensStack, allocator)
+    ARENA_ARRAY_INIT(int32_t, self->ExprParser.ExprStackBottomStack, &self->Allocator);
+    ARENA_ARRAY_INIT(int32_t, self->ExprParser.OpStackBottomStack, &self->Allocator);
+    ARENA_ARRAY_INIT(int32_t, self->ExprParser.OpenParensStack, &self->Allocator);
 
-    ARENA_ARRAY_INIT_SZ(identifier_callback_t, self->IdentifierCallbacks, allocator, 4)
+    ARENA_ARRAY_INIT_SZ(identifier_callback_t, self->IdentifierCallbacks, &self->Allocator, 4);
 }
 
 void MetaCParser_Free(metac_parser_t* self)
 {
     IdentifierTable_Free(&self->IdentifierTable);
     IdentifierTable_Free(&self->StringTable);
-    free(self->BlockStmtStack);
     Debug_RemoveAllocator(g_DebugServer, &self->Allocator);
+
+    // Allocator_Free(&self->Allocator);
 
     static const metac_parser_t zeroParser = {0};
     *self = zeroParser;

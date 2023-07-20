@@ -85,17 +85,11 @@ typedef struct metac_parser_t
 
     stmt_block_t* CurrentBlockStmt;
 
-    uint16_t* PackStack;
-    /// -1 means empty
-    int32_t  PackStackTop;
+    ARENA_ARRAY(uint16_t, PackStack)
 
     metac_expr_parser_t ExprParser;
 
-    stmt_block_t** BlockStmtStack;
-    uint32_t BlockStmtStackCount;
-    uint32_t BlockStmtStackCapacity;
-
-    uint32_t PackStackCapacity;
+    ARENA_ARRAY(stmt_block_t*, BlockStmtStack)
 
     metac_token_t CurrentComment;
     decl_label_t* CurrentLabel;
