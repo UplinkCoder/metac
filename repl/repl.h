@@ -91,8 +91,10 @@ typedef struct ui_interface_t
     /// Returns a string of length $(*length) when a input line is
     /// avilable, NULL if no line is ready
     const char* (*GetInputLine) (struct ui_state_t* state, repl_state_t* repl, uint32_t* length);
-    /// Regular output that would go to printf otherwise
+    /// Regular output that would go to stdout otherwise
     void (*Message) (struct ui_state_t* state, const char* fmt, ...);
+    /// Regular output that would go to stderr otherwise
+    void (*ErrorMessage) (struct ui_state_t* state, const char* fmt, ...);
     /// Query current mode for the repl;
     repl_mode_t (*QueryMode) (struct ui_state_t* state);
 

@@ -24,8 +24,8 @@ const char* MetaCTokenEnum_toChars(metac_token_enum_t tok);
 #define MSGF(FMT, ...) uiInterface.Message(uiState, FMT, __VA_ARGS__)
 #define MSG(STR) MSGF(STR, 0);
 
-#define ERRORMSGF(FMT, ...) MSGF(FMT, __VA_ARGS__)
-#define ERRORMSG(FMT) MSG(FMT)
+#define ERRORMSGF(FMT, ...) uiInterface.ErrorMessage(uiState, FMT, __VA_ARGS__)
+#define ERRORMSG(STR) ERRORMSGF(STR, 0)
 
 void HelpMessage(ui_interface_t uiInterface, struct ui_state_t* uiState)
 {
@@ -1077,7 +1077,7 @@ LswitchMode:
                 if (decl)
                     MSGF("decl = %s\n", MetaCPrinter_PrintDecl(&repl->printer, decl));
                 else
-                    MSG("Couldn't parse declaration\n");
+                    ERRORMSG("Couldn't parse declaration\n");
                 decl->StorageClass = storageclass_global;
 
 #ifndef NO_FIBERS
