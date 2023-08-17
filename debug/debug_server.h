@@ -154,6 +154,7 @@ extern debug_server_t* g_DebugServer;
 #define Debug_CurrentIdentifierTable(D, IT)
 #define Debug_CurrentScope(D, SC)
 #define Debug_PeekToken(D, PARSER, OFFSET)
+#define Debug_RegisterWorker(D, W)
 #endif
 
 #endif

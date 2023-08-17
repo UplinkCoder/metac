@@ -59,10 +59,13 @@ static inline void InitSpecialIdentifier(metac_parser_t* self)
 void MetaCParser_Init(metac_parser_t* self, metac_alloc_t* allocator)
 {
     self->CurrentTokenIndex = 0;
-    IdentifierTable_Init(&self->IdentifierTable, IDENTIFIER_LENGTH_SHIFT, 13, allocator);
-    IdentifierTable_Init(&self->StringTable, STRING_LENGTH_SHIFT, 13, allocator);
+    Allocator_Init(&self->Allocator, allocator);
+
+    IdentifierTable_Init(&self->IdentifierTable, IDENTIFIER_LENGTH_SHIFT, 13, &self->Allocator);
+    IdentifierTable_Init(&self->StringTable, STRING_LENGTH_SHIFT, 13, &self->Allocator);
 
     self->CurrentBlockStmt = 0;
+
 
     ARENA_ARRAY_INIT_SZ(uint16_t, self->PackStack, &self->Allocator, 4);
 /*
