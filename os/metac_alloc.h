@@ -121,6 +121,9 @@ arena_ptr_t ReallocArenaArray(tagged_arena_t* arena, metac_alloc_t* alloc, uint3
     } \
 } while(0)
 
+#define ARENA_ARRAY_CAPACITY(NAME) \
+    (NAME##Arena.SizeLeft / sizeof(*NAME))
+
 #define ARENA_ARRAY_ADD(NAME, VALUE) do { \
     if (NAME##Arena.SizeLeft < sizeof(*NAME)) \
     { \

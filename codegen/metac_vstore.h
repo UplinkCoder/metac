@@ -4,17 +4,15 @@
 #include "../parser/metac_identifier_table.h"
 #include "../semantic/metac_sematree.h"
 
-typedef struct variable_t
+typedef struct metac_vstore_variable_t
 {
     metac_identifier_ptr_t IdentifierPtr;
     void* value;
-} variable_t;
+} metac_vstore_variable_t;
 
 typedef struct variable_store_t
 {
-    variable_t* Variables;
-    uint32_t  VariableSize;
-    uint32_t VariableCapacity;
+    ARENA_ARRAY(metac_vstore_variable_t, Variables);
 
     metac_identifier_table_t* ExternalTable;
     metac_identifier_table_t Table;

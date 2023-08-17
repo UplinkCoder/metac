@@ -44,10 +44,10 @@ static inline BCValue* GetValueFromVariableStore(variable_store_t* vstore,
                                                  metac_identifier_ptr_t vstoreId)
 {
     for(uint32_t i = 0;
-        i < vstore->VariableSize;
+        i < vstore->VariablesCount;
         i++)
     {
-        variable_t var = vstore->Variables[i];
+        metac_vstore_variable_t var = vstore->Variables[i];
         if (var.IdentifierPtr.v == vstoreId.v)
         {
             return (BCValue*) var.value;
@@ -67,15 +67,13 @@ void VariableStore_AddVariable(variable_store_t* vstore,
 
     BCValue* v = GetValueFromVariableStore(vstore, vstoreId);
     assert(!v);
-    assert(vstore->VariableCapacity > vstore->VariableSize);
-    variable_t var = { vstoreId, value };
-    vstore->Variables[vstore->VariableSize++] = var;
+    ARENA_ARRAY_ADD(vstore->Variables, ((metac_vstore_variable_t) { vstoreId, value }));
 }
 
 void VariableStore_RemoveVariable(variable_store_t* vstore, void* value)
 {
     bool foundVar = false;
-    for(uint32_t i = 0; i < vstore->VariableSize; i++)
+    for(uint32_t i = 0; i < vstore->VariablesCount; i++)
     {
         if (foundVar)
         {
@@ -87,7 +85,7 @@ void VariableStore_RemoveVariable(variable_store_t* vstore, void* value)
         }
     }
     assert(foundVar);
-    --vstore->VariableSize;
+    --vstore->VariablesCount;
 }
 
 
@@ -102,17 +100,15 @@ void VariableStore_SetValueI32(variable_store_t* vstore,
     if (!v)
     {
         v = (BCValue*)malloc(sizeof(BCValue));
-        variable_t var = { vstoreId, v };
-        vstore->Variables[vstore->VariableSize++] = var;
+        metac_vstore_variable_t var = { vstoreId, v };
+        vstore->Variables[vstore->VariablesCount++] = var;
     }
     *v = imm32(value);
 }
 
 void VariableStore_Init(variable_store_t* self, metac_identifier_table_t* externalTable, metac_alloc_t* allocator)
 {
-    self->VariableCapacity = 32;
-    self->VariableSize = 0;
-    self->Variables = Allocator_Calloc(allocator, variable_t, self->VariableCapacity);
+    ARENA_ARRAY_INIT_SZ(metac_vstore_variable_t, self->Variables, allocator, 32);
     self->ExternalTable = externalTable;
 
     IdentifierTable_Init(&self->Table, IDENTIFIER_LENGTH_SHIFT, 7, allocator);
