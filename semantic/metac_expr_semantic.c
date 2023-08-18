@@ -864,6 +864,13 @@ LswitchIdKey:
         {
             metac_sema_expr_t* E1 =
                 MetaCSemantic_doExprSemantic(self, expr->E1, 0);
+
+            if (METAC_NODE(E1) == emptyNode)
+            {
+                METAC_NODE(result) = emptyNode;
+                break;
+            }
+
             hash = CRC32C_VALUE(hash, E1->Hash);
 
             if (result->E1->Kind == expr_unknown_value)
@@ -1177,6 +1184,11 @@ LswitchIdKey:
             hash = sizeof_key;
             metac_sema_expr_t* e1 =
                 MetaCSemantic_doExprSemantic(self, expr->E1, 0);
+
+            while (e1->Kind == expr_paren)
+            {
+                e1 = e1->E1;
+            }
 
             metac_type_index_t typeIdx = e1->TypeIndex;
             // usually we assume the type of which we want
