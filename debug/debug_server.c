@@ -609,6 +609,7 @@ int Debug_Init(debug_server_t* debugServer, unsigned short port) {
     debugServer->Daemon = d;
 
     assert(!g_DebugServer);
+    g_DebugServer = debugServer;
 
     debugServer->Allocators = (metac_alloc_t**)
         malloc(sizeof(metac_alloc_t*) * allocatorCapa);
@@ -633,7 +634,6 @@ int Debug_Init(debug_server_t* debugServer, unsigned short port) {
     ARENA_ARRAY_INIT(worker_context_t*, debugServer->Workers, &debugServer->Allocator)
 #endif
 
-    g_DebugServer = debugServer;
    return 0;
 }
 
