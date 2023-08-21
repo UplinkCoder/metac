@@ -14,6 +14,16 @@
 #  define WINDOWS
 #endif
 
+typedef struct os_date_t
+{
+    uint8_t Second;
+    uint8_t Minute;
+    uint8_t Hour;
+    uint8_t Day;
+    uint8_t Month;
+    uint16_t Year;
+} os_date_t;
+
 typedef enum file_mode_t
 {
     FileMode_Read,
@@ -40,11 +50,11 @@ typedef enum os_error_t
 
 struct OS
 {
-    uint32_t PageSize;
-
     os_error_t (*PageAlloc)(uint32_t minSize, uint32_t* allocatedSize, void** outMemory);
 
     os_error_t (*GetTimeStamp) (uint32_t* tsp);
+
+    os_error_t (*SetStartTime) (void);
 
 #if 0
     /// Opens a file
@@ -75,6 +85,11 @@ struct OS
     // Closes the file and flushes any pending write/operations
     os_error_t (*FileClose)(fhandle handle);
 #endif
+
+    uint32_t PageSize;
+
+    os_date_t StartDate;
+    uint32_t StartTimeStamp;
 };
 
 extern struct OS OS;

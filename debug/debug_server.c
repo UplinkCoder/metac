@@ -1,5 +1,5 @@
-#ifdef DEBUG_SERVER
 
+#ifdef DEBUG_SERVER
 #include "../debug/debug_server.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -7,6 +7,7 @@
 #include "../os/bsf.h"
 #include <json-c/json.h>
 #include <assert.h>
+extern uint32_t crc32c_nozero(uint32_t crc, const void* s, const uint32_t len_p);
 
 debug_server_t* g_DebugServer = 0;
 
@@ -179,7 +180,7 @@ MHD_HANDLER(handleLc)
     return serveFile("/home/uplink/dev/metac/debug/linechart.html", "text/html", connection);
 }
 
-MHD_HANDLER(handleData)
+MHD_HANDLER(handleDataJson)
 {
     return serveFile("/home/uplink/dev/metac/debug/data.json", "application/json", connection);
 }
@@ -451,6 +452,45 @@ void outTaskRow(char* body, uint32_t sz, uint32_t* pp, task_t* task)
     (*pp) = p;
 }
 
+MHD_HANDLER(handleLogs)
+{
+    static char responseBuffer[8192];
+    uint32_t p = 0;
+    const char* headers[] = {
+        // "Category"
+        // "Time",
+        "Message",
+    };
+    char body[8192];
+    debug_server_t *debugServer = cast(debug_server_t*) cls;
+
+    p += snprintf(body + p, ARRAYSIZE(body) - p, "<tr>");
+    for(uint32_t i = 0; i < ARRAYSIZE(headers); i++)
+    {
+        p += snprintf(body + p, ARRAYSIZE(body) - p, "<th>%s</th>", headers[i]);
+    }
+    p += snprintf(body + p, ARRAYSIZE(body) - p, "</tr>");
+    {
+        uint32_t i;
+        for(i = 0; i < debugServer->LogsCount; i++)
+        {
+            debug_message_t log = debugServer->Logs[i];
+            p += snprintf(body + p, ARRAYSIZE(body) - p, "<tr>");
+            p += snprintf(body + p, ARRAYSIZE(body) - p, "<td>%s</td>", log.Message);
+            p += snprintf(body + p, ARRAYSIZE(body) - p, "</tr>");
+        }
+    }
+
+   uint32_t len = snprintf (responseBuffer, ARRAYSIZE (responseBuffer),
+                    "<hmtl><body>"
+                    "<h3>Logs: </h3>"
+                    "<table id=\"logs\">%s</table>"
+                    "</body></html>",
+           body);
+    return send_html (connection, responseBuffer, len);
+}
+
+
 MHD_HANDLER(handleTasks)
 {
     static char responseBuffer[8192];
@@ -508,7 +548,7 @@ MHD_HANDLER(handleTasks)
                     "<h3>Tasks: </h3>"
                     "<h2>ActiveTask: %p</h2>"
                     "<table id=\"tasks\">%s</table>"
-                    "</body></hmtl>",
+                    "</body></html>",
            worker->ActiveTask, body);
     return send_html (connection, responseBuffer, len);
 }
@@ -518,68 +558,57 @@ static MHD_HANDLER(debugServerHandler)
 {
     debug_server_t *debugServer = cast(debug_server_t*) cls;
 
-    if (strcmp(url, "/allocators") == 0)
+    uint32_t i;
+    for(i = 0; i < debugServer->RoutesCount;i++)
     {
-        return handleAllocators(MHD_HANDLER_PASSTHROUGH);
+        debug_server_route_t route = debugServer->Routes[i];
+        if (strcmp(route.Url, url) == 0)
+        {
+            return route.Handler(MHD_HANDLER_PASSTHROUGH);
+        }
     }
 
-    if (memcmp(url, "/arenas", sizeof("/arenas") - 1) == 0)
-    {
-        return handleArenas(MHD_HANDLER_PASSTHROUGH);
-    }
-
-    if (memcmp(url, "/currentScope", sizeof("/currentScope") - 1) == 0)
-    {
-        return handleCurrentScope(MHD_HANDLER_PASSTHROUGH);
-    }
-
-    if (memcmp(url, "/graphs", sizeof("/graphs") - 1) == 0)
-    {
-        return handleGraphs(MHD_HANDLER_PASSTHROUGH);
-    }
-
-    if (memcmp(url, "/graph.js", sizeof("/graph.js") - 1) == 0)
-    {
-        return handleGraphJs(MHD_HANDLER_PASSTHROUGH);
-    }
-
-    if (memcmp(url, "/lc", sizeof("/lc") - 1) == 0)
-    {
-        return handleLc(MHD_HANDLER_PASSTHROUGH);
-    }
-
-    if (memcmp(url, "/data.json", sizeof("/data.json") - 1) == 0)
-    {
-        return handleData(MHD_HANDLER_PASSTHROUGH);
-    }
-
-    if (memcmp(url, "/parser", sizeof("/parser") - 1) == 0)
-    {
-        return handleParser(MHD_HANDLER_PASSTHROUGH);
-    }
-
-    if (memcmp(url, "/history", (sizeof("/history") - 1)) == 0)
-    {
-        return handleHistory(MHD_HANDLER_PASSTHROUGH);
-    }
-
-#ifndef NO_FIBERS
-    if (memcmp(url, "/tasks", sizeof("/tasks") - 1) == 0)
-    {
-        return handleTasks(MHD_HANDLER_PASSTHROUGH);
-    }
-#endif
-
+    return MHD_NO;
+/*
     if (debugServer->Handler)
     {
         return debugServer->Handler(MHD_HANDLER_PASSTHROUGH);
     }
 
     return MHD_NO;
+*/
 }
 
 static MHD_COMPLETED_CB (MhdCompletionCallback)
 {
+}
+
+void DebugServer_AddRoute(debug_server_t* debugServer,
+                          const char* url,
+                          mhd_handler_t handler)
+{
+    debug_server_route_t route;
+
+    route.Url = url;
+    route.Handler = handler;
+
+    ARENA_ARRAY_ADD(debugServer->Routes, route);
+}
+
+void debug_init_routes(debug_server_t* debugServer)
+{
+    DebugServer_AddRoute(debugServer, "/allocators", handleAllocators);
+    DebugServer_AddRoute(debugServer, "/arenas", handleArenas);
+    DebugServer_AddRoute(debugServer, "/graphs", handleGraphs);
+    DebugServer_AddRoute(debugServer, "/graph.js", handleGraphJs);
+    DebugServer_AddRoute(debugServer, "/lc", handleLc);
+    DebugServer_AddRoute(debugServer, "/data.json", handleDataJson);
+    DebugServer_AddRoute(debugServer, "/parser", handleParser);
+    DebugServer_AddRoute(debugServer, "/history", handleHistory);
+    DebugServer_AddRoute(debugServer, "/logs", handleLogs);
+#ifndef NO_FIBERS
+    DebugServer_AddRoute(debugServer, "/tasks", handleTasks);
+#endif
 }
 
 
@@ -631,15 +660,21 @@ int Debug_Init(debug_server_t* debugServer, unsigned short port) {
     debugServer->TokenStreamCount = 0;
     debugServer->TokenStreamCapacity = tokenCapa;
 #ifndef NO_FIBERS
-    ARENA_ARRAY_INIT(worker_context_t*, debugServer->Workers, &debugServer->Allocator)
+    ARENA_ARRAY_INIT(worker_context_t*, debugServer->Workers, &debugServer->Allocator);
 #endif
+
+    ARENA_ARRAY_INIT(debug_message_t, debugServer->Logs, &debugServer->Allocator);
+
+    ARENA_ARRAY_INIT(debug_server_route_t, debugServer->Routes, &debugServer->Allocator);
+
+    debug_init_routes(debugServer);
 
    return 0;
 }
 
 void Debug_Allocator(debug_server_t* debugServer, metac_alloc_t* allocator)
 {
-    uint32_t count = debugServer->AllocatorsCount++;
+    uint32_t count = debugServer->AllocatorsCount;
     if (count < debugServer->AllocationsCapacity)
     {
         debugServer->Allocators[count] = allocator;
@@ -652,6 +687,7 @@ void Debug_Allocator(debug_server_t* debugServer, metac_alloc_t* allocator)
         if (newMem)
             debugServer->Allocators = (metac_alloc_t**)newMem;
     }
+    debugServer->AllocatorsCount += 1;
     // if (count == 10) { asm ( "int $3" ); }
 }
 
@@ -700,10 +736,44 @@ void Debug_CurrentIdentifierTable(debug_server_t* debugServer,
     debugServer->CurrentIdentifierTable = idTab;
 }
 
+metac_identifier_ptr_t DebugServer_Category(debug_server_t* debugServer, const char* category)
+{
+    uint32_t len = strlen(category);
+    uint32_t hash = crc32c_nozero(~0, category, len);
+
+    return GetOrAddIdentifier(&debugServer->CategoryTable, IDENTIFIER_KEY(hash, len), category);
+}
+
 const char* DebugServer_AddString(debug_server_t* debugServer, const char* name, uint32_t len)
 {
-
+    char* memory = Allocator_Calloc(&debugServer->Allocator, char, len);
+    memcpy(memory, name, len);
+    return memory;
 }
+
+void Debug_Logf(debug_server_t* debugServer,
+    const char* category,
+    const char* fmt,
+    ...
+)
+{
+
+    char buffer[1024];
+    debug_message_t log;
+    int len;
+    va_list list;
+
+    OS.GetTimeStamp(&log.Timestamp);
+
+    va_start(list, fmt);
+    len = vsnprintf(buffer, sizeof(buffer), fmt, list);
+    va_end(list);
+
+    log.Category = DebugServer_Category(debugServer, category);
+    log.Message = DebugServer_AddString(debugServer, buffer, len);
+    ARENA_ARRAY_ADD(debugServer->Logs, log);
+}
+
 
 void Debug_GraphValue(debug_server_t* debugServer, const char* name, double value)
 {

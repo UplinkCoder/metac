@@ -62,6 +62,7 @@ typedef struct debug_graph_t
 
 typedef struct debug_message_t
 {
+    metac_identifier_ptr_t Category;
     const char* Message;
     uint32_t Length;
     uint32_t Timestamp;
@@ -88,12 +89,24 @@ typedef struct debug_parser_action_t
     debug_parser_action_kind_t Kind;
 } debug_parser_action_t;
 
+typedef struct debug_server_route_t
+{
+    const char* Url;
+    mhd_handler_t Handler;
+} debug_server_route_t;
+
 typedef struct debug_server_t
 {
     struct MHD_Daemon* Daemon;
     mhd_handler_t Handler;
 
     metac_alloc_t Allocator;
+
+    ARENA_ARRAY(debug_server_route_t, Routes)
+
+    ARENA_ARRAY(debug_message_t, Logs)
+
+    metac_identifier_table_t CategoryTable;
 
     metac_alloc_t** Allocators;
     uint32_t AllocatorsCount;
@@ -155,6 +168,7 @@ extern debug_server_t* g_DebugServer;
 #define Debug_CurrentScope(D, SC)
 #define Debug_PeekToken(D, PARSER, OFFSET)
 #define Debug_RegisterWorker(D, W)
+#define Debug_Logf(D, F, ...)
 #endif
 
 #endif

@@ -1,5 +1,7 @@
 #include "../parser/metac_expr_parser.h"
 
+#include "../debug/debug_server.h"
+
 const char* BinExpTypeToChars(metac_binary_expr_kind_t t)
 {
     switch(t)
@@ -1570,6 +1572,8 @@ bool IsBinaryAssignExp(metac_expr_kind_t kind)
 
 void MetaCParser_PushExpr(metac_parser_t* self, metac_expr_t *e)
 {
+    Debug_Logf(g_DebugServer, "Parser", "[PushExpr] %s",
+        MetaCPrinter_PrintExpr(&self->DebugPrinter, e));
     // printf("Pushing Expr: %s\n", MetaCPrinter_PrintExpr(&self->DebugPrinter, e));
     ARENA_ARRAY_ADD(self->ExprParser.ExprStack, e);
 }
