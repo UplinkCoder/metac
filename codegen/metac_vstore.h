@@ -7,7 +7,7 @@
 typedef struct metac_vstore_variable_t
 {
     metac_identifier_ptr_t IdentifierPtr;
-    void* value;
+    void* Value;
 } metac_vstore_variable_t;
 
 typedef struct variable_store_t

@@ -50,7 +50,7 @@ static inline BCValue* GetValueFromVariableStore(variable_store_t* vstore,
         metac_vstore_variable_t var = vstore->Variables[i];
         if (var.IdentifierPtr.v == vstoreId.v)
         {
-            return (BCValue*) var.value;
+            return (BCValue*) var.Value;
         }
     }
 
@@ -62,12 +62,15 @@ void VariableStore_AddVariable(variable_store_t* vstore,
                                void* value)
 {
     metac_identifier_ptr_t vstoreId = GetVStoreID(vstore, varDecl);
+    metac_vstore_variable_t var = {{0}};
     assert(vstoreId.v == 0);
     vstoreId = AddVStoreID(vstore, varDecl);
-
+    var.IdentifierPtr = vstoreId;
+    var.Value = value;
     BCValue* v = GetValueFromVariableStore(vstore, vstoreId);
     assert(!v);
-    ARENA_ARRAY_ADD(vstore->Variables, ((metac_vstore_variable_t) { vstoreId, value }));
+
+    ARENA_ARRAY_ADD(vstore->Variables, var);
 }
 
 void VariableStore_RemoveVariable(variable_store_t* vstore, void* value)
@@ -79,7 +82,7 @@ void VariableStore_RemoveVariable(variable_store_t* vstore, void* value)
         {
             vstore->Variables[i - 1] = vstore->Variables[i];
         }
-        else if (vstore->Variables[i].value == value)
+        else if (vstore->Variables[i].Value == value)
         {
             foundVar = true;
         }
@@ -99,8 +102,8 @@ void VariableStore_SetValueI32(variable_store_t* vstore,
     BCValue* v = GetValueFromVariableStore(vstore, vstoreId);
     if (!v)
     {
-        v = (BCValue*)malloc(sizeof(BCValue));
         metac_vstore_variable_t var = { vstoreId, v };
+        v = (BCValue*)malloc(sizeof(BCValue));
         vstore->Variables[vstore->VariablesCount++] = var;
     }
     *v = imm32(value);
