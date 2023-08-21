@@ -35,6 +35,14 @@ void Linenoise_Message(ui_state_t* state, const char* fmt, ...)
     va_end (args);
 }
 
+void Linenoise_ErrorMessage(ui_state_t* state, const char* fmt, ...)
+{
+    va_list args;
+    va_start (args, fmt);
+    vprintf (fmt, args);
+    va_end (args);
+}
+
 void Linenoise_Clear(ui_state_t* uiState)
 {
     linenoiseClearScreen();
@@ -63,6 +71,7 @@ const struct ui_interface_t LinenoiseUiInterface =
 {
     Linenoise_GetInputLine,
     Linenoise_Message,
+    Linenoise_ErrorMessage,
     Linenoise_QueryMode,
     Linenoise_Clear,
     Linenoise_Info,
