@@ -567,8 +567,25 @@ static MHD_HANDLER(debugServerHandler)
             return route.Handler(MHD_HANDLER_PASSTHROUGH);
         }
     }
-
-    return MHD_NO;
+    
+    {
+        static char defaultPage[1024];
+        int p = 0;
+        p += sprintf(defaultPage + p, "<html><body>");
+        p += sprintf(defaultPage + p, "<h1>Avilable routes are: </h1>");
+        {
+            int i;
+            for(i = 0; i < debugServer->RoutesCount; i++)
+            {
+                debug_server_route_t route = debugServer->Routes[i];
+                const char* url = route.Url;
+                p += sprintf(defaultPage + p, "<a href=\"%s\">%s</a><br/>", url, url);
+            }
+        }
+        p += sprintf(defaultPage + p, "</body></html>");
+        return send_html(connection, defaultPage, p);
+    }
+    
 /*
     if (debugServer->Handler)
     {
