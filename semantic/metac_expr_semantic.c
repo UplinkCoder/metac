@@ -81,7 +81,7 @@ void ConvertTupleElementToExp(metac_sema_state_t* sema,
     }
 }
 
-extern const BackendInterface BCGen_interface;
+EXTERN_C const BackendInterface BCGen_interface;
 metac_sema_expr_t
 EvaluateExpr(metac_sema_state_t* sema,
              metac_sema_expr_t* e,
