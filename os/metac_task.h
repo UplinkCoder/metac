@@ -20,7 +20,16 @@
 #define TASK_PAGE_SIZE 4096
 #define TASK_QUEUE_SIZE 1024
 
-/// Cancel the task if the Value is matches the expected
+
+#if defined(_WIN32) || defined(_WIN64)
+#define THREAD_FUNC(NAME) \
+    DWORD WINAPI NAME(void* arg)
+#else
+#define THREAD_FUNC(NAME) \
+    void* NAME(void* arg)
+#endif
+
+/// Cancel the task if the Value matches the expected
 void CancelIf(int32_t* Value, int32_t Expected);
 
 typedef struct ticket_t
@@ -208,6 +217,7 @@ typedef struct tasksystem_t
 
 void TaskSystem_Init(tasksystem_t* self, uint32_t workerThreads, void (*workerFunction)(worker_context_t* worker));
 bool AddTask(task_t* task);
+bool AddTaskToQueue(task_t* task);
 worker_context_t* CurrentWorker(void);
 
 void* CurrentFiber(void);
@@ -223,12 +233,6 @@ bool TaskQueue_Push(taskqueue_t* self, task_t* taskP);
 /// the queue slot is considered empty after this
 bool TaskQueue_Pull(taskqueue_t* self, task_t* taskP);
 #endif
-
-#define CAT2(A, B) \
-    A ## B
-
-#define CAT(A, B) \
-    CAT2(A, B)
 
 #define CTX_TYPE(FUNC) \
     FUNC ## task_context_t

@@ -83,18 +83,21 @@ int main(int argc, const char* argv[])
             continue;
         }
         printf("arg: %s\n", arg);
-        metac_lexer_t lexer;
-        metac_alloc_t lexerAlloc = {0};
-        Allocator_Init(&lexerAlloc, 0);
-        MetaCLexer_Init(&lexer, &lexerAlloc);
+        metac_lpp_t LPP;
+        metac_alloc_t lppAlloc = {0};
+        metac_alloc_t fileAlloc = {0};
+        metac_file_storage_t storage = {0};
+
+        Allocator_Init(&lppAlloc, 0);
+        Allocator_Init(&fileAlloc, 0);
+
+        MetaCFileStorage_Init(&storage, 0, &fileAlloc);
+        MetaCLPP_Init(&LPP, &lppAlloc, &storage);
 
         read_result_t readResult = ReadFileAndZeroTerminate(arg);
 #if 0
         struct timespec t = timer_start();
 #endif
-        LexFile(&lexer, arg,
-            readResult.FileContent0, readResult.FileLength
-        );
 #if 0
         {
             long ns = timer_end(t);
@@ -102,11 +105,9 @@ int main(int argc, const char* argv[])
             printf("lexing %u bytes took %f us -- %f bytes/ns\n", readResult.FileLength, us, cast(float)readResult.FileLength / ns);
         }
 #endif
-        metac_parser_t parser;
-        metac_alloc_t parserAlloc = {0};
-        Allocator_Init(&parserAlloc, 0);
-        MetaCParser_InitFromLexer(&parser, &lexer, &parserAlloc);
-        ParseFile(&parser, arg, 0);
+
+        MetaCLPP_Init(&LPP, &lppAlloc, 0);
+        ReadLexParse(arg, &LPP, &lppAlloc);
 #if 0
         {
             long ns = timer_end(t);

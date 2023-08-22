@@ -1335,11 +1335,10 @@ void MetaCSemantic_doTypeSemantic_Task(task_t* task)
 {
     MetaCSemantic_doTypeSemantic_Fiber_t* ctx =
         cast(MetaCSemantic_doTypeSemantic_Fiber_t*) task->Context;
-     metac_sema_state_t* sema = ctx->Sema;
+    metac_sema_state_t* sema = ctx->Sema;
     decl_type_t* type = ctx->Type;
 
     ctx->Result = MetaCSemantic_TypeSemantic(sema, type);
-
 }
 
 
@@ -1351,7 +1350,6 @@ void MetaCSemantic_doTypeSemantic_Fiber(void* caller, void* arg)
     decl_type_t* type = ctx->Type;
 
     ctx->Result = MetaCSemantic_TypeSemantic(sema, type);
-
 }
 #endif
 

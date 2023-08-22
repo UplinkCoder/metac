@@ -159,9 +159,12 @@ int main(int argc, const char* argv[])
     worker_context_t* ctxPtr = &replWorkerContext;
     THREAD_CONTEXT_SET(ctxPtr);
 /*
-    for(uint32_t slaveIdx = 0; slaveIdx < slaveCount; slaveIdx++)
     {
+        uint32_t slaveCount = 4;
+        for(uint32_t slaveIdx = 0; slaveIdx < slaveCount; slaveIdx++)
+        {
 
+        }
     }
 */
     RunWorkerThread(&replWorkerContext, Repl_Fiber, 0);

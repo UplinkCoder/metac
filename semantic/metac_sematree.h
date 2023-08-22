@@ -157,10 +157,8 @@ typedef struct metac_sema_expr_t
     };
 } metac_sema_expr_t;
 
-#if !defined(_MSC_VER) && !defined(CPP)
-_Static_assert(sizeof(metac_sema_expr_t) - sizeof(metac_sema_expr_header_t) <= METAC_MAX_EXP_BODY_SIZE,
+STATIC_ASSERT((sizeof(metac_sema_expr_t) - sizeof(metac_sema_expr_header_t) <= METAC_MAX_EXP_BODY_SIZE),
     "METAC_MAX_EXP_BODY_SIZE is less than the actual expression body size");
-#endif
 
 #define SEMA_STMT_HEADER \
     metac_stmt_kind_t Kind; \

@@ -35,8 +35,14 @@
 #  endif
 #endif
 
+#define CAT(A, B) \
+    CAT2(A, B)
+
+#define CAT2(A, B) \
+    A ## B
+
 #if !defined( __STDC_VERSION__ ) || __STDC_VERSION__ < 201112L
-# ifdef __COUNTER__
+# if defined(__COUNTER__)
   /* microsoft */
 #  define STATIC_ASSERT(E, M) \
     enum { CAT(static_assert_, __COUNTER__) = 1/(int)(!!(E)) }

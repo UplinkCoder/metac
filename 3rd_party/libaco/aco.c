@@ -24,18 +24,16 @@
 
 void aco_runtime_test(void){
 #if defined(_M_IX86)
-    _Static_assert(sizeof(void*) == 4, "require 'sizeof(void*) == 4'");
+    STATIC_ASSERT(sizeof(void*) == 4, "require 'sizeof(void*) == 4'");
 #elif defined(_M_X64) || defined(__aarch64__)
-    _Static_assert(sizeof(void*) == 8, "require 'sizeof(void*) == 8'");
-    _Static_assert(sizeof(__uint128_t) == 16, "require 'sizeof(__uint128_t) == 16'");
+    STATIC_ASSERT(sizeof(void*) == 8, "require 'sizeof(void*) == 8'");
+    STATIC_ASSERT(sizeof(__uint128_t) == 16, "require 'sizeof(__uint128_t) == 16'");
 #else
 #  error "platform no support yet"
 #endif
-    _Static_assert(sizeof(int) >= 4, "require 'sizeof(int) >= 4'");
-    assert(sizeof(int) >= 4);
-    _Static_assert(sizeof(int) <= sizeof(size_t),
+    STATIC_ASSERT(sizeof(int) >= 4, "require 'sizeof(int) >= 4'");
+    STATIC_ASSERT(sizeof(int) <= sizeof(size_t),
         "require 'sizeof(int) <= sizeof(size_t)'");
-    assert(sizeof(int) <= sizeof(size_t));
 }
 
 // assertptr(dst); assertptr(src);

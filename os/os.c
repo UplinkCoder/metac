@@ -1,5 +1,7 @@
 /// Small platfrom abstraction
 #include "os.h"
+#include <time.h>
+
 #define DEFAULT_PAGESIZE 4096
 os_error_t PageAlloc(uint32_t minSize, uint32_t* allocatedSize, void** outMemory);
 os_error_t GetTimeStamp(uint32_t* tsp);
@@ -67,12 +69,12 @@ os_error_t SetStartTime(void)
     struct tm* startTime = gmtime(NULL);
 
     os_date_t now = {
-        startTime->tm_sec,
-        startTime->tm_min,
-        startTime->tm_hour,
-        startTime->tm_mday,
-        startTime->tm_mon + 1,
-        startTime->tm_year + 1900
+        (uint8_t)startTime->tm_sec,
+        (uint8_t)startTime->tm_min,
+        (uint8_t)startTime->tm_hour,
+        (uint8_t)startTime->tm_mday,
+        (uint8_t)(startTime->tm_mon + 1),
+        (uint16_t)(startTime->tm_year + 1900)
     } ;
 
     GetTimeStamp(&OS.StartTimeStamp);

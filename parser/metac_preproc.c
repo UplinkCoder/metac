@@ -918,7 +918,7 @@ BCValue MetaCPreProcessor_Defined(void* ctx, uint32_t nVals, BCValue* vals)
 metac_preprocessor_pragma_t MetaCPreProcessor_ParsePragma(metac_preprocessor_t* self,
                                                           metac_parser_t* parser)
 {
-    metac_preprocessor_pragma_t result = {0};
+    metac_preprocessor_pragma_t result = {(metac_preprocessor_pragma_enum_t)0};
     metac_token_t* currentToken = 0;
 
     currentToken = MetaCParser_PeekToken(parser, 1);

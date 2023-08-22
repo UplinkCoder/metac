@@ -13,6 +13,7 @@
 
 #if defined(_MSC_VER) || __STDC_VERSION__ < 201112L || defined(__STDC_NO_THREADS__) || defined(__TINYC__)
 #  include "../3rd_party/tinycthread/tinycthread.c"
+#  define HAS_THREADS
 #endif
 
 #ifndef KILOBYTE
@@ -224,6 +225,13 @@ void WatcherFunc(void)
 void WorkerSIGUSR1()
 {
     printf("Worker: %d\n", THREAD_CONTEXT->WorkerId);
+}
+
+
+
+THREAD_FUNC(WorkerThreadFunc)
+{
+
 }
 
 void RunWorkerThread(worker_context_t* worker, void (*specialFunc)(),  void* specialFuncCtx)
