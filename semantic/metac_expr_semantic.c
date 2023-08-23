@@ -1127,7 +1127,15 @@ LswitchIdKey:
                     MetaCSemantic_LookupIdentifier(self, idPtr);
                 if (node == emptyNode)
                 {
+                    const char* idString = IdentifierPtrToCharPtr(self->ParserIdentifierTable, idPtr);
                     result = cast(metac_sema_expr_t*) emptyNode;
+                    // if (!ResolveErrorReported(self, typeExpr))
+#ifndef NO_FIBER
+                    YIELD(waiting_for_resolve);
+#endif
+                    {
+                        fprintf(stderr, "Could not resolve %s\n", idString);
+                    }
                     // TODO sticky couldn't resolve message
                 }
                 else

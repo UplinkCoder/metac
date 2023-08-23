@@ -121,7 +121,7 @@ int main(int argc, const char* argv[])
         metac_identifier_table_slot_t firstEntry = {0};
 
 #if !defined(NO_DUMP) && defined(WRITE_TABLE)
-        metac_identifier_table_slot_t* firstEntryP = findFirstEntry(&lexer.IdentifierTable);
+        metac_identifier_table_slot_t* firstEntryP = findFirstEntry(&LPP.Lexer.IdentifierTable);
         if (firstEntryP)
             firstEntry = *firstEntryP;
 
@@ -131,12 +131,12 @@ int main(int argc, const char* argv[])
         char formatBuffer[512];
         sprintf(formatBuffer, "%s.tokens", arg);
         FILE* tokens_fd = fopen(formatBuffer, "wb");
-        fwrite(lexer.Tokens, 1, lexer.TokenCount * sizeof(metac_token_t), tokens_fd);
+        fwrite(LPP.Lexer.Tokens, 1, LPP.Lexer.TokenCount * sizeof(metac_token_t), tokens_fd);
         fclose(tokens_fd);
 
 #if ACCEL == ACCEL_TABLE
         sprintf(formatBuffer, "%s.identifiers", arg);
-        WriteTable(&lexer.IdentifierTable, formatBuffer, 20, 0);
+        WriteTable(&LPP.Lexer.IdentifierTable, formatBuffer, 20, 0);
 
         metac_identifier_table_t newIdTable = ReadTable(formatBuffer);
         sprintf(formatBuffer, "%s.identifiers.new", arg);
@@ -149,7 +149,7 @@ int main(int argc, const char* argv[])
 
 
         sprintf(formatBuffer, "%s.strings", arg);
-        WriteTable(&lexer.StringTable, formatBuffer, 12, 0);
+        WriteTable(&LPP.Lexer.StringTable, formatBuffer, 12, 0);
 #endif
 
 #endif

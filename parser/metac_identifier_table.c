@@ -464,7 +464,7 @@ void WriteTable(metac_identifier_table_t* table, const char* filename, uint32_t 
 
     if ((stringP - table->StringMemory) != table->StringMemorySize)
     {
-        printf("StringLength: %d\n", stringP - table->StringMemory);
+        printf("StringLength: %d\n", cast(int)(stringP - table->StringMemory));
         printf("StringMemorySize: %d\n", table->StringMemorySize);
     }
     else
