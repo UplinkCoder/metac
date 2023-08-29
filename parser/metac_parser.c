@@ -2485,7 +2485,10 @@ void TestParseExprssion(void)
         &LPP.Parser.StringTable
     );
     metac_expr_t* expr;
-
+#ifdef OLD_PARSER
+#  define MetaCLPP_ParseExpr2FromString(LPP, STR) \
+	MetaCLPP_ParseExprFromString((LPP), (STR))
+#endif
     expr = MetaCLPP_ParseExpr2FromString(&LPP,          "12 - 16 - 99");
     TEST_STR_EQ(MetaCPrinter_PrintExpr(&printer, expr), "((12 - 16) - 99)");
 

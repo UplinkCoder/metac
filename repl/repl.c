@@ -833,9 +833,13 @@ LswitchMode:
             case repl_mode_max: break;
             case repl_mode_expr:
             {
+#ifdef OLD_PARSER
                  exp =
                     MetaCLPP_ParseExprFromString(&repl->LPP, repl->Line);
-
+#else
+                 exp =
+                    MetaCLPP_ParseExpr2FromString(&repl->LPP, repl->Line);
+#endif
                 const char* str = MetaCPrinter_PrintExpr(&repl->printer, exp);
                 MSGF("expr = %s\n", str);
                 MetaCPrinter_Reset(&repl->printer);
@@ -889,8 +893,13 @@ LswitchMode:
 
             case repl_mode_ee:
             {
+#ifdef OLD_PARSER
+                exp =
+                    MetaCLPP_ParseExprFromString(&repl->LPP, repl->Line);
+#else
                 exp =
                     MetaCLPP_ParseExpr2FromString(&repl->LPP, repl->Line);
+#endif
                 if (exp)
                 {
                     const char* str = MetaCPrinter_PrintExpr(&repl->printer, exp);
@@ -926,8 +935,13 @@ LswitchMode:
 
             case repl_mode_es:
             {
-                exp =
+#ifdef OLD_PARSER
+                 exp =
                     MetaCLPP_ParseExprFromString(&repl->LPP, repl->Line);
+#else
+                 exp =
+                    MetaCLPP_ParseExpr2FromString(&repl->LPP, repl->Line);
+#endif
 
                 const char* str = MetaCPrinter_PrintExpr(&repl->printer, exp);
                 metac_sema_expr_t* result =
@@ -988,7 +1002,14 @@ LswitchMode:
                 }
                 else
                 {
-                    metac_expr_t* assignExp = MetaCLPP_ParseExprFromString(&repl->LPP, repl->Line);
+#ifdef OLD_PARSER
+                 metac_expr_t* assignExp =
+                    MetaCLPP_ParseExprFromString(&repl->LPP, repl->Line);
+#else
+                 metac_expr_t* assignExp =
+                    MetaCLPP_ParseExpr2FromString(&repl->LPP, repl->Line);
+#endif
+
                     if (assignExp)
                     {
                         if (assignExp->Kind != expr_assign)

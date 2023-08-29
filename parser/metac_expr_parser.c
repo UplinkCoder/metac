@@ -1064,7 +1064,7 @@ static inline metac_expr_t* ParseRunExpr(metac_parser_t* self, int vers)
 
     return result;
 }
-/*
+#ifdef OLD_PARSER
 metac_expr_t* MetaCParser_ParseUnaryExpr(metac_parser_t* self)
 {
     metac_expr_t* result = 0;
@@ -1302,7 +1302,8 @@ metac_expr_t* MetaCParser_ParseUnaryExpr(metac_parser_t* self)
 
     return result;
 }
-*/
+#endif
+
 expr_argument_t* MetaCParser_ParseArgumentList(metac_parser_t* self, parse_expr_flags_t flags)
 {
     metac_location_t loc =
@@ -1365,7 +1366,7 @@ expr_argument_t* MetaCParser_ParseArgumentList(metac_parser_t* self, parse_expr_
 
     return arguments;
 }
-#if 0
+#ifdef OLD_PARSER
 metac_expr_t* MetaCParser_ParseBinaryExpr(metac_parser_t* self,
                                                       parse_expr_flags_t eflags,
                                                       metac_expr_t* left,
@@ -2040,7 +2041,7 @@ LParseCall:
 
     return result;
 }
-#if 0
+#ifdef OLD_PARSER
 metac_expr_t* MetaCParser_ParseExpr(metac_parser_t* self,
                                     parse_expr_flags_t eflags,
                                     metac_expr_t* prev)
