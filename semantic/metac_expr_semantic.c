@@ -1131,7 +1131,7 @@ LswitchIdKey:
                     result = cast(metac_sema_expr_t*) emptyNode;
                     // if (!ResolveErrorReported(self, typeExpr))
 #ifndef NO_FIBER
-                    YIELD(waiting_for_resolve);
+                    YIELD("waiting_for_resolve");
 #endif
                     {
                         fprintf(stderr, "Could not resolve %s\n", idString);
