@@ -101,7 +101,7 @@ MHD_HANDLER (handleCurrentScope)
 
     responseSize +=
         snprintf(responseString, ARRAYSIZE(responseString) - responseSize,
-            "<hmtl><body>");
+            "<html><body>");
     metac_scope_table_slot_t* slot = debugServer->CurrentScope->ScopeTable.Slots;
     for(uint32_t i = 0; i < debugServer->CurrentScope->ScopeTable.SlotsUsed;)
     {
@@ -119,7 +119,7 @@ MHD_HANDLER (handleCurrentScope)
 
     responseSize +=
         snprintf(responseString, ARRAYSIZE(responseString) - responseSize,
-            "</body></hmtl>");
+            "</body></html>");
     return send_html(connection, responseString, responseSize);
 }
 
@@ -309,10 +309,10 @@ MHD_HANDLER (handleAllocators)
     }
 
    len = snprintf (responseString, ARRAYSIZE (responseString),
-                    "<hmtl><body>"
+                    "<html><body>"
                     "<h3>Allocators: </h3>"
                     "<table id=\"allocators\">%s</table>"
-                    "</body></hmtl>",
+                    "</body></html>",
            body);
     return send_html (connection, responseString, len);
 }
@@ -388,10 +388,10 @@ MHD_HANDLER(handleArenas)
         return MHD_NO;
 
    uint32_t len = snprintf (responseBuffer, ARRAYSIZE (responseBuffer),
-                    "<hmtl><body>"
+                    "<html><body>"
                     "<h3>Arenas: </h3>"
                     "<table id=\"arenas\">%s</table>"
-                    "</body></hmtl>",
+                    "</body></html>",
            body);
     return send_html (connection, responseBuffer, len);
 }
@@ -482,7 +482,7 @@ MHD_HANDLER(handleLogs)
     }
 
    uint32_t len = snprintf (responseBuffer, ARRAYSIZE (responseBuffer),
-                    "<hmtl><body>"
+                    "<html><body>"
                     "<h3>Logs: </h3>"
                     "<table id=\"logs\">%s</table>"
                     "</body></html>",
@@ -544,7 +544,7 @@ MHD_HANDLER(handleTasks)
         return MHD_NO;
 
    uint32_t len = snprintf (responseBuffer, ARRAYSIZE (responseBuffer),
-                    "<hmtl><body>"
+                    "<html><body>"
                     "<h3>Tasks: </h3>"
                     "<h2>ActiveTask: %p</h2>"
                     "<table id=\"tasks\">%s</table>"
@@ -622,7 +622,7 @@ void debug_init_routes(debug_server_t* debugServer)
     DebugServer_AddRoute(debugServer, "/data.json", handleDataJson);
     DebugServer_AddRoute(debugServer, "/parser", handleParser);
     DebugServer_AddRoute(debugServer, "/history", handleHistory);
-    DebugServer_AddRoute(debugServer, "/logs", handleLogs);
+    // DebugServer_AddRoute(debugServer, "/logs", handleLogs);
 #ifndef NO_FIBERS
     DebugServer_AddRoute(debugServer, "/tasks", handleTasks);
 #endif
@@ -666,6 +666,8 @@ int Debug_Init(debug_server_t* debugServer, unsigned short port) {
         malloc(sizeof(debug_allocation_t) * allocationCapa);
     debugServer->AllocationsCount = 0;
     debugServer->AllocationsCapacity = allocationCapa;
+
+	Allocator_Init(&debugServer->Allocator, 0);
 
     debugServer->Graphs = (debug_graph_t*)
         malloc(sizeof(debug_graph_t) * graphCapa);
