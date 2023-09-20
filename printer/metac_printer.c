@@ -499,7 +499,7 @@ static inline void PrintStmt(metac_printer_t* self, metac_stmt_t* stmt)
         {
             stmt_yield_t* stmt_yield = cast(stmt_yield_t*) stmt;
 
-            PrintKeyword(self, tok_kw_yield);
+            PrintKeyword(self, tok_kw__yield);
             PrintSpace(self);
             if (stmt_yield->YieldExp != emptyPointer)
                 PrintExpr(self, stmt_yield->YieldExp);
@@ -547,13 +547,17 @@ static inline void PrintStmt(metac_printer_t* self, metac_stmt_t* stmt)
             PrintChar(self, ')');
 
             if (stmt_if_->IfBody->Kind != stmt_block)
+            {
                 ++self->IndentLevel;
+            }
 
             PrintNewline(self);
             PrintIndent(self);
             PrintStmt(self, stmt_if_->IfBody);
             if (stmt_if_->IfBody->Kind != stmt_block)
+            {
                 --self->IndentLevel;
+            }
 
             PrintNewline(self);
             PrintIndent(self);
@@ -568,7 +572,9 @@ static inline void PrintStmt(metac_printer_t* self, metac_stmt_t* stmt)
                 else
                 {
                     if (stmt_if_->ElseBody->Kind != stmt_block)
+                    {
                         ++self->IndentLevel;
+                    }
 
                     PrintNewline(self);
                     PrintIndent(self);
@@ -578,7 +584,9 @@ static inline void PrintStmt(metac_printer_t* self, metac_stmt_t* stmt)
                 if (stmt_if_->ElseBody->Kind != stmt_if)
                 {
                     if (stmt_if_->ElseBody->Kind != stmt_block)
+                    {
                         --self->IndentLevel;
+                    }
                 }
 
                 PrintNewline(self);
@@ -1902,7 +1910,7 @@ static inline void PrintSemaStmt(metac_printer_t* self, metac_sema_state_t* sema
         {
             sema_stmt_yield_t* stmt_yield = cast(sema_stmt_yield_t*) stmt;
 
-            PrintKeyword(self, tok_kw_yield);
+            PrintKeyword(self, tok_kw__yield);
             PrintSpace(self);
             if (stmt_yield->YieldExp != emptyPointer)
                 PrintSemaExpr(self, sema, stmt_yield->YieldExp);

@@ -2221,11 +2221,11 @@ metac_stmt_t* MetaCParser_ParseStmt(metac_parser_t* self,
         }
         return_->Hash = hash;
     }
-    else if (tokenType == tok_kw_yield)
+    else if (tokenType == tok_kw__yield)
     {
-        hash = yield_key;
+        hash = _yield_key;
         stmt_yield_t* yield_ = AllocNewStmt(stmt_yield, &result);
-        MetaCParser_Match(self, tok_kw_yield);
+        MetaCParser_Match(self, tok_kw__yield);
         if (MetaCParser_PeekMatch(self, tok_semicolon, 1))
         {
             yield_->YieldExp = (metac_expr_t*)_emptyPointer;
