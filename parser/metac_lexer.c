@@ -12,8 +12,10 @@
 #include "../os/compat.h"
 #include "../hash/crc32c.h"
 
+#ifndef U32
 #define U32(VAR) \
     (*(uint32_t*)(&VAR))
+#endif
 
 static inline metac_token_enum_t MetaCLexFixedLengthToken(const char _chrs[3])
 {

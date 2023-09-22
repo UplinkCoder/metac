@@ -839,8 +839,10 @@ static inline bool IsDeclType(metac_decl_t* decl)
 #define ErrorTypeDecl() \
     (decl_type_t*)0
 
+#ifndef U32
 #define U32(VAR) \
     (*(uint32_t*)(&VAR))
+#endif
 
 static decl_type_array_t* ParseArraySuffix(metac_parser_t* self, decl_type_t* type);
 

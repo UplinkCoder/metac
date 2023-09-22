@@ -3,9 +3,6 @@
 #define CRC32C_PLUSPLUS 0x61d225eb
 #define CRC32C_MINUSMINUS 0x2ebc9331
 
-#define U32(VAR) \
-    (*(uint32_t*)(&VAR))
-
 #ifndef _emptyPointer
 #  define _emptyPointer (void*)0x1
 #  define emptyNode (metac_node_t) _emptyPointer

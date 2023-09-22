@@ -20,6 +20,7 @@
 #define U32(VAR) \
     (*(uint32_t*)&VAR)
 #endif
+
 #ifndef KILOBYTE
 #define KILOBYTE(N) \
     ((N) * 1024)
@@ -225,7 +226,7 @@ void WatcherFunc(void)
 
 }
 
-void WorkerSIGUSR1(int)
+void WorkerSIGUSR1(int unused)
 {
     printf("Worker: %d\n", THREAD_CONTEXT->WorkerId);
 }
