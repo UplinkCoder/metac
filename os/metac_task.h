@@ -54,12 +54,12 @@ typedef struct taskcontext_t
     void* ContextMem;
     uint32_t ContextMemSize;
 
+    const char* CallerFile;
+    uint32_t CallerLine;
+
     void* TaskMemory;
     uint32_t BytesAllocated;
     uint32_t BytesUsed;
-
-    const char* CallerFile;
-    uint32_t CallerLine;
 } taskcontext_t;
 
 // typedef void (*task_fn_t)(struct task_t*);
@@ -220,7 +220,8 @@ bool AddTask(task_t* task);
 bool AddTaskToQueue(task_t* task);
 worker_context_t* CurrentWorker(void);
 
-void* CurrentFiber(void);
+#define FIBER_TYPE aco_t*
+FIBER_TYPE CurrentFiber(void);
 task_t* CurrentTask(void);
 
 #define SET_CURRENT_TASK(TASKP) \

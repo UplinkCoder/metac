@@ -954,7 +954,7 @@ sema_decl_function_t* MetaCSemantic_doFunctionSemantic(metac_sema_state_t* self,
 }
 
 const static sema_decl_type_t basicTypes[type_max] = {
-    {decl_type, 0, 0, 0, storageclass_volatile, 0, TYPE_INDEX_V(type_index_invalid, 0)},
+    {decl_type, 0, 0, 0, storageclass_volatile, 0, TYPE_INDEX_V(type_index_invalid, 0u)},
 
     {decl_type, 0, 0, 0, storageclass_none, 0, TYPE_INDEX_V(type_index_basic, type_struct)},
     {decl_type, 0, 0, 0, storageclass_none, 0, TYPE_INDEX_V(type_index_basic, type_union)},

@@ -829,37 +829,31 @@ static bool MetaCCodegen_AccessVariable(metac_bytecode_ctx_t* ctx,
     }
 }
 
-static void LoadFromHeapRef(metac_bytecode_ctx_t* ctx, BCValue* hrv, uint32_t abiSize)
+static bool Is64BitLoad(const BCType type)
 {
-    // import std.stdio; writeln("Calling LoadHeapRef from: ", line); //DEBUGLINE
-    const BackendInterface gen = *ctx->gen;
-    void* c = ctx->c;
-    {
         BCTypeEnum types[] = {BCTypeEnum_u64, BCTypeEnum_i64, BCTypeEnum_f52};
-        if(BCTypeEnum_anyOf(hrv->type.type, types, ARRAY_SIZE(types)))
-Lload64:
-        {
-            BCValue hr = BCValue_fromHeapref(hrv->heapRef);
-            gen.Load64(c, hrv, &hr);
-            return ;
-        }
-    }
+        return BCTypeEnum_anyOf(type.type, types, ARRAY_SIZE(types));
 
-    {
+}
+
+static bool Is32BitLoad(const BCType type)
+{
         BCTypeEnum types[] = {
             BCTypeEnum_u8, BCTypeEnum_u16, BCTypeEnum_u32,
             BCTypeEnum_i8, BCTypeEnum_i16, BCTypeEnum_i32,
             BCTypeEnum_c8, BCTypeEnum_c16, BCTypeEnum_c32,
             BCTypeEnum_f23
         };
-        if(BCTypeEnum_anyOf(hrv->type.type, types, ARRAY_SIZE(types)))
-Lload32:
-        {
-            BCValue hr = BCValue_fromHeapref(hrv->heapRef);
-            gen.Load32(c, hrv, &hr);
-            return ;
-        }
-    }
+        return BCTypeEnum_anyOf(type.type, types, ARRAY_SIZE(types));
+
+}
+
+static void LoadFromHeapRef(metac_bytecode_ctx_t* ctx, BCValue* hrv, uint32_t abiSize)
+{
+    // import std.stdio; writeln("Calling LoadHeapRef from: ", line); //DEBUGLINE
+    const BackendInterface gen = *ctx->gen;
+    void* c = ctx->c;
+
     // since the stuff below are heapValues we may not want to do this ??
     {
         BCTypeEnum types[] =
@@ -874,18 +868,33 @@ Lload32:
 
             gen.MemCpy(c, &hrv_i32, &hr, &sz);
         }
-        else if (abiSize == 4)
+        else if (Is32BitLoad(hrv->type) || abiSize == 4)
         {
             goto Lload32;
         }
-        else if (abiSize == 8)
+        else if (Is64BitLoad(hrv->type) || abiSize == 8)
         {
             goto Lload64;
         }
+
         else
         {
             assert(!"is not supported in LoadFromHeapRef");
         }
+Lload64:
+        {
+            BCValue hr = BCValue_fromHeapref(hrv->heapRef);
+            gen.Load64(c, hrv, &hr);
+            return ;
+        }
+Lload32:
+        {
+            BCValue hr = BCValue_fromHeapref(hrv->heapRef);
+            gen.Load32(c, hrv, &hr);
+            return ;
+        }
+
+
     }
 }
 

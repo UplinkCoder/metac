@@ -16,6 +16,10 @@
 #  define HAS_THREADS
 #endif
 
+#ifndef U32
+#define U32(VAR) \
+    (*(uint32_t*)&VAR)
+#endif
 #ifndef KILOBYTE
 #define KILOBYTE(N) \
     ((N) * 1024)
@@ -33,15 +37,14 @@ tss_t currentFiberKey;
 
 taskqueue_t gQueue;
 
-
-void* CurrentFiber(void)
+FIBER_TYPE CurrentFiber(void)
 {
     return aco_get_co();
 }
 
 task_t* CurrentTask()
 {
-    return (task_t*)((aco_t*)CurrentFiber())->arg;
+    return cast(task_t*)(cast(FIBER_TYPE)CurrentFiber())->arg;
 }
 
 
@@ -90,7 +93,7 @@ void Taskqueue_Init(taskqueue_t* queue)
 void FiberDoTask(void)
 {
     aco_t* thisFiber = CurrentFiber();
-    worker_context_t* worker = thisFiber->main_co->arg;
+    worker_context_t* worker = (worker_context_t*)thisFiber->main_co->arg;
 
     for(;;)
     {
@@ -112,24 +115,24 @@ void FiberDoTask(void)
             YIELD_WORKER();
             continue;
         }
-        task->TaskFlags |= Task_Running;
+        U32(task->TaskFlags) |= Task_Running;
         task->TaskFunction(task);
-        task->TaskFlags |= Task_Complete;
+        U32(task->TaskFlags) |= Task_Complete;
 
         fiber->arg = 0;
 
-        if ((task->TaskFlags & Task_Continuation_Task) == Task_Continuation_Task)
+        if ((U32(task->TaskFlags) & Task_Continuation_Task) == Task_Continuation_Task)
         {
             task_t* continuation = task->Continuation;
             fiber->arg = (void*)(continuation);
             // let's set the dynamic parent
             continuation->Parent = task;
             continuation->Fiber = thisFiber;
-            continuation->TaskFlags |= Task_Running;
+            U32(continuation->TaskFlags) |= Task_Running;
             continuation->TaskFunction(continuation);
-            continuation->TaskFlags |= Task_Complete;
+            U32(continuation->TaskFlags) |= Task_Complete;
         }
-        else if ((task->TaskFlags & Task_Continuation_Func) == Task_Continuation_Func)
+        else if ((U32(task->TaskFlags) & Task_Continuation_Func) == Task_Continuation_Func)
         {
             task->ContinuationFunc(task->Context);
         }
@@ -152,8 +155,8 @@ void FiberPool_Init(fiber_pool_t* self, worker_context_t* worker)
 
 void ExecuteTask(worker_context_t* worker, task_t* task, aco_t* fiber)
 {
-    assert(!(task->TaskFlags & Task_Running));
-    assert(!(task->TaskFlags & Task_Complete));
+    assert(!(U32(task->TaskFlags) & Task_Running));
+    assert(!(U32(task->TaskFlags) & Task_Complete));
 
     assert(task->Fiber == fiber);
     fiber->arg = task;
@@ -173,11 +176,11 @@ void ExecuteTask(worker_context_t* worker, task_t* task, aco_t* fiber)
     }
     else
     {
-        task->TaskFlags |= Task_Running;
+        U32(task->TaskFlags) |= Task_Running;
         RESUME(task->Fiber);
     }
 
-    if ((task->TaskFlags & Task_Complete) == Task_Complete)
+    if ((U32(task->TaskFlags) & Task_Complete) == Task_Complete)
     {
         assert(fiberIdx >= 0 && fiberIdx < sizeof(fiberPool->FreeBitfield) * 8);
         fiberPool->FreeBitfield |= (1 << fiberIdx);
@@ -185,7 +188,7 @@ void ExecuteTask(worker_context_t* worker, task_t* task, aco_t* fiber)
     }
     else
     {
-        assert((!task->TaskFunction) || (task->TaskFlags & Task_Waiting) == Task_Waiting);
+        assert((!task->TaskFunction) || (U32(task->TaskFlags) & Task_Waiting) == Task_Waiting);
     }
 }
 
@@ -222,7 +225,7 @@ void WatcherFunc(void)
 
 }
 
-void WorkerSIGUSR1()
+void WorkerSIGUSR1(int)
 {
     printf("Worker: %d\n", THREAD_CONTEXT->WorkerId);
 }
@@ -365,8 +368,8 @@ void RunWorkerThread(worker_context_t* worker, void (*specialFunc)(),  void* spe
                     break;
                 }
 
-                if ((task->TaskFlags & Task_Waiting) == Task_Waiting ||
-                    (task->TaskFlags & Task_Complete) == Task_Complete)
+                if ((U32(task->TaskFlags) & Task_Waiting) == Task_Waiting ||
+                    (U32(task->TaskFlags) & Task_Complete) == Task_Complete)
                 {
                     // printf("Encountered waiting task ... skipping \n");
                     tryMask0 |= (1 << nextFiberIdx);
@@ -397,8 +400,8 @@ void RunWorkerThread(worker_context_t* worker, void (*specialFunc)(),  void* spe
                     break;
                 }
 
-                if ((task->TaskFlags & Task_Waiting) == Task_Waiting ||
-                    (task->TaskFlags & Task_Complete) == Task_Complete)
+                if ((U32(task->TaskFlags) & Task_Waiting) == Task_Waiting ||
+                    (U32(task->TaskFlags) & Task_Complete) == Task_Complete)
                 {
                     tryMask1 |= (1 << nextFiberIdx);
                     // printf("tryMask1: %x == completionGoal: %x\n", tryMask1, completionGoal);
@@ -441,7 +444,7 @@ void RunWorkerThread(worker_context_t* worker, void (*specialFunc)(),  void* spe
                     break;
                 }
 
-                if ((task->TaskFlags & Task_Waiting) == Task_Waiting)
+                if ((U32(task->TaskFlags) & Task_Waiting) == Task_Waiting)
                 {
                     printf("Encountered waiting task ... let's see if it can make progress\n");
                     ExecuteTask(worker, task, execFiber);
@@ -464,9 +467,9 @@ LrunSpeicalFiberOrTerminate:
                 terminationRequested = true;
                 continue;
             }
-            ((task_t*)specialFiber->arg)->TaskFlags |= Task_Running;
+            U32(((task_t*)specialFiber->arg)->TaskFlags) |= Task_Running;
             RESUME(specialFiber);
-            ((task_t*)specialFiber->arg)->TaskFlags |= Task_Waiting;
+            U32(((task_t*)specialFiber->arg)->TaskFlags) |= Task_Waiting;
         }
     }
 
