@@ -457,8 +457,8 @@ MHD_HANDLER(handleLogs)
     static char responseBuffer[8192];
     uint32_t p = 0;
     const char* headers[] = {
-        // "Category"
         // "Time",
+        "Category",
         "Message",
     };
     char body[8192];
@@ -475,8 +475,15 @@ MHD_HANDLER(handleLogs)
         for(i = 0; i < debugServer->LogsCount; i++)
         {
             debug_message_t log = debugServer->Logs[i];
+            const char* catString = IdentifierPtrToCharPtr(
+                &debugServer->CategoryTable,
+                log.Category);
+
             p += snprintf(body + p, ARRAYSIZE(body) - p, "<tr>");
+
+            p += snprintf(body + p, ARRAYSIZE(body) - p, "<td>%s</td>", catString);
             p += snprintf(body + p, ARRAYSIZE(body) - p, "<td>%s</td>", log.Message);
+
             p += snprintf(body + p, ARRAYSIZE(body) - p, "</tr>");
         }
     }
@@ -567,7 +574,7 @@ static MHD_HANDLER(debugServerHandler)
             return route.Handler(MHD_HANDLER_PASSTHROUGH);
         }
     }
-    
+
     {
         static char defaultPage[1024];
         int p = 0;
@@ -585,7 +592,7 @@ static MHD_HANDLER(debugServerHandler)
         p += sprintf(defaultPage + p, "</body></html>");
         return send_html(connection, defaultPage, p);
     }
-    
+
 /*
     if (debugServer->Handler)
     {
@@ -622,7 +629,7 @@ void debug_init_routes(debug_server_t* debugServer)
     DebugServer_AddRoute(debugServer, "/data.json", handleDataJson);
     DebugServer_AddRoute(debugServer, "/parser", handleParser);
     DebugServer_AddRoute(debugServer, "/history", handleHistory);
-    // DebugServer_AddRoute(debugServer, "/logs", handleLogs);
+    DebugServer_AddRoute(debugServer, "/logs", handleLogs);
 #ifndef NO_FIBERS
     DebugServer_AddRoute(debugServer, "/tasks", handleTasks);
 #endif
@@ -685,6 +692,8 @@ int Debug_Init(debug_server_t* debugServer, unsigned short port) {
     ARENA_ARRAY_INIT(debug_message_t, debugServer->Logs, &debugServer->Allocator);
 
     ARENA_ARRAY_INIT(debug_server_route_t, debugServer->Routes, &debugServer->Allocator);
+
+    IdentifierTable_Init(&debugServer->CategoryTable, IDENTIFIER_LENGTH_SHIFT, 6, &debugServer->Allocator);
 
     debug_init_routes(debugServer);
 
