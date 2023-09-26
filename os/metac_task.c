@@ -235,7 +235,8 @@ void WorkerSIGUSR1(int unused)
 
 THREAD_FUNC(WorkerThreadFunc)
 {
-
+    // Not Implemented yet
+    assert(0);
 }
 
 void RunWorkerThread(worker_context_t* worker, void (*specialFunc)(),  void* specialFuncCtx)

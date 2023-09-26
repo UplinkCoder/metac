@@ -677,7 +677,11 @@ metac_expr_t* MetaCParser_ParsePrimaryExpr(metac_parser_t* self, parse_expr_flag
         MetaCParser_Match(self, tok_rParen);
         result->CastExp = MetaCParser_ParseExpr2(self, flags);
         hash = CRC32C_VALUE(hash, result->CastExp->Hash);
-        MetaCLocation_Expand(&loc, self->LocationStorage.Locations[result->CastExp->LocationIdx - 4]);
+
+        if (MetaCLocationPtr_IsValid(result->CastExp->LocationIdx))
+        {
+            MetaCLocation_Expand(&loc, self->LocationStorage.Locations[result->CastExp->LocationIdx - 4]);
+        }
         result->Hash = hash;
     }
 #ifdef TYPE_EXP

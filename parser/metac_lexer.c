@@ -690,6 +690,11 @@ bool IsValidEscapeChar(char c)
 
 typedef uint32_t metac_location_ptr;
 
+static bool MetaCLocationPtr_IsValid(metac_location_ptr locPtr)
+{
+    return locPtr >= 4;
+}
+
 void MetaCLocationStorage_Init(metac_location_t_array* self)
 {
     self->LocationCapacity = 128;
@@ -722,7 +727,7 @@ void MetaCLocationStorage_EndLoc(
         uint32_t line, uint16_t column)
 {
 #ifndef NO_LOCATION_TRACKING
-    assert(locationId >= 4);
+    assert(MetaCLocationPtr_IsValid(locationId));
     assert((locationId - 4) < self->LocationSize);
 
     uint32_t idx = locationId - 4;
@@ -742,6 +747,7 @@ void MetaCLocation_Expand(metac_location_t* self, metac_location_t endLoc)
     self->LineSpan = (endLoc.StartLine + endLoc.LineSpan) - self->StartLine;
     self->EndColumn = endLoc.EndColumn;
 }
+
 
 metac_location_ptr MetaCLocationStorage_StartLoc(
         metac_location_t_array* self,
