@@ -463,6 +463,8 @@ void MetaCPreProcessor_Init(metac_preprocessor_t *self, metac_lexer_t* lexer,
     self->TokenMemoryCapacity = 256;
     self->TokenMemorySize = 0;
     self->TokenMemory = Allocator_Calloc(alloc, metac_token_t, self->TokenMemoryCapacity);
+
+    Allocator_Init(&self->Allocator, alloc);
 }
 
 metac_preprocessor_define_ptr_t
