@@ -653,6 +653,7 @@ MetaCPreProcessor_ParseSourceIndicator(metac_preprocessor_t *self,
     metac_token_t* lineNumber = MetaCParser_Match(parser, tok_uint);
     metac_token_t* fileName = MetaCParser_Match(parser, tok_string);
     metac_token_t* flagToken = 0;
+    metac_token_t* tok = 0;
     const char* stringChars = 0;
 
     result.LineNumber = lineNumber->ValueU32;
@@ -663,7 +664,7 @@ MetaCPreProcessor_ParseSourceIndicator(metac_preprocessor_t *self,
                            fileName->StringKey, stringChars);
 
 
-    while (MetaCParser_PeekToken(parser, 1)->TokenType == tok_uint)
+    while ((tok = MetaCParser_PeekToken(parser, 1), tok && tok->TokenType == tok_uint))
     {
         metac_preprocessor_linemarker_flag_t linemarkerFlag;
         flagToken = MetaCParser_Match(parser, tok_uint);
