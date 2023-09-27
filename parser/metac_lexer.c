@@ -1440,7 +1440,7 @@ void test_lexer()
         "break",
         "continue",
         "until",
-        "yield",
+        "_yield",
         "_scope",
         "__attribute__",
 
