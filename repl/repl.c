@@ -1142,9 +1142,9 @@ LlexSrcBuffer: {}
                 uint32_t eaten_chars = repl->LPP.LexerState.Position - initalPosition;
                 const uint32_t token_length = MetaCTokenLength(token);
 #if 1
-                const uint32_t locPtr = token.LocationId;
+                const metac_location_ptr_t locPtr = token.LocationId;
                 const static metac_location_t zeroLoc = {0};
-                const metac_location_t loc = locPtr ? repl->LPP.Lexer.LocationStorage.Locations[locPtr - 4] : zeroLoc;
+                const metac_location_t loc = locPtr.v ? repl->LPP.Lexer.LocationStorage.Locations[locPtr.v - 4] : zeroLoc;
 
                 MSGF("read tokenType: %s {length: %d}\n Location: {Line: %d, Col: %d}",
                         MetaCTokenEnum_toChars(token.TokenType), token_length,

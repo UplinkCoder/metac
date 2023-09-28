@@ -135,7 +135,7 @@ static inline metac_location_t LocationFromToken(metac_parser_t* self,
      if (tok->TokenType == tok_newline)
         return invalidLocation;
 
-    return self->Lexer->LocationStorage.Locations[tok->LocationId - 4];
+    return self->Lexer->LocationStorage.Locations[tok->LocationId.v- 4];
 
 }
 
@@ -563,7 +563,7 @@ metac_token_t* MetaCParser_NextToken(metac_parser_t* self)
 #endif //NO_PREPROCESSOR
     if (result)
     {
-        self->LastLocation = self->Lexer->LocationStorage.Locations[result->LocationId - 4];
+        self->LastLocation = self->Lexer->LocationStorage.Locations[result->LocationId.v - 4];
     }
     return result;
 }
@@ -611,7 +611,7 @@ Lpeek:
         if (result->TokenType != tok_newline)
         {
             self->LastLocation =
-                self->Lexer->LocationStorage.Locations[result->LocationId - 4];
+                self->Lexer->LocationStorage.Locations[result->LocationId.v - 4];
         }
 #if !defined(NO_PREPROCESSOR)
         if(result)
@@ -639,7 +639,7 @@ metac_token_t* MetaCParser_Match_(metac_parser_t* self, metac_token_enum_t type,
     {
         if (got != tok_eof)
         {
-            metac_location_t loc = self->Lexer->LocationStorage.Locations[token->LocationId - 4];
+            metac_location_t loc = self->Lexer->LocationStorage.Locations[token->LocationId.v- 4];
 
             printf("[%s:%u] Expected: %s -- Got: %s {line: %u: col: %u}\n",
                 filename, lineNumber,
@@ -1730,7 +1730,7 @@ metac_decl_t* MetaCParser_ParseDecl(metac_parser_t* self, metac_decl_t* parent)
             decl_label_t* label = AllocNewDecl(decl_label, &result);
             label->LocationIdx = MetaCLocationStorage_Store(&self->LocationStorage,
                 MetaCLocationStorage_FromPair(&self->Lexer->LocationStorage,
-                                              idToken->LocationId, colon->LocationId));
+                                              idToken->LocationId.v, colon->LocationId.v));
 
             label->Identifier = RegisterIdentifier(self, idToken);
             result->Hash = CRC32C_VALUE(CRC32C_COLON, label->Identifier);

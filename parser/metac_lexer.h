@@ -233,11 +233,17 @@ typedef enum parse_number_flag_t
 
 #undef DEF_MEMBER
 
+typedef struct metac_location_ptr_t
+{
+    uint32_t v;
+} metac_location_ptr_t;
+
+
 typedef struct metac_token_t {
     metac_token_enum_t TokenType;
 
     uint32_t Position;
-    uint32_t LocationId;
+    metac_location_ptr_t LocationId;
 
     union { // switch(TokenType)
         uint32_t Key;
@@ -359,13 +365,13 @@ void MetaCLexer_Init(metac_lexer_t* self, metac_alloc_t* Allocator);
 void MetaCLocation_Expand(metac_location_t* self, metac_location_t endLoc);
 void MetaCLocationStorage_Init(metac_location_t_array* self);
 
-metac_location_ptr MetaCLocationStorage_StartLoc(
+metac_location_ptr_t MetaCLocationStorage_StartLoc(
         metac_location_t_array* self,
         uint32_t line, uint16_t column);
 
 void MetaCLocationStorage_EndLoc(
         metac_location_t_array* self,
-        metac_location_ptr locationId,
+        metac_location_ptr_t locationId,
         uint32_t line, uint16_t column);
 
 metac_location_t MetaCLocationStorage_FromPair(metac_location_t_array *srcStorage,
@@ -373,10 +379,10 @@ metac_location_t MetaCLocationStorage_FromPair(metac_location_t_array *srcStorag
                                                metac_location_ptr endLocIdx);
 
 metac_location_t MetaCLocationStorage_FromPtr(metac_location_t_array *srcStorage,
-                                              metac_location_ptr locIdx);
+                                              metac_location_ptr_t locIdx);
 
-metac_location_ptr MetaCLocationStorage_Store(metac_location_t_array* self,
-                                              metac_location_t loc);
+metac_location_ptr_t MetaCLocationStorage_Store(metac_location_t_array* self,
+                                                metac_location_t loc);
 
 metac_lexer_state_t MetaCLexerStateFromString(uint32_t sourceId, const char* str);
 metac_lexer_state_t MetaCLexerStateFromBuffer(uint32_t sourceId, const char* buffer, uint32_t bufferLength);

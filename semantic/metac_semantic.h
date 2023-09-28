@@ -125,7 +125,7 @@ typedef struct metac_sema_state_t
 
     AT(TaskLocal) AT(transient) metac_semantic_lru_t LRU;
 
-    AT(TaskLocal) AT(transient) uint32_t CurrentLocIdx;
+    AT(TaskLocal) AT(transient) metac_location_ptr_t CurrentLocIdx;
     // only to be used if CurrentLocIdx == 0
     AT(TaskLocal) AT(transient) metac_location_t CurrentLoc;
 

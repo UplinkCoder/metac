@@ -690,9 +690,9 @@ bool IsValidEscapeChar(char c)
 
 typedef uint32_t metac_location_ptr;
 
-static bool MetaCLocationPtr_IsValid(metac_location_ptr locPtr)
+static bool MetaCLocationPtr_IsValid(metac_location_ptr_t locPtr)
 {
-    return locPtr >= 4;
+    return locPtr.v >= 4;
 }
 
 void MetaCLocationStorage_Init(metac_location_t_array* self)
@@ -703,9 +703,10 @@ void MetaCLocationStorage_Init(metac_location_t_array* self)
         calloc(sizeof(metac_location_t), self->LocationCapacity);
 }
 
-metac_location_ptr MetaCLocationStorage_Store(metac_location_t_array* self,
-                                              metac_location_t loc)
+metac_location_ptr_t MetaCLocationStorage_Store(metac_location_t_array* self,
+                                                metac_location_t loc)
 {
+    metac_location_ptr_t result;
 #ifndef TEST_LEXER
     if (self->LocationSize >= self->LocationCapacity)
     {
@@ -715,22 +716,23 @@ metac_location_ptr MetaCLocationStorage_Store(metac_location_t_array* self,
 
     assert(self->LocationSize < self->LocationCapacity);
 
-    uint32_t result = self->LocationSize++;
-    self->Locations[result] = loc;
-
-    return result + 4;
+    result.v = self->LocationSize++;
+    self->Locations[result.v] = loc;
+    result.v += 4;
+    
+    return result;
 }
 
 void MetaCLocationStorage_EndLoc(
         metac_location_t_array* self,
-        metac_location_ptr locationId,
+        metac_location_ptr_t locationId,
         uint32_t line, uint16_t column)
 {
 #ifndef NO_LOCATION_TRACKING
     assert(MetaCLocationPtr_IsValid(locationId));
-    assert((locationId - 4) < self->LocationSize);
+    assert((locationId.v - 4) < self->LocationSize);
 
-    uint32_t idx = locationId - 4;
+    uint32_t idx = locationId.v - 4;
     metac_location_t *location =
         self->Locations + idx;
 
@@ -749,10 +751,11 @@ void MetaCLocation_Expand(metac_location_t* self, metac_location_t endLoc)
 }
 
 
-metac_location_ptr MetaCLocationStorage_StartLoc(
+metac_location_ptr_t MetaCLocationStorage_StartLoc(
         metac_location_t_array* self,
         uint32_t line, uint16_t column)
 {
+    metac_location_ptr_t Result;
 #ifndef NO_LOCATION_TRACKING
 #  ifndef TEST_LEXER
     if (self->LocationSize >= self->LocationCapacity)
@@ -762,14 +765,14 @@ metac_location_ptr MetaCLocationStorage_StartLoc(
 #  endif
     assert(self->LocationSize < self->LocationCapacity);
 
-    uint32_t result = self->LocationSize++;
+    Result.v = (self->LocationSize++ + 4);
 
-    self->Locations[result].StartLine = line;
-    self->Locations[result].StartColumn = column;
+    self->Locations[Result.v - 4].StartLine = line;
+    self->Locations[Result.v - 4].StartColumn = column;
 
-    return result + 4;
+    return Result;
 #else
-    return 0;
+    return {0};
 #endif
 }
 
@@ -789,11 +792,11 @@ metac_location_t MetaCLocationStorage_FromPair(metac_location_t_array *srcStorag
 }
 
 metac_location_t MetaCLocationStorage_FromPtr(metac_location_t_array *srcStorage,
-                                              metac_location_ptr locIdx)
+                                              metac_location_ptr_t locIdx)
 {
     metac_location_t result;
 
-    result = srcStorage->Locations[locIdx - 4];
+    result = srcStorage->Locations[locIdx.v - 4];
 
     return result;
 }
@@ -883,7 +886,7 @@ LcontinueLexnig:
         if (line != state->Line && self->InDefine)
         {
             token.TokenType = tok_newline;
-            token.LocationId = 0;
+            token.LocationId.v = 0;
             token.Position = state->Position - 1;
             self->Tokens[self->TokenCount++] = token;
             self->InDefine = false;
@@ -902,7 +905,7 @@ LcontinueLexnig:
 
     token.LocationId =
         MetaCLocationStorage_StartLoc(&self->LocationStorage, state->Line, state->Column);
-    metac_location_t loc = self->LocationStorage.Locations[token.LocationId - 4];
+    metac_location_t loc = self->LocationStorage.Locations[token.LocationId.v - 4];
 
     if (c && (token.TokenType = MetaCLexFixedLengthToken(text)) == tok_invalid)
     {

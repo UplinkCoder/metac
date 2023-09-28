@@ -160,7 +160,7 @@ void MetaCSemantic_Init(metac_sema_state_t* self, metac_parser_t* parser,
 
     self->LexerLocations = &parser->Lexer->LocationStorage;
 
-    self->CurrentLocIdx = 0;
+    self->CurrentLocIdx.v = 0;
     self->CurrentScope = 0;
     self->CurrentDeclState = 0;
 

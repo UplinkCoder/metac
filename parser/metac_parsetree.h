@@ -18,7 +18,7 @@ typedef enum number_flags_t
 
 #define EXPR_HEADER \
     metac_expr_kind_t Kind; \
-    uint32_t LocationIdx; \
+    metac_location_ptr_t LocationIdx; \
     uint32_t Hash; \
     uint32_t Serial;
 
@@ -140,7 +140,7 @@ typedef struct metac_expr_t
 //_Static_assert((sizeof(metac_expr_t) - sizeof(metac_expr_header_t)) <= METAC_MAX_EXP_BODY_SIZE, "Dumb");
 #define STMT_HEADER \
     metac_stmt_kind_t Kind; \
-    uint32_t LocationIdx; \
+    metac_location_ptr_t LocationIdx; \
     uint32_t Hash; \
     uint32_t Serial; \
     struct metac_stmt_t* Next;
@@ -323,7 +323,7 @@ typedef struct metac_stmt_t
 
 #define DECL_HEADER \
     metac_decl_kind_t Kind; \
-    uint32_t LocationIdx; \
+    metac_location_ptr_t LocationIdx; \
     uint32_t Hash; \
     uint32_t Serial; \
     metac_storageclasses_t StorageClass;

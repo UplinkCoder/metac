@@ -680,7 +680,7 @@ metac_expr_t* MetaCParser_ParsePrimaryExpr(metac_parser_t* self, parse_expr_flag
 
         if (MetaCLocationPtr_IsValid(result->CastExp->LocationIdx))
         {
-            MetaCLocation_Expand(&loc, self->LocationStorage.Locations[result->CastExp->LocationIdx - 4]);
+            MetaCLocation_Expand(&loc, self->LocationStorage.Locations[result->CastExp->LocationIdx.v - 4]);
         }
         result->Hash = hash;
     }
@@ -692,7 +692,7 @@ metac_expr_t* MetaCParser_ParsePrimaryExpr(metac_parser_t* self, parse_expr_flag
         result = AllocNewExpr(expr_type);
         result->TypeExp = type;
         MetaCLocation_Expand(&loc,
-            self->LocationStorage.Locations[result->TypeExp->LocationIdx - 4]);
+            self->LocationStorage.Locations[result->TypeExp->LocationIdx.v - 4]);
         result->Hash = CRC32C_VALUE(type_key, result->TypeExp->Hash);
     }
 #endif
@@ -857,7 +857,7 @@ metac_expr_t* MetaCParser_ParsePostfixExpr(metac_parser_t* self,
     metac_token_enum_t peekTokenType = peek->TokenType;
 
     metac_location_t loc =
-        self->LocationStorage.Locations[left->LocationIdx - 4];
+        self->LocationStorage.Locations[left->LocationIdx.v - 4];
 
     if (peekTokenType == tok_plusplus)
     {
@@ -910,7 +910,7 @@ static inline metac_expr_t* ParseDotSpecialExpr(metac_parser_t* self,
             uint32_t hash = CRC32C_VALUE(~0, k);
             result->E1 = MetaCParser_ParseExpr(self, expr_flags_none, 0);
             hash = CRC32C_VALUE(hash, result->E1->Hash);
-            metac_location_t endLoc = self->LocationStorage.Locations[result->E1->LocationIdx - 4];
+            metac_location_t endLoc = self->LocationStorage.Locations[result->E1->LocationIdx.v - 4];
             MetaCLocation_Expand(&loc, endLoc);
             result->Hash = hash;
             result->LocationIdx = MetaCLocationStorage_Store(&self->LocationStorage, loc);

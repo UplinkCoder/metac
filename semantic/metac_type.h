@@ -64,7 +64,7 @@ typedef struct metac_type_index_t
 
 #define METAC_TYPE_HEADER \
     metac_decl_kind_t Kind; \
-    uint32_t LocationIdx; \
+    metac_location_ptr_t LocationIdx; \
     uint32_t Hash; \
     uint32_t Serial;
 
