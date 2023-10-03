@@ -309,6 +309,19 @@ int MetaCNode_TreeWalk_Real(metac_node_t node, walker_function_t walker_fn, void
         case node_stmt_if:
         {
             stmt_if_t* stmt_if = cast(stmt_if_t*) node;
+
+            if (stmt_if->IfCond != emptyNode)
+                result = MetaCNode_TreeWalk_Real(stmt_if->IfCond, walker_fn, ctx);
+            if(result)
+                return result;
+            if (stmt_if->IfBody != emptyNode)
+                result = MetaCNode_TreeWalk_Real(stmt_if->IfBody, walker_fn, ctx);
+            if(result)
+                return result;
+            if (stmt_if->ElseBody != emptyNode)
+                result = MetaCNode_TreeWalk_Real(stmt_if->ElseBody, walker_fn, ctx);
+            if(result)
+                return result;
         } break;
 
         case node_stmt_label:
