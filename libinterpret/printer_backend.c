@@ -159,7 +159,7 @@ static inline void Printer_PutU64(Printer* self, const uint64_t v)
 
 static inline void Printer_PutI64(Printer* self, const int64_t v)
 {
-    char buffer[21];
+    char buffer[22];
 
     char* Begin_number = i64tostr(v, buffer);
 
