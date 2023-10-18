@@ -1958,9 +1958,10 @@ void MetaCCodegen_doStmt(metac_bytecode_ctx_t* ctx,
 
             sema_stmt_switch_t* switchStmt = cast(sema_stmt_switch_t*) stmt;
             BCValue switchExp;
+            metac_bytecode_switch_t* swtch;
+
             MetaCCodegen_doExpr(ctx, switchStmt->SwitchExp, &switchExp, _Rvalue);
-            metac_bytecode_switch_t* swtch =
-                MetaCCodegen_PushSwitch(ctx, switchExp);
+            swtch = MetaCCodegen_PushSwitch(ctx, switchExp);
             MetaCCodegen_doBlockStmt(ctx, switchStmt->SwitchBody);
             // gen default case if there is one.
             if (METAC_NODE(swtch->DefaultBody) != emptyPointer)
@@ -1968,8 +1969,10 @@ void MetaCCodegen_doStmt(metac_bytecode_ctx_t* ctx,
                 MetaCCodegen_doStmt(ctx, swtch->DefaultBody);
             }
             MetaCCodegen_PopSwitch(ctx, switchExp);
-            BCLabel breakLabel = gen.GenLabel(c);
-            FixupBreaks(ctx, currentBreakCount, breakLabel);
+            {
+                BCLabel breakLabel = gen.GenLabel(c);
+                FixupBreaks(ctx, currentBreakCount, breakLabel);
+            }
         } break;
 
         case stmt_block:
@@ -2056,11 +2059,12 @@ void MetaCCodegen_doStmt(metac_bytecode_ctx_t* ctx,
             BCLabel evalCond = gen.GenLabel(c);
             BCValue cond = {BCValueType_Unknown};
             MetaCCodegen_doExpr(ctx, whileStmt->WhileExp, &cond, _Cond);
-
-            CndJmpBegin condExpJmp = gen.BeginCndJmp(c, &cond, false);
-            MetaCCodegen_doStmt(ctx, whileStmt->WhileBody);
-            gen.Jmp(c, evalCond);
-            gen.EndCndJmp(c, &condExpJmp, gen.GenLabel(c));
+            {
+                CndJmpBegin condExpJmp = gen.BeginCndJmp(c, &cond, false);
+                MetaCCodegen_doStmt(ctx, whileStmt->WhileBody);
+                gen.Jmp(c, evalCond);
+                gen.EndCndJmp(c, &condExpJmp, gen.GenLabel(c));
+            }
         } break;
 
         case stmt_for:
