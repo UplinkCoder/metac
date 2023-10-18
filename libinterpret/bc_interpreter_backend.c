@@ -4,7 +4,7 @@
 #ifndef _BC_INTERPRETER_C_
 #define _BC_INTERPRETER_C_
 
-#ifdef _WIN32
+#if defined(_WIN32) && !defined(_COMPAT_H_)
 #  define UINT8_MAX 0xff
 #  define UINT16_MAX 0xffff
 #  define UINT32_MAX 0xffffffff

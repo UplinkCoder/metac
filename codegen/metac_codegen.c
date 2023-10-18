@@ -22,11 +22,6 @@
 #  define emptyPointer ((void*) 0x1)
 #endif
 
-#ifdef _WIN32
-#  define INT32_MAX 0x7fffffff
-#  define INT32_MIN (~INT32_MAX)
-#endif
-
 #include "metac_vstore.c"
 
 #include "metac_codegen.h"
