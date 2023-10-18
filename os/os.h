@@ -93,4 +93,6 @@ struct OS
 };
 
 extern struct OS OS;
+
+const char* TimeStampToChars(uint32_t tsp);
 #endif // _OS_H_

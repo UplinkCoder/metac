@@ -1,4 +1,5 @@
 /// Small platfrom abstraction
+#include "compat.h"
 #include "os.h"
 #include <time.h>
 
@@ -84,10 +85,11 @@ os_error_t SetStartTime(void)
     return Error_Success;
 }
 
-const char* PrintTime(uint32_t tsp)
+const char* TimeStampToChars(uint32_t tsp)
 {
     uint32_t elapsedSeconds;
     uint32_t elapsedMicroseconds;
+    static char buffer[32];
 
     if (tsp > OS.StartTimeStamp)
     {
@@ -105,16 +107,18 @@ const char* PrintTime(uint32_t tsp)
         uint32_t el_min = (elapsedSeconds / 60) % 60;
         uint32_t el_hr = (elapsedSeconds / 3600) % 24;
 
-        int32_t year;
-        int32_t month;
-        int32_t day;
-        int32_t hour;
-        int32_t minute;
-        int32_t second;
+        int32_t year = OS.StartDate.Year;
+        int32_t month = OS.StartDate.Month;
+        int32_t day = OS.StartDate.Day;
+        int32_t hour = OS.StartDate.Hour + el_hr;
+        int32_t minute = OS.StartDate.Minute + el_min;
+        int32_t second = OS.StartDate.Second + el_sec;
 
-
-        printf("%d-%d-%d:%d:%d:%d",
+        snprintf(buffer, sizeof(buffer),
+            "%d-%d-%d:%d:%d:%d",
             year, month, day,
             hour, minute, second);
+
+        return (const char*) &buffer[0];
     }
 }
