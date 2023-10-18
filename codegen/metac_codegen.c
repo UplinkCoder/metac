@@ -401,6 +401,7 @@ void MetaCCodegen_End(metac_bytecode_ctx_t* self)
         printf("%s\n\n", printer->BufferStart);
     }
 }
+
 void* MetaCCodegen_AllocMemory(metac_bytecode_ctx_t* self, uint32_t size, sema_decl_function_t* func)
 {
     tagged_arena_t* arena = 0;
@@ -425,12 +426,12 @@ void* MetaCCodegen_AllocMemory(metac_bytecode_ctx_t* self, uint32_t size, sema_d
     return 0;
 }
 
-static BackendInterface* defaultInterface = 0;
+static const BackendInterface* defaultInterface = 0;
 
 void MetaCCodegen_SetDefaultInterface(const BackendInterface* defInterface)
 {
     assert(defInterface != 0);
-    // defaultInterface = defInterface;
+    defaultInterface = defInterface;
 }
 
 void MetaCCodegen_UnsetDefaultInterface(void)
