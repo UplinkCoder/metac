@@ -134,6 +134,8 @@ arena_ptr_t ReallocArenaArray(tagged_arena_t* arena, metac_alloc_t* alloc, uint3
         *(cast(void**)&NAME) = (NAME##Arena).Memory; \
     } \
     NAME[NAME##Count++] = (VALUE); \
+    NAME##Arena.SizeLeft -= sizeof(*NAME); \
+    NAME##Arena.Offset   += sizeof(*NAME); \
 } while(0)
 
 #define STACK_ARENA_ARRAY_TO_HEAP(NAME, ALLOC) do { \
