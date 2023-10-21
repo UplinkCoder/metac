@@ -352,34 +352,49 @@ LGotChild:
     return child;
 }
 
-void CompletionTrie_Print(completion_trie_root_t* root, uint32_t n, const char* rootPrefix, FILE* f)
-{
-    const completion_trie_node_t const * nodes =
-        root->Nodes;
-    uint32_t i;
+/**
+ * Generates a DOT representation of the completion trie starting from the given node.
+ * This function recursively traverses the trie and outputs DOT code for visualization.
+ *
+ * @param root        The root of the completion trie.
+ * @param nodeIdx     The index of the current node in the trie.
+ * @param rootPrefix  The prefix of the root node.
+ * @param f           The file to which the DOT code will be written.
+ */
+void CompletionTrie_Print(completion_trie_root_t* root, uint32_t nodeIdx, const char* rootPrefix, FILE* f) {
+    // Retrieve a pointer to the nodes array for easier access
+    const completion_trie_node_t const * nodes = root->Nodes;
+    uint32_t childIdx;
 
-    uint32_t childIdxBegin = nodes[n].ChildrenBaseIdx * BASE_IDX_SCALE;
-    uint32_t childIdxEnd = childIdxBegin + nodes[n].ChildCount;
+    // Calculate the range of child indices for the current node
+    uint32_t childIdxBegin = nodes[nodeIdx].ChildrenBaseIdx * BASE_IDX_SCALE;
+    uint32_t childIdxEnd = childIdxBegin + nodes[nodeIdx].ChildCount;
 
-    for(i = childIdxBegin; i < childIdxEnd; i++)
+    // Output DOT code for the edges between the current node and its children
+    for(childIdx = childIdxBegin; childIdx < childIdxEnd; childIdx++)
     {
+        // Output an edge from the current node to a child node
         fprintf(f, "  \"%d: %.4s\" -> \"%d: %.4s\"\n",
-                n, rootPrefix,
-                i, nodes[i].Prefix4);
+                nodeIdx, rootPrefix,
+                childIdx, nodes[childIdx].Prefix4);
     }
 
+    // Output DOT code to ensure that child nodes appear in the same rank
     fprintf(f, "{ rank = same; ");
-    for(i = childIdxBegin; i < childIdxEnd; i++)
+    for(childIdx = childIdxBegin; childIdx < childIdxEnd; childIdx++)
     {
-        fprintf(f, "\"%d: %.4s\" ", i, nodes[i].Prefix4);
+        // Output nodes in the same rank to maintain their alignment
+        fprintf(f, "\"%d: %.4s\" ", childIdx, nodes[childIdx].Prefix4);
     }
     fprintf(f, "}\n");
 
-    for(i = childIdxBegin; i < childIdxEnd; i++)
+    // Recursively call CompletionTrie_Print for child nodes with ChildCount
+    for(childIdx = childIdxBegin; childIdx < childIdxEnd; childIdx++)
     {
-        if (nodes[i].ChildCount)
+        if (nodes[childIdx].ChildCount)
         {
-            CompletionTrie_Print(root, i, nodes[i].Prefix4, f);
+            // Recursively traverse child nodes with ChildCount
+            CompletionTrie_Print(root, childIdx, nodes[childIdx].Prefix4, f);
         }
     }
 }
