@@ -260,6 +260,66 @@ void* Allocator_Calloc_(metac_alloc_t* alloc, uint32_t elemSize, uint32_t elemCo
     return arena->Memory;
 }
 
+void* Allocator_Realloc_(metac_alloc_t* alloc, void* oldMem,
+                         uint32_t elemSize, uint32_t elemCount,
+                         const char* file, uint32_t line)
+{
+    tagged_arena_t* oldArena = 0;
+    arena_ptr_t oldArenaPtr = {0};
+
+    size_t requestedSize = elemSize * elemCount;
+    size_t spaceLeft;
+
+    {
+        uint32_t i;
+        for(i = 0; i < alloc->ArenasCount; i++)
+        {
+            tagged_arena_t* candidate = &alloc->Arenas[i];
+            if (candidate->Memory == oldMem)
+            {
+                oldArena = candidate;
+                oldArenaPtr.Index = i;
+                break;
+            }
+        }
+    }
+
+    assert(oldArena != 0 || !"Wrong old memory location given");
+
+    // Calculate the available space in the old arena
+    spaceLeft = oldArena->Offset + oldArena->SizeLeft;
+
+    // Check if we can shrink or stay the same size
+    if (spaceLeft >= requestedSize) {
+        oldArena->Offset = requestedSize;
+        oldArena->SizeLeft = spaceLeft - requestedSize;
+        return oldMem;
+    }
+
+    // lastly we have no choice but to allocate a new Arena
+    else
+    {
+         arena_ptr_t arenaPtr =
+            Allocate_(alloc, requestedSize, file, line, false);
+        tagged_arena_t* arena = &alloc->Arenas[arenaPtr.Index];
+
+        if (arenaPtr.Index == -1)
+            return 0;
+
+        assert(arena->Offset == 0 && arena->SizeLeft >= requestedSize);
+
+        arena->Flags |= arena_flag_inUse;
+        arena->Offset = requestedSize;
+        arena->SizeLeft -= arena->Offset;
+        memcpy(arena->Memory, oldArena->Memory, oldArena->Offset);
+        Allocator_FreeArena(alloc, oldArenaPtr);
+
+        return arena->Memory;
+    }
+
+
+}
+
 void Allocator_FreeArena (metac_alloc_t* alloc, arena_ptr_t arena)
 {
 

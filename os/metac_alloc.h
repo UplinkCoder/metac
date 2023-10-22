@@ -162,9 +162,15 @@ void Allocator_Init_(metac_alloc_t* allocator, metac_alloc_t* parent,
                      const char* file, uint32_t line, const char* allocName);
 
 #define Allocator_Calloc(ALLOC, TYPE, ELEM_COUNT) \
-    (cast(TYPE*)Allocator_Calloc_((ALLOC), sizeof(TYPE), ELEM_COUNT, __FILE__, __LINE__))
+    (cast(TYPE*)Allocator_Calloc_((ALLOC), sizeof(TYPE), (ELEM_COUNT), __FILE__, __LINE__))
 void* Allocator_Calloc_(metac_alloc_t* alloc, uint32_t elemSize, uint32_t elemCount,
                         const char* file, uint32_t line);
+
+#define Allocator_Realloc(ALLOC, OLD_MEM, TYPE, ELEM_COUNT) \
+    (cast(TYPE*)Allocator_Realloc_((ALLOC), (OLD_MEM), sizeof(TYPE), (ELEM_COUNT), __FILE__, __LINE__))
+void* Allocator_Realloc_(metac_alloc_t* alloc, void* oldMem,
+                         uint32_t elemSize, uint32_t elemCount,
+                         const char* file, uint32_t line);
 
 #define AllocateArena(ALLOC, SIZE) \
     Allocate_((ALLOC), (SIZE), __FILE__, __LINE__, false)
