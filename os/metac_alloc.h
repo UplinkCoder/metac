@@ -42,10 +42,10 @@ typedef struct tagged_arena_t
 typedef struct metac_alloc_t
 {
     tagged_arena_t* Arenas;
-    uint32_t ArenaCount;
-    uint32_t ArenaCapacity;
+    uint32_t ArenasCount;
+    uint32_t ArenasCapacity;
 
-    uint32_t inuseArenaCount;
+    uint32_t inuseArenasCount;
     uint32_t AllocatedBlocks;
 
     struct metac_alloc_t* Parent;

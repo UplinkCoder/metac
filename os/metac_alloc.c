@@ -32,27 +32,27 @@ void Allocator_Init_(metac_alloc_t* allocator, metac_alloc_t* parent,
     allocator->FreelistCount = 0;
     allocator->FreelistCapacity = 0;
 
-    allocator->ArenaCapacity = 64;
-    allocator->ArenaCount = 8;
+    allocator->ArenasCapacity = 64;
+    allocator->ArenasCount = 8;
     allocator->Arenas = cast(tagged_arena_t*)
-        calloc(sizeof(tagged_arena_t), allocator->ArenaCapacity);
+        calloc(sizeof(tagged_arena_t), allocator->ArenasCapacity);
 
-    allocator->inuseArenaCount = 0;
+    allocator->inuseArenasCount = 0;
     allocator->File = file;
     allocator->Line = line;
 
     uint32_t allocated = 0;
     void* firstBlock = 0;
 #if DEBUG_MEMORY
-    allocator->ArenaCount = 0;
+    allocator->ArenasCount = 0;
     allocator->AllocatedBlocks = 0;
 #else
     OS.PageAlloc(BLOCK_SIZE, &allocated, &firstBlock);
 
-    uint32_t memoryPerArena = allocated / allocator->ArenaCount;
+    uint32_t memoryPerArena = allocated / allocator->ArenasCount;
 
     for(uint32_t arenaIdx = 0;
-        arenaIdx < allocator->ArenaCount;
+        arenaIdx < allocator->ArenasCount;
         arenaIdx++)
     {
         tagged_arena_t* arena = &allocator->Arenas[arenaIdx];
@@ -81,16 +81,16 @@ arena_ptr_t Allocator_AddArena(metac_alloc_t* allocator, tagged_arena_t* arena)
     arena_ptr_t result = {(uint32_t)-1};
 
     tagged_arena_t* target = 0;
-    if (allocator->ArenaCount < (allocator->ArenaCapacity - allocator->inuseArenaCount))
+    if (allocator->ArenasCount < (allocator->ArenasCapacity - allocator->inuseArenasCount))
     {
 LaddArena:
         if (arena->Flags & arena_flag_inUse)
         {
-            result.Index = (allocator->ArenaCapacity - allocator->inuseArenaCount++);
+            result.Index = (allocator->ArenasCapacity - allocator->inuseArenasCount++);
         }
         else
         {
-            result.Index = allocator->ArenaCount++;
+            result.Index = allocator->ArenasCount++;
         }
         target = &allocator->Arenas[result.Index];
 
@@ -99,16 +99,16 @@ LaddArena:
     }
     else
     {
-        uint32_t newArenaCapa = ALIGN16(allocator->ArenaCapacity + 1);
-        uint32_t inUseArenaCount = allocator->inuseArenaCount;
+        uint32_t newArenaCapa = ALIGN16(allocator->ArenasCapacity + 1);
+        uint32_t inUseArenasCount = allocator->inuseArenasCount;
         allocator->Arenas = cast(tagged_arena_t*)
             realloc(allocator->Arenas, sizeof(tagged_arena_t) * newArenaCapa);
 
-        memcpy(allocator->Arenas + newArenaCapa - inUseArenaCount,
-               allocator->Arenas + allocator->ArenaCapacity - inUseArenaCount,
-               inUseArenaCount * sizeof(tagged_arena_t));
+        memcpy(allocator->Arenas + newArenaCapa - inUseArenasCount,
+               allocator->Arenas + allocator->ArenasCapacity - inUseArenasCount,
+               inUseArenasCount * sizeof(tagged_arena_t));
 
-        allocator->ArenaCapacity = newArenaCapa;
+        allocator->ArenasCapacity = newArenaCapa;
         goto LaddArena;
     }
 
@@ -142,17 +142,17 @@ arena_ptr_t Allocate_(metac_alloc_t* allocator, uint32_t size,
 
     size = ALIGN16(size);
 
-    uint32_t arenaCount = allocator->ArenaCount;
+    uint32_t ArenasCount = allocator->ArenasCount;
     tagged_arena_t* arenas = allocator->Arenas;
 LsearchArena:
     for(uint32_t arenaIdx = 0;
-       arenaIdx < arenaCount;
+       arenaIdx < ArenasCount;
        arenaIdx++)
     {
-        tagged_arena_t canidate = arenas[arenaIdx];
-        if (!(canidate.Flags & arena_flag_inUse))
+        tagged_arena_t candidate = arenas[arenaIdx];
+        if (!(candidate.Flags & arena_flag_inUse))
         {
-            if (canidate.SizeLeft >= size)
+            if (candidate.SizeLeft >= size)
             {
                 arena = &arenas[arenaIdx];
                 break;
@@ -179,7 +179,7 @@ LsetResult:
         if (arenas && arenas == allocator->Freelist)
         {
             uint32_t freelistIdx = arena - arenas;
-            memmove(arena, arena + 1, --allocator->ArenaCount - freelistIdx);
+            memmove(arena, arena + 1, --allocator->ArenasCount - freelistIdx);
         }
     }
 
@@ -190,7 +190,7 @@ LsetResult:
         if (arenas != allocator->Freelist)
         {
             arenas = allocator->Freelist;
-            arenaCount = allocator->FreelistCount;
+            ArenasCount = allocator->FreelistCount;
             goto LsearchArena;
         }
 
@@ -233,6 +233,8 @@ LsetResult:
         if (!forChild)
             result = Allocator_AddArena(allocator, arena);
     }
+
+    assert(arena->Offset == 0);
 
     return result;
 #endif
@@ -278,7 +280,7 @@ arena_ptr_t ReallocArenaArray(tagged_arena_t* arena, metac_alloc_t* alloc, uint3
     if (arena->Alloc)
     {
         metac_alloc_t* arenaAlloc = arena->Alloc;
-        for(uint32_t i = 0; i < arenaAlloc->ArenaCount; i++)
+        for(uint32_t i = 0; i < arenaAlloc->ArenasCount; i++)
         {
             if (&arenaAlloc->Arenas[i] == arena)
             {
