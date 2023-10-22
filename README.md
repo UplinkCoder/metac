@@ -62,7 +62,7 @@ At the moment, this may seem like a quirky toy feature, but it will be one of th
 
 ### Yield Expressions (doesn't work yet)
 
-`yield` is a keyword in MetaC that has the effect of pausing the execution of the function you are currently in and returning a value.
+`_yield` is a keyword in MetaC that has the effect of pausing the execution of the function you are currently in and returning a value.
 When you then call that same function again it will not start at the beginning but rather it will continue after the point where you yielded.
 
 All local variables are preserved.
