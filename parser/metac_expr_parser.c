@@ -1778,8 +1778,6 @@ metac_expr_t* MetaCParser_ParseExpr2(metac_parser_t* self, parse_expr_flags_t fl
         tokenType =
             (currentToken ? currentToken->TokenType : tok_invalid);
 
-    printf("TopOp: %s\n", MetaCExprKind_toChars(MetaCParser_TopOp(self)));
-
         //TODO nested ternary expressions
         if (eflags & expr_flags_ternary)
         {

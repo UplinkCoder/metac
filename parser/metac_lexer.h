@@ -2,6 +2,7 @@
 #define _METAC_LEXER_H_
 #include "../os/compat.h"
 #include "../os/bsf.h"
+#include "../os/metac_alloc.h"
 
 #include "metac_identifier_table.h"
 

@@ -569,6 +569,7 @@ static inline char EscapedChar(char c)
 {
     switch (c)
     {
+        case '0'  : return '\0';
         case 'n'  : return '\n';
         case 'v'  : return '\v';
         case 't'  : return '\t';
@@ -719,7 +720,7 @@ metac_location_ptr_t MetaCLocationStorage_Store(metac_location_t_array* self,
     result.v = self->LocationSize++;
     self->Locations[result.v] = loc;
     result.v += 4;
-    
+
     return result;
 }
 
@@ -818,14 +819,15 @@ metac_token_t* MetaCLexerLexNextToken(metac_lexer_t* self,
 
     if (self->TokenCount >= (self->TokenCapacity - 1))
     {
-        uint32_t newCapa = 32;
+        uint32_t newCapa;
 
         if (self->Tokens == self->inlineTokens)
         {
-            metac_token_t* newTokens = cast(metac_token_t*)
-                malloc(sizeof(metac_token_t) * newCapa);
-            metac_location_t* newLocations = cast(metac_location_t*)
-                malloc(sizeof(metac_location_t) * newCapa);
+            newCapa = 32;
+            metac_token_t* newTokens =
+                Allocator_Calloc(self->Allocator, metac_token_t, newCapa);
+            metac_location_t* newLocations =
+                Allocator_Calloc(self->Allocator, metac_location_t, newCapa);
 
             memcpy(newTokens, self->Tokens, sizeof(metac_token_t) * ARRAY_SIZE(self->inlineTokens));
             memcpy(newLocations, self->LocationStorage.Locations,
@@ -839,12 +841,12 @@ metac_token_t* MetaCLexerLexNextToken(metac_lexer_t* self,
         else
         {
             newCapa = ALIGN4(cast(uint32_t)(self->TokenCapacity * 1.3f));
-            self->Tokens = cast(metac_token_t*)
-                realloc(self->Tokens, sizeof(metac_token_t) * newCapa);
+            self->Tokens =
+                Allocator_Realloc(self->Allocator, self->Tokens, metac_token_t, newCapa);
             self->TokenCapacity = newCapa;
-            self->LocationStorage.Locations = cast(metac_location_t*)
-                realloc(self->LocationStorage.Locations,
-                        sizeof(metac_location_t) * newCapa);
+            self->LocationStorage.Locations =
+                Allocator_Realloc(self->Allocator, self->LocationStorage.Locations,
+                        metac_location_t, newCapa);
             self->LocationStorage.LocationCapacity = newCapa;
         }
         // printf("Not enough token storage\n");
