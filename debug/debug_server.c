@@ -223,7 +223,7 @@ void outAllocRow(char* body, uint32_t sz, uint32_t* pp, metac_alloc_t* alloc)
 
     p += snprintf (body + p, sz - p, "<tr>");
 
-    for(j = 0; j < alloc->ArenaCount; j++)
+    for(j = 0; j < alloc->ArenasCount; j++)
     {
         usedSize += alloc->Arenas[j].Offset;
         // we seem to be double counting allocated size
@@ -248,7 +248,7 @@ void outAllocRow(char* body, uint32_t sz, uint32_t* pp, metac_alloc_t* alloc)
         );
 
         p += snprintf (body + p, sz - p,
-                       "<td>%u</td>", alloc->ArenaCount
+                       "<td>%u</td>", alloc->ArenasCount
         );
 
         p += snprintf (body + p, sz - p,
@@ -300,7 +300,7 @@ MHD_HANDLER (handleAllocators)
     for (i = 0; i < debugServer->AllocatorsCount; i++)
     {
         metac_alloc_t * alloc = debugServer->Allocators[i];
-        if (alloc->ArenaCount > 500)
+        if (alloc->ArenasCount > 500)
         {
             fprintf(stderr, "Unreasonable ArenaCount for alloc %u\n", i);
             continue;
@@ -368,7 +368,7 @@ MHD_HANDLER(handleArenas)
     metac_alloc_t* alloc = ((allocIdx && allocIdx <= (debugServer->AllocatorsCount))
         ? debugServer->Allocators[allocIdx - 1] : 0);
 
-    const uint32_t arenaCount = alloc ? alloc->ArenaCount : 0;
+    const uint32_t arenaCount = alloc ? alloc->ArenasCount : 0;
 
     p += snprintf(body + p, ARRAYSIZE(body) - p, "<tr>");
     for(uint32_t i = 0; i < ARRAYSIZE(headers); i++)
