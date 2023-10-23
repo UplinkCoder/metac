@@ -152,6 +152,7 @@ LsearchArena:
         tagged_arena_t candidate = arenas[arenaIdx];
         if (!(candidate.Flags & arena_flag_inUse))
         {
+            // we will create a new arena from a reused one
             if (candidate.SizeLeft >= size)
             {
                 arena = &arenas[arenaIdx];
@@ -181,6 +182,7 @@ LsetResult:
             uint32_t freelistIdx = arena - arenas;
             memmove(arena, arena + 1, --allocator->ArenasCount - freelistIdx);
         }
+        goto Lreturn;
     }
 
     if (!arena)
@@ -209,6 +211,7 @@ LsetResult:
             else
             {
                 arena = &allocator->Parent->Arenas[parentArenaPtr.Index];
+                goto LsetResult;
             }
         }
         else // We don't have a parent :-( we need to ask the OS for a block
@@ -227,14 +230,21 @@ LsetResult:
             newArena.Alloc = allocator;
             newArena.Line = line;
             newArena.File = file;
-            return Allocator_AddArena(allocator, &newArena);
+            result = Allocator_AddArena(allocator, &newArena);
+            goto Lreturn;
         }
 
         if (!forChild)
+        {
             result = Allocator_AddArena(allocator, arena);
+            goto Lreturn;
+        }
     }
-
-    assert(arena->Offset == 0);
+Lreturn:
+    {
+        tagged_arena_t resultArena = allocator->Arenas[result.Index];
+        assert(resultArena.Offset == 0);
+    }
 
     return result;
 #endif
