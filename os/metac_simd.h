@@ -150,7 +150,7 @@ static inline uint32_t MoveMask16(const int16x8_t a)
 
     for(int i = 0; i < 8; i++)
     {
-        if (a.E[i] == 0xFF)
+        if (a.E[i] == 0xFFFF)
         {
             result |= (1 << i);
         }
