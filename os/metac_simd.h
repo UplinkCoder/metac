@@ -96,7 +96,7 @@ static inline int16x8_t Eq16(const int16x8_t a, const int16x8_t b)
 static inline int16x8_t Load16(int16x8_t const * ptr)
 {
     int16x8_t result;
-    result.XMM == _mm_loadu_si128((__m128i*)ptr->E);
+    result.XMM = _mm_loadu_si128((__m128i*)ptr->E);
     return result;
 }
 
@@ -201,7 +201,7 @@ static inline int16x8_t Eq16(const int16x8_t a, const int16x8_t b)
 
     for(int i = 0; i < 8; i++)
     {
-        result.E[i] = ((a.E[i] == b.E[i]) ? 0xFF : 0);
+        result.E[i] = ((a.E[i] == b.E[i]) ? 0xFFFF : 0);
     }
 
     return result;
