@@ -817,8 +817,8 @@ static inline metac_token_enum_t AggToken(metac_decl_kind_t declKind)
 }
 
 static inline void PrintDecl(metac_printer_t* self,
-                                    metac_decl_t* decl,
-                                    uint32_t level)
+                             metac_decl_t* decl,
+                             uint32_t level)
 {
     bool printSemicolon = true;
     bool printingTypedef = false;

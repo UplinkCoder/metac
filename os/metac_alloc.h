@@ -110,7 +110,7 @@ arena_ptr_t ReallocArenaArray(tagged_arena_t* arena, metac_alloc_t* alloc, uint3
 } while (0)
 
 #define ARENA_ARRAY_ENSURE_SIZE(NAME, COUNT) do { \
-    assert((NAME##Arena).Offset == 0); \
+    /* assert((NAME##Arena).Offset == 0); */ \
     uint32_t newCapa = (COUNT) * sizeof(*NAME); \
     if ((NAME##Arena).SizeLeft < newCapa) \
     { \

@@ -275,7 +275,7 @@ void* Allocator_Realloc_(metac_alloc_t* alloc, void* oldMem,
                          const char* file, uint32_t line)
 {
     tagged_arena_t* oldArena = 0;
-    arena_ptr_t oldArenaPtr = {0};
+    arena_ptr_t oldArenaPtr = {-1};
 
     size_t requestedSize = elemSize * elemCount;
     size_t spaceLeft;
@@ -326,8 +326,6 @@ void* Allocator_Realloc_(metac_alloc_t* alloc, void* oldMem,
 
         return arena->Memory;
     }
-
-
 }
 
 void Allocator_FreeArena (metac_alloc_t* alloc, arena_ptr_t arena)
