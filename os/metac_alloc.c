@@ -78,7 +78,7 @@ void Allocator_Init_(metac_alloc_t* allocator, metac_alloc_t* parent,
 
 arena_ptr_t Allocator_AddArena(metac_alloc_t* allocator, tagged_arena_t* arena)
 {
-    arena_ptr_t result = {(uint32_t)-1};
+    arena_ptr_t result = {-1};
 
     tagged_arena_t* target = 0;
     if (allocator->ArenasCount < (allocator->ArenasCapacity - allocator->inuseArenasCount))
@@ -120,7 +120,7 @@ tagged_arena_t nullArena = {0};
 arena_ptr_t Allocate_(metac_alloc_t* allocator, uint32_t size,
                       const char* file, uint32_t line, bool forChild)
 {
-    arena_ptr_t result = {((uint32_t)-1)};
+    arena_ptr_t result = {-1};
     if (!size)
         return result;
 
@@ -348,7 +348,7 @@ arena_ptr_t ReallocArenaArray(tagged_arena_t* arena, metac_alloc_t* alloc, uint3
     if (arena->Alloc)
     {
         metac_alloc_t* arenaAlloc = arena->Alloc;
-        for(uint32_t i = 0; i < arenaAlloc->ArenasCount; i++)
+        for(int32_t i = 0; i < arenaAlloc->ArenasCount; i++)
         {
             if (&arenaAlloc->Arenas[i] == arena)
             {
