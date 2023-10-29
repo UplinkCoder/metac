@@ -451,6 +451,7 @@ void outTaskRow(char* body, uint32_t sz, uint32_t* pp, task_t* task)
     p += snprintf(body + p, sz - p, "</tr>");
     (*pp) = p;
 }
+#endif
 
 MHD_HANDLER(handleLogs)
 {
@@ -497,7 +498,7 @@ MHD_HANDLER(handleLogs)
     return send_html (connection, responseBuffer, len);
 }
 
-
+#ifndef NO_FIBERS
 MHD_HANDLER(handleTasks)
 {
     static char responseBuffer[8192];
@@ -799,6 +800,8 @@ void Debug_Logf(debug_server_t* debugServer,
 
     log.Category = DebugServer_Category(debugServer, category);
     log.Message = DebugServer_AddString(debugServer, buffer, len);
+    log.Length = len;
+
     ARENA_ARRAY_ADD(debugServer->Logs, log);
 }
 
