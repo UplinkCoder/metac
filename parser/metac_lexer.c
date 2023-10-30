@@ -584,6 +584,27 @@ static inline char EscapedChar(char c)
     }
     return 'E';
 }
+
+static inline char UnescapedChar(char c)
+{
+    switch (c)
+    {
+        case '\0'  : return '0';
+        case '\n'  : return 'n';
+        case '\v'  : return 'v';
+        case '\t'  : return 't';
+        case '\r'  : return 'r';
+        case '\"'  : return '"';
+        case '\a'  : return 'a';
+        case '\b'  : return 'b';
+        case '\f'  : return 'f';
+        case '\''  : return '\'';
+        case '?'  : return '?';
+        case '\\': return '\\';
+    }
+    return 'E';
+}
+
 static void MetaCLexerMatchKeywordIdentifier(metac_token_t* tok,
                                              const char* identifier)
 {
@@ -1184,11 +1205,18 @@ LcontinueLexnig:
                 {
                     c = *text++;
                     state->Line++;
+                    state->Column = 0;
+                    goto LcontinueLexnig;
+                }
+                else if (c == '\r')
+                {
+                    c = *text++;
+                    state->Column = 0;
                     goto LcontinueLexnig;
                 }
                 else
                 {
-                    ParseErrorF(loc, "escaping '%c' in wild code '%.*s' \n", c, 8, text - 4);
+                    ParseErrorF(loc, "escaping '\\%c' in wild code\n", UnescapedChar(c));
                     assert(0); // this is not to escape a newline
                 }
             }
