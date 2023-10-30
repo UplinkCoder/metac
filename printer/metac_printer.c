@@ -2246,6 +2246,7 @@ void MetaCPrinter_InitSz(metac_printer_t* self,
     self->SuppressNewlineAfterDecl = false;
     self->AsType = false;
     self->ForTypedef = false;
+    self->ForAnonymousField = 0;
     MetaCPrinter_Reset(self);
 
     self->IdentifierTable = identifierTable;
