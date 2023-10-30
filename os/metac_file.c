@@ -113,8 +113,9 @@ void MetaCFileStorage_Init(metac_file_storage_t* self, metac_filesystem_t* fs, m
 
     if (!fs)
     {
-        self->FS = cast(metac_filesystem_t*)&NativeFileSystem;
+        fs = cast(metac_filesystem_t*)&NativeFileSystem;
     }
+    self->FS = fs;
 }
 
 metac_buffer_t MetaCFileStorage_GetEntireFileBuffer(metac_file_storage_t* self, metac_file_ptr_t file)
