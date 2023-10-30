@@ -3,13 +3,12 @@
 
 #include "os/compat.h"
 #include "metac_target_info.h"
-
-#if defined (__cplusplus)
-#define _Alignof(X) \
-    alignof(X)
-#elif defined(_MSC_VER)
+#if defined(_MSC_VER)
 #define _Alignof(X) \
     __alignof(X)
+#elif defined (__cplusplus)
+#define _Alignof(X) \
+    alignof(X)
 #elif defined(__TINYC__)
 #define _Alignof(X) \
     __alignof__(X)
