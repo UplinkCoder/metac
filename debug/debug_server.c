@@ -1,4 +1,3 @@
-
 #ifdef DEBUG_SERVER
 #include "../debug/debug_server.h"
 #include <stdio.h>
@@ -7,6 +6,7 @@
 #include "../os/bsf.h"
 #include <json-c/json.h>
 #include <assert.h>
+
 extern uint32_t crc32c_nozero(uint32_t crc, const void* s, const uint32_t len_p);
 
 debug_server_t* g_DebugServer = 0;
@@ -786,7 +786,6 @@ void Debug_Logf(debug_server_t* debugServer,
     ...
 )
 {
-
     char buffer[1024];
     debug_message_t log;
     int len;
@@ -798,8 +797,23 @@ void Debug_Logf(debug_server_t* debugServer,
     len = vsnprintf(buffer, sizeof(buffer), fmt, list);
     va_end(list);
 
+    if (len >= ARRAY_SIZE(buffer))
+    {
+        // we would have overflowed our format buffer
+        // allocate a string from the heap
+        char* memory =
+            Allocator_Calloc(&debugServer->Allocator, char, size + 1);
+        va_start(list, fmt);
+        len = vsnprintf(memory, size + 1, fmt, list);
+        va_end(list);
+        log.Message = cast(const char*)memory;
+    }
+    else
+    {
+        // copy The message as it's formatted into a stack local buffer
+        log.Message = DebugServer_AddString(debugServer, buffer, len + 1);
+    }
     log.Category = DebugServer_Category(debugServer, category);
-    log.Message = DebugServer_AddString(debugServer, buffer, len);
     log.Length = len;
 
     ARENA_ARRAY_ADD(debugServer->Logs, log);
