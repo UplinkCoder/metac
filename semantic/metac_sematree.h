@@ -534,14 +534,17 @@ typedef struct metac_sema_decl_t
 
 #endif // _METAC_SEMATREE_H_
 
+typedef int (*sema_walker_function_t) (metac_node_t node, metac_sema_state_t* sema, void * ctx);
+
+
 int MetaCSemaTree_Walk_Real(metac_node_t node, struct metac_sema_state_t* sema,
-                            walker_function_t walker_fn, void* ctx);
+                            sema_walker_function_t walker_fn, void* ctx);
 
 #ifdef NDEBUG
 #  define MetaCSemaTree_Walk(DECL, SEMA, FUNC, CTX) \
       MetaCSemaTree_Walk_Real(DECL, SEMA, FUNC, (void*)CTX)
 #else
-  int MetaCSemaTree_Walk_Debug(metac_node_t node, metac_sema_state_t* sema, const char* fn_name, walker_function_t walker_fn, void* ctx);
+  int MetaCSemaTree_Walk_Debug(metac_node_t node, metac_sema_state_t* sema, const char* fn_name, sema_walker_function_t walker_fn, void* ctx);
 #  define MetaCSemaTree_Walk(DECL, SEMA, FUNC, CTX) \
       MetaCSemaTree_Walk_Debug(DECL, SEMA, #FUNC, FUNC, (void*)CTX)
 #endif

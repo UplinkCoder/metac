@@ -211,12 +211,12 @@ static inline metac_type_index_t CommonBasicType(const metac_type_index_t a,
 
 static inline bool TypeConvertsToPointer(const metac_type_index_t a)
 {
-    bool result = false;
+    bool result;
 
     switch(TYPE_INDEX_KIND(a))
     {
         case type_index_functiontype:
-        case type_index_struct:
+        // case type_index_struct: // why was that here ???
         case type_index_array:
         case type_index_ptr:
             result = true;
@@ -227,7 +227,8 @@ static inline bool TypeConvertsToPointer(const metac_type_index_t a)
                 TYPE_INDEX_INDEX(a);
             result = (basicKind == basic_int);
         }
-
+        default :
+            result = false;
     }
 
     return result;

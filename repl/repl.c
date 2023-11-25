@@ -169,10 +169,14 @@ typedef struct presemantic_context_t
 } presemantic_context_t;
 
 
+extern repl_ui_context_t* g_uiContext;
+metac_type_aggregate_t* g_compilerInterface;
+
 static inline int Presemantic(metac_node_t node, void* ctx)
 {
     presemantic_context_t* context =
         (presemantic_context_t*) ctx;
+
     assert(crc32c_nozero(~0, __FUNCTION__, strlen(__FUNCTION__) == context->FunctionKey));
 
     if (node->Kind == node_decl_type_typedef)
@@ -191,14 +195,11 @@ static inline int Presemantic(metac_node_t node, void* ctx)
     }
     else
     {
-        //MSGF("Not a typedef: %s\n", MetaCNodeKind_toChars(node->Kind));
+        // MSGF("Not a typedef: %s\n", MetaCNodeKind_toChars(node->Kind));
     }
 
     return 0;
 }
-
-extern repl_ui_context_t* g_uiContext;
-metac_type_aggregate_t* g_compilerInterface;
 
 void SeeIdentifier(const char* idStr, uint32_t key, repl_state_t* replCtx)
 {

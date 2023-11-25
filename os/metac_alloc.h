@@ -68,6 +68,8 @@ arena_ptr_t ReallocArenaArray(tagged_arena_t* arena, metac_alloc_t* alloc, uint3
 
 #endif
 
+#define IsValidArenaPtr(ARENA_PTR) (ARENA_PTR.Index != 1)
+
 #define ARENA_ARRAY(TYPE, NAME) \
     TYPE* NAME; \
     uint32_t NAME##Count; \

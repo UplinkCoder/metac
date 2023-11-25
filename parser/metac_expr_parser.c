@@ -760,12 +760,14 @@ metac_expr_t* MetaCParser_ParsePrimaryExpr(metac_parser_t* self, parse_expr_flag
         self->ExprParser.OpenParens++;
         MetaCParser_Match(self, tok_lParen);
         result = AllocNewExpr(expr_paren);
+        result->Hash = CRC32C_PARENPAREN;
         {
             if (!MetaCParser_PeekMatch(self, tok_rParen, 1))
             {
                 result->E1 = MetaCParser_ParseExpr2(self, expr_flags_none);
                 // result->E1 = MetaCParser_ParseExpr(self, expr_flags_none, 0);
                 // printf("E1: %s\n", MetaCExprKind_toChars(result->E1->Kind));
+                result->Hash = CRC32C_VALUE(result->Hash, result->E1->Hash);
             }
             else
             {
@@ -774,7 +776,6 @@ metac_expr_t* MetaCParser_ParsePrimaryExpr(metac_parser_t* self, parse_expr_flag
         }
 
         //PushOperator(expr_paren);
-        result->Hash = CRC32C_VALUE(crc32c_nozero(~0, "()", 2), result->E1->Hash);
         //PushOperand(result);
 
         metac_token_t* endParen =
@@ -1624,6 +1625,9 @@ metac_expr_t* MetaCParser_PopExpr(metac_parser_t* self)
     metac_expr_t* result = 0;
 
     metac_expr_t* top = MetaCParser_TopExpr(self);
+    const char* expr = MetaCPrinter_PrintExpr(&self->DebugPrinter, top);
+    Debug_Logf(g_DebugServer, "Parser", "[PopExpr] %s", expr);
+    MetaCPrinter_Reset(&self->DebugPrinter);
 /*
     printf("Poping ExprStack(%d): %s\n",
         self->ExprParser.ExprStackCount,
@@ -1636,13 +1640,14 @@ metac_expr_t* MetaCParser_PopExpr(metac_parser_t* self)
 
 void MetaCParser_PushOp(metac_parser_t* self, metac_expr_kind_t op)
 {
-    // printf("Pushing Op: %s\n", MetaCExprKind_toChars(op));
+    Debug_Logf(g_DebugServer, "Parser", "[PushOp] %s", MetaCExprKind_toChars(op));
     ARENA_ARRAY_ADD(self->ExprParser.OpStack, op);
 }
 
 metac_expr_kind_t MetaCParser_PopOp(metac_parser_t* self)
 {
     metac_expr_kind_t result = self->ExprParser.OpStack[--self->ExprParser.OpStackCount];
+    Debug_Logf(g_DebugServer, "Parser", "[PopOp] %s", MetaCExprKind_toChars(result));
     // printf("Popping Op: %s\n", MetaCExprKind_toChars(result));
 
     return result;
@@ -1664,6 +1669,7 @@ metac_expr_kind_t MetaCParser_TopOp(metac_parser_t* self)
 
 metac_expr_t* MetaCParser_ApplyOp(metac_parser_t* self, metac_expr_kind_t op)
 {
+    Debug_Logf(g_DebugServer, "Parser", "[ApplyOp] %s", MetaCExprKind_toChars(op));
     metac_expr_t* e = 0;
     assert(op != expr_invalid);
     e = AllocNewExpr(op);
@@ -1799,7 +1805,6 @@ metac_expr_t* MetaCParser_ParseExpr2(metac_parser_t* self, parse_expr_flags_t fl
                     (self->ExprParser.ExprStackCount -
                      MetaCParser_TopExprStackBottom(self));
 
-                // self->ExprParser.OpenParens++;
                 // if lParen is a encountered with a non-empty
                 // expression stack it's likely a call.
                 if (n_exprs != 0
@@ -1807,6 +1812,7 @@ metac_expr_t* MetaCParser_ParseExpr2(metac_parser_t* self, parse_expr_flags_t fl
                 {
                     goto LParseCall;
                 }
+                self->ExprParser.OpenParens++;
             }
             metac_expr_t* e = MetaCParser_ParsePrimaryExpr(self, expr_flags_none);
             MetaCParser_PushExpr(self, e);
@@ -1956,6 +1962,8 @@ LTerminate:
                 MetaCParser_PopFlags(self);
                 MetaCParser_PopOpenParens(self);
                 result = MetaCParser_PopExpr(self);
+                Debug_Logf(g_DebugServer, "[Parser]", "result = '%s'", MetaCPrinter_PrintExpr(&self->DebugPrinter, result));
+                MetaCPrinter_Reset(&self->DebugPrinter);
             }
             else
             {

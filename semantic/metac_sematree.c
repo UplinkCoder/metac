@@ -5,7 +5,7 @@
 #undef walker_fn
 
 int MetaCSemaTree_Walk_Debug(metac_node_t node, struct metac_sema_state_t* sema,
-                             const char* fn_name, walker_function_t walker_fn, void* ctx)
+                             const char* fn_name, sema_walker_function_t walker_fn, void* ctx)
 {
     // make sure the context confusion cookie is set
     // printf("fn_name: %s\n", fn_name);
@@ -55,11 +55,11 @@ metac_type_t TypePtrToNode(metac_type_index_t typeIdx,metac_sema_state_t* sema)
 }
 
 int MetaCSemaTree_Walk_Real(metac_node_t node, struct metac_sema_state_t* sema,
-                            walker_function_t walker_fn, void* ctx)
+                            sema_walker_function_t walker_fn, void* ctx)
 {
 
 #define walker_fn(NODE, CTX) \
-    walker_fn((metac_node_t)NODE, CTX)
+    walker_fn((metac_node_t)NODE, sema, CTX)
 
 #define MetaCSemaTree_Walk_Real(NODE, SEMA, FN, CTX) \
     MetaCSemaTree_Walk_Real((metac_node_t)NODE, SEMA, FN, CTX)

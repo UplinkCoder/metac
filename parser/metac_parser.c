@@ -881,7 +881,9 @@ LnextToken:
 #define CRC32C_SLASH_SLASH 0xe8c2d328
 #define CRC32C_BRACKETS 0x89b24289
 #define CRC32C_SEMICOLON 0x4e84e24
+#define CRC32C_PARENPAREN 0xb40efd85
 #define CRC32C_PARENSTARPAREN 0xdb5bdc12
+#define CRC32C_PARENPAREN 0xb40efd85
 
 #define CRC32C_AND   0xab9ec598
 #define CRC32C_MINUS 0x32176ea3
@@ -1309,6 +1311,8 @@ uint32_t HashDecl(metac_decl_t* decl);
 decl_parameter_list_t ParseParameterList(metac_parser_t* self,
                                          decl_function_t* parent)
 {
+    uint32_t hash = CRC32C_PARENPAREN;
+
     decl_parameter_list_t result = {(decl_parameter_t*)emptyPointer};
     uint32_t parameterCount = 0;
     decl_parameter_t** nextParam = &result.List;
@@ -1341,6 +1345,7 @@ decl_parameter_list_t ParseParameterList(metac_parser_t* self,
         {
             param->Parameter = (decl_variable_t*)
                 paramDecl;
+            hash = CRC32C_VALUE(hash, param->Parameter->Hash);
         }
         else if (IsTypeDecl(paramDecl->Kind))
         {
@@ -1352,6 +1357,7 @@ decl_parameter_list_t ParseParameterList(metac_parser_t* self,
             var->VarIdentifier = empty_identifier;
             var->VarInitExpr = (metac_expr_t*) emptyPointer;
             var->Hash = HashDecl(cast(metac_decl_t*)var);
+            hash = CRC32C_VALUE(hash, var->Hash);
             param->Parameter = var;
         }
         else
@@ -1374,6 +1380,7 @@ decl_parameter_list_t ParseParameterList(metac_parser_t* self,
     }
     MetaCParser_Match(self, tok_rParen);
     result.ParameterCount = parameterCount;
+    result.Hash = hash;
 
     return result;
 }
@@ -1446,9 +1453,12 @@ decl_function_t* ParseFunctionDecl(metac_parser_t* self, decl_type_t* type)
     // eat storage classes
     ParseStorageClasses(self);
 
+    funcDecl->Hash = parameterList.Hash;
+
     if (MetaCParser_PeekMatch(self, tok_lBrace, 1))
     {
         funcDecl->FunctionBody = MetaCParser_ParseBlockStmt(self, 0, 0);
+        funcDecl->Hash = CRC32C_VALUE(funcDecl->Hash, funcDecl->FunctionBody->Hash);
     }
 
     return funcDecl;

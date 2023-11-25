@@ -6,6 +6,7 @@
 // #include "metac_type_table.h"
 
 #include "metac_node.h"
+#include "metac_lexer.h"
 
 #pragma pack(push, 1)
 

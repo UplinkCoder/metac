@@ -188,7 +188,7 @@ completion_trie_node_t* CompletionTrie_FindLongestMatchingPrefix(completion_trie
                                                                  const char* word,
                                                                  uint32_t* lengthP)
 {
-    const completion_trie_node_t const * nodes = root->Nodes;
+    completion_trie_node_t const * nodes = root->Nodes;
     const completion_trie_node_t* current = root->Nodes + 0;
     uint32_t length = *lengthP;
 
@@ -363,7 +363,7 @@ LGotChild:
  */
 void CompletionTrie_Print(completion_trie_root_t* root, uint32_t nodeIdx, const char* rootPrefix, FILE* f) {
     // Retrieve a pointer to the nodes array for easier access
-    const completion_trie_node_t const * nodes = root->Nodes;
+    completion_trie_node_t const * nodes = root->Nodes;
     uint32_t childIdx;
 
     // Calculate the range of child indices for the current node

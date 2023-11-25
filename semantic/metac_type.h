@@ -4,6 +4,8 @@
 #include "../os/compat.h"
 #include "../parser/metac_identifier_table.h"
 #include "../semantic/metac_scope.h"
+#include "../parser/metac_lexer.h" // for location
+#include "../parser/metac_parsetree.h"
 #include "../parser/metac_node.h"
 
 #ifndef AT

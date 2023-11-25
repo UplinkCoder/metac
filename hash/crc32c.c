@@ -226,12 +226,24 @@ inline uint32_t crc32c_byte(uint32_t crc, uint8_t byte)
 #define CRC32C_S(STRING) \
     (crc32c_nozero(~(uint32_t)0, STRING, sizeof(STRING) - 1))
 
-#ifdef TEST_MAIN
+#if defined(TEST_MAIN)
 #include <assert.h>
 int main(int argc, char* argv[])
 {
     assert(CRC32C_S("addr:housenumber") == 0x3F233FF2);
     assert(CRC32C_S("addr:housenumber") == 0x3F233FF2);
 //    printf("seems to work\n");
+}
+#elif defined(CRC32C_UTIL)
+#include <stdio.h>
+#include <string.h>
+int main(int argc, const char* argv[])
+{
+    uint32_t i = 0;
+    for(i = 1; i < argc; i++)
+    {
+        const char* arg = argv[i];
+        printf("crc32c('%s') = 0x%x\n", arg, crc32c(~0, arg, strlen(arg)));
+    }
 }
 #endif

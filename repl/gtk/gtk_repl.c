@@ -59,6 +59,9 @@ typedef struct gtk_ui_state_t
     GtkWidget *Notebook;
     GtkWidget *ReplTab;
     GtkWidget *ReplBox;
+
+    GtkWidget *WatchWindow;
+
     // Scrolled text area
     GtkWidget *Textview;
     GtkTextBuffer *Textbuffer;

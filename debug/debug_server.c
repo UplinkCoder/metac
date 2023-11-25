@@ -802,9 +802,9 @@ void Debug_Logf(debug_server_t* debugServer,
         // we would have overflowed our format buffer
         // allocate a string from the heap
         char* memory =
-            Allocator_Calloc(&debugServer->Allocator, char, size + 1);
+            Allocator_Calloc(&debugServer->Allocator, char, len + 1);
         va_start(list, fmt);
-        len = vsnprintf(memory, size + 1, fmt, list);
+        len = vsnprintf(memory, len + 1, fmt, list);
         va_end(list);
         log.Message = cast(const char*)memory;
     }
