@@ -2,6 +2,7 @@
 #include "compat.h"
 #include "os.h"
 #include <time.h>
+#include <stdio.h>
 
 #define DEFAULT_PAGESIZE 4096
 os_error_t PageAlloc(uint32_t minSize, uint32_t* allocatedSize, void** outMemory);
@@ -115,7 +116,7 @@ const char* TimeStampToChars(uint32_t tsp)
         int32_t second = OS.StartDate.Second + el_sec;
 
         snprintf(buffer, sizeof(buffer),
-            "%d-%d-%d:%d:%d:%d",
+            "%d-%02d-%02d %02d:%02d:%02d",
             year, month, day,
             hour, minute, second);
 
