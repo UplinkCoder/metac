@@ -680,7 +680,8 @@ metac_expr_t* MetaCParser_ParsePrimaryExpr(metac_parser_t* self, parse_expr_flag
 
         if (MetaCLocationPtr_IsValid(result->CastExp->LocationIdx))
         {
-            MetaCLocation_Expand(&loc, self->LocationStorage.Locations[result->CastExp->LocationIdx.v - 4]);
+            MetaCLocation_Expand(&loc,
+                MetaCLocationStorage_FromPtr(&self->LocationStorage, result->CastExp->LocationIdx));
         }
         result->Hash = hash;
     }
@@ -692,7 +693,7 @@ metac_expr_t* MetaCParser_ParsePrimaryExpr(metac_parser_t* self, parse_expr_flag
         result = AllocNewExpr(expr_type);
         result->TypeExp = type;
         MetaCLocation_Expand(&loc,
-            self->LocationStorage.Locations[result->TypeExp->LocationIdx.v - 4]);
+            MetaCLocationStorage_FromPtr(&self->LocationStorage, result->TypeExp->LocationIdx));
         result->Hash = CRC32C_VALUE(type_key, result->TypeExp->Hash);
     }
 #endif
@@ -858,7 +859,7 @@ metac_expr_t* MetaCParser_ParsePostfixExpr(metac_parser_t* self,
     metac_token_enum_t peekTokenType = peek->TokenType;
 
     metac_location_t loc =
-        self->LocationStorage.Locations[left->LocationIdx.v - 4];
+        MetaCLocationStorage_FromPtr(&self->LocationStorage, left->LocationIdx);
 
     if (peekTokenType == tok_plusplus)
     {
@@ -911,7 +912,9 @@ static inline metac_expr_t* ParseDotSpecialExpr(metac_parser_t* self,
             uint32_t hash = CRC32C_VALUE(~0, k);
             result->E1 = MetaCParser_ParseExpr(self, expr_flags_none, 0);
             hash = CRC32C_VALUE(hash, result->E1->Hash);
-            metac_location_t endLoc = self->LocationStorage.Locations[result->E1->LocationIdx.v - 4];
+            metac_location_t endLoc =
+                MetaCLocationStorage_FromPtr(&self->LocationStorage, result->E1->LocationIdx);
+
             MetaCLocation_Expand(&loc, endLoc);
             result->Hash = hash;
             result->LocationIdx = MetaCLocationStorage_Store(&self->LocationStorage, loc);
@@ -1279,7 +1282,8 @@ metac_expr_t* MetaCParser_ParseUnaryExpr(metac_parser_t* self)
         if (tokenType != tok_eof && tokenType != tok_newline)
         {
             metac_location_t location =
-                self->Lexer->LocationStorage.Locations[currentToken->LocationId - 4];
+                MetaCLocationStorage_FromPtr(&self->Lexer->LocationStorage, currentToken->LocationId);
+
             fprintf(stderr, "line: %d col: %d\n", location.StartLine, location.StartColumn);
         }
         fprintf(stderr, "Unexpected Token: %s\n", MetaCTokenEnum_toChars(tokenType));
@@ -1289,7 +1293,8 @@ metac_expr_t* MetaCParser_ParseUnaryExpr(metac_parser_t* self)
     if (!isPrimaryExp)
     {
         metac_location_t endLoc =
-            self->LocationStorage.Locations[result->E1->LocationIdx - 4];
+            MetaCLocationStorage_FromPtr(&self->LocationStorage, result->E1->LocationIdx);
+
         MetaCLocation_Expand(&loc, endLoc);
     }
 
@@ -1379,13 +1384,10 @@ metac_expr_t* MetaCParser_ParseBinaryExpr(metac_parser_t* self,
 {
     metac_expr_t* result = 0;
 
-//    metac_location_t* startLocation =
-//        self->Lexer->LocationStorage.Locations + (left->LocationIdx - 4);
-
     metac_token_t* peekToken;
     metac_token_enum_t peekTokenType;
     metac_location_t loc =
-        self->LocationStorage.Locations[left->LocationIdx - 4];
+        MetaCLocationStorage_FromPtr(&self->LocationStorage, left->LocationIdx);
 
     peekToken = MetaCParser_PeekToken(self, 1);
     peekTokenType = (peekToken ? peekToken->TokenType : tok_eof);
@@ -1478,7 +1480,7 @@ metac_expr_t* MetaCParser_ParseBinaryExpr(metac_parser_t* self,
                     rhsIsArgs = true;
 
                 MetaCLocation_Expand(&rhsLoc,
-                    LocationFromIndex(self, rhs->LocationIdx));
+                    LocationFromIndex(self, rhs->LocationIdx.v));
             }
             else
             {
@@ -1502,7 +1504,7 @@ metac_expr_t* MetaCParser_ParseBinaryExpr(metac_parser_t* self,
             {
                 result->Hash = CRC32C_VALUE(left->Hash, rhs->Hash);
                 MetaCLocation_Expand(&rhsLoc,
-                    self->LocationStorage.Locations[rhs->LocationIdx - 4]);
+                    MetaCLocationStorage_FromPtr(&self->LocationStorage, rhs->LocationIdx));
             }
             else
             {
@@ -2113,7 +2115,8 @@ LParseExpTop:
         metac_expr_t* call = AllocNewExpr(expr_call);
         expr_argument_t* args = cast(expr_argument_t*) AllocNewExpr(expr_argument);
         metac_expr_t* definedIdExp = AllocNewExpr(expr_identifier);
-        metac_location_t endLoc = self->LocationStorage.Locations[result->LocationIdx - 4];
+        metac_location_t endLoc =
+            MetaCLocationStorage_FromPtr(&self->LocationStorage, result->LocationIdx);
         MetaCLocation_Expand(&loc, endLoc);
 
         definedIdExp->IdentifierKey = defined_key;
@@ -2210,7 +2213,7 @@ LParseExpTop:
             result->Hash = hash;
             result->LocationIdx = MetaCLocationStorage_Store(&self->LocationStorage,
                 MetaCLocationStorage_FromPair(&self->LocationStorage,
-                                              result->Econd->LocationIdx, result->E2->LocationIdx));
+                                              result->Econd->LocationIdx.v, result->E2->LocationIdx.v));
         }
 
         //else assert(!"Stray Input");
