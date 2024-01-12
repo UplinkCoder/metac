@@ -68,13 +68,31 @@ static inline void PrintString(metac_printer_t* self,
 
     ARENA_ARRAY_ADD_N(self->StringMemory, string, length);
 
-    while((c = *string++) && (pos++ < length))
-    {
-        assert(c != '\n');
-        self->StringMemory[self->StringMemorySize++] = c;
-    }
     self->CurrentColumn += length;
 }
+
+/// returns posiiton of last newline
+///          or -1
+static inline int FindLastNewline(const char* str, size_t length) {
+    const char* last_newline = 0;
+
+    while (length > 0) {
+        const char* n_ptr = memchr(str, '\n', length);
+        const char* r_ptr = memchr(str, '\r', length);
+
+        if (n_ptr  || r_ptr)
+        {
+            last_newline =  (n_ptr > r_ptr ? n_ptr : r_ptr);
+            length -= (size_t)(last_newline - str + 1);
+            str = last_newline + 1;
+        } else {
+            break;  // No more occurrences found
+        }
+    }
+
+    return (last_newline ? cast(int)(last_newline - str) : -1);
+}
+
 
 static inline void PrintStringWithNewline(metac_printer_t* self,
                  const char* string, uint32_t length)
@@ -82,12 +100,14 @@ static inline void PrintStringWithNewline(metac_printer_t* self,
     char c;
     uint32_t pos = 0;
 
-    while((c = *string++) && (pos++ < length))
+    int32_t newline_pos = FindLastNewline(string, length);
+    if (newline_pos != -1)
     {
-        if (c == '\n' || c == '\r')
-            self->CurrentColumn = 0;
-        self->CurrentColumn++;
-        self->StringMemory[self->StringMemorySize++] = c;
+        self->CurrentColumn = length - newline_pos;
+    }
+    else
+    {
+        self->CurrentColumn += length;
     }
 }
 
@@ -2183,8 +2203,8 @@ const char* MetaCPrinter_PrintSemaNode(metac_printer_t* self,
                                        metac_sema_state_t* sema,
                                        metac_node_t node)
 {
-    const char* result = self->StringMemory + self->StringMemorySize;
-    uint32_t posBegin = self->StringMemorySize;
+    const char* result = self->StringMemory + self->StringMemoryCount;
+    uint32_t posBegin = self->StringMemoryCount;
 
     if (node->Kind > node_expr_invalid && node->Kind < node_expr_max)
     {
@@ -2201,8 +2221,8 @@ const char* MetaCPrinter_PrintSemaNode(metac_printer_t* self,
     else
         assert(0);
 
-    int advancement = self->StringMemorySize - posBegin;
-    self->StringMemory[self->StringMemorySize++] = '\0';
+    int advancement = self->StringMemoryCount - posBegin;
+    self->StringMemory[self->StringMemoryCount++] = '\0';
     return result;
 }
 
@@ -2221,23 +2241,23 @@ void MetaCPrinter_Reset(metac_printer_t* self)
 void MetaCPrinter_Init(metac_printer_t* self,
                        metac_identifier_table_t* identifierTable,
                        metac_identifier_table_t* stringTable,
-                       metac_alloc_t* alloc)
+                       metac_alloc_t* parent)
 {
     MetaCPrinter_InitSz(self,
                         identifierTable,
                         stringTable,
-                        alloc,
+                        parent,
                         INITIAL_SIZE);
 }
 
 void MetaCPrinter_InitSz(metac_printer_t* self,
                          metac_identifier_table_t* identifierTable,
                          metac_identifier_table_t* stringTable,
-                         metac_alloc_t* alloc,
+                         metac_alloc_t* parent,
                          uint32_t initialSize)
 {
-    self->Allocator = alloc;
-    ARENA_ARRAY_INIT_SZ(char, self->StringMemory, alloc, initialSize);
+    Allocator_Init(&self->Allocator, parent);
+    ARENA_ARRAY_INIT_SZ(char, self->StringMemory, &self->Allocator, initialSize);
 
     self->SuppressNewlineAfterDecl = false;
     self->AsType = false;
@@ -2253,7 +2273,7 @@ void MetaCPrinter_Free(metac_printer_t* self)
 {
     if (self->StringMemory)
     {
-        Allocator_FreeArena(self->Allocator, self->StringMemoryArena);
+        Allocator_FreeArena(&self->Allocator, self->StringMemoryArenaPtr);
     }
 }
 
@@ -2269,42 +2289,42 @@ void MetacPrinter_PrintI64(metac_printer_t* self, int64_t val)
 
 const char* MetaCPrinter_PrintExpr(metac_printer_t* self, metac_expr_t* exp)
 {
-    const char* result = self->StringMemory + self->StringMemorySize;
+    const char* result = self->StringMemory + self->StringMemoryCount;
 
     PrintExpr(self, exp);
 
-    self->StringMemory[self->StringMemorySize++] = '\0';
+    ARENA_ARRAY_ADD(self->StringMemory, '\0');
 
     return result;
 }
 
 const char* MetaCPrinter_PrintDecl(metac_printer_t* self, metac_decl_t* decl)
 {
-    const char* result = self->StringMemory + self->StringMemorySize;
+    const char* result = self->StringMemory + self->StringMemoryCount;
 
     PrintDecl(self, decl, 0);
 
-    self->StringMemory[self->StringMemorySize++] = '\0';
+    ARENA_ARRAY_ADD(self->StringMemory, '\0');
 
     return result;
 }
 
 const char* MetaCPrinter_PrintStmt(metac_printer_t* self, metac_stmt_t* exp)
 {
-    const char* result = self->StringMemory + self->StringMemorySize;
-    uint32_t posBegin = self->StringMemorySize;
+    const char* result = self->StringMemory + self->StringMemoryCount;
+    uint32_t posBegin = self->StringMemoryCount;
     PrintStmt(self, exp);
-    int advancement = self->StringMemorySize - posBegin;
+    int advancement = self->StringMemoryCount - posBegin;
 
-    self->StringMemory[self->StringMemorySize++] = '\0';
+    ARENA_ARRAY_ADD(self->StringMemory, '\0');
 
     return result;
 }
 
 const char* MetaCPrinter_PrintNode(metac_printer_t* self, metac_node_t node, uint32_t level)
 {
-    const char* result = self->StringMemory + self->StringMemorySize;
-    uint32_t posBegin = self->StringMemorySize;
+    const char* result = self->StringMemory + self->StringMemoryCount;
+    uint32_t posBegin = self->StringMemoryCount;
 
     if (node->Kind > node_expr_invalid && node->Kind < node_expr_max)
     {
@@ -2321,8 +2341,9 @@ const char* MetaCPrinter_PrintNode(metac_printer_t* self, metac_node_t node, uin
     else
         assert(0);
 
-    int advancement = self->StringMemorySize - posBegin;
-    self->StringMemory[self->StringMemorySize++] = '\0';
+    int advancement = self->StringMemoryCount - posBegin;
+    ARENA_ARRAY_ADD(self->StringMemory, '0');
+
     return result;
 }
 

@@ -636,7 +636,8 @@ metac_type_aggregate_t* MetaCSemantic_PersistTemporaryAggregateAndPopulateScope(
     MetaCSemantic_MountScope(self, scope_);
     metac_printer_t printer;
     MetaCPrinter_Init(&printer,
-        self->ParserIdentifierTable, self->ParserStringTable
+        self->ParserIdentifierTable, self->ParserStringTable,
+        &self->Allocator
     );
 
     semaAgg->Scope = scope_;
@@ -692,7 +693,7 @@ void MetaCSemantic_ComputeEnumValues(metac_sema_state_t* self,
     ARENA_ARRAY_ENSURE_SIZE(memberPlaceholders, memberCount);
 #endif
     MetaCPrinter_Init(&debugPrinter,
-        self->ParserIdentifierTable, self->ParserStringTable);
+        self->ParserIdentifierTable, self->ParserStringTable, 0);
 
     memberPlaceholdersCount = memberCount;
 #if DEBUG_MEMORY
@@ -954,7 +955,7 @@ metac_type_index_t TypeEnumSemantic(metac_sema_state_t* self,
     MetaCSemantic_PopTemporaryScope(self);
     {
         metac_printer_t debugPrinter;
-        MetaCPrinter_Init(&debugPrinter, self->ParserIdentifierTable, self->ParserStringTable);
+        MetaCPrinter_Init(&debugPrinter, self->ParserIdentifierTable, self->ParserStringTable, 0);
 
 /*
         for(uint32_t i = 0; i < tmpSemaEnum.MemberCount; i++)

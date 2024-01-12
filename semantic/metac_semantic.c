@@ -1367,11 +1367,11 @@ const char* TypeToChars(metac_sema_state_t* self, metac_type_index_t typeIndex)
     const char* result = 0;
     static metac_printer_t printer = {0};
     if (!printer.StringMemory)
-        MetaCPrinter_InitSz(&printer, self->ParserIdentifierTable, 0, 32);
+        MetaCPrinter_InitSz(&printer, self->ParserIdentifierTable, 0, (metac_alloc_t*)0, 32);
     else
         MetaCPrinter_Reset(&printer);
     TypeToCharsP(self, &printer, typeIndex);
-    printer.StringMemory[printer.StringMemorySize++] = '\0';
+    printer.StringMemory[printer.StringMemoryCount++] = '\0';
     result = printer.StringMemory;
 
     return result;

@@ -32,6 +32,8 @@ typedef struct metac_printer_t
     bool AsType;
     bool ForTypedef;
     int32_t ForAnonymousField;
+    
+    metac_alloc_t Allocator;
 } metac_printer_t;
 
 
@@ -45,6 +47,7 @@ void MetaCPRinter_Free(metac_printer_t* self);
 void MetaCPrinter_InitSz(metac_printer_t* self,
                          metac_identifier_table_t* identifierTable,
                          metac_identifier_table_t* stringTable,
+                         metac_alloc_t* alloc,
                          uint32_t initializeSize);
 
 const char* MetaCPrinter_PrintExpr(metac_printer_t* self, metac_expr_t* exp);

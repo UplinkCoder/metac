@@ -323,7 +323,7 @@ void Presemantic_(repl_state_t* self)
                 metac_printer_t printer;
 
                 MetaCPrinter_Init(&printer,
-                    self->SemanticState.ParserIdentifierTable, self->SemanticState.ParserStringTable);
+                    self->SemanticState.ParserIdentifierTable, self->SemanticState.ParserStringTable, 0);
                 MSGF("%s\n", MetaCPrinter_PrintNode(&printer, METAC_NODE(struct_), 0));
 
                 if (struct_->Identifier.v != empty_identifier.v)
@@ -454,7 +454,7 @@ void Repl_Init(repl_state_t* self)
 
     MetaCPrinter_Init(&self->printer,
         &LPP->Parser.IdentifierTable,
-        &LPP->Parser.StringTable);
+        &LPP->Parser.StringTable, &self->Allocator);
 
     Debug_CurrentIdentifierTable(g_DebugServer, self->SemanticState.ParserIdentifierTable);
     Debug_CurrentScope(g_DebugServer, self->SemanticState.CurrentScope);
@@ -691,7 +691,9 @@ LswitchMode:
 
                             MetaCPrinter_Init(&debugPrinter,
                                 repl->SemanticState.ParserIdentifierTable,
-                                repl->SemanticState.ParserStringTable);
+                                repl->SemanticState.ParserStringTable,
+                                0
+                            );
 
                             typeNode = NodeFromTypeIndex(&repl->SemanticState, var.TypeIndex);
 
