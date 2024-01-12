@@ -140,6 +140,23 @@ arena_ptr_t ReallocArenaArray(tagged_arena_t* arena, metac_alloc_t* alloc, uint3
     NAME##Arena.Offset   += sizeof(*NAME); \
 } while(0)
 
+#define ARENA_ARRAY_ADD_N(NAME, PTR, COUNT) do { \
+    size_t size_n = sizeof(*NAME) * (COUNT); \
+    if (NAME##Arena.SizeLeft < size_n) \
+    { \
+        NAME##ArenaPtr = ReallocArenaArray( \
+            &(NAME##Arena), (NAME##Alloc), \
+            size_n, __FILE__, __LINE__); \
+        (NAME##Arena) = ((NAME##Alloc)->Arenas[(NAME##ArenaPtr).Index]); \
+        *(cast(void**)&NAME) = (NAME##Arena).Memory; \
+    } \
+    memcpy((NAME) + (NAME##Count), PTR, size_n); \
+    NAME##Count += (COUNT); \
+    NAME##Arena.SizeLeft -= size_n; \
+    NAME##Arena.Offset   += size_n; \
+} while(0)
+
+
 #define STACK_ARENA_ARRAY_TO_HEAP(NAME, ALLOC) do { \
     NAME##FreeMemory = false; \
     if (NAME##Stack == (NAME) && (NAME##Count) != 0) { \

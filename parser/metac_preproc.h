@@ -24,6 +24,7 @@
 #include "metac_identifier_table.h"
 #include "../os/metac_file.h"
 #include "metac_array.h"
+#include "../os/metac_alloc.h"
 #include <string.h>
 
 #define FOREACH_PREPROC_DIRECTIVE(M) \
@@ -158,18 +159,14 @@ typedef struct metac_define_table_t
     metac_define_table_slot_t* Slots;
     struct metac_preprocessor_t* Preproc;
 
-    metac_token_t* TokenMemory;
-    uint32_t TokenMemorySize;
-    uint32_t TokenMemoryCapacity;
+    ARENA_ARRAY(metac_token_t, TokenMemory)
 
     uint32_t SlotCount_Log2;
     uint32_t SlotsUsed;
     uint32_t LengthShift;
     uint32_t MaxDisplacement;
 
-    metac_preprocessor_define_t* DefineMemory;
-    uint32_t DefineMemorySize;
-    uint32_t DefineMemoryCapacity;
+    ARENA_ARRAY(metac_preprocessor_define_t, DefineMemory)
 } metac_define_table_t;
 
 typedef struct metac_preprocessor_source_indicator_t
@@ -193,9 +190,7 @@ typedef struct metac_preprocessor_t
     uint32_t DefineTokenIndexStack[16];
     uint32_t DefineTokenStackCount;
 
-    metac_token_t* TokenMemory;
-    uint32_t TokenMemorySize;
-    uint32_t TokenMemoryCapacity;
+    ARENA_ARRAY(metac_token_t, TokenMemory);
 
     /// the file we are running the preprocessor on
     metac_file_ptr_t File;

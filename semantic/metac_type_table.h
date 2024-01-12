@@ -238,5 +238,6 @@ metac_type_index_t MetaCTypeTable_GetOrAddArrayType(METAC_TYPE_TABLE_T(array)* t
 */
 //void MetaCTypeTable_
 
-void TypeTableInitImpl(metac_type_table_t* table, const uint32_t sizeof_slot, metac_type_index_kind_t kind);
+void TypeTableInitImpl(metac_type_table_t* table, const uint32_t sizeof_slot,
+                       metac_type_index_kind_t kind, metac_alloc_t* alloc);
 #endif

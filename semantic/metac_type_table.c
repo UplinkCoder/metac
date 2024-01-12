@@ -20,12 +20,14 @@ metac_type_index_t MetaCTypeTable_GetOrEmpty ## MEMBER_NAME ## Type \
     return result; \
 }
 
-void TypeTableInitImpl(metac_type_table_t* table, const uint32_t sizeof_slot, metac_type_index_kind_t kind)
+void TypeTableInitImpl(metac_type_table_t* table, const uint32_t sizeof_slot,
+                       metac_type_index_kind_t kind, metac_alloc_t* alloc)
 {
     table->Kind = kind;
     table->SlotCount_Log2 = 12;
     const uint32_t maxSlots = (1 << table->SlotCount_Log2);
-    table->Slots = (metac_type_table_slot_t*) calloc(maxSlots, sizeof_slot);
+    table->Slots = (metac_type_table_slot_t*)
+        Allocator_Calloc_(alloc, maxSlots, sizeof_slot, __FILE__, __LINE__);
     table->SlotsUsed = 0;
     table->MaxDisplacement = 0;
 }

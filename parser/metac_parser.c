@@ -87,9 +87,8 @@ void MetaCParser_Init(metac_parser_t* self, metac_alloc_t* allocator)
     InitSpecialIdentifier(self);
 
     MetaCPrinter_Init(&self->DebugPrinter,
-                      &self->IdentifierTable, &self->StringTable);
-
-    Allocator_Init(&self->Allocator, allocator, 0);
+                      &self->IdentifierTable, &self->StringTable,
+                      &self->Allocator);
 
     ARENA_ARRAY_INIT(metac_expr_t*, self->ExprParser.ExprStack, &self->Allocator);
     ARENA_ARRAY_INIT(parse_expr_flags_t, self->ExprParser.ExprFlagsStack, &self->Allocator);

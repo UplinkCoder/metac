@@ -3,6 +3,7 @@
 #pragma once
 
 #include "../os/compat.h"
+#include "../os/metac_alloc.h"
 #include "../parser/metac_identifier_table.h"
 #include "../parser/metac_parsetree.h"
 
@@ -18,9 +19,7 @@ typedef struct metac_sema_state_t metac_sema_state_t;
 
 typedef struct metac_printer_t
 {
-    char* StringMemory;
-    uint32_t StringMemorySize;
-    uint32_t StringMemoryCapacity;
+    ARENA_ARRAY(char, StringMemory)
 
     metac_identifier_table_t* IdentifierTable;
     metac_identifier_table_t* StringTable;
@@ -38,7 +37,9 @@ typedef struct metac_printer_t
 
 void MetaCPrinter_Init(metac_printer_t* self,
                        metac_identifier_table_t* identifierTable,
-                       metac_identifier_table_t* stringTable);
+                       metac_identifier_table_t* stringTable,
+                       metac_alloc_t* alloc);
+
 void MetaCPRinter_Free(metac_printer_t* self);
 
 void MetaCPrinter_InitSz(metac_printer_t* self,

@@ -124,7 +124,7 @@ void MetaCSemantic_Init(metac_sema_state_t* self, metac_parser_t* parser,
 #define INIT_TYPE_TABLE(TYPE_NAME, MEMBER_NAME, INDEX_KIND) \
     TypeTableInitImpl((metac_type_table_t*)&self->MEMBER_NAME, \
                       sizeof(metac_type_ ## TYPE_NAME ## _t), \
-                      type_index_## INDEX_KIND);
+                      type_index_## INDEX_KIND, &self->Allocator);
 
     FOREACH_TYPE_TABLE(INIT_TYPE_TABLE)
 

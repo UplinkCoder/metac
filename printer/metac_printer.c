@@ -19,19 +19,20 @@ static inline void PrintSemaExpr(metac_printer_t* self, metac_sema_state_t* sema
 
 static inline void PrintSpace(metac_printer_t* self)
 {
-    self->StringMemorySize++;
+    ARENA_ARRAY_ADD(self->StringMemory, ' ');
     self->CurrentColumn++;
 }
 
 static inline void PrintChar(metac_printer_t* self, char c)
 {
     assert(c != ' ' && c != '\n');
-    self->StringMemory[self->StringMemorySize++] = c;
+    ARENA_ARRAY_ADD(self->StringMemory, c);
+    self->CurrentColumn++;
 }
 
 static inline void PrintNewline(metac_printer_t* self)
 {
-    self->StringMemory[self->StringMemorySize++] = '\n';
+    ARENA_ARRAY_ADD(self->StringMemory, '\n');
     self->CurrentColumn = 0;
 }
 
@@ -39,33 +40,21 @@ void static inline PrintIndent(metac_printer_t* self)
 {
     const uint32_t indent = self->IndentLevel;
 
-    self->StringMemorySize += 4 * indent;
-    self->CurrentColumn += 4 * indent;
+    for(uint32_t i = 0; i < indent; i++)
+    {
+        ARENA_ARRAY_ADD_N(self->StringMemory, "    ", 4);
+        self->CurrentColumn += 4;
+    }
+
+
     // assert(self->CurrentColumn == 4 * indent);
     if (self->StartColumn > self->CurrentColumn)
     {
         int32_t columnAdvance =
             self->StartColumn - self->CurrentColumn;
-        self->StringMemorySize += columnAdvance;
-        self->CurrentColumn    += columnAdvance;
-    }
-}
-
-static inline void CheckAndRellocIfNeeded(metac_printer_t* self,
-                                          uint32_t length)
-{
-    int32_t underflow =
-        self->StringMemoryCapacity -
-        (self->StringMemorySize + length + 1024);
-    if (underflow < 0)
-    {
-        uint32_t newCapa = cast(uint32_t)(self->StringMemoryCapacity * 1.3);
-        newCapa = ((newCapa + 4095) & ~4095);
-        self->StringMemory = (char*)realloc(self->StringMemory, newCapa);
-        if (self->StringMemory == 0)
-        {
-            assert(0);
-        }
+        assert(false);
+        //self->StringMemorySize += columnAdvance;
+        //self->CurrentColumn    += columnAdvance;
     }
 }
 
@@ -74,6 +63,10 @@ static inline void PrintString(metac_printer_t* self,
 {
     char c;
     uint32_t pos = 0;
+
+    assert(0 == memchr(string, '\n', length));
+
+    ARENA_ARRAY_ADD_N(self->StringMemory, string, length);
 
     while((c = *string++) && (pos++ < length))
     {
@@ -2217,9 +2210,9 @@ const char* MetaCPrinter_PrintSemaNode(metac_printer_t* self,
 
 void MetaCPrinter_Reset(metac_printer_t* self)
 {
-    memset(self->StringMemory, ' ', self->StringMemorySize);
+    memset(self->StringMemory, ' ', self->StringMemoryCount);
 
-    self->StringMemorySize = 0;
+    self->StringMemoryCount = 0;
     self->IndentLevel = 0;
     self->CurrentColumn = 0;
     self->StartColumn = 0;
@@ -2227,22 +2220,25 @@ void MetaCPrinter_Reset(metac_printer_t* self)
 
 void MetaCPrinter_Init(metac_printer_t* self,
                        metac_identifier_table_t* identifierTable,
-                       metac_identifier_table_t* stringTable)
+                       metac_identifier_table_t* stringTable,
+                       metac_alloc_t* alloc)
 {
     MetaCPrinter_InitSz(self,
                         identifierTable,
                         stringTable,
+                        alloc,
                         INITIAL_SIZE);
 }
 
 void MetaCPrinter_InitSz(metac_printer_t* self,
                          metac_identifier_table_t* identifierTable,
                          metac_identifier_table_t* stringTable,
+                         metac_alloc_t* alloc,
                          uint32_t initialSize)
 {
-    self->StringMemoryCapacity = initialSize;
-    self->StringMemory = (char*)malloc(self->StringMemoryCapacity);
-    self->StringMemorySize = self->StringMemoryCapacity;
+    self->Allocator = alloc;
+    ARENA_ARRAY_INIT_SZ(char, self->StringMemory, alloc, initialSize);
+
     self->SuppressNewlineAfterDecl = false;
     self->AsType = false;
     self->ForTypedef = false;
@@ -2257,9 +2253,7 @@ void MetaCPrinter_Free(metac_printer_t* self)
 {
     if (self->StringMemory)
     {
-        free(self->StringMemory);
-        self->StringMemory = 0;
-        self->StringMemoryCapacity = self->StringMemorySize = 0;
+        Allocator_FreeArena(self->Allocator, self->StringMemoryArena);
     }
 }
 

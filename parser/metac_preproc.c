@@ -180,22 +180,16 @@ Lret:
     return result;
 }
 
-void MetaCPreprocessor_DefineTable_Init(metac_define_table_t* self, metac_preprocessor_t* preproc)
+void MetaCPreprocessor_DefineTable_Init(metac_define_table_t* self, metac_preprocessor_t* preproc, metac_alloc_t* alloc)
 {
-    self->DefineMemorySize = 0;
-    self->DefineMemoryCapacity = 256;
-    self->DefineMemory = cast(metac_preprocessor_define_t*)
-        calloc(sizeof(metac_preprocessor_define_t), self->DefineMemoryCapacity);
+    //TODO: create my own sub-allocator
+    ARENA_ARRAY_INIT_SZ(metac_preprocessor_define_t, self->DefineMemory, alloc, 256);
     self->LengthShift = IDENTIFIER_LENGTH_SHIFT;
 
     self->SlotCount_Log2 = 9;
-    self->Slots = cast(metac_define_table_slot_t*)
-        calloc(sizeof(metac_define_table_slot_t), 1 << self->SlotCount_Log2);
+    self->Slots = Allocator_Calloc(alloc, metac_define_table_slot_t, 1 << self->SlotCount_Log2);
 
-    self->TokenMemoryCapacity = 1024;
-    self->TokenMemorySize = 0;
-    self->TokenMemory = cast(metac_token_t*)
-        calloc(sizeof(metac_token_t), self->TokenMemoryCapacity);
+    ARENA_ARRAY_INIT_SZ(metac_token_t, self->TokenMemory, alloc, 1024);
 
     self->Preproc = preproc;
 }
@@ -451,7 +445,7 @@ void MetaCPreProcessor_Init(metac_preprocessor_t *self, metac_lexer_t* lexer,
     if (filepath)
         self->File = MetaCFileStorage_LoadFile(fs, filepath);
     // self->Lexer = lexer;
-    MetaCPreprocessor_DefineTable_Init(&self->DefineTable, self);
+    MetaCPreprocessor_DefineTable_Init(&self->DefineTable, self, alloc);
     IdentifierTable_Init(&self->DefineIdentifierTable, IDENTIFIER_LENGTH_SHIFT, 7, alloc);
 
     IdentifierTable_Init(&self->IdentifierTable, IDENTIFIER_LENGTH_SHIFT, 8, alloc);
@@ -460,9 +454,7 @@ void MetaCPreProcessor_Init(metac_preprocessor_t *self, metac_lexer_t* lexer,
     self->DefineTokenStackCount = 0;
     self->Parent = 0;
 
-    self->TokenMemoryCapacity = 256;
-    self->TokenMemorySize = 0;
-    self->TokenMemory = Allocator_Calloc(alloc, metac_token_t, self->TokenMemoryCapacity);
+    ARENA_ARRAY_INIT_SZ(metac_token_t, self->TokenMemory, alloc, 256);
 
     Allocator_Init(&self->Allocator, alloc);
 }
@@ -493,19 +485,13 @@ MetaCPreprocessor_RegisterDefine(metac_preprocessor_t* self,
         if (slot->HashKey == 0)
         {
             slot->HashKey = key;
-            assert(table->DefineMemoryCapacity > table->DefineMemorySize);
 
-            assert(table->TokenMemorySize + tokens.Count < table->TokenMemoryCapacity);
-
-            uint32_t TokenArraryOffset = POST_ADD(table->TokenMemorySize, tokens.Count);
-            memcpy(cast(uint8_t*)table->TokenMemory + TokenArraryOffset,
-                   cast(void*)tokens.Ptr,
-                   tokens.Count * sizeof(*tokens.Ptr));
+            uint32_t TokenArraryOffset = table->TokenMemoryCount;
+            ARENA_ARRAY_ADD_N(table->TokenMemory, tokens.Ptr, tokens.Count);
             define.TokensOffset = TokenArraryOffset;
 
-            uint32_t defineIdx = INC(table->DefineMemorySize);
-            result.v = slot->DefinePtr.v = defineIdx + 4;
-            table->DefineMemory[defineIdx] = define;
+            ARENA_ARRAY_ADD(table->DefineMemory, define);
+            result.v = slot->DefinePtr.v = table->DefineMemoryCount + 4;
             break;
         }
         else if (slot->HashKey == key)
