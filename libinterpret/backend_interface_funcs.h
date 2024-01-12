@@ -9,7 +9,7 @@ typedef void (*Initialize_t) (void* ctx, uint32_t n_args, ...);
 typedef void (*InitializeV_t) (void* ctx, uint32_t n_args, va_list args);
 typedef void (*Finalize_t) (void* ctx);
 
-typedef uint32_t (*BeginFunction_t) (void* ctx, uint32_t fnId, const void* fd);
+typedef uint32_t (*BeginFunction_t) (void* ctx, uint32_t fnIdx, const void* fd);
 typedef void* (*EndFunction_t) (void* ctx, uint32_t fnIdx);
 
 typedef BCValue (*GenTemporary_t) (void* ctx, BCType bct);
@@ -126,7 +126,7 @@ typedef struct BackendInterface
     void (*const InitializeV) (void* ctx, uint32_t n_args, va_list args);
     void (*const Finalize) (void* ctx);
 
-    uint32_t (*const BeginFunction) (void* ctx, uint32_t fnId, const void* fd);
+    uint32_t (*const BeginFunction) (void* ctx, uint32_t fnIdx, const void* fd);
     void* (*const EndFunction) (void* ctx, uint32_t fnIdx);
 
     BCValue (*const GenTemporary) (void* ctx, BCType bct);
