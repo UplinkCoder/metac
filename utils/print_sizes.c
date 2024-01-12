@@ -25,7 +25,7 @@ int main()
     printf("sizeof(metac_token_t): %d\n", (int) sizeof(metac_token_t));
 
 #define PRINT_SIZE(NODE_KIND) \
-    printf("sizeof("  #NODE_KIND  "): %d\n", (int) sizeof(NODE_KIND ## _t));
+    printf("sizeof("  #NODE_KIND "_t): %d\n", (int) sizeof(NODE_KIND ## _t));
 
     printf("sizeof(metac_expr_t): %d\n", (int) sizeof(metac_expr_t));
     printf("sizeof(metac_expr_header_t) %d\n", (int) sizeof(metac_expr_header_t));
