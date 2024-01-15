@@ -391,6 +391,27 @@ uint32_t MetaCSemantic_GetTypeAlignment(metac_sema_state_t* self,
         metac_type_index_t elementTypeIndex = arrayType_->ElementType;
         result = MetaCSemantic_GetTypeAlignment(self, elementTypeIndex);
     }
+    else if (typeIndexKind == type_index_tuple)
+    {
+        uint32_t idx = TYPE_INDEX_INDEX(typeIndex);
+        metac_type_tuple_t* tupleType_ = TupleTypePtr(self, idx);
+        uint32_t maxAlign = 0;
+        for(uint32_t i = 0; i < tupleType_->TypeCount; i++)
+        {
+            metac_type_index_t mType = tupleType_->TypeIndicies[i];
+            uint32_t align = MetaCSemantic_GetTypeAlignment(self, mType);
+            //TODO we might not want to assume that we will always be able
+            // to get the alignment and we should suspend here ...
+            // however for now just assert.
+            assert(align != INVALID_SIZE);
+
+            if (align > maxAlign)
+            {
+                maxAlign = align;
+            }
+        }
+        result = maxAlign;
+    }
     else
     {
         assert(0);
