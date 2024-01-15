@@ -77,8 +77,8 @@ static inline int FindLastNewline(const char* str, size_t length) {
     const char* last_newline = 0;
 
     while (length > 0) {
-        const char* n_ptr = memchr(str, '\n', length);
-        const char* r_ptr = memchr(str, '\r', length);
+        const char* n_ptr = cast(const char*) memchr(str, '\n', length);
+        const char* r_ptr = cast(const char*) memchr(str, '\r', length);
 
         if (n_ptr  || r_ptr)
         {
