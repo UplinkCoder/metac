@@ -1065,12 +1065,12 @@ static inline void PrintExpr(metac_printer_t* self, metac_expr_t* expr)
 {
     if (expr->Kind == expr_paren)
     {
-        if (!IsBinaryExp(expr->E1->Kind))
+        if (self->ExtraParens || !IsBinaryExp(expr->E1->Kind))
             PrintChar(self, '(');
 
         PrintExpr(self, expr->E1);
 
-        if (!IsBinaryExp(expr->E1->Kind))
+        if (self->ExtraParens || !IsBinaryExp(expr->E1->Kind))
             PrintChar(self, ')');
     }
     else if (expr->Kind == expr_ternary)
@@ -1170,8 +1170,8 @@ static inline void PrintExpr(metac_printer_t* self, metac_expr_t* expr)
     else if (IsBinaryExp(expr->Kind))
     {
         const char* op = BinExpTypeToChars((metac_binary_expr_kind_t)expr->Kind);
-
-        //PrintChar(self, '(');
+        if (self->ExtraParens)
+            PrintChar(self, '(');
         PrintExpr(self, expr->E1);
 
         if (expr->Kind != expr_dot)
@@ -1183,7 +1183,8 @@ static inline void PrintExpr(metac_printer_t* self, metac_expr_t* expr)
             PrintSpace(self);
 
         PrintExpr(self, expr->E2);
-        //PrintChar(self, ')');
+        if (self->ExtraParens)
+            PrintChar(self, ')');
     }
     else if (expr->Kind == expr_cast)
     {
@@ -1239,15 +1240,15 @@ static inline void PrintExpr(metac_printer_t* self, metac_expr_t* expr)
 
             PrintString(self, op, (uint32_t)strlen(op));
         }
-/*
-        if (!IsBinaryExp(expr->E1->Kind))
+
+        if (self->ExtraParens)
             PrintChar(self, '(');
-*/
+
         PrintExpr(self, expr->E1);
-/*
-        if (!IsBinaryExp(expr->E1->Kind))
+
+        if (self->ExtraParens)
             PrintChar(self, ')');
-*/
+
     }
     else if (expr->Kind == expr_outer)
     {
@@ -1272,15 +1273,15 @@ static inline void PrintExpr(metac_printer_t* self, metac_expr_t* expr)
         assert(op);
 
         PrintString(self, op, (uint32_t)strlen(op));
-/*
-        if (!IsBinaryExp(expr->E1->Kind))
+
+        if (self->ExtraParens)
             PrintChar(self, '(');
-*/
+
         PrintExpr(self, expr->E1);
-/*
-        if (!IsBinaryExp(expr->E1->Kind))
+
+        if (self->ExtraParens)
             PrintChar(self, ')');
-*/
+
     }
     else if (expr->Kind == expr_post_increment || expr->Kind == expr_post_decrement)
     {
@@ -2262,11 +2263,17 @@ void MetaCPrinter_InitSz(metac_printer_t* self,
     self->SuppressNewlineAfterDecl = false;
     self->AsType = false;
     self->ForTypedef = false;
+    self->ExtraParens = false;
     self->ForAnonymousField = 0;
     MetaCPrinter_Reset(self);
 
     self->IdentifierTable = identifierTable;
     self->StringTable = stringTable;
+}
+
+void MetaCPrinter_ExtraParens(metac_printer_t* self, bool value)
+{
+    self->ExtraParens = value;
 }
 
 void MetaCPrinter_Free(metac_printer_t* self)

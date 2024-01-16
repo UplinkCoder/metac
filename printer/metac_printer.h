@@ -31,6 +31,7 @@ typedef struct metac_printer_t
     bool SuppressNewlineAfterDecl;
     bool AsType;
     bool ForTypedef;
+    bool ExtraParens;
     int32_t ForAnonymousField;
     
     metac_alloc_t Allocator;
@@ -41,6 +42,8 @@ void MetaCPrinter_Init(metac_printer_t* self,
                        metac_identifier_table_t* identifierTable,
                        metac_identifier_table_t* stringTable,
                        metac_alloc_t* alloc);
+
+void MetaCPrinter_ExtraParens(metac_printer_t* self, bool value);
 
 void MetaCPRinter_Free(metac_printer_t* self);
 

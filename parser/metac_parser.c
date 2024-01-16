@@ -2493,8 +2493,11 @@ void TestParseExprssion(void)
 
     MetaCPrinter_Init(&printer,
         &LPP.Parser.IdentifierTable,
-        &LPP.Parser.StringTable
+        &LPP.Parser.StringTable,
+        0
     );
+    MetaCPrinter_ExtraParens(&printer, true);
+
     metac_expr_t* expr;
 #ifdef OLD_PARSER
 #  define MetaCLPP_ParseExpr2FromString(LPP, STR) \
@@ -2538,7 +2541,8 @@ void TestParseDecl(void)
 
     MetaCPrinter_Init(&printer,
         &LPP.Parser.IdentifierTable,
-        &LPP.Parser.StringTable
+        &LPP.Parser.StringTable,
+        0
     );
     metac_expr_t* expr;
 
