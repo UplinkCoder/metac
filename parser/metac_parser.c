@@ -626,6 +626,8 @@ Lpeek:
 #endif
     }
 
+    Debug_Logf(g_DebugServer, "Parser","%s = MetaCParser_PeekToken(offset=%d, line=%d)", MetaCTokenEnum_toChars(result->TokenType), p, line);
+
     return result;
 }
 
@@ -633,9 +635,15 @@ metac_token_t* MetaCParser_Match_(metac_parser_t* self, metac_token_enum_t type,
                                  const char* filename, uint32_t lineNumber)
 {
     metac_token_t* token = MetaCParser_PeekToken(self, 1);
+    Debug_Logf(g_DebugServer,
+               "Parser", "Match(expected=%s, file=%s, line=%u)",
+                MetaCTokenEnum_toChars(type),
+                filename, lineNumber
+    );
     metac_token_enum_t got = (token ? token->TokenType : tok_eof);
     if (got != type)
     {
+        Debug_Logf(g_DebugServer, "Parser", "Match failed");
         if (got != tok_eof)
         {
             metac_location_t loc = self->Lexer->LocationStorage.Locations[token->LocationId.v- 4];

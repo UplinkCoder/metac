@@ -1907,6 +1907,7 @@ LPopUnaryOp:
         }
         else if(tokenType == tok_rParen)
         {
+/*
             if (self->ExprParser.OpenParens > 0)
             {
                 MetaCParser_Match(self, tok_rParen);
@@ -1916,6 +1917,8 @@ LPopUnaryOp:
             {
                 goto LTerminate;
             }
+*/
+			goto LTerminate;
         }
         else if (tokenType == tok_rBracket)
         {
