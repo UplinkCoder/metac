@@ -769,25 +769,28 @@ void MetaCSemantic_ClearScope(metac_sema_state_t* self)
 
 }
 
+static inline void MetaCSemantic_LRU_RemoveIdentifier(metac_sema_state_t* self,
+                                                      metac_identifier_ptr_t idPtr)
+{
+    uint32_t idPtrHash = crc32c_nozero(~0, &idPtr.v, sizeof(idPtr.v));
+    const int16x8_t hashes = Load16(&self->LRU.LRUContentHashes);
+    const uint16_t hash12 = idPtrHash & LRU_HASH_MASK;
+    const int16x8_t hash12_8 = Set1_16(hash12);
+    const int16x8_t hashMask = Set1_16((uint16_t)LRU_HASH_MASK);
+    const int16x8_t maskedHashes = And16(hashes, hashMask);
+    const int16x8_t clearMask = Eq16(maskedHashes, hash12_8);
+    const int16x8_t cleared = Andnot16(clearMask, hashes);
+    Store16(&self->LRU.LRUContentHashes, cleared);
+}
+
 scope_insert_error_t MetaCSemantic_RegisterInScope(metac_sema_state_t* self,
                                                    metac_identifier_ptr_t idPtr,
                                                    metac_node_t node)
 {
     const char* idChars = IdentifierPtrToCharPtr(self->ParserIdentifierTable, idPtr);
     scope_insert_error_t result = no_scope;
-    uint32_t idPtrHash = crc32c_nozero(~0, &idPtr.v, sizeof(idPtr.v));
-    // first search for keys that might clash
-    // and remove them from the LRU hashes
-    uint16_t hash12 = idPtrHash & 0xFFF0;
 
-    int16x8_t hashes;
-    hashes = Load16(&self->LRU.LRUContentHashes);
-    const int16x8_t hash12_8 = Set1_16(hash12);
-    const int16x8_t hashMask = Set1_16((uint16_t)0xFFF0);
-    const int16x8_t maskedHashes = And16(hashes, hashMask);
-    const int16x8_t clearMask = Eq16(maskedHashes, hash12_8);
-    const int16x8_t cleared = Andnot16(clearMask, hashes);
-    Store16(&self->LRU.LRUContentHashes, cleared);
+    MetaCSemantic_LRU_RemoveIdentifier(self, idPtr);
 
     if (self->CurrentScope != 0)
     {
@@ -1264,10 +1267,10 @@ metac_node_t MetaCSemantic_LRU_LookupIdentifier(metac_sema_state_t* self,
     int16x8_t hashes = Load16(&self->LRU.LRUContentHashes);
 
     metac_node_t result = emptyNode;
-    uint16_t hash12 = idPtrHash & 0xFFF0;
+    uint16_t hash12 = idPtrHash & LRU_HASH_MASK;
 
     const int16x8_t hash12_8 = Set1_16(hash12);
-    const int16x8_t hashMask = Set1_16(0xFFF0);
+    const int16x8_t hashMask = Set1_16(LRU_HASH_MASK);
     const int16x8_t maskedHashes = And16(hashes, hashMask);
     const int16x8_t matches = Eq16(maskedHashes, hash12_8);
     mask = MoveMask16(matches);
