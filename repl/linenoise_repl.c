@@ -12,48 +12,27 @@
 //#include "../3rd_party/debugbreak/debugbreak.h"
 
 
-#ifdef __x86_64__
-
-// Macro to align the stack to 16 bytes and restore it
-#define ALIGN_STACK \
-    asm("pushq %rbx"); \
-    asm("movq %rsp, %rbx"); \
-    asm("andq $-16, %rsp");
-
-// Macro to restore the stack pointer to its original value
-#define RESTORE_STACK \
-    asm("movq %rbx, %rsp"); \
-    asm("popq %rbx");
-
-#else
-#define RESTORE_STACK
-#define ALIGN_STACK
-
-#endif
-
 typedef struct ui_state_t
 {
     repl_mode_t parseMode;
 } ui_state_t;
 
-const char* Linenoise_GetInputLine(ui_state_t* state, repl_state_t* repl, uint32_t* length)
+const char* Linenoise_GetInputLine(ui_state_t* state, repl_state_t* repl, uint32_t* lengthP)
 {
     const char* line = "";
+    uint32_t length = 0;
 
-    ALIGN_STACK
+    ALIGN_STACK();
     line = linenoise(repl->Promt);
-    RESTORE_STACK
+    RESTORE_STACK();
 
-    if (line)
+    if (line && *line)
     {
-        *length = strlen(line);
+        length = strlen(line);
         linenoiseHistoryAdd(line);
     }
-    else
-    {
-        *length = 0;
-    }
 
+    (*lengthP) = length;
     return line;
 }
 

@@ -36,6 +36,33 @@
 #  endif
 #endif
 
+#ifdef __x86_64__
+
+// Macro to align the stack to 16 bytes and restore it
+#define ALIGN_STACK() { \
+    static uintptr_t __old_stack_p; \
+    asm ( \
+        "movq %%rsp, %0;"      /* Move the current value of %rsp to specified variable */ \
+        "andq $-16, %%rsp;"    /* Align the stack by bitwise AND with -16 */ \
+        : "=m" (__old_stack_p) /* Output operands (OLD_SP) */ \
+        :                      /* Input operands (none explicitly) */ \
+        : "memory"             /* Clobbered registers */ \
+    );
+// Macro to restore the stack pointer to its original value
+#define RESTORE_STACK() asm ( \
+        "movq %0, %%rsp;"     /* Restore the stack pointer from the specified variable */ \
+        :                     /* No output operands */ \
+        : "m" (__old_stack_p) /* Input: read the old stack pointer value from the specified variable */ \
+        : "memory"            /* Clobbered registers */ \
+    ); \
+}
+
+#else
+#define RESTORE_STACK()
+#define ALIGN_STACK()
+#endif
+
+
 #define CAT(A, B) \
     CAT2(A, B)
 
