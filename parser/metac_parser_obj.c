@@ -1,3 +1,4 @@
+#include "../os/compat.h"
 #include "metac_lexer.h"
 #include "../hash/crc32c.c"
 #include "metac_alloc_node.c"

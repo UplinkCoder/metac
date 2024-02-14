@@ -772,10 +772,7 @@ void MetaCSemantic_ComputeEnumValues(metac_sema_state_t* self,
                     metac_sema_expr_t* semaValue =
                         MetaCSemantic_doExprSemantic(self, member->Value, 0);
                     semaEnum->Members[memberIdx].Value = semaValue;
-                    if(semaValue->Kind == 0x1c)
-                    {
-                        int k = 12;
-                    }
+
                     semaEnum->Members[memberIdx].Header.Kind = decl_enum_member;
 
                     if (IsUnresolved(METAC_NODE(semaValue)))

@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <assert.h>
 #include <stdlib.h>
+#include "../os/compat.h"
 
 typedef struct read_result_t {
     char* FileContent0;
@@ -39,8 +40,9 @@ read_result_t ReadFileAndZeroTerminate(const char* path)
         {
             result.FileContent0[p] = '\0';
         }
-
+        ALIGN_STACK();
         fclose(fd);
+        RESTORE_STACK();
     }
 
     return result;

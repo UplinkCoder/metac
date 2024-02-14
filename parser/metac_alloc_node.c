@@ -79,7 +79,9 @@ metac_noinline void _newMemRealloc(void** memP, uint32_t* capacityP, const uint3
 
     {
         capacity = ALIGN4(cast(uint32_t) ((capacity - 1) * 1.6f));
+        ALIGN_STACK();
         *memP = realloc(*memP, ((capacity) * elementSize));
+        RESTORE_STACK();
     }
 
     *capacityP = capacity;

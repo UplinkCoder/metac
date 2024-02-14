@@ -41,7 +41,9 @@ void Linenoise_Message(ui_state_t* state, const char* fmt, ...)
 {
     va_list args;
     va_start (args, fmt);
+    ALIGN_STACK();
     vprintf (fmt, args);
+    RESTORE_STACK();
     va_end (args);
 }
 
@@ -49,7 +51,9 @@ void Linenoise_ErrorMessage(ui_state_t* state, const char* fmt, ...)
 {
     va_list args;
     va_start (args, fmt);
+    ALIGN_STACK();
     vprintf (fmt, args);
+    RESTORE_STACK();
     va_end (args);
 }
 
@@ -58,7 +62,9 @@ void Linenoise_Info(ui_state_t* state, const char* fmt, ...)
     printf("Info: ");
     va_list args;
     va_start (args, fmt);
+    ALIGN_STACK();
     vprintf (fmt, args);
+    RESTORE_STACK();
     va_end (args);
 }
 
@@ -140,7 +146,6 @@ int main(int argc, const char* argv[])
     repl_state_t repl;
     ui_state_t uiState = {0};
     repl_ui_context_t ctx;
-
 #ifndef NO_FIBERS
     aco_global_init();
 #endif

@@ -7,6 +7,10 @@
 #  include <signal.h>
 #endif
 
+#ifdef DEBUG_SERVER
+#  include "../debug/debug_server.c"
+#endif
+
 #include "repl.c"
 
 const char* MetaCTokenEnum_toChars(metac_token_enum_t tok);
@@ -171,7 +175,18 @@ void SwitchToDefaultMode(repl_state_t* repl, ui_state_t* uiState)
 
 int main(int argc, const char* argv[])
 {
+#ifdef DEBUG_SERVER
+    debug_server_t dbgSrv = {0};
+#endif
+
     bool running = true;
+
+#ifndef NO_FIBERS
+    aco_global_init();
+#endif
+#ifdef DEBUG_SERVER
+    Debug_Init(&dbgSrv, 8180);
+#endif
     signal(SIGWINCH, resizehandler);
     initwin();
     repl_state_t mainRepl;

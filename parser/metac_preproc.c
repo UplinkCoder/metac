@@ -30,7 +30,7 @@ uint32_t MetaCPreProcessor_PushDefine(metac_preprocessor_t* self,
     if (parameters.Count != define->ParameterCount &&
         ((define->ParameterCount >= parameters.Count) && !define->IsVariadic))
     {
-        printf("Macro takes %u arguments but %u are given\n",
+        xprintf("Macro takes %u arguments but %u are given\n",
               define->ParameterCount, parameters.Count);
         goto Lret;
     }
@@ -45,7 +45,7 @@ uint32_t MetaCPreProcessor_PushDefine(metac_preprocessor_t* self,
         metac_token_t tok =
             self->DefineTable.TokenMemory[define->TokensOffset + tokIdx];
 
-        // printf("Seeing tok: %s\n", MetaCTokenEnum_toChars(tok.TokenType));
+        // xprintf("Seeing tok: %s\n", MetaCTokenEnum_toChars(tok.TokenType));
 
         if (tok.TokenType == tok_macro_parameter)
         {
@@ -57,7 +57,7 @@ uint32_t MetaCPreProcessor_PushDefine(metac_preprocessor_t* self,
                 paramTokIdx++)
             {
                 tok = parameter.Ptr[paramTokIdx];
-                //printf("Adding tok: %s\n", MetaCTokenEnum_toChars(tok.TokenType));
+                //xprintf("Adding tok: %s\n", MetaCTokenEnum_toChars(tok.TokenType));
                 ADD_STACK_ARRAY(tokens, tok);
             }
         }
@@ -65,28 +65,28 @@ uint32_t MetaCPreProcessor_PushDefine(metac_preprocessor_t* self,
               && tok.IdentifierKey == va_args_key)
         {
             metac_token_t_array va_args = (*(parameters.Ptr + parameters.Count - 1));
-            // printf("saw __VA_ARGS__\n");
+            // xprintf("saw __VA_ARGS__\n");
             for(uint32_t va_args_idx = 0;
                 va_args_idx < va_args.Count;
                 va_args_idx)
             {
-                // printf("Adding tok: %s\n", MetaCTokenEnum_toChars(tok.TokenType));
+                // xprintf("Adding tok: %s\n", MetaCTokenEnum_toChars(tok.TokenType));
                 ADD_STACK_ARRAY(tokens, va_args.Ptr[va_args_idx]);
             }
             continue;
         }
         else
         {
-            // printf("Adding tok: %s\n", MetaCTokenEnum_toChars(tok.TokenType));
+            // xprintf("Adding tok: %s\n", MetaCTokenEnum_toChars(tok.TokenType));
             ADD_STACK_ARRAY(tokens, tok);
         }
     }
-    // printf("expanded to %u tokens\n", tokens.Count);
+    // xprintf("expanded to %u tokens\n", tokens.Count);
     PERSIST_STACK_ARRAY(tokens);
 
 Lret:
     self->DefineTokenStack[self->DefineTokenStackCount++] = tokens;
-    printf("PushedDefine: [%u]\n", self->DefineTokenStackCount);
+    xprintf("PushedDefine: [%u]\n", self->DefineTokenStackCount);
     return result;
 }
 
@@ -114,7 +114,7 @@ metac_expr_t* MetaCPreProcessor_ResolveDefineToExp(metac_preprocessor_t* self,
     if ((parameters.Count != define->ParameterCount) &&
         ((define->ParameterCount >= parameters.Count) && !define->IsVariadic))
     {
-        printf("Macro takes %u arguments but %u are given\n",
+        xprintf("Macro takes %u arguments but %u are given\n",
               define->ParameterCount, parameters.Count);
         result = AllocNewExpr(expr_signed_integer);
         result->ValueU64 = 0;
@@ -145,7 +145,7 @@ metac_expr_t* MetaCPreProcessor_ResolveDefineToExp(metac_preprocessor_t* self,
               && tok.IdentifierKey == va_args_key)
         {
             metac_token_t_array va_args = (*(parameters.Ptr + parameters.Count - 1));
-            printf("saw __VA_ARGS__\n");
+            xprintf("saw __VA_ARGS__\n");
             for(uint32_t va_args_idx = 0;
                 va_args_idx < va_args.Count;
                 va_args_idx)
@@ -171,7 +171,7 @@ metac_expr_t* MetaCPreProcessor_ResolveDefineToExp(metac_preprocessor_t* self,
     DefineLexer.LocationStorage = tokenLocationArray;
     DefineLexer.Allocator = &tmpDefineParserAlloc;
 
-    printf("expanded to %u tokens\n", tokens.Count);
+    xprintf("expanded to %u tokens\n", tokens.Count);
 
     MetaCParser_InitFromLexer(&defineParser, &DefineLexer, &tmpDefineParserAlloc);
 
@@ -271,7 +271,7 @@ static inline int32_t MetaCPreProcessor_EvalExp(metac_preprocessor_t* self,
     }
 
 
-    printf("op: %s\n", MetaCExprKind_toChars(op));
+    xprintf("op: %s\n", MetaCExprKind_toChars(op));
     metac_identifier_ptr_t definedIdPtr;
     switch(op)
     {
@@ -411,7 +411,7 @@ static inline int32_t MetaCPreProcessor_EvalExp(metac_preprocessor_t* self,
                     // this if makes sure there is only one "argument" to defiend()
                     if (args->Next != emptyPointer || e2->Kind != expr_identifier)
                     {
-                        printf("single Identifier expected after defined(\n");
+                        xprintf("single Identifier expected after defined(\n");
                         result = 0;
                         break;
                     }
@@ -498,7 +498,7 @@ MetaCPreprocessor_RegisterDefine(metac_preprocessor_t* self,
         {
             if (define.DefineName.v == table->DefineMemory[slot->DefinePtr.v - 4].DefineName.v)
             {
-                printf("Duplicate define\n");
+                xprintf("Duplicate define\n");
                 break;
             }
             continue;
@@ -595,7 +595,7 @@ Lerror:
         metac_filehandle_t fhandle = fs.functions->Open(fs.ctx, 0, filename);
         metac_buffer_t fileBuffer =
             fs.functions->ReadEntireFileAndZeroTerminate(fs.ctx, fhandle);
-        printf("Loaded %u bytes\n", fileBuffer.Length);
+        xprintf("Loaded %u bytes\n", fileBuffer.Length);
     }
     else
     {
@@ -753,7 +753,7 @@ MetaCPreProcessor_ParseDefine(metac_preprocessor_t *self,
         IdentifierPtrToCharPtr(&parser->Lexer->IdentifierTable,
                                defineName->IdentifierPtr);
 
-    printf("define %s with %u parameters\n", defineNameChars,
+    xprintf("define %s with %u parameters\n", defineNameChars,
                                              macroParameter.Count);
     MetaCPrinter_Reset(&parser->DebugPrinter);
 
@@ -887,7 +887,7 @@ void MetaCPreProcessor_FastIncludeScan(metac_preprocessor_t* self)
                 uint32_t advance = (hashOffset - lastNewlinePos) + 1;
                 scanPos += advance;
                 scanLeft -= advance;
-                printf("HashOffset: %u\n", hashOffset);
+                xprintf("HashOffset: %u\n", hashOffset);
             }
             else
             {
@@ -930,7 +930,7 @@ uint32_t MetaCPreProcessor_Eval(metac_preprocessor_t* self, struct metac_parser_
         metac_expr_t* exp = MetaCParser_ParseExpr2(parser, expr_flags_pp);
         MetaCPrinter_Reset(&parser->DebugPrinter);
         const char* expr_string = MetaCPrinter_PrintExpr(&parser->DebugPrinter, exp);
-        printf("#eval '%s'\n", expr_string);
+        xprintf("#eval '%s'\n", expr_string);
 
         return MetaCPreProcessor_EvalExp(self, exp, parser);
 /*
@@ -958,7 +958,7 @@ uint32_t MetaCPreProcessor_Eval(metac_preprocessor_t* self, struct metac_parser_
 *//*
                     const char *identifier = IdentifierPtrToCharPtr(&parser->Lexer->IdentifierTable,
                                                                    idTok->IdentifierPtr);
-                    printf("defiend(%s) = %u\n", identifier,
+                    xprintf("defiend(%s) = %u\n", identifier,
                            MetaCPreProcessor_IsDefine(self, idTok->IdentifierKey, identifier));
                     //if ()
                 }
@@ -966,7 +966,7 @@ uint32_t MetaCPreProcessor_Eval(metac_preprocessor_t* self, struct metac_parser_
             case tok_uint:
             {
                 MetaCParser_Match(parser, tok_uint);
-                printf("NUMBER(%u)\n", tok->ValueU32);
+                xprintf("NUMBER(%u)\n", tok->ValueU32);
             }
         }
     */
