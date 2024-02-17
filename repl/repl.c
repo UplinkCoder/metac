@@ -336,15 +336,15 @@ void Presemantic_(repl_state_t* self)
                 }
                 structNameStr =
                     IdentifierPtrToCharPtr(self->SemanticState.ParserIdentifierTable, printIdentifier);
-                xprintf("structNameStr: '%s'\n", structNameStr);
+ //               xprintf("structNameStr: '%s'\n", structNameStr);
                 if (printIdentifier.v
                  && printIdentifier.v != empty_identifier.v
                  && 0 == strcmp("metac_compiler_t", structNameStr))
                 {
                     compilerStruct = (metac_type_aggregate_t*)
                         MetaCSemantic_doDeclSemantic(&self->SemanticState, struct_);
-                    xprintf("compilerStruct: %s\n",
-                        MetaCPrinter_PrintSemaNode(&printer, &self->SemanticState, cast(metac_node_t)compilerStruct));
+//                    xprintf("compilerStruct: %s\n",
+//                        MetaCPrinter_PrintSemaNode(&printer, &self->SemanticState, cast(metac_node_t)compilerStruct));
                     self->SemanticState.CompilerInterface = compilerStruct;
                     g_compilerInterface = self->SemanticState.CompilerInterface;
                     {

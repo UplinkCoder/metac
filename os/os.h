@@ -74,7 +74,7 @@ struct OS
     /// Writes data to a file it will advance an internal pointer such that
     /// another call to FileWrite will write to where the last call left off
     /// In the event of a short write it updates inoutSize to reflect the number of bytes written
-    os_error_t (*FileWrite)(fhandle file, uint32_t offset, uint32_t inoutSize, void *inBuffer);
+    os_error_t (*FileWrite)(fhandle file, uint32_t offset, uint32_t *inoutSize, void *inBuffer);
 
     /// Report the absolute position in the file
     os_error_t (*FileTellPosition)(fhandle file, uint32_t* loWord, uint32_t* hiWord);

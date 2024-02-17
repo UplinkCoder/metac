@@ -1,0 +1,3 @@
+[submodule "3rd_party/minicoro"]
+	path = 3rd_party/minicoro
+	url = https://github.com/edubart/minicoro.git

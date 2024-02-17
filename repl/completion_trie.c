@@ -140,9 +140,9 @@ LSetCurrent:
                     collectCb(completionString, completionLength, userCtx);
                     // do we have to substract to toCopy now?
                     completionLength -= toCopy;
-                    // in case he are at a child directly blow where we started
+                    // in case we are at a child directly blow where we started
                     // we want to reset the unmatched prefix such that
-                    // when we acend to the start node we will not match the next node randomly
+                    // when we acend to the start node so we will not match the next node randomly
                     // due to the prefix check being a memcmp with size 0
                     if (currentNodeIdx == startNodeIdx)
                         currentUnmatchedPrefixLength = unmatchedPrefixLength;
