@@ -185,7 +185,8 @@ int main(int argc, const char** argv)
         printf("Found %u declarations\n", result.Length);
         metac_printer_t printer;
         MetaCPrinter_Init(&printer, &LPP.Parser.IdentifierTable,
-                                    &LPP.Parser.StringTable);
+                                    &LPP.Parser.StringTable,
+                                    0);
         make_boiler_ctx_t makeBoilerCtx = {
             &LPP.Parser.IdentifierTable,
 
