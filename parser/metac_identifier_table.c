@@ -7,6 +7,7 @@
 #include <stdlib.h>
 #include "metac_lexer.h"
 #include "metac_identifier_table.h"
+#include "../hash/crc32c.h"
 #include "../os/metac_alloc.h"
 #include <string.h>
 #include <stdio.h>
@@ -217,6 +218,24 @@ int32_t MetaCIdentifierTable_HasKey(metac_identifier_table_t* table,
 
     return result;
 }
+
+static inline metac_identifier_ptr_t
+MetaCIdentifierTable_CopyIdentifier(const metac_identifier_table_t* srcTable,
+                                    metac_identifier_table_t* dstTable,
+                                    metac_identifier_ptr_t srcIdPtr)
+{
+    assert(srcIdPtr.v);
+    const char* idChars =
+        IdentifierPtrToCharPtr((metac_identifier_table_t*)srcTable, srcIdPtr);
+    const uint32_t idLen = strlen(idChars);
+    const uint32_t idHash = crc32c_nozero(~0, idChars, idLen);
+    const uint32_t idKey = IDENTIFIER_KEY(idHash, idLen);
+
+    metac_identifier_ptr_t newPtr =
+        GetOrAddIdentifier(dstTable, idKey, idChars);
+    return newPtr;
+}
+
 
 #define slot_t metac_identifier_table_slot_t
 

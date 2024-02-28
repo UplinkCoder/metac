@@ -630,7 +630,7 @@ metac_sema_expr_t* MetaCSemantic_doExprSemantic_(metac_sema_state_t* self,
         case expr_invalid:
         default:
         {
-            fprintf(stderr, "expression semantic doesn't support %s yet.\n",
+            xprintf("expression semantic doesn't support %s yet.\n",
                     MetaCExprKind_toChars(expr->Kind));
             assert(0);
         }

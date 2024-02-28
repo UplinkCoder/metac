@@ -1,3 +1,4 @@
+#include "../os/metac_atomic.h"
 #include "metac_alloc_node.h"
 #include <string.h>
 #include <stdlib.h>
@@ -121,14 +122,6 @@ FOREACH_ALLOCATED_PARSER_TYPE(DECLARE_STATIC_ARRAY)
 
 static uint32_t _nodeCounter = 1;
 
-
-#ifndef ATOMIC
-#define INC(v) \
-    (v++)
-#else
-#define INC(v)
-    (__builtin_atomic_fetch_add(&v, __ATOMIC_RELEASE))
-#endif
 
 /// TODO: lock during realloc
 #define REALLOC_BOILERPLATE(PREFIX) \

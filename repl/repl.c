@@ -60,16 +60,9 @@ static inline void TranslateIdentifier(metac_identifier_table_t* dstTable,
                                        const metac_identifier_table_t* srcTable,
                                        metac_identifier_ptr_t* idPtrP)
 {
-    assert(idPtrP->v);
-    const char* idChars =
-        IdentifierPtrToCharPtr((metac_identifier_table_t*)srcTable, *idPtrP);
-    const uint32_t idLen = strlen(idChars);
-    const uint32_t idHash = crc32c_nozero(~0, idChars, idLen);
-    const uint32_t idKey = IDENTIFIER_KEY(idHash, idLen);
-
-    metac_identifier_ptr_t newPtr =
-        GetOrAddIdentifier(dstTable, idKey, idChars);
-    idPtrP->v = newPtr.v;
+    metac_identifier_ptr_t dstPtr =
+        MetaCIdentifierTable_CopyIdentifier(srcTable, dstTable, *idPtrP);
+    (*idPtrP) = dstPtr;
 }
 
 static inline int TranslateIdentifiers(metac_node_t node, void* ctx)

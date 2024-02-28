@@ -2438,7 +2438,7 @@ static stmt_block_t* MetaCParser_ParseBlockStmt(metac_parser_t* self,
 
 const char* MetaCExprKind_toChars(metac_expr_kind_t type)
 {
-    const char* result = 0;
+    const char* result = "Value out of Range";
 
 #define CASE_MACRO(EXPR_TYPE) \
     case EXPR_TYPE : {result = #EXPR_TYPE;} break;

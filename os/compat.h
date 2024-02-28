@@ -3,6 +3,11 @@
 
 #define _scope
 
+#define xprintf(...) \
+    ALIGN_STACK() \
+    printf(__VA_ARGS__); \
+    RESTORE_STACK();
+
 #define cast(T) (T)
 
 #ifndef ARRAY_SIZE
@@ -20,11 +25,6 @@
 #if (defined(_MSC_VER) && (_MSC_VER < 1800) )
 #  define snprintf _snprintf
 #endif
-
-#define xprintf(...) \
-    ALIGN_STACK() \
-    printf(__VA_ARGS__); \
-    RESTORE_STACK();
 
 #if (defined(_MSC_VER) && (_MSC_VER < 1600) )
 #  define __STDC_LIMIT_MACROS

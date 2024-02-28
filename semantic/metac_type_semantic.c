@@ -723,10 +723,9 @@ void MetaCSemantic_ComputeEnumValues(metac_sema_state_t* self,
 
     //TODO you want to make CurrentValue a metac_sema_expr_t
     // such that you can interpret the increment operator
-    //SetInProgress(semaEnum, "Members");
-    // semaEnum->Name = MetaCSemantic_RegisterIdentifier(self, enum->Identifier);
+    // MetaCSemantic_SetInProgress(self, semaEnum, "Members");
 
-    semaEnum->Name = enum_->Identifier;
+    semaEnum->Name = MetaCIdentifierTable_CopyIdentifier(self->ParserIdentifierTable, &self->SemanticIdentifierTable, enum_->Identifier);
     semaEnum->Header.Kind = decl_type_enum;
     if (METAC_NODE(enum_->BaseType) == emptyNode)
     {
@@ -744,17 +743,18 @@ void MetaCSemantic_ComputeEnumValues(metac_sema_state_t* self,
             memberIdx < memberCount;
             memberIdx++, member = member->Next)
         {
-            metac_sema_expr_t* semaMember = memberPlaceholders + memberIdx;
+            metac_sema_expr_t* placeHolder = memberPlaceholders + memberIdx;
 
-            memberPlaceholders[memberIdx].Kind = expr_unknown_value;
-            memberPlaceholders[memberIdx].TypeIndex = semaEnum->BaseType;
-            memberPlaceholders[memberIdx].Expr = member->Value;
+            placeHolder->Kind = expr_unknown_value;
+            placeHolder->TypeIndex = semaEnum->BaseType;
+            placeHolder->Expr = member->Value;
 
             MetaCSemantic_RegisterInScope(self, member->Name,
-                                          METAC_NODE(semaMember));
+                                          METAC_NODE(placeHolder));
         }
     }
-
+    // Set the currentScope to be an override scope
+    // Since we are inserting members
     self->CurrentScope->ScopeTable.AllowOverride = true;
     {
         MetaCSemantic_PushOnResolveFail(self, OnResolveFail_ReturnNull);

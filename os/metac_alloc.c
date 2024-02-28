@@ -101,13 +101,14 @@ LaddArena:
     {
         uint32_t newArenaCapa = ALIGN16(allocator->ArenasCapacity + 1);
         uint32_t inUseArenasCount = allocator->inuseArenasCount;
+        ALIGN_STACK();
         allocator->Arenas = cast(tagged_arena_t*)
             realloc(allocator->Arenas, sizeof(tagged_arena_t) * newArenaCapa);
 
         memcpy(allocator->Arenas + newArenaCapa - inUseArenasCount,
                allocator->Arenas + allocator->ArenasCapacity - inUseArenasCount,
                inUseArenasCount * sizeof(tagged_arena_t));
-
+        RESTORE_STACK();
         allocator->ArenasCapacity = newArenaCapa;
         goto LaddArena;
     }

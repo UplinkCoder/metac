@@ -794,7 +794,9 @@ void Debug_Logf(debug_server_t* debugServer,
     OS.GetTimeStamp(&log.Timestamp);
 
     va_start(list, fmt);
+    ALIGN_STACK();
     len = vsnprintf(buffer, sizeof(buffer), fmt, list);
+    RESTORE_STACK();
     va_end(list);
 
     if (len >= ARRAY_SIZE(buffer))
