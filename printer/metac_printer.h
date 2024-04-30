@@ -33,7 +33,7 @@ typedef struct metac_printer_t
     bool ForTypedef;
     bool ExtraParens;
     int32_t ForAnonymousField;
-    
+
     metac_alloc_t Allocator;
 } metac_printer_t;
 

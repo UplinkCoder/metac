@@ -1,5 +1,9 @@
 #include "../os/compat.h"
-#include "../metac_lexer.c"
+#include "../os/os.c"
+#include "../hash/crc32c.c"
+#include "../os/metac_alloc.c"
+#include "../parser/metac_alloc_node.c"
+#include "../parser/metac_lexer.c"
 #include <stdio.h>
 
 void CountTokenLengths();
