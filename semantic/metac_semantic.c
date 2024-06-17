@@ -584,7 +584,7 @@ metac_sema_stmt_t* MetaCSemantic_doStmtSemantic_(metac_sema_state_t* self,
                 AllocNewSemaBlockStmt(self, 0, stmtCount, cast(void**)&result);
 
             metac_scope_owner_t parent = {SCOPE_OWNER_V(scope_owner_statement,
-                                           BlockStmtIndex(self, semaBlockStmt))};
+                                          BlockStmtIndex(self, semaBlockStmt))};
 
             MetaCSemantic_PushNewScope(self,
                                        scope_owner_block,
@@ -616,37 +616,37 @@ metac_sema_stmt_t* MetaCSemantic_doStmtSemantic_(metac_sema_state_t* self,
         {
             hash ^= stmt_for;
 
-            stmt_for_t* for_ = (stmt_for_t*) stmt;
+            stmt_for_t* forStmt = (stmt_for_t*) stmt;
             sema_stmt_for_t* semaFor =
                 AllocNewSemaStmt(self, stmt_for, &result);
 
-            metac_scope_t* forScope = semaFor->Scope =
+            semaFor->Scope =
                 MetaCSemantic_PushNewScope(self,
                                            scope_owner_statement,
                                            METAC_NODE(semaFor));
 
-            if (METAC_NODE(for_->ForInit) != emptyNode)
+            if (METAC_NODE(forStmt->ForInit) != emptyNode)
             {
-                if (IsExprNode(for_->ForInit->Kind))
+                if (IsExprNode(forStmt->ForInit->Kind))
                 {
 
                     semaFor->ForInit = cast(metac_node_t)
                         MetaCSemantic_doExprSemantic(self,
-                            (cast(metac_expr_t*)for_->ForInit), 0);
+                            (cast(metac_expr_t*)forStmt->ForInit), 0);
                 }
                 else
                 {
                     semaFor->ForInit = cast(metac_node_t)
                         MetaCSemantic_doDeclSemantic(self,
-                            (cast(metac_decl_t*)for_->ForInit));
+                            (cast(metac_decl_t*)forStmt->ForInit));
                 }
                 hash = CRC32C_VALUE(hash, semaFor->ForInit->Hash);
             }
 
-            if (METAC_NODE(for_->ForCond) != emptyNode)
+            if (METAC_NODE(forStmt->ForCond) != emptyNode)
             {
                 semaFor->ForCond =
-                    MetaCSemantic_doExprSemantic(self, for_->ForCond, 0);
+                    MetaCSemantic_doExprSemantic(self, forStmt->ForCond, 0);
                 hash = CRC32C_VALUE(hash, semaFor->ForCond->Hash);
             }
             else
@@ -654,10 +654,10 @@ metac_sema_stmt_t* MetaCSemantic_doStmtSemantic_(metac_sema_state_t* self,
                 METAC_NODE(semaFor->ForCond) = emptyNode;
             }
 
-            if (METAC_NODE(for_->ForPostLoop) != emptyNode)
+            if (METAC_NODE(forStmt->ForPostLoop) != emptyNode)
             {
                 semaFor->ForPostLoop =
-                    MetaCSemantic_doExprSemantic(self, for_->ForPostLoop, 0);
+                    MetaCSemantic_doExprSemantic(self, forStmt->ForPostLoop, 0);
                 hash = CRC32C_VALUE(hash, semaFor->ForPostLoop->Hash);
             }
             else
@@ -665,10 +665,10 @@ metac_sema_stmt_t* MetaCSemantic_doStmtSemantic_(metac_sema_state_t* self,
                 METAC_NODE(semaFor->ForPostLoop) = emptyNode;
             }
 
-            if (METAC_NODE(for_->ForBody) != emptyNode)
+            if (METAC_NODE(forStmt->ForBody) != emptyNode)
             {
                 metac_sema_stmt_t* forBody =
-                    MetaCSemantic_doStmtSemantic(self, for_->ForBody);
+                    MetaCSemantic_doStmtSemantic(self, forStmt->ForBody);
                 semaFor->ForBody = forBody;
                 hash = CRC32C_VALUE(hash, semaFor->ForBody->Hash);
             }
@@ -815,7 +815,7 @@ scope_insert_error_t MetaCSemantic_RegisterInScope(metac_sema_state_t* self,
         {
             task_t* waitingTask = cast(task_t*)waiter->Continuation->arg;
             // assert(waitingTask->TaskFlags == Task_Waiting);
-            printf("Found matching waiter\n");
+            xprintf("Found matching waiter\n");
             U32(waitingTask->TaskFlags) &= (~Task_Waiting);
             U32(waitingTask->TaskFlags) |= Task_Resumable;
             // Worker_EnqueueTask(worker, waitingTask);

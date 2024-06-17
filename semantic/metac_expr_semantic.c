@@ -588,6 +588,12 @@ metac_sema_expr_t* MetaCSemantic_doExprSemantic_(metac_sema_state_t* self,
                                                  const char* callFun,
                                                  uint32_t callLine)
 {
+    static metac_printer_t debugPrinter = {0};
+    if (!debugPrinter.StringTable)
+    {
+        MetaCPrinter_Init(&debugPrinter, self->ParserIdentifierTable, self->ParserStringTable, 0);
+    }
+    
     if (expr->Kind == expr_and)
     {
         expr = RewriteAndtoAddrIfNeeded(self, expr);
@@ -680,6 +686,7 @@ LswitchIdKey:
             }
             else
             {
+                xprintf("Unary dot %s not recognized: %s\n", MetaCExprKind_toChars(result->E1->Kind), MetaCPrinter_PrintExpr(&debugPrinter, expr));
                 assert(0);
             }
         } break;

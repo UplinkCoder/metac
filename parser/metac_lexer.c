@@ -1089,7 +1089,6 @@ LcontinueLexnig:
                 uint32_t charLength = 0;
                 text++;
                 token.TokenType = tok_char;
-                uint32_t charHash = ~0u;
                 c = *text++;
                 eatenChars++;
                 if (c == '\'')

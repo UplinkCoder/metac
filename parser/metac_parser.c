@@ -579,11 +579,13 @@ metac_token_t* MetaCParser_PeekToken_(metac_parser_t* self, int32_t p, uint32_t 
 {
     metac_token_t* result = 0;
     assert(self->Lexer->TokenCount);
+    uint32_t CurrentTokenIndex = self->CurrentTokenIndex;
+
 #if !defined(NO_PREPROCESSOR)
 
     metac_preprocessor_t* preProc = self->Preprocessor;
 
-    uint32_t CurrentTokenIndex =
+    CurrentTokenIndex =
         (preProc && preProc->DefineTokenStackCount)
             ? preProc->DefineTokenIndexStack[preProc->DefineTokenStackCount - 1]:
             self->CurrentTokenIndex;
@@ -603,10 +605,10 @@ LpeekDefine:
             goto Lpeek;
     } else
 #endif
-    if (cast(uint32_t)(self->CurrentTokenIndex + (p - 1)) < self->Lexer->TokenCount)
+    if (cast(uint32_t)(CurrentTokenIndex + (p - 1)) < self->Lexer->TokenCount)
     {
 Lpeek:
-        result = self->Lexer->Tokens + self->CurrentTokenIndex + (p - 1);
+        result = self->Lexer->Tokens + CurrentTokenIndex + (p - 1);
         if (result->TokenType != tok_newline)
         {
             self->LastLocation =
@@ -625,9 +627,11 @@ Lpeek:
         }
 #endif
     }
-
-    Debug_Logf(g_DebugServer, "Parser","%s = MetaCParser_PeekToken(offset=%d, line=%d)", MetaCTokenEnum_toChars(result->TokenType), p, line);
-
+    if (result)
+    {
+        Debug_Logf(g_DebugServer, "Parser","%s = MetaCParser_PeekToken(offset=%d, line=%d)", MetaCTokenEnum_toChars(result->TokenType), p, line);
+    }
+    
     return result;
 }
 

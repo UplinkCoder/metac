@@ -608,13 +608,22 @@ static MHD_COMPLETED_CB (MhdCompletionCallback)
 {
 }
 
+const char* DebugServer_AddString(debug_server_t* debugServer,
+                                  const char* name, uint32_t len)
+{
+    char* memory = Allocator_Calloc(&debugServer->Allocator, char, len);
+    memcpy(memory, name, len);
+    return memory;
+}
+
+
 void DebugServer_AddRoute(debug_server_t* debugServer,
                           const char* url,
                           mhd_handler_t handler)
 {
     debug_server_route_t route;
 
-    route.Url = url;
+    route.Url = DebugServer_AddString(debugServer, url, strlen(url));
     route.Handler = handler;
 
     ARENA_ARRAY_ADD(debugServer->Routes, route);
@@ -773,12 +782,6 @@ metac_identifier_ptr_t DebugServer_Category(debug_server_t* debugServer, const c
     return GetOrAddIdentifier(&debugServer->CategoryTable, IDENTIFIER_KEY(hash, len), category);
 }
 
-const char* DebugServer_AddString(debug_server_t* debugServer, const char* name, uint32_t len)
-{
-    char* memory = Allocator_Calloc(&debugServer->Allocator, char, len);
-    memcpy(memory, name, len);
-    return memory;
-}
 
 void Debug_Logf(debug_server_t* debugServer,
     const char* category,

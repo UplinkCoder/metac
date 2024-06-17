@@ -972,10 +972,11 @@ metac_type_index_t TypeEnumSemantic(metac_sema_state_t* self,
 
     MetaCSemantic_PopTemporaryScope(self);
     {
+/*
         metac_printer_t debugPrinter;
         MetaCPrinter_Init(&debugPrinter, self->ParserIdentifierTable, self->ParserStringTable, 0);
 
-/*
+
         for(uint32_t i = 0; i < tmpSemaEnum.MemberCount; i++)
         {
             const char* valueString = MetaCPrinter_PrintSemaNode(&debugPrinter,

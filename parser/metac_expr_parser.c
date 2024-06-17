@@ -1627,9 +1627,12 @@ metac_expr_t* MetaCParser_PopExpr(metac_parser_t* self)
     metac_expr_t* result = 0;
 
     metac_expr_t* top = MetaCParser_TopExpr(self);
-    const char* expr = MetaCPrinter_PrintExpr(&self->DebugPrinter, top);
-    Debug_Logf(g_DebugServer, "Parser", "[PopExpr] %s", expr);
-    MetaCPrinter_Reset(&self->DebugPrinter);
+    if (top)
+    {
+        const char* expr = MetaCPrinter_PrintExpr(&self->DebugPrinter, top);
+        Debug_Logf(g_DebugServer, "Parser", "[PopExpr] %s", expr);
+        MetaCPrinter_Reset(&self->DebugPrinter);
+    }
 /*
     printf("Poping ExprStack(%d): %s\n",
         self->ExprParser.ExprStackCount,
