@@ -85,6 +85,7 @@ arena_ptr_t ReallocArenaArray(tagged_arena_t* arena, metac_alloc_t* alloc, uint3
         (NAME##Alloc) = (ALLOC); \
         (NAME##ArenaPtr) = AllocateArena(ALLOC, (sizeof(TYPE) * (COUNT))); \
         (NAME##Arena) = (ALLOC)->Arenas[(NAME##ArenaPtr).Index]; \
+        (NAME##Arena).Flags |= arena_flag_inUse; \
         (NAME) = cast(TYPE*) (NAME##Arena).Memory; \
     } while(0)
 

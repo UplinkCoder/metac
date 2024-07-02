@@ -8,6 +8,10 @@
 
 #include "../debug/debug_server.h"
 
+#ifndef U32
+#define U32(VAR) \
+    (*(uint32_t*)&VAR)
+#endif
 
 #ifndef ALIGN16
 #  define ALIGN16(N) \
@@ -47,29 +51,31 @@ void Allocator_Init_(metac_alloc_t* allocator, metac_alloc_t* parent,
     allocator->ArenasCount = 0;
     allocator->AllocatedBlocks = 0;
 #else
-    OS.PageAlloc(BLOCK_SIZE, &allocated, &firstBlock);
-
-    uint32_t memoryPerArena = allocated / allocator->ArenasCount;
-
-    for(uint32_t arenaIdx = 0;
-        arenaIdx < allocator->ArenasCount;
-        arenaIdx++)
+    if (allocator->ArenasCount)
     {
-        tagged_arena_t* arena = &allocator->Arenas[arenaIdx];
-        arena->Alloc = allocator;
-        arena->File = file;
-        arena->Line = line;
-#ifndef DEBUG_MEMORY
-        arena->Memory = (cast(char*)firstBlock)
-                      + (memoryPerArena * arenaIdx);
-#else
-        arena->Memory = cast(char*) malloc(memoryPerArena);
-#endif
-        arena->Offset = 0;
-        arena->SizeLeft = memoryPerArena;
-    }
+        OS.PageAlloc(BLOCK_SIZE, &allocated, &firstBlock);
+        uint32_t memoryPerArena = allocated / allocator->ArenasCount;
 
-    allocator->AllocatedBlocks = allocated / BLOCK_SIZE;
+        for(uint32_t arenaIdx = 0;
+            arenaIdx < allocator->ArenasCount;
+            arenaIdx++)
+        {
+            tagged_arena_t* arena = &allocator->Arenas[arenaIdx];
+            arena->Alloc = allocator;
+            arena->File = file;
+            arena->Line = line;
+    #ifndef DEBUG_MEMORY
+            arena->Memory = (cast(char*)firstBlock)
+                          + (memoryPerArena * arenaIdx);
+    #else
+            arena->Memory = cast(char*) malloc(memoryPerArena);
+    #endif
+            arena->Offset = 0;
+            arena->SizeLeft = memoryPerArena;
+        }
+
+        allocator->AllocatedBlocks = allocated / BLOCK_SIZE;
+    }
 #endif
 #ifdef DEBUG_SERVER
     Debug_Allocator(g_DebugServer, allocator);
@@ -86,30 +92,42 @@ arena_ptr_t Allocator_AddArena(metac_alloc_t* allocator, tagged_arena_t* arena)
 LaddArena:
         if (arena->Flags & arena_flag_inUse)
         {
-            result.Index = (allocator->ArenasCapacity - allocator->inuseArenasCount++);
+            // Place the in-use arena towards the end
+            result.Index = (allocator->ArenasCapacity - ++allocator->inuseArenasCount);
         }
         else
         {
+            // Place the non-in-use arena at the current count position
             result.Index = allocator->ArenasCount++;
         }
+
+        assert(result.Index < allocator->ArenasCapacity);
         target = &allocator->Arenas[result.Index];
 
         (*target) = *arena;
-
     }
     else
     {
         uint32_t newArenaCapa = ALIGN16(allocator->ArenasCapacity + 1);
         uint32_t inUseArenasCount = allocator->inuseArenasCount;
+        tagged_arena_t* newArenas;
         ALIGN_STACK();
-        allocator->Arenas = cast(tagged_arena_t*)
+        newArenas = cast(tagged_arena_t*)
             realloc(allocator->Arenas, sizeof(tagged_arena_t) * newArenaCapa);
 
-        memcpy(allocator->Arenas + newArenaCapa - inUseArenasCount,
-               allocator->Arenas + allocator->ArenasCapacity - inUseArenasCount,
-               inUseArenasCount * sizeof(tagged_arena_t));
+        // Move in-use arenas from old end to new end of array
+        memmove(newArenas + newArenaCapa - inUseArenasCount,
+                newArenas + allocator->ArenasCapacity - inUseArenasCount,
+                inUseArenasCount * sizeof(tagged_arena_t));
+
+        // Clear the space between old in-use arenas and new in-use arenas
+        memset(newArenas + allocator->ArenasCapacity - inUseArenasCount,
+               0,
+               (newArenaCapa - allocator->ArenasCapacity) * sizeof(tagged_arena_t));
+
         RESTORE_STACK();
         allocator->ArenasCapacity = newArenaCapa;
+        allocator->Arenas = newArenas;
         goto LaddArena;
     }
 
@@ -132,6 +150,7 @@ arena_ptr_t Allocate_(metac_alloc_t* allocator, uint32_t size,
     arena.SizeLeft = size;
     arena.Offset = 0;
     arena.Memory = memory;
+    arena.Flags |= arena_flag_inUse;
 
     return Allocator_AddArena(allocator, &arena);
 #else
@@ -173,9 +192,11 @@ LsetResult:
         newArena.Alloc = allocator;
         newArena.Line = line;
         newArena.File = file;
+        U32(newArena.Flags) |= arena_flag_inUse;
 
         arena->Offset += size;
         arena->SizeLeft -= size;
+        assert((newArena.Flags & arena_flag_inUse) == arena_flag_inUse);
         result = Allocator_AddArena(allocator, &newArena);
 
         if (arenas && arenas == allocator->Freelist)
@@ -231,6 +252,8 @@ LsetResult:
             newArena.Alloc = allocator;
             newArena.Line = line;
             newArena.File = file;
+            U32(newArena.Flags) |= arena_flag_inUse;
+            assert((U32(newArena.Flags) & arena_flag_inUse) == arena_flag_inUse);
             result = Allocator_AddArena(allocator, &newArena);
             goto Lreturn;
         }
@@ -245,6 +268,7 @@ Lreturn:
     {
         tagged_arena_t resultArena = allocator->Arenas[result.Index];
         assert(resultArena.Offset == 0);
+        assert((resultArena.Flags & arena_flag_inUse) == arena_flag_inUse);
     }
 
     return result;
@@ -346,6 +370,8 @@ arena_ptr_t ReallocArenaArray(tagged_arena_t* arena, metac_alloc_t* alloc, uint3
 
     newArena = &alloc->Arenas[newArenaPtr.Index];
     memcpy(newArena->Memory, arena->Memory, arena->Offset);
+    newArena->Offset = arena->Offset;
+
     if (arena->Alloc)
     {
         metac_alloc_t* arenaAlloc = arena->Alloc;
@@ -365,3 +391,4 @@ arena_ptr_t ReallocArenaArray(tagged_arena_t* arena, metac_alloc_t* alloc, uint3
     return newArenaPtr;
 }
 
+#undef U32
