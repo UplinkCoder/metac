@@ -667,7 +667,6 @@ metac_token_t* MetaCParser_Match_(metac_parser_t* self, metac_token_enum_t type,
     else
     {
         MetaCParser_Advance(self);
-
     }
     return token;
 }
@@ -1274,6 +1273,7 @@ decl_type_t* MetaCParser_ParseTypeDecl(metac_parser_t* self, metac_decl_t* paren
                 decl_type_ptr_t* ptr = AllocNewDecl(decl_type_ptr, &result);
                 ptr->ElementType = elementType;
                 ptr->Hash = hash = CRC32C_VALUE(CRC32C_STAR, hash);
+                ptr->TypeKind = type_ptr;
                 goto LnextToken;
             }
             case tok_lBracket:
@@ -1282,6 +1282,8 @@ decl_type_t* MetaCParser_ParseTypeDecl(metac_parser_t* self, metac_decl_t* paren
                 decl_type_array_t* array = AllocNewDecl(decl_type_array, &result);
                 array->ElementType = elementType;
                 array->Hash = hash = CRC32C_VALUE(CRC32C_BRACKETS, hash);
+                array->TypeKind = type_array;
+
                 if (tokenType == tok_lBracket)
                 {
                     array->Dim = MetaCParser_ParseExpr2(self, expr_flags_none);

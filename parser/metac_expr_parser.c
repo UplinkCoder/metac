@@ -2039,6 +2039,7 @@ LParseCall:
             op = expr_call;
             opPrec = OpToPrecedence(op);
             args = MetaCParser_ParseArgumentList(self, flags);
+            MetaCParser_Match(self, tok_rParen);
 
             if (opPrec > prec)
             {
