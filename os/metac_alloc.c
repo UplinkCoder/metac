@@ -307,6 +307,20 @@ void* Allocator_Realloc_(metac_alloc_t* alloc, void* oldMem,
 
     {
         uint32_t i;
+        for(i = 0; i < alloc->inuseArenasCount; i++)
+        {
+            tagged_arena_t* candidate = &alloc->Arenas[alloc->ArenasCapacity - (i + 1)];
+            if (candidate->Memory == oldMem)
+            {
+                oldArena = candidate;
+                oldArenaPtr.Index = i;
+                break;
+            }
+        }
+    }
+
+    {
+        uint32_t i;
         for(i = 0; i < alloc->ArenasCount; i++)
         {
             tagged_arena_t* candidate = &alloc->Arenas[i];
