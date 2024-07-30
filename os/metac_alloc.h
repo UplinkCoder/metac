@@ -5,8 +5,6 @@
 #include "compat.h"
 #include "../parser/metac_identifier_table.h"
 
-#include "valgrind_helper.c"
-
 #ifndef KILOBYTES
 #  define KILOBYTES(N) (N * 1024)
 #endif
@@ -38,6 +36,7 @@ typedef struct tagged_arena_t
     uint32_t Line;
 
     uint32_t Flags;
+    uint32_t MaxCapacity;
 } tagged_arena_t;
 
 typedef struct metac_alloc_t
@@ -101,7 +100,7 @@ arena_ptr_t ReallocArenaArray(tagged_arena_t* arena, metac_alloc_t* alloc, uint3
     arena_ptr_t NAME##ArenaPtr = {-1}; \
     tagged_arena_t NAME##Arena = { \
         cast(void*) NAME##Stack, 0, sizeof(NAME##Stack), \
-        0, __FILE__, __LINE__ \
+        0, __FILE__, __LINE__, 0, sizeof(NAME##Stack) \
     }; \
     TYPE* NAME = NAME##Stack;
 
@@ -137,11 +136,9 @@ arena_ptr_t ReallocArenaArray(tagged_arena_t* arena, metac_alloc_t* alloc, uint3
         (NAME##Arena) = ((NAME##Alloc)->Arenas[(NAME##ArenaPtr).Index]); \
         *(cast(void**)&NAME) = (NAME##Arena).Memory; \
     } \
-    mark_memory_defined(NAME, (NAME##Count + 1) * sizeof(*NAME)); \
     NAME[NAME##Count++] = (VALUE); \
     NAME##Arena.SizeLeft -= sizeof(*NAME); \
     NAME##Arena.Offset   += sizeof(*NAME); \
-    mark_memory_undefined(NAME, NAME##Count * sizeof(*NAME)); \
 } while(0)
 
 #define ARENA_ARRAY_ADD_N(NAME, PTR, COUNT) do { \
@@ -154,12 +151,10 @@ arena_ptr_t ReallocArenaArray(tagged_arena_t* arena, metac_alloc_t* alloc, uint3
         (NAME##Arena) = ((NAME##Alloc)->Arenas[(NAME##ArenaPtr).Index]); \
         *(cast(void**)&NAME) = (NAME##Arena).Memory; \
     } \
-    mark_memory_defined(NAME, ((NAME##Count) * sizeof(*NAME)) + size_n); \
     memcpy((NAME) + (NAME##Count), PTR, size_n); \
     NAME##Count += (COUNT); \
     NAME##Arena.SizeLeft -= size_n; \
     NAME##Arena.Offset   += size_n; \
-    mark_memory_undefined(NAME, ((NAME##Count) * sizeof(*NAME)) + size_n); \
 } while(0)
 
 
@@ -182,9 +177,6 @@ arena_ptr_t ReallocArenaArray(tagged_arena_t* arena, metac_alloc_t* alloc, uint3
 } while(0)
 
 
-
-#define ARENA_ARRAY_INDEX(NAME, IDX) \
-    mark_memory_defined_if_adressable()
 
 #define Allocator_Init(ALLOC, PARENT, ...) \
     Allocator_Init_((ALLOC), (PARENT), __FILE__, __LINE__, #ALLOC)

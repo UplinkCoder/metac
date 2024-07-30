@@ -836,6 +836,7 @@ void Debug_Logf(debug_server_t* debugServer,
     log.Category = DebugServer_Category(debugServer, category);
     log.Length = len;
 
+
     ARENA_ARRAY_ADD(debugServer->Logs, log);
 }
 

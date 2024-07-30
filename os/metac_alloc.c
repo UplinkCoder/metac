@@ -197,6 +197,8 @@ LsetResult:
         arena->Offset += size;
         arena->SizeLeft -= size;
         assert((newArena.Flags & arena_flag_inUse) == arena_flag_inUse);
+        newArena.MaxCapacity = newArena.Offset + newArena.SizeLeft;
+
         result = Allocator_AddArena(allocator, &newArena);
 
         if (arenas && arenas == allocator->Freelist)
@@ -252,6 +254,7 @@ LsetResult:
             newArena.Alloc = allocator;
             newArena.Line = line;
             newArena.File = file;
+            newArena.MaxCapacity = allocatedSize;
             U32(newArena.Flags) |= arena_flag_inUse;
             assert((U32(newArena.Flags) & arena_flag_inUse) == arena_flag_inUse);
             result = Allocator_AddArena(allocator, &newArena);
@@ -269,6 +272,13 @@ Lreturn:
         tagged_arena_t resultArena = allocator->Arenas[result.Index];
         assert(resultArena.Offset == 0);
         assert((resultArena.Flags & arena_flag_inUse) == arena_flag_inUse);
+        assert(resultArena.Offset + resultArena.SizeLeft == resultArena.MaxCapacity);
+
+        // we will now memset the memory so we can be sure we stomp data of someone holding
+        // the memory at that point
+        // TODO replace this 0x0 with an 0xf4 to see where we depend on arenas being zerod
+        // I assume it's in the printer
+        memset(resultArena.Memory, 0x0, resultArena.SizeLeft);
     }
 
     return result;
@@ -385,6 +395,7 @@ arena_ptr_t ReallocArenaArray(tagged_arena_t* arena, metac_alloc_t* alloc, uint3
     newArena = &alloc->Arenas[newArenaPtr.Index];
     memcpy(newArena->Memory, arena->Memory, arena->Offset);
     newArena->Offset = arena->Offset;
+    newArena->SizeLeft -= arena->Offset;
 
     if (arena->Alloc)
     {

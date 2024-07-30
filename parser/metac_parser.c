@@ -1216,11 +1216,6 @@ decl_type_t* MetaCParser_ParseTypeDecl(metac_parser_t* self, metac_decl_t* paren
                     {
                         MetaCParser_Match(self, tok_assign);
                         member->Value = MetaCParser_ParseExpr2(self, expr_flags_enum);
-                        if (member->Serial == 19)
-                        {
-                            printf("%p\n", member->Value);
-                            int k = 1;
-                        }
                         assert(member->Value->Hash != 0);
                         hash = CRC32C_VALUE(hash, member->Value->Hash);
                     }
