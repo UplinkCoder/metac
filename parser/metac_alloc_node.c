@@ -155,6 +155,7 @@ metac_expr_t* AllocNewExpr(metac_expr_kind_t kind)
         result = _newExp_mem + INC(_newExp_size);
         result->Kind = kind;
         result->Serial = INC(_nodeCounter);
+        memset(&result->Serial + 1, 0, sizeof(metac_expr_t) - offsetof(metac_expr_t, Serial));
     }
 
     return result;

@@ -772,7 +772,7 @@ void MetaCSemantic_ClearScope(metac_sema_state_t* self)
 static inline void MetaCSemantic_LRU_RemoveIdentifier(metac_sema_state_t* self,
                                                       metac_identifier_ptr_t idPtr)
 {
-    uint32_t idPtrHash = crc32c_nozero(~0, &idPtr.v, sizeof(idPtr.v));
+    uint32_t idPtrHash = crc32c_nozero(~0, &idPtr, sizeof(idPtr));
     const int16x8_t hashes = Load16(&self->LRU.LRUContentHashes);
     const uint16_t hash12 = idPtrHash & LRU_HASH_MASK;
     const int16x8_t hash12_8 = Set1_16(hash12);
@@ -789,9 +789,10 @@ scope_insert_error_t MetaCSemantic_RegisterInScope(metac_sema_state_t* self,
 {
     const char* idChars = IdentifierPtrToCharPtr(self->ParserIdentifierTable, idPtr);
     scope_insert_error_t result = no_scope;
-
+    ALIGN_STACK();
     MetaCSemantic_LRU_RemoveIdentifier(self, idPtr);
-
+    RESTORE_STACK();
+    
     if (self->CurrentScope != 0)
     {
         result = MetaCScope_RegisterIdentifier(self->CurrentScope, idPtr, node);
@@ -1309,6 +1310,7 @@ bool IsUnresolved(metac_node_t node)
 
 /// Returns _emptyNode to signifiy it could not be found
 /// a valid node otherwise
+/*
 metac_node_t MetaCSemantic_LookupIdentifierInScope(metac_scope_t* scope_,
                                                    metac_identifier_ptr_t identifierPtr)
 {
@@ -1333,7 +1335,7 @@ metac_node_t MetaCSemantic_LookupIdentifierInScope(metac_scope_t* scope_,
 
     return result;
 }
-
+*/
 /// Returns _emptyNode to signifiy it could not be found
 /// a valid node otherwise
 metac_node_t MetaCSemantic_LookupIdentifier(metac_sema_state_t* self,

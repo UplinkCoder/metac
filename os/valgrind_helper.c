@@ -5,12 +5,12 @@
 #ifdef VALGRIND
 void mark_memory_defined(void* memP, size_t sz)
 {
-    VALGRIND_MAKE_MEM_DEFIND(memP, sz);
+    VALGRIND_MAKE_MEM_DEFINED(memP, sz);
 }
 
 void mark_memory_undefined(void* memP, size_t sz)
 {
-    VALGRIND_MAKE_MEM_UNDEFIND(memP, sz);
+    VALGRIND_MAKE_MEM_UNDEFINED(memP, sz);
 }
 
 void mark_memory_noaccess(void* memP, size_t sz)

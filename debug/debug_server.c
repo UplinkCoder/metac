@@ -623,7 +623,7 @@ void DebugServer_AddRoute(debug_server_t* debugServer,
 {
     debug_server_route_t route;
 
-    route.Url = DebugServer_AddString(debugServer, url, strlen(url));
+    route.Url = url; //DebugServer_AddString(debugServer, url, strlen(url));
     route.Handler = handler;
 
     ARENA_ARRAY_ADD(debugServer->Routes, route);
@@ -684,7 +684,7 @@ int Debug_Init(debug_server_t* debugServer, unsigned short port) {
     debugServer->AllocationsCount = 0;
     debugServer->AllocationsCapacity = allocationCapa;
 
-	Allocator_Init(&debugServer->Allocator, 0);
+    Allocator_Init(&debugServer->Allocator, 0);
 
     debugServer->Graphs = (debug_graph_t*)
         malloc(sizeof(debug_graph_t) * graphCapa);

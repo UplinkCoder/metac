@@ -24,6 +24,8 @@ typedef struct metac_lpp_t
 /// while fileStorage can be.
 void MetaCLPP_Init(metac_lpp_t* lpp, metac_alloc_t* allocator, metac_file_storage_t* fileStorage);
 
+decl_array_t MetaCLPP_LexParseBuffer(metac_lpp_t* lpp, const char* buffer, uint32_t bufferLength, const char* filepath, metac_alloc_t* alloc);
+
 metac_expr_t* MetaCLPP_ParseExprFromString(metac_lpp_t* lpp, const char* exp);
 
 metac_expr_t* MetaCLPP_ParseExpr2FromString(metac_lpp_t* lpp, const char* exp);

@@ -61,8 +61,79 @@ typedef struct metac_filesytem_functions_t
 
     uint64_t (*GetFilesystemSize)(metac_filesystem_ctx* fs);
 } metac_filesystem_functions_t;
+#if 0
+typedef struct metac_filesystem_functions_t
+{
+    /**
+     * Initializes the filesystem with the provided configuration.
+     * @param config Configuration string.
+     * @return A pointer to the initialized filesystem context or NULL on failure.
+     */
+    metac_filesystem_ctx* (*Init)(const char* config);
 
+    /**
+     * Opens a file given its path and filename.
+     * @param fs Filesystem context.
+     * @param path Path to the directory.
+     * @param filename Name of the file.
+     * @return A file handle or an error indicator.
+     */
+    metac_filehandle_t (*Open)(metac_filesystem_ctx* fs, const char* path, const char* filename);
 
+    /**
+     * Reads the entire file and zero-terminates the buffer.
+     * @param fs Filesystem context.
+     * @param filehandle Handle of the file to read.
+     * @return A buffer containing the file contents, zero-terminated.
+     */
+    metac_buffer_t (*ReadEntireFileAndZeroTerminate)(metac_filesystem_ctx* fs, metac_filehandle_t filehandle);
+
+    /**
+     * Closes an open file.
+     * @param fs Filesystem context.
+     * @param handle Handle of the file to close.
+     */
+    void (*Close)(metac_filesystem_ctx* fs, metac_filehandle_t handle);
+
+    /**
+     * Retrieves information about a file.
+     * @param fs Filesystem context.
+     * @param handle Handle of the file.
+     * @return File information structure.
+     */
+    metac_file_info_t (*GetFileInfo)(metac_filesystem_ctx* fs, metac_filehandle_t handle);
+
+    /**
+     * Reads from a file until the buffer is full and zero-terminates the buffer.
+     * @param fs Filesystem context.
+     * @param handle Handle of the file to read.
+     * @param buffer Buffer to read into.
+     * @return Number of bytes read or an error indicator.
+     */
+    size_t (*ReadUntilBufferFullAndZeroTerminate)(metac_filesystem_ctx* fs, metac_filehandle_t handle, metac_buffer_t* buffer);
+
+    /**
+     * Gets the size of the file.
+     * @param fs Filesystem context.
+     * @param filehandle Handle of the file.
+     * @return Size of the file.
+     */
+    size_t (*GetFileSize)(metac_filesystem_ctx* fs, metac_filehandle_t filehandle);
+
+    /**
+     * Gets the total size of the filesystem.
+     * @param fs Filesystem context.
+     * @return Total size of the filesystem.
+     */
+    size_t (*GetFilesystemSize)(metac_filesystem_ctx* fs);
+
+    /**
+     * De-initializes the filesystem context, freeing any allocated resources.
+     * @param fs Filesystem context.
+     */
+    void (*Deinit)(metac_filesystem_ctx* fs);
+} metac_filesystem_functions_t;
+#endif
 typedef struct metac_filesystem_t
 {
     metac_filesystem_ctx* ctx;

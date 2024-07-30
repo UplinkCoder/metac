@@ -124,28 +124,33 @@ metac_buffer_t MetaCFileStorage_GetEntireFileBuffer(metac_file_storage_t* self, 
 
     return result;
 }
-/// searches for the first occrance of / from the end of the path
-int32_t findSlash(const char* path, const uint32_t pathLen)
+/// Searches for the first occurrence of '/' from the end of the path.
+/// @param path The input path string.
+/// @param pathLen The length of the path string.
+/// @return The position of the last '/' character, or -1 if not found.
+int32_t findSlash(const char* path, size_t pathLen)
 {
-    int32_t slashPosition = -1;
+    int32_t result = -1; // Initialize result to -1 to indicate not found
 
-    const int32_t pathLen_s = cast(int32_t) pathLen;
-
-
-    //TODO we can do a binary search with memchr here ...
-    // although this loop seems to go forward we are
-    // scaning from the end
-    for(int32_t i = 0; i < pathLen_s; i++)
-    {
-        char c = path[pathLen_s - 1 - i];
-        if (c == '/')
-        {
-            slashPosition = pathLen_s - 1 - i;
-            break;
+    if (path != NULL && pathLen > 0) {
+#ifdef _GNU_SOURCE
+        // Use memrchr if available
+        const char* slashPtr = (const char*)memrchr(path, '/', pathLen);
+        if (slashPtr != NULL) {
+            result = (int32_t)(slashPtr - path);
         }
+#else
+        // Manually implement reverse search
+        for (size_t i = pathLen; i > 0; --i) {
+            if (path[i - 1] == '/') {
+                result = (int32_t)(i - 1);
+                break;
+            }
+        }
+#endif
     }
 
-    return slashPosition;
+    return result;
 }
 
 typedef struct MetaCFileStorage_LoadTask_ctx_t

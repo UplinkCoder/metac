@@ -24,6 +24,12 @@
 #  define emptyNode (metac_node_t) _emptyPointer
 #endif
 
+#define fatalf(format, ...) do { \
+    xprintf(format, __VA_ARGS__); \
+    assert(0); \
+} while (0)
+
+
 static const metac_type_index_t zeroIdx = {0};
 metac_type_index_t MetaCSemantic_GetPtrTypeOf(metac_sema_state_t* self,
                                               metac_type_index_t elementTypeIndex)
@@ -608,37 +614,23 @@ void PopulateTemporaryAggregateScope(metac_sema_state_t* self,
 metac_type_aggregate_t* MetaCSemantic_PersistTemporaryAggregateAndPopulateScope(metac_sema_state_t* self,
                                                                                 metac_type_aggregate_t* tmpAgg)
 {
-    // memcpy(semaAgg, tmpAgg, sizeof(metac_type_aggregate_t));
     uint32_t nFields = tmpAgg->FieldCount;
-    uint32_t nSlots = nFields + ((nFields < 16) ? 4 : (nFields >> 2));
+    scope_and_fields_t scopeAndFields = AllocateAggregateScopeAndFields(&self->Allocator, nFields);
 
-    const uint32_t scopeTableSize =
-        ALIGN16(NEXTPOW2(nSlots) * sizeof(metac_scope_table_slot_t))
-        + ALIGN16(sizeof(metac_scope_t));
-
-    const uint32_t aggregateMemorySize =
-        ALIGN16(nFields * sizeof(metac_type_aggregate_field_t))
-        + scopeTableSize;
-
-    arena_ptr_t arenaPtr = AllocateArena(&self->Allocator, aggregateMemorySize);
-    tagged_arena_t* aggregateArena = &self->Allocator.Arenas[arenaPtr.Index];
-    metac_type_aggregate_field_t* aggFields = cast(metac_type_aggregate_field_t*)
-        aggregateArena->Memory;
-
-    metac_scope_t* scope_ = cast(metac_scope_t*) (aggFields + nFields);
-    metac_scope_table_slot_t* slots = (metac_scope_table_slot_t*) (scope_ + 1);
+    metac_type_aggregate_field_t* aggFields = scopeAndFields.Fields;
+    metac_scope_t* scope_ = scopeAndFields.Scope;
 
     metac_type_index_t typeIndex;
     metac_type_aggregate_t* semaAgg = 0;
 
-    memset(scope_, 0, scopeTableSize);
-
+    // Determine the type of the aggregate and set the appropriate owner in the scope
     if (tmpAgg->Header.Kind == decl_type_struct)
     {
         typeIndex = MetaCTypeTable_AddStructType(&self->StructTypeTable, tmpAgg);
         semaAgg = StructPtr(self, TYPE_INDEX_INDEX(typeIndex));
         scope_->Owner.v = SCOPE_OWNER_V(scope_owner_struct, StructIndex(self, semaAgg));
-    } else if (tmpAgg->Header.Kind == decl_type_union)
+    } 
+    else if (tmpAgg->Header.Kind == decl_type_union)
     {
         typeIndex = MetaCTypeTable_AddUnionType(&self->UnionTypeTable, tmpAgg);
         semaAgg = UnionPtr(self, TYPE_INDEX_INDEX(typeIndex));
@@ -649,20 +641,21 @@ metac_type_aggregate_t* MetaCSemantic_PersistTemporaryAggregateAndPopulateScope(
         assert(!"aggregate type not supported or it's not an aggregate type");
     }
 
-
-    scope_->ScopeTable.Slots = slots;
-    scope_->ScopeTable.SlotCount_Log2 = LOG2(nSlots);
     scope_->Parent = self->CurrentScope;
 
+    // Mount the scope to register fields
     MetaCSemantic_MountScope(self, scope_);
+
+    // Initialize the printer for semantic nodes
     metac_printer_t printer;
     MetaCPrinter_Init(&printer,
-        self->ParserIdentifierTable, self->ParserStringTable,
-        &self->Allocator
-    );
+                      self->ParserIdentifierTable, self->ParserStringTable,
+                      &self->Allocator);
 
     semaAgg->Scope = scope_;
-    for(uint32_t i = 0; i < nFields; i++)
+
+    // Copy fields from the temporary aggregate to the new persistent memory location and register them in the scope
+    for (uint32_t i = 0; i < nFields; i++)
     {
         aggFields[i] = tmpAgg->Fields[i];
         MetaCPrinter_PrintSemaNode(&printer, self, cast(metac_node_t) &aggFields[i]);
@@ -676,12 +669,12 @@ metac_type_aggregate_t* MetaCSemantic_PersistTemporaryAggregateAndPopulateScope(
         }
     }
 
+    // Unmount the scope after all fields are registered
     MetaCSemantic_UnmountScope(self);
 
-    //TODO FIXME this should use a deep walk through the fields
-    //MetaCDecl_Walk(tmpAgg,)
-
     semaAgg->Fields = aggFields;
+    // XXX there was a comment here to walk the fields
+    // suggesting that there might be more work to do here.
 
     return semaAgg;
 }
@@ -757,6 +750,7 @@ void MetaCSemantic_ComputeEnumValues(metac_sema_state_t* self,
     // Since we are inserting members
     self->CurrentScope->ScopeTable.AllowOverride = true;
     {
+        const char* eName = IdentifierPtrToCharPtr(self->ParserIdentifierTable, enum_->Identifier);
         MetaCSemantic_PushOnResolveFail(self, OnResolveFail_ReturnNull);
         do
         {
@@ -767,6 +761,8 @@ void MetaCSemantic_ComputeEnumValues(metac_sema_state_t* self,
                 memberIdx < memberCount;
                 memberIdx++, member = member->Next)
             {
+                const char* mName = IdentifierPtrToCharPtr(self->ParserIdentifierTable, member->Name);
+
                 if (METAC_NODE(member->Value) != emptyNode)
                 {
                     metac_sema_expr_t* semaValue =
@@ -786,6 +782,8 @@ void MetaCSemantic_ComputeEnumValues(metac_sema_state_t* self,
                     }
                 }
             }
+            assert(METAC_NODE(member) == emptyNode);
+
             if (!unresolvedMembers)
             {
                 MetaCSemantic_PopOnResolveFail(self);
@@ -810,7 +808,7 @@ void MetaCSemantic_ComputeEnumValues(metac_sema_state_t* self,
             semaEnum->Members[memberIdx].Identifier = member->Name;
             semaEnum->Members[memberIdx].Header.Kind = decl_enum_member;
 
-            if (member->Value != cast(metac_expr_t*)emptyPointer)
+            if (METAC_NODE(member->Value) != emptyNode)
             {
                 metac_sema_expr_t* semaValue =
                     semaEnum->Members[memberIdx].Value;
@@ -820,7 +818,11 @@ void MetaCSemantic_ComputeEnumValues(metac_sema_state_t* self,
                     semaValue->TypeIndex.v = semaEnum->BaseType.v;
                     MetaCSemantic_ConstantFold(self, semaValue);
                 }
-                assert(semaValue->Kind == expr_signed_integer);
+                if (semaValue->Kind != expr_signed_integer)
+                {
+                    fatalf("Value of %s could not be constant folded\n", IdentifierPtrToCharPtr(self->ParserIdentifierTable, member->Name));
+                }
+                //assert(semaValue->Kind == expr_signed_integer);
                 nextValue = semaValue->ValueI64 + 1;
             }
             else
@@ -928,8 +930,10 @@ metac_type_index_t TypeArraySemantic(metac_sema_state_t* self,
     {
         if (dim->Kind != expr_signed_integer)
         {
-            fprintf(stderr, "Array dimension should eval to integer but it is: %s\n",
+            xprintf("Array dimension should eval to integer but it is: %s\n",
                 MetaCExprKind_toChars(dim->Kind));
+            //TODO register this decl_type_t as an error so we do not reevaluate
+            return (metac_type_index_t) {0};
         }
     }
     uint32_t dimValue = (

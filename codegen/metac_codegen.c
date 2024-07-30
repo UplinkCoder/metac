@@ -1084,8 +1084,8 @@ static void MetaCCodegen_doCastExpr(metac_bytecode_ctx_t* ctx,
 }
 
 static void MetaCCodegen_doDotExpr(metac_bytecode_ctx_t* ctx,
-                                         metac_sema_expr_t* exp,
-                                         BCValue* result)
+                                   metac_sema_expr_t* exp,
+                                   BCValue* result)
 {
     const BackendInterface gen = *ctx->gen;
     void* c = ctx->c;
@@ -1117,21 +1117,16 @@ static void MetaCCodegen_doDotExpr(metac_bytecode_ctx_t* ctx,
     field = e2->Field;
     offsetVal = imm32(field->Offset);
 
-    // HACK remove!
-/*
-    if (e1Value.vType == BCValueType_HeapValue || e1Value.vType == BCValueType_External)
-    {
-        e1Value.vType = BCValueType_StackValue;
-    }
-*/
+    assert(e1Value.vType == BCValueType_StackValue);
+    
     gen.Add3(c, &addr, &e1Value, &offsetVal);
 
     MetaCCodegen_doDeref(ctx, &addr, field->Type, result);
 }
 
 static void MetaCCodegen_doArrowExpr(metac_bytecode_ctx_t* ctx,
-                                           metac_sema_expr_t* exp,
-                                           BCValue* result)
+                                     metac_sema_expr_t* exp,
+                                     BCValue* result)
 {
     const BackendInterface gen = *ctx->gen;
     void* c = ctx->c;
@@ -1165,13 +1160,7 @@ static void MetaCCodegen_doArrowExpr(metac_bytecode_ctx_t* ctx,
     field = e2->Field;
     offsetVal = imm32(field->Offset);
 
-    // HACK remove!
-/*
-    if (e1Value.vType == BCValueType_HeapValue || e1Value.vType == BCValueType_External)
-    {
-        e1Value.vType = BCValueType_StackValue;
-    }
-*/
+    assert(e1Value.vType == BCValueType_StackValue);
     gen.Add3(c, &addr, &e1Value, &offsetVal);
 
     MetaCCodegen_doDeref(ctx, &addr, field->Type, result);
@@ -1341,8 +1330,7 @@ static void MetaCCodegen_doExpr(metac_bytecode_ctx_t* ctx,
             printf("ignoring unprocessed .compiler expression\n");
         } break;
         default : {
-            fprintf(stderr,
-                "Evaluator doesn't know how to eval: %s\n",
+            xprintf("Evaluator doesn't know how to eval: %s\n",
                 MetaCExprKind_toChars(exp->Kind)
             );
             assert(0);

@@ -153,48 +153,63 @@ void FiberPool_Init(fiber_pool_t* self, worker_context_t* worker)
         self->MainCos[i] = *aco_create(worker->WorkerMain, self->ShareStacks + i, 0, FiberDoTask, worker);
     }
 }
-
 void ExecuteTask(worker_context_t* worker, task_t* task, aco_t* fiber)
 {
+    // Assertion checks to ensure the task and fiber states are valid
     assert(!(U32(task->TaskFlags) & Task_Running));
     assert(!(U32(task->TaskFlags) & Task_Complete));
-
     assert(task->Fiber == fiber);
+
+    // Assign the task to the fiber
     fiber->arg = task;
+
+    // Obtain the fiber pool from the worker context
     fiber_pool_t* fiberPool = worker->FiberPool;
     const uint32_t fiberIdx = fiber - fiberPool->MainCos;
 
+    // Check if the task function pointer is null
     if (task->TaskFunction == 0)
     {
         printf("The function pointer is null that's no good\n");
         //assert(0);
     }
+
+    // Ensure the fiber is not already marked as free
     assert((fiberPool->FreeBitfield & (1 << fiberIdx)) == 0);
+
+    // Resume or start the fiber based on its task state
     if (task->TaskFlags == Task_Halted)
     {
-        // task->TaskFlags |= Task_Running;
+        // If the task was halted, start its execution
         START(task->Fiber, task);
     }
     else
     {
+        // Otherwise, mark the task as running and resume its execution
         U32(task->TaskFlags) |= Task_Running;
         RESUME(task->Fiber);
     }
 
+    // After execution, check if the task is complete
     if ((U32(task->TaskFlags) & Task_Complete) == Task_Complete)
     {
+        // If the task is complete, mark the fiber as free and clear its argument
         assert(fiberIdx >= 0 && fiberIdx < sizeof(fiberPool->FreeBitfield) * 8);
         fiberPool->FreeBitfield |= (1 << fiberIdx);
         fiber->arg = 0;
     }
     else
     {
+        // Ensure the task function is valid or the task is in waiting state
         assert((!task->TaskFunction) || (U32(task->TaskFlags) & Task_Waiting) == Task_Waiting);
     }
 }
 
-static inline uint32_t tasksInQueueFront(const uint32_t readP, const uint32_t writeP)
+static inline uint32_t TaskQueue_TasksInQueueFront(const taskqueue_t* q)
 {
+    const uint32_t readP = q->readPointer & (TASK_QUEUE_SIZE - 1);
+    const uint32_t writeP = q->writePointer & (TASK_QUEUE_SIZE - 1);
+
     if (writeP >= readP)
     {
         return (writeP - readP);
@@ -208,8 +223,11 @@ static inline uint32_t tasksInQueueFront(const uint32_t readP, const uint32_t wr
 }
 
 
-static inline uint32_t tasksInQueueBack(const uint32_t writePEnd, const uint32_t writeP)
+static inline uint32_t TaskQueue_TasksInQueueBack(const taskqueue_t* q)
 {
+    const uint32_t writePEnd = q->writePointerEnd;
+    const uint32_t writeP = q->writePointer;
+
     if (writePEnd <= writeP)
     {
         return writeP - writePEnd;
@@ -293,7 +311,7 @@ void RunWorkerThread(worker_context_t* worker, void (*specialFunc)(),  void* spe
         }
         OS.GetTimeStamp(&worker->HeartBeat);
         // if we end up here we still have a free fiber
-        if (tasksInQueueFront(q->readPointer, q->writePointer))
+        if (TaskQueue_TasksInQueueFront(q))
         {
             // we have a free fiber
             printf("Freebitfield %x\n", *FreeBitfield);
@@ -326,7 +344,7 @@ void RunWorkerThread(worker_context_t* worker, void (*specialFunc)(),  void* spe
         }
         // if we do end up here we have a fiber to spare
         // but no work in the front queue let's check the back of our queue
-        if (tasksInQueueBack(q->readPointer, q->writePointer))
+        if (TaskQueue_TasksInQueueBack(q))
             execFiber = 0;
 
     LhandleContinutionLabel:
@@ -548,12 +566,6 @@ uint32_t DrawTicket(volatile ticket_lock_t* lock)
     return INC(lock->nextTicket);
 }
 
-uint32_t TaskQueue_TasksInQueueFront_(taskqueue_t* self)
-{
-    return tasksInQueueFront((self->readPointer  & (TASK_QUEUE_SIZE - 1)),
-                             (self->writePointer & (TASK_QUEUE_SIZE - 1)));
-}
-
 // Returns true if task was pushed
 //         false if the queue was already full
 bool TaskQueue_Push(taskqueue_t* self, task_t* task)
@@ -564,14 +576,14 @@ bool TaskQueue_Push(taskqueue_t* self, task_t* task)
     // if this is true the Queue is full
     if (readP == writeP + 1)
         return false;
-    FENCE()
+    FENCE();
     uint32_t myTicket = DrawTicket(&self->QueueLock);
-    FENCE()
+    FENCE();
     while (!ServingMe(&self->QueueLock, myTicket))
     {
-        MM_PAUSE()
+        MM_PAUSE();
     }
-    FENCE()
+    FENCE();
     readP = ATOMIC_LOAD(&self->readPointer) & (TASK_QUEUE_SIZE - 1);
     writeP = ATOMIC_LOAD(&self->writePointer) & (TASK_QUEUE_SIZE - 1);
 
@@ -593,7 +605,7 @@ bool TaskQueue_Push(taskqueue_t* self, task_t* task)
     queueTask->Context = queueTask->_inlineContext;
     INC(self->writePointer);
 
-    FENCE()
+    FENCE();
     ReleaseTicket(&self->QueueLock, myTicket);
 
     return true;
@@ -610,14 +622,14 @@ bool TaskQueue_Pull(taskqueue_t* self, task_t* taskP)
     if (readP == writeP)
         return false;
 
-    FENCE()
+    FENCE();
     uint32_t myTicket = DrawTicket(&self->QueueLock);
-    FENCE()
+    FENCE();
     while (!ServingMe(&self->QueueLock, myTicket))
     {
-        MM_PAUSE()
+        MM_PAUSE();
     }
-    FENCE()
+    FENCE();
 
     readP = ATOMIC_LOAD(&self->readPointer);
     writeP = ATOMIC_LOAD(&self->writePointer);
@@ -632,7 +644,7 @@ bool TaskQueue_Pull(taskqueue_t* self, task_t* taskP)
     INC(self->readPointer);
     queueTask->TaskFunction = 0;
 
-    FENCE()
+    FENCE();
     ReleaseTicket(&self->QueueLock, myTicket);
     return true;
 }
@@ -643,7 +655,7 @@ bool AddTaskToQueue(task_t* task)
     worker_context_t* threadContext = THREAD_CONTEXT;
     taskqueue_t* preferredQ =
         threadContext ? &threadContext->Queue : &gQueue;
-    if (TaskQueue_TasksInQueueFront_(preferredQ) < QUEUE_CUTOFF)
+    if (TaskQueue_TasksInQueueFront(preferredQ) < QUEUE_CUTOFF)
     {
         result = TaskQueue_Push(preferredQ, task);
     }

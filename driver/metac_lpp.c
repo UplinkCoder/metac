@@ -110,6 +110,7 @@ void ParseFile(metac_parser_t* parser,
             continue;
         }
         declarations[declarationSize++] = decl;
+        assert(declarationSize < declarationCapacity);
         metac_token_t* afterDecl = MetaCParser_PeekToken(parser, 1);
         if (afterDecl && afterDecl->TokenType == tok_semicolon)
             MetaCParser_Match(parser, tok_semicolon);
@@ -121,7 +122,7 @@ void ParseFile(metac_parser_t* parser,
             MetaCPrinter_PrintDecl(&printer,
                 declarations[declarationSize - 1]
         );
-        printf("%s\n", str);
+        xprintf("%s\n", str);
         MetaCPrinter_Reset(&printer);
 #endif
         if (!lastToken || lastToken->TokenType == tok_eof)
@@ -236,28 +237,35 @@ metac_preprocessor_directive_t MetaCLPP_ParsePreprocFromString(metac_lpp_t* lpp,
 
 #include "../utils/read_file.c"
 
+decl_array_t MetaCLPP_LexParseBuffer(metac_lpp_t* lpp, const char* buffer, uint32_t bufferLength, const char* filepath, metac_alloc_t* alloc)
+{
+    decl_array_t result = {0};
+
+    LexFile(&lpp->Lexer, filepath, buffer, bufferLength);
+
+    MetaCParser_InitFromLexer(&lpp->Parser, &lpp->Lexer, alloc);
+
+#ifndef NO_PREPROCESSOR
+    MetaCPreProcessor_Init(&lpp->Preprocessor, &lpp->Lexer, alloc, lpp->Preprocessor.FileStorage, 0);
+    lpp->Parser.Preprocessor = &lpp->Preprocessor;
+#endif
+
+    ParseFile(&lpp->Parser, filepath, &result);
+
+    return result;
+}
+
 decl_array_t ReadLexParse(const char* filename, metac_lpp_t* lpp, metac_alloc_t* parent)
 {
     decl_array_t result = {0};
+    metac_alloc_t alloc;
 
     read_result_t readResult =
         ReadFileAndZeroTerminate(filename);
 
-    LexFile(&lpp->Lexer, filename,
-        readResult.FileContent0, readResult.FileLength
-    );
-
-    metac_alloc_t alloc;
     Allocator_Init(&alloc, parent);
 
-    MetaCParser_InitFromLexer(&lpp->Parser, &lpp->Lexer, &alloc);
-
-#ifndef NO_PREPROCESSOR
-    MetaCPreProcessor_Init(&lpp->Preprocessor, &lpp->Lexer, &alloc, lpp->Preprocessor.FileStorage, 0);
-    lpp->Parser.Preprocessor = &lpp->Preprocessor;
-#endif
-
-    ParseFile(&lpp->Parser, filename, &result);
+    result = MetaCLPP_LexParseBuffer(lpp, readResult.FileContent0, readResult.FileLength, filename, &alloc);
 
     return result;
 }

@@ -234,44 +234,39 @@ void Presemantic_(repl_state_t* self)
 
     if (fCompilterInterface.FileContent0)
     {
-        metac_lexer_t tmpLexer;
-        metac_parser_t tmpParser;
-        metac_preprocessor_t preProc;
+        metac_lpp_t tmpLpp;
         decl_array_t decls = {0};
         {
-            MetaCLexer_Init(&tmpLexer, &PresemanticAlloc);
-
-            LexFile(&tmpLexer, "metac_compiler_interface.h",
-                    fCompilterInterface.FileContent0,
-                    fCompilterInterface.FileLength);
-            AddIdentifierToCompletion(self, "Compiler");
-
-            MetaCPreProcessor_Init(&preProc, &tmpLexer, &PresemanticAlloc, 0, 0);
-            MetaCParser_InitFromLexer(&tmpParser, &tmpLexer, &PresemanticAlloc);
-            tmpParser.Preprocessor = &preProc;
+            MetaCLPP_Init(&tmpLpp, &PresemanticAlloc, 0);
 #if 1
             {
                 identifier_callback_t cb;
                 cb.Ctx = (void*)self;
                 cb.FuncP = cast(identifier_cb_t)&SeeIdentifier;
-                tmpParser.IdentifierCallbacks[0] = cb;
-                tmpParser.IdentifierCallbacksCount = 1;
+                tmpLpp.Parser.IdentifierCallbacks[0] = cb;
+                tmpLpp.Parser.IdentifierCallbacksCount = 1;
             }
 #endif
-            ParseFile(&tmpParser, "metac_compiler_interface.h", &decls);
+
+            decls = MetaCLPP_LexParseBuffer(&tmpLpp, fCompilterInterface.FileContent0, fCompilterInterface.FileLength, "metac_compiler_interface.h", &PresemanticAlloc);
         }
-        MetaCLexer_Free(&tmpLexer);
 
         presemantic_context_t presemanticContext = {
             sizeof(presemantic_context_t),
             crc32c_nozero(~0, "Presemantic", sizeof("Presemantic") - 1),
             &self->SemanticState
         };
-
-        identifier_translation_context_t transIdCtx =
+/*
+        {
+          identifier_translation_context_t transCtx = SetupIdentifierTranslation(&self->LPP.Parser.IdentifierTable,
+                                                                                 tmpLpp.Parser.IdentifierTable);
+          presemantic_contenxt_t presemanticContext = SetupPresemantic(&self->SemanticState);
+        }
+*/
+        identifier_translation_context_t transCtx =
         {
             crc32c(~0, "TranslateIdentifiers", sizeof("TranslateIdentifiers") - 1),
-            &tmpParser.IdentifierTable,
+            &tmpLpp.Parser.IdentifierTable,
             &self->LPP.Parser.IdentifierTable
         };
 
@@ -279,9 +274,10 @@ void Presemantic_(repl_state_t* self)
             i < decls.Length;
             i++)
         {
-            MetaCNode_TreeWalk_Real(METAC_NODE(decls.Ptr[i]), TranslateIdentifiers, &transIdCtx);
+            metac_decl_t* decl = decls.Ptr[i];
 
-            MetaCNode_TreeWalk_Real(METAC_NODE(decls.Ptr[i]), Presemantic, &presemanticContext);
+            MetaCNode_TreeWalk_Real(METAC_NODE(decl), TranslateIdentifiers, &transCtx);
+            MetaCNode_TreeWalk_Real(METAC_NODE(decl), Presemantic, &presemanticContext);
         }
 
         for(uint32_t i = 0;
@@ -359,7 +355,7 @@ void Presemantic_(repl_state_t* self)
 
 
         // FreeSema
-        MetaCParser_Free(&tmpParser);
+        // MetaCParser_Free(&tmpParser);
     }
     // Allocator_Remove
     Debug_RemoveAllocator(g_DebugServer, &PresemanticAlloc);
@@ -667,6 +663,9 @@ LswitchMode:
                     repl->ParseMode = repl_mode_ds;
                     goto LswitchMode;
                 }
+            case 'D' : 
+                CompletionTrie_Print(&repl->CompletionTrie, 0, "", stderr);
+                goto LswitchMode;
             case 'g' :
                 if (0 == strcmp("lobals", repl->Line + 2))
                 {
