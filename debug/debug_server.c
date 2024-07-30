@@ -37,6 +37,19 @@ int send_html(struct MHD_Connection* connection, const char* text, int len)
     return ret;
 }
 
+int send_html_free(struct MHD_Connection* connection, const char* text, int len)
+{
+    struct MHD_Response* response;
+    int ret;
+    response =
+        MHD_create_response_from_buffer(len, cast(char*)text, MHD_RESPMEM_MUST_FREE);
+    MHD_add_response_header(response, MHD_HTTP_HEADER_CONTENT_TYPE,
+        "text/html");
+    ret = MHD_queue_response(connection, MHD_HTTP_OK, response);
+    MHD_destroy_response(response);
+    return ret;
+}
+
 int serveFile(const char* filename, const char* contentType, struct MHD_Connection* conn)
 {
     FILE* f;
@@ -455,22 +468,27 @@ void outTaskRow(char* body, uint32_t sz, uint32_t* pp, task_t* task)
 
 MHD_HANDLER(handleLogs)
 {
-    static char responseBuffer[8192];
+    uint32_t bufferSz = KILOBYTES(256);
+    char* body = malloc(bufferSz);
     uint32_t p = 0;
     const char* headers[] = {
         // "Time",
         "Category",
         "Message",
     };
-    char body[8192];
-    debug_server_t *debugServer = cast(debug_server_t*) cls;
 
-    p += snprintf(body + p, ARRAYSIZE(body) - p, "<tr>");
+    debug_server_t *debugServer = cast(debug_server_t*) cls;
+    p += snprintf (body + p, bufferSz - p, "<html><body>"
+              "<h3>Logs: </h3>"
+              "<table id=\"logs\">"
+    );
+
+    p += snprintf(body + p, bufferSz - p, "<tr>");
     for(uint32_t i = 0; i < ARRAYSIZE(headers); i++)
     {
-        p += snprintf(body + p, ARRAYSIZE(body) - p, "<th>%s</th>", headers[i]);
+        p += snprintf(body + p, bufferSz - p, "<th>%s</th>", headers[i]);
     }
-    p += snprintf(body + p, ARRAYSIZE(body) - p, "</tr>");
+    p += snprintf(body + p, bufferSz - p, "</tr>");
     {
         uint32_t i;
         for(i = 0; i < debugServer->LogsCount; i++)
@@ -480,22 +498,19 @@ MHD_HANDLER(handleLogs)
                 &debugServer->CategoryTable,
                 log.Category);
 
-            p += snprintf(body + p, ARRAYSIZE(body) - p, "<tr>");
+            p += snprintf(body + p, bufferSz - p, "<tr>");
 
-            p += snprintf(body + p, ARRAYSIZE(body) - p, "<td>%s</td>", catString);
-            p += snprintf(body + p, ARRAYSIZE(body) - p, "<td>%s</td>", log.Message);
+            p += snprintf(body + p, bufferSz - p, "<td>%s</td>", catString);
+            p += snprintf(body + p, bufferSz - p, "<td>%s</td>", log.Message);
 
-            p += snprintf(body + p, ARRAYSIZE(body) - p, "</tr>");
+            p += snprintf(body + p, bufferSz - p, "</tr>");
         }
     }
 
-   uint32_t len = snprintf (responseBuffer, ARRAYSIZE (responseBuffer),
-                    "<html><body>"
-                    "<h3>Logs: </h3>"
-                    "<table id=\"logs\">%s</table>"
-                    "</body></html>",
-           body);
-    return send_html (connection, responseBuffer, len);
+   p += snprintf(body + p, bufferSz - p,
+                    "</table>"
+                    "</body></html>");
+    return send_html_free (connection, body, p);
 }
 
 #ifndef NO_FIBERS
@@ -699,7 +714,7 @@ int Debug_Init(debug_server_t* debugServer, unsigned short port) {
     ARENA_ARRAY_INIT(worker_context_t*, debugServer->Workers, &debugServer->Allocator);
 #endif
 
-    ARENA_ARRAY_INIT(debug_message_t, debugServer->Logs, &debugServer->Allocator);
+    ARENA_ARRAY_INIT_SZ(debug_message_t, debugServer->Logs, &debugServer->Allocator, 4096);
 
     ARENA_ARRAY_INIT(debug_server_route_t, debugServer->Routes, &debugServer->Allocator);
 
