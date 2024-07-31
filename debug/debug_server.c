@@ -513,7 +513,6 @@ MHD_HANDLER(handleLogs)
     return send_html_free (connection, body, p);
 }
 
-#ifndef NO_FIBERS
 MHD_HANDLER(handleTasks)
 {
     static char responseBuffer[8192];
@@ -531,9 +530,10 @@ MHD_HANDLER(handleTasks)
     char body[8192];
 
     debug_server_t *debugServer = cast(debug_server_t*) cls;
+#ifndef NO_FIBERS
     const char *workerIdxStr =
         MHD_lookup_connection_value(connection, MHD_GET_ARGUMENT_KIND, "workerIdx");
-    uint32_t workerIdx = workerIdxStr ? atoi(workerIdxStr) : 1;
+    uint32_t workerIdx = workerIdxStr ? atoi(workerIdxStr) : 0;
     worker_context_t* worker = ((workerIdx && workerIdx <= (debugServer->WorkersCount))
         ? debugServer->Workers[workerIdx - 1] : 0);
 
@@ -563,19 +563,27 @@ MHD_HANDLER(handleTasks)
         }
     }
 
-    if (!worker)
-        return MHD_NO;
+    task_t* activeTask = worker ? worker->ActiveTask : 0;
 
-   uint32_t len = snprintf (responseBuffer, ARRAYSIZE (responseBuffer),
+    uint32_t len = snprintf (responseBuffer, ARRAYSIZE (responseBuffer),
                     "<html><body>"
+                    "<h3>Worker: (%u/%u)</h3>"
                     "<h3>Tasks: </h3>"
-                    "<h2>ActiveTask: %p</h2>"
+                    "<h2>ActiveTask: %p '%s'</h2>"
                     "<table id=\"tasks\">%s</table>"
                     "</body></html>",
-           worker->ActiveTask, body);
+           workerIdx, debugServer->WorkersCount,
+           activeTask, activeTask ? activeTask->TaskName : "None",
+           body);
+#else
+   uint32_t len = snprintf (responseBuffer, ARRAYSIZE (responseBuffer),
+                    "<html><body>"
+                    "<h3>No task support (compiled wtih NO_FIBERS set)</h3>"
+                    "</body></html>");
+
+#endif
     return send_html (connection, responseBuffer, len);
 }
-#endif
 
 static MHD_HANDLER(debugServerHandler)
 {
@@ -655,9 +663,7 @@ void debug_init_routes(debug_server_t* debugServer)
     DebugServer_AddRoute(debugServer, "/parser", handleParser);
     DebugServer_AddRoute(debugServer, "/history", handleHistory);
     DebugServer_AddRoute(debugServer, "/logs", handleLogs);
-#ifndef NO_FIBERS
     DebugServer_AddRoute(debugServer, "/tasks", handleTasks);
-#endif
 }
 
 

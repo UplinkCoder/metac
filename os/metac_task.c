@@ -277,7 +277,7 @@ void RunWorkerThread(worker_context_t* worker, void (*specialFunc)(),  void* spe
     //FileStorage_Init(&worker->FileStorage, 0);
 
     aco_t* specialFiber = 0;
-
+    task_t specialTask = {0};
 
     fiber_pool_t fiberPool;
     FiberPool_Init(&fiberPool, worker);
@@ -292,12 +292,21 @@ void RunWorkerThread(worker_context_t* worker, void (*specialFunc)(),  void* spe
     uint32_t* FreeBitfield = &fiberPool.FreeBitfield;
 
     task_t (*fileTasks)[4] = {0};
+    OS.GetTimeStamp(&worker->HeartBeat);
 
     if (specialFunc)
     {
+        ORIGIN(specialTask.Origin);
+        specialTask.TaskName = "SpecialTask (probably repl)";
         specialFiber =
             aco_create(threadFiber, aco_share_stack_new(KILOBYTE(256)), 0, specialFunc, specialFuncCtx);
-        START(specialFiber, specialFuncCtx);
+            specialFiber->arg = &specialTask;
+
+            U32(((task_t*)specialFiber->arg)->TaskFlags) |= Task_Running;
+            START(specialFiber, specialFuncCtx);
+            //RESUME(specialFiber);
+            U32(((task_t*)specialFiber->arg)->TaskFlags) |= Task_Waiting;
+
     }
 
     for(;;)

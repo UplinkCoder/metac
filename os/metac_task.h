@@ -142,6 +142,8 @@ typedef struct task_t
 
     volatile task_flags_t TaskFlags;
 
+    const char* TaskName;
+
     uint16_t QueueId;
     uint16_t CompletionAttempts;
 
@@ -247,6 +249,7 @@ bool TaskQueue_Pull(taskqueue_t* self, task_t* taskP);
         "Context size too large for inline context storage"); \
     task.Context = task._inlineContext; \
     task.TaskFunction = (FUNC ## Task); \
+    task.TaskName = #FUNC; \
     task.Parent = CurrentTask(); \
     ORIGIN(task.Origin); \
     (*(cast(CTX_TYPE(FUNC)*)task.Context)) = _ctx; \

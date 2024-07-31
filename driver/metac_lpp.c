@@ -183,6 +183,11 @@ void MetaCLPP_Init(metac_lpp_t* lpp, metac_alloc_t* allocator, metac_file_storag
     lpp->Parser.Preprocessor = &lpp->Preprocessor;
 #endif
 }
+
+void MetaCLPP_Dispose(metac_lpp_t* lpp)
+{
+    Debug_RemoveAllocator(g_DebugServer, &lpp->Parser.Allocator);
+}
 #ifdef OLD_PARSER
 metac_expr_t* MetaCLPP_ParseExprFromString(metac_lpp_t* lpp, const char* exp)
 {

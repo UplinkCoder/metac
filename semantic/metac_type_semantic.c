@@ -647,18 +647,20 @@ metac_type_aggregate_t* MetaCSemantic_PersistTemporaryAggregateAndPopulateScope(
     MetaCSemantic_MountScope(self, scope_);
 
     // Initialize the printer for semantic nodes
+/*
     metac_printer_t printer;
     MetaCPrinter_Init(&printer,
                       self->ParserIdentifierTable, self->ParserStringTable,
                       &self->Allocator);
-
+I
+ * */
     semaAgg->Scope = scope_;
 
     // Copy fields from the temporary aggregate to the new persistent memory location and register them in the scope
     for (uint32_t i = 0; i < nFields; i++)
     {
         aggFields[i] = tmpAgg->Fields[i];
-        MetaCPrinter_PrintSemaNode(&printer, self, cast(metac_node_t) &aggFields[i]);
+        //MetaCPrinter_PrintSemaNode(&printer, self, cast(metac_node_t) &aggFields[i]);
 
         scope_insert_error_t inserted =
             MetaCSemantic_RegisterInScope(self, aggFields[i].Identifier, cast(metac_node_t)&aggFields[i]);

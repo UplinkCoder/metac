@@ -353,7 +353,7 @@ void Presemantic_(repl_state_t* self)
             }
         }
 
-
+        MetaCLPP_Dispose(&tmpLpp);
         // FreeSema
         // MetaCParser_Free(&tmpParser);
     }

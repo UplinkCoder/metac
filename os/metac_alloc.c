@@ -36,8 +36,8 @@ void Allocator_Init_(metac_alloc_t* allocator, metac_alloc_t* parent,
     allocator->FreelistCount = 0;
     allocator->FreelistCapacity = 0;
 
-    allocator->ArenasCapacity = 64;
-    allocator->ArenasCount = 8;
+    allocator->ArenasCapacity = 256;
+    allocator->ArenasCount = 16;
     allocator->Arenas = cast(tagged_arena_t*)
         calloc(sizeof(tagged_arena_t), allocator->ArenasCapacity);
 

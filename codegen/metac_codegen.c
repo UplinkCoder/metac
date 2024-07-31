@@ -1177,9 +1177,6 @@ static void MetaCCodegen_doExpr(metac_bytecode_ctx_t* ctx,
     BCValue lhs = { BCValueType_Unknown };
     BCValue rhs = { BCValueType_Unknown };
 
-    metac_printer_t printer;
-    MetaCPrinter_Init(&printer, ctx->Sema->ParserIdentifierTable, ctx->Sema->ParserStringTable, 0);
-
     metac_expr_kind_t op = exp->Kind;
     BCType expType = MetaCCodegen_GetBCType(ctx, exp->TypeIndex);
 

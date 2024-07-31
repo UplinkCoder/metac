@@ -24,6 +24,7 @@
 /*    printf("Yielding %x from {%s:%d} %s\n",  (GET_CO()), __FILE__, __LINE__, #REASON);*/ \
     ((task_t*)(GET_CO())->arg)->YieldReason = #REASON; \
     ((task_t*)(GET_CO())->arg)->YieldLoc = LOCSTR; \
+    CurrentWorker()->ActiveTask = &idleTask; \
     aco_yield(); \
 } while(0)
 #  define YIELD_WORKER() do { \
