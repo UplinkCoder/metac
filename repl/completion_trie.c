@@ -21,11 +21,11 @@ static inline void InitializeCIdentifierCharacters(completion_trie_root_t* root)
 
     for (size_t i = 0; i < charCount; i++)
     {
-        completion_trie_node_t child = {};
+        completion_trie_node_t child = {0};
 
         child.Prefix4[0] = cIdentifierChars[i];
         child.Prefix4[1] = '\0'; // Terminate the string
-        child.ChildrenBaseIdx = i + 1;
+        child.ChildrenBaseIdx = 0; // it seems like this has to be 0 not i + 1;
         child.ChildCount = 0;
         INC(root->Nodes[0].ChildCount);
         ARENA_ARRAY_ADD(root->Nodes, child);
@@ -266,21 +266,21 @@ completion_trie_node_t* CompletionTrie_FindLongestMatchingPrefix(completion_trie
 
 completion_trie_node_t*
 CompletionTrie_AddChild(completion_trie_root_t* root,
-                        completion_trie_node_t* PrefNode,
+                        completion_trie_node_t* PrevNode,
                         const char* word, uint32_t length)
 {
     completion_trie_node_t const * nodes = root->Nodes;
     completion_trie_node_t* child = 0;
 
 #if 1
-    if (root->Nodes == PrefNode)
+    if (root->Nodes == PrevNode)
     {
-        if (PrefNode->ChildCount < root->RootCapacity)
+        if (PrevNode->ChildCount < root->RootCapacity)
         {
             child = (completion_trie_node_t*)
                 nodes +
-                (PrefNode->ChildrenBaseIdx
-               + INC(PrefNode->ChildCount));
+                (PrevNode->ChildrenBaseIdx
+               + INC(PrevNode->ChildCount));
             goto LGotChild;
         }
     }
@@ -289,8 +289,8 @@ CompletionTrie_AddChild(completion_trie_root_t* root,
     if (!length)
     {
         // check if the node already contains a terminal node
-        const uint32_t baseIdx = PrefNode->ChildrenBaseIdx * BASE_IDX_SCALE;
-        const uint32_t endIdx = baseIdx + PrefNode->ChildCount;
+        const uint32_t baseIdx = PrevNode->ChildrenBaseIdx * BASE_IDX_SCALE;
+        const uint32_t endIdx = baseIdx + PrevNode->ChildCount;
         for(uint32_t i = baseIdx; i < endIdx; i++)
         {
             if (nodes[i].Prefix4[0] == '\0')
@@ -301,19 +301,19 @@ CompletionTrie_AddChild(completion_trie_root_t* root,
 
     while(length)
     {
-        if (PrefNode->ChildCount == 0)
+        if (PrevNode->ChildCount == 0)
         {
-            assert(PrefNode->ChildrenBaseIdx == 0 || PrefNode == root->Nodes + 0);
-            if (PrefNode != root->Nodes + 0)
+            assert(PrevNode->ChildrenBaseIdx == 0 || PrevNode == root->Nodes + 0);
+            if (PrevNode != root->Nodes + 0)
             {
                 ARENA_ARRAY_ENSURE_SIZE(root->Nodes, root->NodesCount + BASE_IDX_SCALE);
-                PrefNode->ChildrenBaseIdx = (POST_ADD(root->NodesCount, BASE_IDX_SCALE)) / BASE_IDX_SCALE;
+                PrevNode->ChildrenBaseIdx = (POST_ADD(root->NodesCount, BASE_IDX_SCALE)) / BASE_IDX_SCALE;
 #if TRACK_RANGES
                 {
-                    uint32_t NodeRangestart = PrefNode->ChildrenBaseIdx * BASE_IDX_SCALE;
+                    uint32_t NodeRangestart = PrevNode->ChildrenBaseIdx * BASE_IDX_SCALE;
                     node_range_t range = {NodeRangestart, NodeRangestart + BASE_IDX_SCALE, 1};
                     ARENA_ARRAY_ADD(root->NodeRanges, range);
-                    PrefNode->Range = root->NodeRanges + root->NodeRangesCount - 1;
+                    PrevNode->Range = root->NodeRanges + root->NodeRangesCount - 1;
                 }
 #endif
             }
@@ -323,15 +323,15 @@ CompletionTrie_AddChild(completion_trie_root_t* root,
             }
         }
 LinsertNode: {}
-        uint32_t newChildCount = INC(PrefNode->ChildCount) + 1;
+        uint32_t newChildCount = INC(PrevNode->ChildCount) + 1;
         if ((newChildCount % BASE_IDX_SCALE) == 0)
         {
-            uint32_t oldChildBaseIdx = PrefNode->ChildrenBaseIdx;
+            uint32_t oldChildBaseIdx = PrevNode->ChildrenBaseIdx;
             uint32_t newChildBaseIdx;
             uint32_t newChildCapacity = newChildCount + (BASE_IDX_SCALE - 1);
             const uint32_t endI = newChildCount - 1;
 #if TRACK_RANGES
-            PrefNode->Range->IsValid = 0;
+            PrevNode->Range->IsValid = 0;
 #endif
             ARENA_ARRAY_ENSURE_SIZE(root->Nodes, root->NodesCount + newChildCapacity);
             newChildBaseIdx = POST_ADD(root->NodesCount, newChildCapacity) / BASE_IDX_SCALE;
@@ -340,16 +340,16 @@ LinsertNode: {}
                 uint32_t NodeRangestart = newChildBaseIdx * BASE_IDX_SCALE;
                 node_range_t range = {NodeRangestart, NodeRangestart + newChildCapacity, 1};
                 ARENA_ARRAY_ADD(root->NodeRanges, range);
-                PrefNode->Range = root->NodeRanges + root->NodeRangesCount - 1;
+                PrevNode->Range = root->NodeRanges + root->NodeRangesCount - 1;
             }
 #endif
             memcpy(root->Nodes + (newChildBaseIdx * BASE_IDX_SCALE),
                    root->Nodes + (oldChildBaseIdx * BASE_IDX_SCALE),
                    sizeof(*root->Nodes) * (newChildCount - 1));
-            PrefNode->ChildrenBaseIdx = newChildBaseIdx;
+            PrevNode->ChildrenBaseIdx = newChildBaseIdx;
         }
 
-        child = root->Nodes + ((PrefNode->ChildrenBaseIdx * BASE_IDX_SCALE) + newChildCount - 1);
+        child = root->Nodes + ((PrevNode->ChildrenBaseIdx * BASE_IDX_SCALE) + newChildCount - 1);
 LGotChild:
         {
             // printf("newChild at node: %u\n", child - root->Nodes);
@@ -366,7 +366,7 @@ LGotChild:
             child->ChildCount = 0;
             length -= copyLen;
             word += copyLen;
-            PrefNode = child;
+            PrevNode = child;
         }
     }
 
@@ -400,20 +400,28 @@ void CompletionTrie_Print(completion_trie_root_t* root, uint32_t nodeIdx, const 
     // Output DOT code for the edges between the current node and its children
     for(childIdx = childIdxBegin; childIdx < childIdxEnd; childIdx++)
     {
+        ALIGN_STACK();
         // Output an edge from the current node to a child node
         fprintf(f, "  \"%d: %.4s\" -> \"%d: %.4s\"\n",
                 nodeIdx, rootPrefix,
                 childIdx, nodes[childIdx].Prefix4);
+        RESTORE_STACK();
     }
 
     // Output DOT code to ensure that child nodes appear in the same rank
+    ALIGN_STACK()
     fprintf(f, "{ rank = same; ");
+    RESTORE_STACK()
     for(childIdx = childIdxBegin; childIdx < childIdxEnd; childIdx++)
     {
         // Output nodes in the same rank to maintain their alignment
+        ALIGN_STACK()
         fprintf(f, "\"%d: %.4s\" ", childIdx, nodes[childIdx].Prefix4);
+        RESTORE_STACK()
     }
+    ALIGN_STACK()
     fprintf(f, "}\n");
+    RESTORE_STACK()
 
     // Recursively call CompletionTrie_Print for child nodes with ChildCount
     for(childIdx = childIdxBegin; childIdx < childIdxEnd; childIdx++)
