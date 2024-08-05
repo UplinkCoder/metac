@@ -248,8 +248,6 @@ decl_array_t MetaCLPP_LexParseBuffer(metac_lpp_t* lpp, const char* buffer, uint3
 
     LexFile(&lpp->Lexer, filepath, buffer, bufferLength);
 
-    MetaCParser_InitFromLexer(&lpp->Parser, &lpp->Lexer, alloc);
-
 #ifndef NO_PREPROCESSOR
     MetaCPreProcessor_Init(&lpp->Preprocessor, &lpp->Lexer, alloc, lpp->Preprocessor.FileStorage, 0);
     lpp->Parser.Preprocessor = &lpp->Preprocessor;
