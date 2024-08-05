@@ -11,6 +11,28 @@
 
 #define MAXIMUM(a,b) (((a)>(b)) ? (a) : (b))
 
+static inline void InitializeCIdentifierCharacters(completion_trie_root_t* root) {
+    static const char cIdentifierChars[] =
+        "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_";
+    const size_t charCount = sizeof(cIdentifierChars) - 1;
+
+    assert(root->RootCapacity > charCount);
+    ARENA_ARRAY_ENSURE_SIZE(root->Nodes, charCount + 1);
+
+    for (size_t i = 0; i < charCount; i++)
+    {
+        completion_trie_node_t child = {};
+
+        child.Prefix4[0] = cIdentifierChars[i];
+        child.Prefix4[1] = '\0'; // Terminate the string
+        child.ChildrenBaseIdx = i + 1;
+        child.ChildCount = 0;
+        INC(root->Nodes[0].ChildCount);
+        ARENA_ARRAY_ADD(root->Nodes, child);
+        root->TotalNodes++;
+    }
+}
+
 void CompletionTrie_Init(completion_trie_root_t* self, metac_alloc_t* parentAlloc)
 {
     Allocator_Init(&self->TrieAllocator, parentAlloc);
@@ -28,8 +50,13 @@ void CompletionTrie_Init(completion_trie_root_t* self, metac_alloc_t* parentAllo
         self->NodesCount -
         self->Nodes[0].ChildrenBaseIdx * BASE_IDX_SCALE;
 
+    self->NodesCount = 1;
+    // reserve the first node!
+
     self->WordCount = 0;
     self->TotalNodes = 1;
+
+   InitializeCIdentifierCharacters(self);
 #if TRACK_RANGES
     {
         node_range_t range = {0, self->NodesCount, 1};
