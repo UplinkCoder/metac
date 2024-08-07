@@ -23,15 +23,15 @@ void linenoiseEditMoveNextWord(struct linenoiseState *l) { \
 #define LINENOISE_TAB_CURSOR_ESCAPE_SEQUENCE_HANDLING \
                     } else if (seq[2] == ';') { \
                       /* read additional 2 bytes */ \
-                      if (read(l.ifd,seq+3,1) == -1) break; \
-                      if (read(l.ifd,seq+4,1) == -1) break; \
-                      if (seq[3] == '5') { \
-                        switch (seq[4]) { \
+                      if (read(l->ifd,seq,1) == -1) break; \
+                      if (read(l->ifd,seq+1,1) == -1) break; \
+                      if (seq[0] == '5') { \
+                        switch (seq[1]) { \
                           case 'D': /* ctrl-left */ \
-                            linenoiseEditMovePrevWord(&l); \
+                            linenoiseEditMovePrevWord(l); \
                             break; \
                           case 'C': /* ctrl-right */ \
-                            linenoiseEditMoveNextWord(&l); \
+                            linenoiseEditMoveNextWord(l); \
                             break; \
                         } \
                       }
