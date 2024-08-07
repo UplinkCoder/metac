@@ -91,10 +91,10 @@ void CompletionTrie_Collect(completion_trie_root_t* root,
     uint32_t parentStack[128];
     uint16_t childIndexStack[128];
     uint16_t completionLengthAddStack[128];
+    uint32_t unmatchedPrefixLengthStack[128];
 
     completion_trie_node_t const * nodes = root->Nodes;
-    const uint32_t completionLengthBase = matchedUntil
-                                        - PrefixLen(nodes[startNodeIdx].Prefix4);
+    const uint32_t completionLengthBase = matchedUntil - PrefixLen(nodes[startNodeIdx].Prefix4);
 
     char completionString[512];
     uint32_t completionLength = completionLengthBase;
@@ -108,13 +108,14 @@ void CompletionTrie_Collect(completion_trie_root_t* root,
 
     memcpy(completionString + completionLength, prefix, matchedUntil);
 
-    for (;;) // until we are back at the root and there are not children left
+    for (;;) // until we are back at the root and there are no children left
 LSetCurrent:
     {
         const completion_trie_node_t* current = nodes + currentNodeIdx;
         uint32_t childBeginIdx = current->ChildrenBaseIdx * BASE_IDX_SCALE;
         uint32_t childEndIdx = childBeginIdx + current->ChildCount;
         uint32_t prefixLen = PrefixLen(current->Prefix4);
+
         if (descend)
         {
             memcpy(completionString + completionLength, current->Prefix4, prefixLen);
@@ -122,8 +123,7 @@ LSetCurrent:
         }
         else
         {
-            // in the case where there are children left in the node
-            // we just ascended to we need to decent again
+            // if there are children left in the node we just ascended to, descend again
             if (currentChildIndex + childBeginIdx < childEndIdx)
             {
                 descend = true;
@@ -131,46 +131,38 @@ LSetCurrent:
             }
         }
 
-        for(uint32_t i = childBeginIdx + currentChildIndex; i < childEndIdx; i++)
+        for (uint32_t i = childBeginIdx + currentChildIndex; i < childEndIdx; i++)
         {
             const completion_trie_node_t* child = nodes + i;
 
             if (currentUnmatchedPrefixLength)
             {
                 uint32_t checkLength = currentUnmatchedPrefixLength;
-                uint32_t prefixLen = PrefixLen(child->Prefix4);
-                if (prefixLen < checkLength)
+                uint32_t childPrefixLen = PrefixLen(child->Prefix4);
+                if (childPrefixLen < checkLength)
                 {
-                    checkLength = prefixLen;
+                    checkLength = childPrefixLen;
                 }
                 if (0 != memcmp(matchedUntil + prefix, child->Prefix4, checkLength))
                 {
                     // prefix didn't match, keep going
-                   continue;
+                    continue;
                 }
                 currentUnmatchedPrefixLength -= checkLength;
-                // TODO keep an unmatchedPrefixLength stack
-                // Since we could in theory have multiple nodes with 1 char prefixes
-                // directly after each other the assert will make sure we don't forget
-                if(currentUnmatchedPrefixLength != 0)
-                    assert(!"Not implemented");
+                assert(currentUnmatchedPrefixLength >= 0 && currentUnmatchedPrefixLength <= 512);
             }
+
             // we are good to go
             {
                 // if this node has no children then we have a completion
                 if (child->ChildCount == 0)
                 {
                     uint32_t toCopy = PrefixLen(child->Prefix4);
-                    memcpy(completionString + completionLength,
-                           child->Prefix4, toCopy);
+                    memcpy(completionString + completionLength, child->Prefix4, toCopy);
                     completionLength += toCopy;
                     collectCb(completionString, completionLength, userCtx);
-                    // do we have to substract to toCopy now?
                     completionLength -= toCopy;
-                    // in case we are at a child directly blow where we started
-                    // we want to reset the unmatched prefix such that
-                    // when we acend to the start node so we will not match the next node randomly
-                    // due to the prefix check being a memcmp with size 0
+
                     if (currentNodeIdx == startNodeIdx)
                         currentUnmatchedPrefixLength = unmatchedPrefixLength;
                 }
@@ -181,6 +173,7 @@ LSetCurrent:
                         parentStack[currentStackIndex] = currentNodeIdx;
                         childIndexStack[currentStackIndex] = i - childBeginIdx;
                         completionLengthAddStack[currentStackIndex] = completionLength - completionLengthBase;
+                        unmatchedPrefixLengthStack[currentStackIndex] = currentUnmatchedPrefixLength;
                         ++currentStackIndex;
                     }
                     // change relevant iteration state
@@ -198,14 +191,8 @@ LSetCurrent:
             --currentStackIndex;
             currentNodeIdx = parentStack[currentStackIndex];
             currentChildIndex = childIndexStack[currentStackIndex];
-            completionLength = completionLengthBase
-                             + completionLengthAddStack[currentStackIndex];
-            // we are going up the tree now so descend is false
-            if (currentNodeIdx == startNodeIdx)
-            {
-                // TODO this should be stacked
-                currentUnmatchedPrefixLength = unmatchedPrefixLength;
-            }
+            completionLength = completionLengthBase + completionLengthAddStack[currentStackIndex];
+            currentUnmatchedPrefixLength = unmatchedPrefixLengthStack[currentStackIndex];
             descend = false;
         }
     }
