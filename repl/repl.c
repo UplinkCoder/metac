@@ -1277,7 +1277,7 @@ completion_list_t ReplComplete (repl_state_t* repl, const char *input, int32_t i
             CompletionTrie_FindLongestMatchingPrefix(&repl->CompletionTrie, lastWord, &lastWordLength);
         uint32_t matchedPrefixLength = originalLastWordLength - lastWordLength;
 
-        uint32_t n = PrefixNode - repl->CompletionTrie.Nodes;
+        uint32_t nodeIndex = PrefixNode - repl->CompletionTrie.Nodes;
 
         completion_state_t completionState;
 
@@ -1287,7 +1287,13 @@ completion_list_t ReplComplete (repl_state_t* repl, const char *input, int32_t i
 
         ARENA_ARRAY_REFCOPY(completions, completionState.Completions);
 
-        CompletionTrie_Collect(&repl->CompletionTrie, n,
+        if (nodeIndex == 0)
+        {
+            // if we are at the root don't collect anything.
+            return result;
+        }
+
+        CompletionTrie_Collect(&repl->CompletionTrie, nodeIndex,
                                lastWord, matchedPrefixLength,
                                (collect_cb_t)CollectCompletionsCb, &completionState);
 
