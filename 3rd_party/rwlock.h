@@ -16,7 +16,7 @@
 
 typedef struct RWLock
 {
-#ifdef _MSC_VER
+#if defined(_MSC_VER) || defined (WINDOWS)
     volatile long _rwctr;
 #else
     volatile int32_t _rwctr;

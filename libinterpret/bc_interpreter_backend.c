@@ -3357,7 +3357,7 @@ static inline void BCGen_Call(BCGen* self, BCValue *result, const BCValue* fn, B
         self->allocFn(self->allocCtx, sizeof(BCValue) * n_args, 0);
     memcpy(allocArgs, args, n_args * sizeof(BCValue));
 
-    RetainedCall rc = {*fn, allocArgs, n_args, self->functionIdx, self->ip, self->sp};
+    RetainedCall rc = {*fn, allocArgs, n_args, self->functionIdx, self->ip, cast(uint16_t)self->sp};
     self->calls[self->callsCount++] = rc;
 
     BCGen_emitLongInstSS(self, LongInst_Call, result->stackAddr, call_id);

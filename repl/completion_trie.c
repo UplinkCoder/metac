@@ -258,7 +258,7 @@ CompletionTrie_AddChild(completion_trie_root_t* root,
 {
     completion_trie_node_t const * nodes = root->Nodes;
     completion_trie_node_t* child = 0;
-
+    uint32_t newChildCount;
 #if 1
     if (root->Nodes == PrevNode)
     {
@@ -310,7 +310,7 @@ CompletionTrie_AddChild(completion_trie_root_t* root,
             }
         }
 LinsertNode: {}
-        uint32_t newChildCount = INC(PrevNode->ChildCount) + 1;
+        newChildCount = INC(PrevNode->ChildCount) + 1;
         if ((newChildCount % BASE_IDX_SCALE) == 0)
         {
             uint32_t oldChildBaseIdx = PrevNode->ChildrenBaseIdx;

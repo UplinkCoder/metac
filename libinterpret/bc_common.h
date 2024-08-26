@@ -286,12 +286,12 @@ typedef struct CndJmpBegin
 // stack address 11
 
 
-#define AddrMask  ((1 << 31) | \
-                   (1 << 30))
+#define AddrMask  ((1U << 31) | \
+                   (1U << 30))
 
-#define stackAddrMask  ((1 << 31) | (1 << 30))
-#define externalAddrMask (1 << 31 | 0 << 30)
-#define heapAddrMask (0 << 31 | 0 << 30)
+#define stackAddrMask  ((1U << 31) | (1U << 30))
+#define externalAddrMask (1U << 31 | 0U << 30)
+#define heapAddrMask (0U << 31 | 0U << 30)
 
 typedef enum address_kind_t
 {
