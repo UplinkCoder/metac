@@ -14,8 +14,9 @@
 #define eval_key    0x45758c
 #define va_args_key 0xbc18fc
 
-#define pack_key 0x4b121c
-#define push_key 0x42c9f9
+#define pack_key    0x4b121c
+#define push_key    0x42c9f9
+#define pop_key     0x352134
 
 #ifndef _METAC_PREPROC_H_
 #define _METAC_PREPROC_H_
@@ -118,10 +119,21 @@ typedef enum metac_preprocessor_pragma_enum_t
 
 #undef WITH_COMMA
 
+typedef struct metac_pragma_pack_t
+{
+    bool Push;      // True if new a align is to be pushed
+    int16_t PackN;  // Positive number new align
+                    // 0 means default
+                    // -1 means pop
+} metac_pragma_pack_t;
 
 typedef struct metac_preprocessor_pragma_t
 {
     metac_preprocessor_pragma_enum_t KnownPragma;
+    union
+    {
+        metac_pragma_pack_t PragmaPack;
+    };
 } metac_preprocessor_pragma_t;
 
 typedef struct metac_preprocessor_define_ptr_t

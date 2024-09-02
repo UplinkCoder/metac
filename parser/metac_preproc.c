@@ -911,7 +911,45 @@ metac_preprocessor_pragma_t MetaCPreProcessor_ParsePragma(metac_preprocessor_t* 
     metac_token_t* currentToken = 0;
 
     currentToken = MetaCParser_PeekToken(parser, 1);
-    assert(!"Not Implemented");
+        currentToken = MetaCParser_PeekToken(parser, 1);
+    if (currentToken->TokenType == tok_identifier)
+    {
+        switch (currentToken->IdentifierKey)
+        {
+            case pack_key: {
+                MetaCParser_Match(parser, tok_identifier);
+                MetaCParser_Match(parser, tok_lParen);
+                result.KnownPragma = metac_pragma_pack;
+                result.PragmaPack.Push = false;
+                result.PragmaPack.PackN = -1;
+                uint32_t follow_ids[] = {push_key, pop_key, 0};
+                if (currentToken = MetaCParser_MatchOneOfIdentifierKeys(parser, follow_ids))
+                {
+                    switch (currentToken->IdentifierKey)
+                    {
+                        case push_key: {
+                            result.PragmaPack.Push = true;
+                            if (MetaCParser_PeekMatch(parser, tok_comma, true))
+                            {
+                                MetaCParser_Match(parser, tok_comma);
+                                metac_token_t* packSize = MetaCParser_Match(parser, tok_uint);
+                                result.PragmaPack.PackN = cast(int16_t) packSize->ValueU32;
+                            }
+                        } break;
+                        case pop_key : {
+                        } break;
+                    }
+                } else if (currentToken->TokenType == tok_uint)
+                {
+                    // assert (0);
+                }
+                MetaCParser_Match(parser, tok_rParen);
+            } break;
+        }
+    } else {
+       assert(!"Not Implemented");
+    }
+
 
     return result;
 }

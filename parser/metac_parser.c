@@ -215,39 +215,6 @@ void AddDefine(metac_parser_t* self, metac_token_t* token, uint32_t nParameters)
     }
 }
 */
-/**
- * @param self A pointer to the `metac_parser_t` instance, which holds the current state
- *             of the parser.
- * @param IdentifierKeys An array of uint32_t identifier keys to match against.
- *                       The array must be terminated with a zero (`0`) to indicate its end.
- *                       For example: {0x12345678, 0x87654321, 0xabcdef00, 0}.
- *
- * @return A pointer to the current `metac_token_t` if a match is found. The parser
- *         advances to the next token in this case. Returns `NULL` if no match is found
- *         or if the current token is not an identifier.
- *
- * @note This function only matches tokens of type `tok_identifier`. If the current token
- *       is not of this type, the function will return `NULL`.
- **/
-metac_token_t* MetaCParser_MatchOneOfIdentifierIds(metac_parser_t* self, uint32_t IdentifierKeys[]) {
-    metac_token_t* currentToken = MetaCParser_PeekToken(self, 1);
-
-    if (currentToken && currentToken->TokenType == tok_identifier) {
-    // Retrieve the current token's identifier key
-		uint32_t currentIdentifierKey = currentToken->IdentifierKey;
-
-		// Iterate over the provided keys and check for a match
-		for (uint32_t i = 0; IdentifierKeys[i] != 0; i++) {
-			if (currentIdentifierKey == IdentifierKeys[i]) {
-				// If a match is found, advance the parser to the next token and return the current token
-				MetaCParser_Advance(self);
-				return currentToken;
-			}
-		}
-	}
-    // If no match is found, return NULL
-    return NULL;
-}
 
 /// checks if the next token is expectedType
 /// returns true if it is
@@ -603,6 +570,39 @@ metac_token_t* MetaCParser_NextToken(metac_parser_t* self)
 
 #undef PeekMatch
 #undef NextToken
+
+/**
+ * @param self A pointer to the `metac_parser_t` instance, which holds the current state
+ *             of the parser.
+ * @param IdentifierKeys An array of uint32_t identifier keys to match against.
+ *                       The array must be terminated with a zero (`0`) to indicate its end.
+ *                       For example: {0x12345678, 0x87654321, 0xabcdef00, 0}.
+ *
+ * @return A pointer to the current `metac_token_t` if a match is found. The parser
+ *         advances to the next token in this case. Returns `NULL` if no match is found
+ *         or if the current token is not an identifier.
+ *
+ * @note This function only matches tokens of type `tok_identifier`. If the current token
+ *       is not of this type, the function will return `NULL`.
+ **/
+metac_token_t* MetaCParser_MatchOneOfIdentifierKeys(metac_parser_t* self, uint32_t IdentifierKeys[]) {
+    metac_token_t* currentToken = MetaCParser_PeekToken(self, 1);
+
+    if (currentToken && currentToken->TokenType == tok_identifier) {
+        uint32_t currentIdentifierKey = currentToken->IdentifierKey;
+
+        // Iterate over the provided keys and check for a match
+        for (uint32_t i = 0; IdentifierKeys[i] != 0; i++) {
+            if (currentIdentifierKey == IdentifierKeys[i]) {
+                // If a match is found, advance the parser to the next token and return the current token
+                MetaCParser_Advance(self);
+                return currentToken;
+            }
+        }
+    }
+    // If no match is found, return NULL
+    return NULL;
+}
 
 uint32_t MetaCParser_HowMuchLookahead(metac_parser_t* self)
 {
