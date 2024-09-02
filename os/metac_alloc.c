@@ -38,8 +38,11 @@ void Allocator_Init_(metac_alloc_t* allocator, metac_alloc_t* parent,
 
     allocator->ArenasCapacity = 256;
     allocator->ArenasCount = 16;
+
+    ALIGN_STACK();
     allocator->Arenas = cast(tagged_arena_t*)
         calloc(sizeof(tagged_arena_t), allocator->ArenasCapacity);
+    RESTORE_STACK();
 
     allocator->inuseArenasCount = 0;
     allocator->File = file;
