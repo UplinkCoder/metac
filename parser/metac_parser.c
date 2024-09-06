@@ -1,7 +1,7 @@
 #ifndef _METAC_PARSER_C_
 #define _METAC_PARSER_C_
 
-#define TYPE_EXP
+//#define TYPE_EXP
 #include "metac_identifier_table.c"
 
 #include "../os/os.c"
@@ -665,7 +665,7 @@ Lpeek:
     {
         Debug_Logf(g_DebugServer, "Parser","%s = MetaCParser_PeekToken(offset=%d, line=%d)", MetaCTokenEnum_toChars(result->TokenType), p, line);
     }
-    
+
     return result;
 }
 
@@ -988,7 +988,11 @@ decl_type_t* MetaCParser_ParseTypeDecl(metac_parser_t* self, metac_decl_t* paren
             decl_type_array_t* typeArray = AllocNewDecl(decl_type_array, &result);
             if(!MetaCParser_PeekMatch(self, tok_rBracket, 1))
             {
+#ifdef OLD_PARSER
+                typeArray->Dim = MetaCParser_ParseExpr(self, expr_flags_none, 0);
+#else
                 typeArray->Dim = MetaCParser_ParseExpr2(self, expr_flags_none);
+#endif
                 MetaCParser_Match(self, tok_rBracket);
             }
             else
@@ -1249,7 +1253,11 @@ decl_type_t* MetaCParser_ParseTypeDecl(metac_parser_t* self, metac_decl_t* paren
                     else
                     {
                         MetaCParser_Match(self, tok_assign);
+#ifdef OLD_PARSER
+                        member->Value = MetaCParser_ParseExpr(self, expr_flags_enum, 0);
+#else
                         member->Value = MetaCParser_ParseExpr2(self, expr_flags_enum);
+#endif
                         assert(member->Value->Hash != 0);
                         hash = CRC32C_VALUE(hash, member->Value->Hash);
                     }
@@ -1943,7 +1951,11 @@ metac_decl_t* MetaCParser_ParseDecl(metac_parser_t* self, metac_decl_t* parent)
                 if (MetaCParser_PeekMatch(self, tok_assign, 1))
                 {
                     MetaCParser_Match(self, tok_assign);
+#ifdef OLD_PARSER
+                    varDecl->VarInitExpr = MetaCParser_ParseExpr(self, expr_flags_none, 0);
+#else
                     varDecl->VarInitExpr = MetaCParser_ParseExpr2(self, expr_flags_none);
+#endif
                 }
             }
         }
@@ -2059,7 +2071,11 @@ metac_stmt_t* MetaCParser_ParseStmt(metac_parser_t* self,
         }
         MetaCParser_Match(self, tok_lParen);
         if_stmt->IfCond =
+#ifdef OLD_PARSER
+            MetaCParser_ParseExpr(self, expr_flags_none, 0);
+#else
             MetaCParser_ParseExpr2(self, expr_flags_none);
+#endif
         hash = CRC32C_VALUE(hash, if_stmt->IfCond->Hash);
         MetaCParser_Match(self, tok_rParen);
         if_stmt->IfBody = MetaCParser_ParseStmt(self, (metac_stmt_t*)result, 0);
@@ -2081,15 +2097,16 @@ metac_stmt_t* MetaCParser_ParseStmt(metac_parser_t* self,
     else if (tokenType == tok_at)
     {
         peek2 = MetaCParser_PeekToken(self, 2);
-        if (peek2->TokenType == tok_identifier && peek2->IdentifierKey == 0x3809a6)
+        if (peek2->TokenType == tok_identifier && peek2->IdentifierKey == run_key)
         {
             stmt_run_t* run_stmt = AllocNewStmt(stmt_run, &result);
             MetaCParser_Match(self, tok_at);
             MetaCParser_Match(self, tok_identifier);
             run_stmt->RunBody =
                 MetaCParser_ParseStmt(self, cast(metac_stmt_t*)run_stmt, 0);
-            hash = 0x3809a6;
+            hash = run_key;
             hash = CRC32C_VALUE(hash, run_stmt->Hash);
+            result->Hash = hash;
         }
     }
     else if (tokenType == tok_kw_while)
@@ -2098,7 +2115,11 @@ metac_stmt_t* MetaCParser_ParseStmt(metac_parser_t* self,
         MetaCParser_Match(self, tok_kw_while);
         MetaCParser_Match(self, tok_lParen);
         while_stmt->WhileExp =
+#ifdef OLD_PARSER
+            MetaCParser_ParseExpr(self, expr_flags_none, 0);
+#else
             MetaCParser_ParseExpr2(self, expr_flags_none);
+#endif
         hash = CRC32C_VALUE(hash, while_stmt->WhileExp->Hash);
         MetaCParser_Match(self, tok_rParen);
         while_stmt->WhileBody =
@@ -2126,7 +2147,11 @@ metac_stmt_t* MetaCParser_ParseStmt(metac_parser_t* self,
             }
             else
             {
+#ifdef OLD_PARSER
+                for_->ForInit = (metac_node_t)MetaCParser_ParseExpr(self, expr_flags_none, 0);
+#else
                 for_->ForInit = (metac_node_t)MetaCParser_ParseExpr2(self, expr_flags_none);
+#endif
                 MetaCParser_Match(self, tok_semicolon);
             }
 
@@ -2139,7 +2164,11 @@ metac_stmt_t* MetaCParser_ParseStmt(metac_parser_t* self,
         }
         if (!MetaCParser_PeekMatch(self, tok_semicolon, 1))
         {
+#ifdef OLD_PARSER
+            for_->ForCond = MetaCParser_ParseExpr(self, expr_flags_none, 0);
+#else
             for_->ForCond = MetaCParser_ParseExpr2(self, expr_flags_none);
+#endif
             hash = CRC32C_VALUE(hash, for_->ForCond->Hash);
         }
         else
@@ -2150,7 +2179,11 @@ metac_stmt_t* MetaCParser_ParseStmt(metac_parser_t* self,
 
         if (!MetaCParser_PeekMatch(self, tok_rParen, 1))
         {
+#ifdef OLD_PARSER
+            for_->ForPostLoop = MetaCParser_ParseExpr(self, expr_flags_none, 0);
+#else
             for_->ForPostLoop = MetaCParser_ParseExpr2(self, expr_flags_none);
+#endif
             hash = CRC32C_VALUE(hash, for_->ForPostLoop->Hash);
         }
         else
@@ -2169,7 +2202,11 @@ metac_stmt_t* MetaCParser_ParseStmt(metac_parser_t* self,
         MetaCParser_Match(self, tok_kw_switch);
         MetaCParser_Match(self, tok_lParen);
         switch_->SwitchExp =
+#ifdef OLD_PARSER
+            MetaCParser_ParseExpr(self, expr_flags_none, 0);
+#else
             MetaCParser_ParseExpr2(self, expr_flags_none);
+#endif
         hash = CRC32C_VALUE(hash, switch_->SwitchExp->Hash);
         MetaCParser_Match(self, tok_rParen);
         if (!MetaCParser_PeekMatch(self, tok_lBrace, 0))
@@ -2355,7 +2392,11 @@ metac_stmt_t* MetaCParser_ParseStmt(metac_parser_t* self,
     if (!result || result == emptyPointer)
 LparseAsExpr:
     {
+#ifdef OLD_PARSER
+        metac_expr_t* exp = MetaCParser_ParseExpr(self, expr_flags_none, 0);
+#else
         metac_expr_t* exp = MetaCParser_ParseExpr2(self, expr_flags_none);
+#endif
         stmt_expr_t* expStmt = AllocNewStmt(stmt_expr, &result);
         expStmt->Expr = exp;
         result->Hash = exp->Hash;

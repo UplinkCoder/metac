@@ -441,7 +441,7 @@ void Repl_Init(repl_state_t* self)
         Allocator_Calloc(&self->Allocator, metac_location_t, LPP->Lexer.TokenCapacity);
     LPP->Lexer.LocationStorage.LocationCapacity = LPP->Lexer.TokenCapacity;
 
-    MetaCPrinter_Init(&self->printer,
+    MetaCPrinter_Init(&self->Printer,
         &LPP->Parser.IdentifierTable,
         &LPP->Parser.StringTable, &self->Allocator);
 
@@ -479,7 +479,7 @@ void MetaCRepl_ExprSemantic_Task(task_t* task)
     const char* type_str = TypeToChars(&ctx->Repl->SemanticState, result->TypeIndex);
 
     //MSGF("typeof(%s) = %s\n",
-    //       MetaCPrinter_PrintExpr(&ctx->Repl->printer, ctx->Exp));
+    //       MetaCPrinter_PrintExpr(&ctx->repl->Printer, ctx->Exp));
 }
 #endif
 
@@ -581,9 +581,9 @@ LswitchMode:
 
                     repl->ParseMode = repl_mode_lex_file;
                     const char* filename = repl->Line + 3;
-                       MSG("querying fileStorage\n");
+                    MSGF("querying fileStorage for '%s'\n", filename);
                     // metac_file_storage_t* fs = Global_GetFileStorage(worker);
-                    // metac_file_ptr_t f = MetaCFileStorage_LoadFile(fs, filename);
+                    metac_file_ptr_t f = MetaCFileStorage_LoadFile(fs, filename);
                 }
                 else
                 {
@@ -661,9 +661,14 @@ LswitchMode:
 
                  case 's':
                     repl->ParseMode = repl_mode_ds;
+                    if (strlen(repl->Line) >= 3)
+                    {
+                        const char* filename = repl->Line;
+                        // MetaCLPP_ReadLexParse(lpp, filename);
+                    }
                     goto LswitchMode;
                 }
-            case 'D' : 
+            case 'D' :
                 CompletionTrie_Print(&repl->CompletionTrie, 0, "", stderr);
                 goto LswitchMode;
             case 'g' :
@@ -800,7 +805,7 @@ LswitchMode:
                         if (slot.Hash)
                         {
                             xprintf("Kind %s\n", MetaCNodeKind_toChars(slot.Node->Kind));
-                            MSGF("Member [%u] : %s\n", memberIdx++, MetaCPrinter_PrintSemaNode(&repl->printer, &repl->SemanticState, slot.Node));
+                            MSGF("Member [%u] : %s\n", memberIdx++, MetaCPrinter_PrintSemaNode(&repl->Printer, &repl->SemanticState, slot.Node));
                         }
                     }
                 }
@@ -828,6 +833,9 @@ LswitchMode:
             case repl_mode_max: break;
             case repl_mode_expr:
             {
+
+                bool extraParens = repl->Printer.ExtraParens;
+                repl->Printer.ExtraParens = true;
 #ifdef OLD_PARSER
                  exp =
                     MetaCLPP_ParseExprFromString(&repl->LPP, repl->Line);
@@ -835,9 +843,10 @@ LswitchMode:
                  exp =
                     MetaCLPP_ParseExpr2FromString(&repl->LPP, repl->Line);
 #endif
-                const char* str = MetaCPrinter_PrintExpr(&repl->printer, exp);
+                const char* str = MetaCPrinter_PrintExpr(&repl->Printer, exp);
                 MSGF("expr = %s\n", str);
-                MetaCPrinter_Reset(&repl->printer);
+                MetaCPrinter_Reset(&repl->Printer);
+                repl->Printer.ExtraParens = extraParens;
                 goto LnextLine;
             }
             case repl_mode_e2:
@@ -845,13 +854,13 @@ LswitchMode:
                 exp = MetaCLPP_ParseExpr2FromString(&repl->LPP, repl->Line);
                 if (exp)
                 {
-                    MSGF("expr = %s\n", MetaCPrinter_PrintExpr(&repl->printer, exp));
+                    MSGF("expr = %s\n", MetaCPrinter_PrintExpr(&repl->Printer, exp));
                 }
                 else
                 {
                     MSG("Couldn't parse expression\n");
                 }
-                MetaCPrinter_Reset(&repl->printer);
+                MetaCPrinter_Reset(&repl->Printer);
             } goto LnextLine;
 
             case repl_mode_preproc:
@@ -897,7 +906,7 @@ LswitchMode:
 #endif
                 if (exp)
                 {
-                    const char* str = MetaCPrinter_PrintExpr(&repl->printer, exp);
+                    const char* str = MetaCPrinter_PrintExpr(&repl->Printer, exp);
 
                     metac_sema_expr_t* result = 0;
 
@@ -915,14 +924,14 @@ LswitchMode:
                         const char* result_str;
                         if (eval_exp.Kind == expr_type)
                         {
-                            result_str = MetaCPrinter_PrintSemaNode(&repl->printer, &repl->SemanticState, cast(metac_node_t)&eval_exp);
+                            result_str = MetaCPrinter_PrintSemaNode(&repl->Printer, &repl->SemanticState, cast(metac_node_t)&eval_exp);
                         }
                         else
                         {
-                            result_str = MetaCPrinter_PrintSemaNode(&repl->printer, &repl->SemanticState, cast(metac_node_t)&eval_exp);
+                            result_str = MetaCPrinter_PrintSemaNode(&repl->Printer, &repl->SemanticState, cast(metac_node_t)&eval_exp);
                         }
                         MSGF("%s = %s\n", str, result_str);
-                        MetaCPrinter_Reset(&repl->printer);
+                        MetaCPrinter_Reset(&repl->Printer);
                     }
                 }
                 goto LnextLine;
@@ -938,7 +947,7 @@ LswitchMode:
                     MetaCLPP_ParseExpr2FromString(&repl->LPP, repl->Line);
 #endif
 
-                const char* str = MetaCPrinter_PrintExpr(&repl->printer, exp);
+                const char* str = MetaCPrinter_PrintExpr(&repl->Printer, exp);
                 metac_sema_expr_t* result =
                     MetaCSemantic_doExprSemantic(&repl->SemanticState, exp, 0);
 
@@ -1044,10 +1053,10 @@ LswitchMode:
             {
                 stmt = MetaCLPP_ParseStmtFromString(&repl->LPP, repl->Line);
                 if (stmt)
-                    MSGF("stmt = %s\n", MetaCPrinter_PrintStmt(&repl->printer, stmt));
+                    MSGF("stmt = %s\n", MetaCPrinter_PrintStmt(&repl->Printer, stmt));
                 else
                    ERRORMSG("Couldn't parse statement\n");
-                MetaCPrinter_Reset(&repl->printer);
+                MetaCPrinter_Reset(&repl->Printer);
                 goto LnextLine;
             }
 
@@ -1056,7 +1065,7 @@ LswitchMode:
                 stmt = MetaCLPP_ParseStmtFromString(&repl->LPP, repl->Line);
                 /*
                 if (stmt)
-                    MSGF("stmt = %s\n", MetaCPrinter_PrintStmt(&repl->printer, stmt));
+                    MSGF("stmt = %s\n", MetaCPrinter_PrintStmt(&repl->Printer, stmt));
                 else
                    ERRORMSG("Couldn't parse statement\n");
                 */
@@ -1065,13 +1074,13 @@ LswitchMode:
                     metac_sema_stmt_t* semaStmt =
                         MetaCSemantic_doStmtSemantic(&repl->SemanticState, stmt);
                     MSGF("stmt = %s\n",
-                        MetaCPrinter_PrintSemaNode(&repl->printer, &repl->SemanticState, METAC_NODE(semaStmt)));
+                        MetaCPrinter_PrintSemaNode(&repl->Printer, &repl->SemanticState, METAC_NODE(semaStmt)));
                 }
                 else
                 {
                    ERRORMSG("Couldn't parse statement\n");
                 }
-                MetaCPrinter_Reset(&repl->printer);
+                MetaCPrinter_Reset(&repl->Printer);
                 goto LnextLine;
             }
 
@@ -1079,7 +1088,7 @@ LswitchMode:
             {
                 decl = MetaCLPP_ParseDeclFromString(&repl->LPP, repl->Line);
                 if (decl)
-                    MSGF("decl = %s\n", MetaCPrinter_PrintDecl(&repl->printer, decl));
+                    MSGF("decl = %s\n", MetaCPrinter_PrintDecl(&repl->Printer, decl));
                 else
                     MSG("Couldn't parse declaration\n");
 
@@ -1091,7 +1100,7 @@ LswitchMode:
                 metac_sema_decl_t* ds;
                 decl = MetaCLPP_ParseDeclFromString(&repl->LPP, repl->Line);
                 if (decl)
-                    MSGF("decl = %s\n", MetaCPrinter_PrintDecl(&repl->printer, decl));
+                    MSGF("decl = %s\n", MetaCPrinter_PrintDecl(&repl->Printer, decl));
                 else
                     ERRORMSG("Couldn't parse declaration\n");
                 decl->StorageClass = storageclass_global;

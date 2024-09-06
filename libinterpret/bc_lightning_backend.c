@@ -2,7 +2,7 @@
 #define AllocMemory(SIZE, FN) \
     self->allocMemory(self->allocCtx, SIZE, FN)
 
-#include "3rd_party/lightning/include/lightning.h"
+#include "lightning.h"
 #include "../os/compat.h"
 #include "backend_interface_funcs.h"
 #include "bc_common.h"

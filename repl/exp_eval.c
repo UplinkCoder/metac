@@ -185,6 +185,10 @@ void WalkTree(void* c, BCValue* result,
         WalkTree(c, lhs, e->E1, vstore);
         WalkTree(c, rhs, e->E2, vstore);
     }
+    else if (IsUnaryOp)
+    {
+        WalkTree(c, lhs, e->E1, vstore);
+    }
 
     switch(op)
     {
@@ -333,35 +337,29 @@ void WalkTree(void* c, BCValue* result,
         } break;
         case expr_paren:
         {
-            WalkTree(c, result, e->E1, vstore);
         } break;
         case expr_compl:
         {
-            WalkTree(c, rhs, e->E1, vstore);
-            bc->Not(c, result, rhs);
+            bc->Not(c, result, lhs);
         } break;
         case expr_not:
         {
-            WalkTree(c, lhs, e->E1, vstore);
             BCValue zero = imm32(0);
             bc->Eq3(c, result, lhs, &zero);
         } break;
         case expr_umin:
         {
-            WalkTree(c, lhs, e->E1, vstore);
             BCValue zero = imm32(0);
             bc->Sub3(c, result, &zero, lhs);
         } break;
         case expr_post_decrement:
         {
-            WalkTree(c, lhs, e->E1, vstore);
             bc->Set(c, result, lhs);
             BCValue one = imm32(1);
             bc->Sub3(c, lhs, lhs, &one);
         } break;
         case expr_post_increment:
         {
-            WalkTree(c, lhs, e->E1, vstore);
             bc->Set(c, result, lhs);
             BCValue one = imm32(1);
             bc->Add3(c, lhs, lhs, &one);

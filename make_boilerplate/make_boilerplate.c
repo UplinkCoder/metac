@@ -85,7 +85,7 @@ void WriteSwitchCaseEntryFor(decl_type_struct_t* decl_type_struct,
             if (IsNode(fieldVar->VarType, table))
             {
                 outputSize += sprintf(outputString + outputSize,
-                                      "%s    if (%s->%s != emptyNode)\n",
+                                      "%s    if (METAC_NODE(%s->%s) != emptyNode)\n",
                                        indent8, scratchpad, fieldName);
 
                 outputSize += sprintf(outputString + outputSize,
@@ -133,7 +133,7 @@ int MakeBoilerCb(metac_node_t node, void* ctxP)
                     structName : "anonymous")
             );
 
-            if (decl_struct->Identifier.v == 0)
+            if (decl_struct->Identifier.v == -1)
                 return 1;
 
             if(!memcmp(structName, "stmt", 4))
@@ -190,8 +190,8 @@ int main(int argc, const char** argv)
         make_boiler_ctx_t makeBoilerCtx = {
             &LPP.Parser.IdentifierTable,
 
-            (char*) malloc(16384),0, 16384,
-            (char*) malloc(16384),0, 16384
+            (char*) malloc(16384*2),0, 16384*2,
+            (char*) malloc(16384*2),0, 16384*2
         };
 
         for(uint32_t i = 0; i < result.Length; i++)

@@ -22,7 +22,7 @@ fi
 ./build.sh -DBC_LIGHTNING ../libinterpret/bc_lightning_backend.c \
     -L$LIGHTNING_LIBS \
     -llightning -DMETAC_COMPILER_INTERFACE \
-    -I../3rd_party/lightning/include \
+    -I../3rd_party/lightning/$LIGHTNING/include \
     -Wl,-rpath,./ \
     $@
 

@@ -8,6 +8,11 @@
     printf(__VA_ARGS__); \
     RESTORE_STACK();
 
+#define xfprintf(...) \
+    ALIGN_STACK() \
+    fprintf(__VA_ARGS__); \
+    RESTORE_STACK();
+
 #define cast(T) (T)
 
 #ifndef ARRAY_SIZE

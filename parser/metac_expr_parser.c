@@ -364,22 +364,26 @@ static inline uint32_t OpToPrecedence(metac_expr_kind_t exp)
           || exp == expr_compl
           || exp == expr_assert
           || exp == expr_template_instance
-          || exp == expr_inject)
+          || exp == expr_inject
+          || exp == expr_eject)
     {
         return 30;
     }
-    else if (exp == expr_arrow || exp == expr_dot)
+    else if (exp == expr_unary_dot)
     {
         return 31;
     }
+    else if (exp == expr_arrow || exp == expr_dot)
+    {
+        return 32;
+    }
     else if (exp == expr_umin
-          || exp == expr_unary_dot
           || exp == expr_sizeof
           || exp == expr_typeof
           || exp == expr_not
           || exp == expr_outer)
     {
-        return 32;
+        return 33;
     }
     else if (exp == expr_paren
           || exp == expr_signed_integer
@@ -390,7 +394,11 @@ static inline uint32_t OpToPrecedence(metac_expr_kind_t exp)
           || exp == expr_tuple
           || exp == expr_type)
     {
-        return 33;
+        return 34;
+    }
+    else if (exp == expr_comma)
+    {
+        return 36;
     }
 
     fprintf(stderr, "There's no precedence for %s\n", MetaCExprKind_toChars(exp));
@@ -998,7 +1006,11 @@ static inline metac_expr_t* ParseUnaryDotExpr(metac_parser_t* self)
     if (!result)
     {
         result = AllocNewExpr(expr_unary_dot);
+#ifdef OLD_PARSER
+        result->E1 = MetaCParser_ParseExpr(self, expr_flags_unary, result);
+#else
         result->E1 = MetaCParser_ParseExpr2(self, expr_flags_unary);
+#endif
         result->Hash = CRC32C_VALUE(
             crc32c_nozero(~0, ".", sizeof(".") - 1),
             result->E1->Hash
@@ -1330,18 +1342,22 @@ expr_argument_t* MetaCParser_ParseArgumentList(metac_parser_t* self, parse_expr_
         MetaCParser_Match(self, tok_rParen);
         return arguments;
     }
-
+#ifndef OLD_PARSER
     MetaCParser_PushExprStackBottom(self, self->ExprParser.ExprStackCount);
     MetaCParser_PushOpStackBottom(self, self->ExprParser.OpStackCount);
     MetaCParser_PushOpenParens(self);
     MetaCParser_PushFlags(self, flags);
-
+#endif
     for (;;)
     {
         nArguments++;
         assert((*nextArgument) == _emptyPointer);
         (*nextArgument) = (expr_argument_t*)AllocNewExpr(expr_argument);
+#ifndef OLD_PARSER
         metac_expr_t* exp = MetaCParser_ParseExpr2(self, expr_flags_call);
+#else
+        metac_expr_t* exp = MetaCParser_ParseExpr(self, expr_flags_call, 0);
+#endif
         ((*nextArgument)->Expr) = exp;
         assert(exp->Hash);
         hash = CRC32C_VALUE(hash, exp->Hash);
@@ -1358,17 +1374,17 @@ expr_argument_t* MetaCParser_ParseArgumentList(metac_parser_t* self, parse_expr_
             break;
         }
     }
-
+#ifndef OLD_PARSER
     MetaCParser_PopExprStackBottom(self);
     MetaCParser_PopOpStackBottom(self);
     MetaCParser_PopOpenParens(self);
     MetaCParser_PopFlags(self);
-
+#endif
     if (arguments != emptyPointer)
     {
         arguments->Hash = hash;
 
-        metac_token_t* rParen = MetaCParser_PeekToken(self, 0);
+        metac_token_t* rParen = MetaCParser_Match(self, tok_rParen);
         MetaCLocation_Expand(&loc, LocationFromToken(self, rParen));
         arguments->LocationIdx =
                 MetaCLocationStorage_Store(&self->LocationStorage, loc);
@@ -1376,6 +1392,7 @@ expr_argument_t* MetaCParser_ParseArgumentList(metac_parser_t* self, parse_expr_
 
     return arguments;
 }
+
 #ifdef OLD_PARSER
 metac_expr_t* MetaCParser_ParseBinaryExpr(metac_parser_t* self,
                                                       parse_expr_flags_t eflags,
@@ -2108,7 +2125,12 @@ LParseExpTop:
     }
     else
     {
-        result = MetaCParser_ParseBinaryExpr(self, eflags, prev, 0);
+        int32_t initialPrec = 0;
+        if (prev->Kind == expr_unary_dot)
+        {
+            initialPrec = OpToPrecedence(prev->Kind);
+        }
+        result = MetaCParser_ParseBinaryExpr(self, eflags, prev, initialPrec);
     }
 
 #if !defined(NO_PREPROCESSOR)

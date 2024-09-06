@@ -1293,12 +1293,12 @@ static inline void PrintExpr(metac_printer_t* self, metac_expr_t* expr)
 
         assert(op);
 
-        if (!IsBinaryExp(expr->E1->Kind))
+        if (!IsBinaryExp(expr->E1->Kind) || self->ExtraParens)
             PrintChar(self, '(');
 
         PrintExpr(self, expr->E1);
 
-        if (!IsBinaryExp(expr->E1->Kind))
+        if (!IsBinaryExp(expr->E1->Kind) || self->ExtraParens)
             PrintChar(self, ')');
 
         PrintString(self, op, (uint32_t)strlen(op));
@@ -1325,14 +1325,14 @@ static inline void PrintExpr(metac_printer_t* self, metac_expr_t* expr)
             PrintString(self, op, (uint32_t)strlen(op));
         }
 
-        if (!IsBinaryExp(expr->E1->Kind))
+        if (!IsBinaryExp(expr->E1->Kind) || self->ExtraParens)
         {
            PrintChar(self, '(');
         }
 
         PrintExpr(self, expr->E1);
 
-        if (!IsBinaryExp(expr->E1->Kind))
+        if (!IsBinaryExp(expr->E1->Kind) || self->ExtraParens)
         {
             PrintChar(self, ')');
         }

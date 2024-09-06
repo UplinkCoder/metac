@@ -264,11 +264,11 @@ metac_sema_expr_t* MetaCSemantic_doIndexSemantic_(metac_sema_state_t* self,
         }
         else if (!errored)
         {
-            fprintf(stderr, "TupleIndex needs to be less than: %u", indexed->TupleExprCount);
+            xfprintf(stderr, "TupleIndex needs to be less than: %u", indexed->TupleExprCount);
         }
         else
         {
-            fprintf(stderr, "index is not a constant value\n");
+            xfprintf(stderr, "index is not a constant value\n");
         }
     }
     else if (indexed->Kind == expr_variable)
@@ -403,7 +403,7 @@ void ResolveIdentifierToExp(metac_sema_state_t* self,
 
     if (node->Kind == (metac_node_kind_t)expr_identifier)
     {
-        fprintf(stderr, "we should not be retured an identifier\n");
+        xfprintf(stderr, "we should not be retured an identifier\n");
     }
     else if (node->Kind == node_decl_variable ||
              node->Kind == node_decl_parameter)
@@ -593,7 +593,7 @@ metac_sema_expr_t* MetaCSemantic_doExprSemantic_(metac_sema_state_t* self,
     {
         MetaCPrinter_Init(&debugPrinter, self->ParserIdentifierTable, self->ParserStringTable, 0);
     }
-    
+
     if (expr->Kind == expr_and)
     {
         expr = RewriteAndtoAddrIfNeeded(self, expr);
@@ -625,8 +625,8 @@ metac_sema_expr_t* MetaCSemantic_doExprSemantic_(metac_sema_state_t* self,
         result->E1 = MetaCSemantic_doExprSemantic(self, expr->E1, 0);
         result->E2 = MetaCSemantic_doExprSemantic(self, expr->E2, 0);
 
-        hash = CRC32C_VALUE(hash, result->E1->Hash);
-        hash = CRC32C_VALUE(hash, result->E2->Hash);
+        if (METAC_NODE(result->E1) != emptyNode) hash = CRC32C_VALUE(hash, result->E1->Hash);
+        if (METAC_NODE(result->E2) != emptyNode) hash = CRC32C_VALUE(hash, result->E2->Hash);
 
         MetaCSemantic_PopExpr(self, result);
     }
@@ -644,11 +644,19 @@ metac_sema_expr_t* MetaCSemantic_doExprSemantic_(metac_sema_state_t* self,
         case expr_comma:
         {
             metac_sema_expr_t* r = result->E2;
-            while(r->Kind == expr_comma)
+            while(METAC_NODE(r) != emptyNode && r->Kind == expr_comma)
             {
                 r = r->E2;
             }
-            result->TypeIndex = r->TypeIndex;
+            if (METAC_NODE(r) != emptyNode)
+            {
+                result->TypeIndex = r->TypeIndex;
+            }
+            else
+            {
+                metac_type_index_t invalidTypeIndex = {0};
+                result->TypeIndex = invalidTypeIndex;
+            }
         } break;
 
         case expr_unary_dot:
@@ -1073,7 +1081,7 @@ LswitchIdKey:
         {
             if (expr->E1->Kind != expr_call)
             {
-                fprintf(stderr, "Only calls are supported not %s\n",
+               xfprintf(stderr, "Only calls are supported not %s\n",
                     MetaCExprKind_toChars(expr->E1->Kind));
                 break;
             }
@@ -1141,7 +1149,7 @@ LswitchIdKey:
                     YIELD("waiting_for_resolve");
 #endif
                     {
-                        fprintf(stderr, "Could not resolve %s\n", idString);
+                        xfprintf(stderr, "Could not resolve %s\n", idString);
                     }
                     // TODO sticky couldn't resolve message
                 }
@@ -1240,7 +1248,7 @@ LswitchIdKey:
                                                expr->IdentifierPtr);
             if (node == emptyPointer)
             {
-                fprintf(stderr, "Identifier lookup failed\n");
+                xfprintf(stderr, "Identifier lookup failed\n");
                 hash = expr->IdentifierPtr.v;
             }
             else

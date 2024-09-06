@@ -59,7 +59,7 @@ typedef struct repl_state_t
     int32_t LineSz;
     int32_t SrcBufferLength;
 
-    metac_printer_t printer;
+    metac_printer_t Printer;
 
     metac_alloc_t FileAllocator;
     metac_alloc_t Allocator;

@@ -28,6 +28,7 @@ int MetaCNode_TreeWalk_Real(metac_node_t node, walker_function_t walker_fn, void
     switch(node->Kind)
     {
         default: {
+            if (((node->Kind > node_expr_invalid) & (node->Kind < node_expr_max))) break;
             printf("%s should provide a case for node type %s\n", __FUNCTION__, MetaCNodeKind_toChars(node->Kind));
             assert(!"nodeKind not expected to be here\n");
         } break;
