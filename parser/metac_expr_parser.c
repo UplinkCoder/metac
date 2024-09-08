@@ -683,7 +683,12 @@ metac_expr_t* MetaCParser_ParsePrimaryExpr(metac_parser_t* self, parse_expr_flag
         }
         hash = CRC32C_VALUE(hash, result->CastType->Hash);
         MetaCParser_Match(self, tok_rParen);
+#ifdef OLD_PARSER
+        result->CastExp = MetaCParser_ParseExpr(self, flags, 0);
+#else
         result->CastExp = MetaCParser_ParseExpr2(self, flags);
+#endif
+
         hash = CRC32C_VALUE(hash, result->CastExp->Hash);
 
         if (MetaCLocationPtr_IsValid(result->CastExp->LocationIdx))
@@ -773,7 +778,11 @@ metac_expr_t* MetaCParser_ParsePrimaryExpr(metac_parser_t* self, parse_expr_flag
         {
             if (!MetaCParser_PeekMatch(self, tok_rParen, 1))
             {
+#ifdef OLD_PARSER
+                result->E1 = MetaCParser_ParseExpr(self, expr_flags_none, 0);
+#else
                 result->E1 = MetaCParser_ParseExpr2(self, expr_flags_none);
+#endif
                 // result->E1 = MetaCParser_ParseExpr(self, expr_flags_none, 0);
                 // printf("E1: %s\n", MetaCExprKind_toChars(result->E1->Kind));
                 result->Hash = CRC32C_VALUE(result->Hash, result->E1->Hash);
@@ -1494,10 +1503,12 @@ metac_expr_t* MetaCParser_ParseBinaryExpr(metac_parser_t* self,
             LparseArgumentList:
                 rhs = (metac_expr_t*)MetaCParser_ParseArgumentList(self, expr_flags_call);
                 if ((metac_node_t)rhs != emptyPointer)
+                {
                     rhsIsArgs = true;
 
-                MetaCLocation_Expand(&rhsLoc,
-                    LocationFromIndex(self, rhs->LocationIdx.v));
+                    MetaCLocation_Expand(&rhsLoc,
+                        LocationFromIndex(self, rhs->LocationIdx.v));
+                }
             }
             else
             {

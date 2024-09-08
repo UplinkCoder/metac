@@ -54,6 +54,10 @@ typedef struct identifier_translation_context_t
     const uint32_t FunctionKey;
     const metac_identifier_table_t* SrcTable;
     metac_identifier_table_t* DstTable;
+
+    const metac_identifier_table_t* SrcTableStrings;
+    metac_identifier_table_t* DstTableStrings;
+
 } identifier_translation_context_t;
 
 static inline void TranslateIdentifier(metac_identifier_table_t* dstTable,
@@ -73,6 +77,7 @@ static inline int TranslateIdentifiers(metac_node_t node, void* ctx)
 
     const metac_identifier_table_t* SrcTable = context->SrcTable;
     metac_identifier_table_t* DstTable = context->DstTable;
+    xprintf("Node seen %s\n", MetaCNodeKind_toChars(node->Kind));
 
     switch(node->Kind)
     {
@@ -81,6 +86,12 @@ static inline int TranslateIdentifiers(metac_node_t node, void* ctx)
             decl_variable_t* var = (decl_variable_t*) node;
             if (var->VarIdentifier.v && var->VarIdentifier.v != empty_identifier.v)
                 TranslateIdentifier(DstTable, SrcTable, &var->VarIdentifier);
+        } break;
+        case decl_function:
+        {
+            decl_function_t* func = (decl_function_t*) node;
+            if (func->Identifier.v != empty_identifier.v)
+                TranslateIdentifier(DstTable, SrcTable, &func->Identifier);
         } break;
         case decl_type:
         {
@@ -121,7 +132,31 @@ static inline int TranslateIdentifiers(metac_node_t node, void* ctx)
             }
         } break;
 
-        default : break;
+
+        case expr_string:
+        {
+            metac_expr_t* expr = cast(metac_expr_t*) node;
+            if (expr->StringPtr.v != empty_identifier.v)
+            {
+                TranslateIdentifier(context->DstTableStrings, context->SrcTableStrings, &expr->StringPtr);
+            }
+        } break;
+
+        case expr_identifier:
+        {
+            metac_expr_t* expr = cast(metac_expr_t*) node;
+            if (expr->IdentifierPtr.v != empty_identifier.v)
+            {
+                TranslateIdentifier(DstTable, SrcTable, &expr->IdentifierPtr);
+            }
+        } break;
+
+
+        default : {xprintf("No Identifier got Translated\n");} break;
+    }
+
+    if ((node->Kind > expr_invalid) & (node->Kind < expr_max))
+    {
     }
 
     return 0;
@@ -579,11 +614,32 @@ LswitchMode:
                 {
                     metac_filesystem_t* fs = uiInterface.GetFileSystem(uiState);
 
-                    repl->ParseMode = repl_mode_lex_file;
+                    metac_lpp_t tmpLpp = {0};
                     const char* filename = repl->Line + 3;
-                    MSGF("querying fileStorage for '%s'\n", filename);
-                    // metac_file_storage_t* fs = Global_GetFileStorage(worker);
-                    metac_file_ptr_t f = MetaCFileStorage_LoadFile(fs, filename);
+                    MetaCLPP_Init(&tmpLpp, &repl->Allocator, 0);
+                    decl_array_t decls = ReadLexParse(filename, &tmpLpp, &repl->Allocator);
+                    // after parsing we now transfer the declarations our global context;
+                    identifier_translation_context_t transCtx =
+                    {
+                        crc32c(~0, "TranslateIdentifiers", sizeof("TranslateIdentifiers") - 1),
+
+                        &tmpLpp.Parser.IdentifierTable,
+                        &repl->LPP.Parser.IdentifierTable,
+
+                        &tmpLpp.Parser.StringTable,
+                        &repl->LPP.Parser.StringTable
+                    };
+
+                    for(uint32_t i = 0; i < decls.Length; i++)
+                    {
+                        metac_decl_t* decl = decls.Ptr[i];
+
+                        MetaCNode_TreeWalk_Real(METAC_NODE(decl), TranslateIdentifiers, &transCtx);
+                        MetaCPrinter_Reset(&repl->Printer);
+                        PrintDecl(&repl->Printer, decls.Ptr[i], 1);
+                        MSGF("Got %.*s decls\n", (int)repl->Printer.StringMemoryCount, repl->Printer.StringMemory);
+                    }
+                    MetaCPrinter_Reset(&repl->Printer);
                 }
                 else
                 {

@@ -1174,12 +1174,12 @@ static inline void PrintExpr(metac_printer_t* self, metac_expr_t* expr)
             PrintChar(self, '(');
         PrintExpr(self, expr->E1);
 
-        if (expr->Kind != expr_dot)
+        if (expr->Kind != expr_dot && expr->Kind != expr_arrow)
             PrintSpace(self);
 
         PrintString(self, op, (uint32_t)strlen(op));
 
-        if (expr->Kind != expr_dot)
+        if (expr->Kind != expr_dot && expr->Kind != expr_arrow)
             PrintSpace(self);
 
         PrintExpr(self, expr->E2);
@@ -1323,6 +1323,7 @@ static inline void PrintExpr(metac_printer_t* self, metac_expr_t* expr)
             assert(op);
 
             PrintString(self, op, (uint32_t)strlen(op));
+            if (expr->Kind != expr_unary_dot) PrintSpace(self);
         }
 
         if (!IsBinaryExp(expr->E1->Kind) || self->ExtraParens)
@@ -1532,9 +1533,9 @@ static inline void PrintSemaVariable(metac_printer_t* self,
 }
 
 static inline void PrintSemaDecl(metac_printer_t* self,
-                                        metac_sema_state_t* sema,
-                                        metac_sema_decl_t* semaDecl,
-                                        uint32_t level)
+                                 metac_sema_state_t* sema,
+                                 metac_sema_decl_t* semaDecl,
+                                 uint32_t level)
 {
     bool printSemicolon = true;
 
@@ -1545,7 +1546,22 @@ static inline void PrintSemaDecl(metac_printer_t* self,
             PrintIdentifier(self, semaDecl->sema_decl_type_enum.Name);
         } break;
         case decl_type_typedef:
-            assert(0);
+        {
+            sema_decl_type_typedef_t* typdef = (sema_decl_type_typedef_t*) semaDecl;
+            PrintString(self, "typedef ", sizeof("typedef ") - 1);
+            level++;
+            self->ForTypedef = true;
+            {
+                PrintSemaType(self, sema, typdef->Type);
+                if (typdef->Identifier.v != empty_identifier.v)
+                {
+                    PrintSpace(self);
+                    PrintIdentifier(self, typdef->Identifier);
+                }
+            }
+            level--;
+        } break;
+
         case decl_type:
         {
             sema_decl_type_t* semaType = cast(sema_decl_type_t*) semaDecl;

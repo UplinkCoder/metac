@@ -178,13 +178,14 @@ int MetaCNode_TreeWalk_Real(metac_node_t node, walker_function_t walker_fn, void
         {
             stmt_block_t* stmt_block = cast(stmt_block_t*) node;
             const uint32_t stmtCount = stmt_block->StmtCount;
-            metac_stmt_t* firstStmt = stmt_block->Body;
+            metac_stmt_t* stmt = stmt_block->Body;
+
             for(uint32_t i = 0; i < stmtCount; i++)
             {
-                metac_stmt_t* stmt = firstStmt + i;
                 result = MetaCNode_TreeWalk_Real(stmt, walker_fn, ctx);
                 if (result)
                     break;
+                stmt = stmt->Next;
             }
             if (result)
                 return result;
@@ -305,6 +306,10 @@ int MetaCNode_TreeWalk_Real(metac_node_t node, walker_function_t walker_fn, void
         case node_stmt_decl:
         {
             stmt_decl_t* stmt_decl = cast(stmt_decl_t*) node;
+            if ((metac_node_t)stmt_decl->Decl != emptyNode)
+                result = MetaCNode_TreeWalk_Real(stmt_decl->Decl, walker_fn, ctx);
+            if(result)
+                 return result;
         } break;
 
         case node_stmt_if:
@@ -361,9 +366,45 @@ int MetaCNode_TreeWalk_Real(metac_node_t node, walker_function_t walker_fn, void
 
         case node_stmt_comment:
             break;
+
+#define UNA_CASE(EXP_KIND) \
+    case EXP_KIND:
+
+        case expr_paren:
+        FOREACH_UNARY_EXP(UNA_CASE)
+        {
+            metac_expr_t* expr = cast(metac_expr_t*) node;
+
+            MetaCNode_TreeWalk_Real(expr->E1, walker_fn, ctx);
+        } break;
+
+
+#define BIN_CASE(EXP_KIND) \
+    case EXP_KIND:
+
+        case expr_call:
+        case expr_index:
+        FOREACH_BINARY_EXP(BIN_CASE)
+        {
+            metac_expr_t* expr = cast(metac_expr_t*) node;
+
+            MetaCNode_TreeWalk_Real(expr->E1, walker_fn, ctx);
+            MetaCNode_TreeWalk_Real(expr->E2, walker_fn, ctx);
+        } break;
+
+        case expr_argument:
+        {
+            expr_argument_t* expr = cast(expr_argument_t*) node;
+
+            for(;METAC_NODE(expr) != emptyNode; expr = expr->Next)
+            {
+                MetaCNode_TreeWalk_Real(expr->Expr, walker_fn, ctx);
+            }
+        } break;
     }
     return 0;
 }
+
 #undef MetaCNode_TreeWalk_Real
 #undef walker_fn
 #undef emptyNode

@@ -1118,7 +1118,7 @@ static void MetaCCodegen_doDotExpr(metac_bytecode_ctx_t* ctx,
     offsetVal = imm32(field->Offset);
 
     assert(e1Value.vType == BCValueType_StackValue);
-    
+
     gen.Add3(c, &addr, &e1Value, &offsetVal);
 
     MetaCCodegen_doDeref(ctx, &addr, field->Type, result);
