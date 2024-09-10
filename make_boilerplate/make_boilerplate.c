@@ -1,5 +1,6 @@
 #define NO_FIBERS
 #define ACCEL ACCEL_TABLE
+#define OLD_PARSER 1
 
 #include "../os/compat.h"
 #include "../utils/read_file.c"

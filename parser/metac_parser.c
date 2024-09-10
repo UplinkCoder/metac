@@ -2310,7 +2310,11 @@ metac_stmt_t* MetaCParser_ParseStmt(metac_parser_t* self,
         }
         else
         {
+#ifdef OLD_PARSER
+            return_->ReturnExp = MetaCParser_ParseExpr(self, expr_flags_none, 0);
+#else
             return_->ReturnExp = MetaCParser_ParseExpr2(self, expr_flags_none);
+#endif
             hash = CRC32C_VALUE(hash, return_->ReturnExp->Hash);
         }
         return_->Hash = hash;

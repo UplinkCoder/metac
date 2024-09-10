@@ -435,7 +435,7 @@ static inline bool IsPunctuationToken(metac_token_enum_t tok)
     return (
         (IsBinaryOperator(tok, expr_flags_none)
             && tok != tok_star && tok != tok_lParen
-            && tok != tok_lBracket)
+            && tok != tok_lBracket && tok != tok_and)
         ||  tok == tok_dotdot
         ||  tok == tok_comma
 /*
@@ -741,10 +741,52 @@ metac_expr_t* MetaCParser_ParsePrimaryExpr(metac_parser_t* self, parse_expr_flag
     {
         // result = GetOrAddStringLiteral(_string_table, currentToken);
         MetaCParser_Match(self, tok_string);
+        uint32_t stringLength = LENGTH_FROM_STRING_KEY(currentToken->StringKey);
+        uint32_t currentLen = LENGTH_FROM_STRING_KEY(currentToken->StringKey);
+        uint32_t adjacentStrings = 1;
+        const char* currentStringP = IdentifierPtrToCharPtr(&self->Lexer->StringTable, currentToken->StringPtr);
+        uint32_t stringHash = crc32c_nozero(~0, currentStringP, currentLen);
+        char stringBuffer[8192]; // let's just hope we don't need to concat huge strings;
+        char* stringBufferP = stringBuffer;
+
         result = AllocNewExpr(expr_string);
-        result->StringPtr = RegisterString(self, currentToken);
-        result->StringKey = currentToken->StringKey;
-        result->Hash = currentToken->StringKey;
+
+        for(metac_token_t* peekToken = 0; (peekToken = MetaCParser_PeekToken(self, 1))->TokenType == tok_string;)
+        {
+            MetaCParser_Match(self, tok_string);
+            memcpy(stringBufferP, currentStringP, currentLen);
+            stringBufferP += currentLen;
+
+            currentLen = LENGTH_FROM_STRING_KEY(peekToken->StringKey);
+            currentStringP = IdentifierPtrToCharPtr(&self->Lexer->StringTable, peekToken->StringPtr);
+            stringHash = crc32c_nozero(stringHash, currentStringP, currentLen);
+            stringLength += currentLen;
+
+            adjacentStrings += 1;
+            if (stringLength >= sizeof(stringBuffer)) { assert(!"concat string  too long"); }
+        }
+
+        if (adjacentStrings == 1)
+        {
+            result->StringPtr = RegisterString(self, currentToken);
+            result->StringKey = currentToken->StringKey;
+            result->Hash = currentToken->StringKey;
+        }
+        else
+        {
+            // for the last one
+            memcpy(stringBufferP, currentStringP, currentLen);
+            // we can now compute the string key
+            assert(crc32c_nozero(~0, stringBuffer, stringLength) == stringHash);
+
+            result->StringKey = STRING_KEY(stringHash, stringLength);
+            // GetOrAddIdentifier copies the string into string table memory
+            // therefore we can just concat it into a temporary buffer
+            result->StringPtr = GetOrAddIdentifier(&self->StringTable,
+                                  result->StringKey, stringBuffer);
+            result->Hash = result->StringKey;
+
+        }
         //PushOperand(result);
     }
     else if (tokenType == tok_char)
