@@ -739,33 +739,56 @@ metac_expr_t* MetaCParser_ParsePrimaryExpr(metac_parser_t* self, parse_expr_flag
     }
     else if (tokenType == tok_string)
     {
-        // result = GetOrAddStringLiteral(_string_table, currentToken);
-        MetaCParser_Match(self, tok_string);
+        // Match the initial string token
+        currentToken = MetaCParser_Match(self, tok_string);
+
+        // Extract the length and pointer to the string
         uint32_t stringLength = LENGTH_FROM_STRING_KEY(currentToken->StringKey);
-        uint32_t currentLen = LENGTH_FROM_STRING_KEY(currentToken->StringKey);
-        uint32_t adjacentStrings = 1;
         const char* currentStringP = IdentifierPtrToCharPtr(&self->Lexer->StringTable, currentToken->StringPtr);
-        uint32_t stringHash = crc32c_nozero(~0, currentStringP, currentLen);
-        char stringBuffer[8192]; // let's just hope we don't need to concat huge strings;
+
+        // Initialize hash and other variables
+        uint32_t stringHash = crc32c_nozero(~0, currentStringP, stringLength);
+        uint32_t currentLen = stringLength;
+        uint32_t adjacentStrings = 1;
+
+        // A buffer to hold concatenated strings
+        char stringBuffer[8192];
+
+        // A pointer that tracks the current position in the buffer
         char* stringBufferP = stringBuffer;
 
-        result = AllocNewExpr(expr_string);
+        // Allocate result expression
+        metac_expr_t* result = AllocNewExpr(expr_string);
 
-        for(metac_token_t* peekToken = 0; (peekToken = MetaCParser_PeekToken(self, 1))->TokenType == tok_string;)
+        // Process adjacent string tokens
+        while (MetaCParser_PeekMatch(self, tok_string, 1))
         {
-            MetaCParser_Match(self, tok_string);
-            memcpy(stringBufferP, currentStringP, currentLen);
-            stringBufferP += currentLen;
+            // Match the next token and expand the location
+            currentToken = MetaCParser_Match(self, tok_string);
+            MetaCLocation_Expand(&loc, LocationFromToken(self, currentToken));
 
-            currentLen = LENGTH_FROM_STRING_KEY(peekToken->StringKey);
-            currentStringP = IdentifierPtrToCharPtr(&self->Lexer->StringTable, peekToken->StringPtr);
+            // Concatenate the string into the buffer
+            memcpy(stringBufferP, currentStringP, currentLen);
+            stringBufferP += currentLen;  // Move the buffer pointer to the next free space
+
+            // Update current string and length for the next token
+            currentLen = LENGTH_FROM_STRING_KEY(currentToken->StringKey);
+            currentStringP = IdentifierPtrToCharPtr(&self->Lexer->StringTable, currentToken->StringPtr);
+
+            // Update the hash and total length
             stringHash = crc32c_nozero(stringHash, currentStringP, currentLen);
             stringLength += currentLen;
 
-            adjacentStrings += 1;
-            if (stringLength >= sizeof(stringBuffer)) { assert(!"concat string  too long"); }
+            // Increment the count of adjacent strings
+            adjacentStrings++;
+
+            // Check for buffer overflow
+            if (stringLength >= sizeof(stringBuffer)) {
+                assert(!"Concatenated string too long");
+            }
         }
 
+        // If there was only one string, no need to concatenate
         if (adjacentStrings == 1)
         {
             result->StringPtr = RegisterString(self, currentToken);
@@ -774,20 +797,17 @@ metac_expr_t* MetaCParser_ParsePrimaryExpr(metac_parser_t* self, parse_expr_flag
         }
         else
         {
-            // for the last one
+            // For multiple concatenated strings, copy the last part
             memcpy(stringBufferP, currentStringP, currentLen);
-            // we can now compute the string key
+
+            // Verify the hash matches the concatenated string
             assert(crc32c_nozero(~0, stringBuffer, stringLength) == stringHash);
 
+            // Register the concatenated string
             result->StringKey = STRING_KEY(stringHash, stringLength);
-            // GetOrAddIdentifier copies the string into string table memory
-            // therefore we can just concat it into a temporary buffer
-            result->StringPtr = GetOrAddIdentifier(&self->StringTable,
-                                  result->StringKey, stringBuffer);
+            result->StringPtr = GetOrAddIdentifier(&self->StringTable, result->StringKey, stringBuffer);
             result->Hash = result->StringKey;
-
         }
-        //PushOperand(result);
     }
     else if (tokenType == tok_char)
     {
@@ -1765,7 +1785,7 @@ metac_expr_t* MetaCParser_ApplyOp(metac_parser_t* self, metac_expr_kind_t op)
     }
     else if (op == expr_assert)
     {
-       
+
     }
     else if (IsUnaryExp(op))
     {
