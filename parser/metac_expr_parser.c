@@ -758,7 +758,7 @@ metac_expr_t* MetaCParser_ParsePrimaryExpr(metac_parser_t* self, parse_expr_flag
         char* stringBufferP = stringBuffer;
 
         // Allocate result expression
-        metac_expr_t* result = AllocNewExpr(expr_string);
+        result = AllocNewExpr(expr_string);
 
         // Process adjacent string tokens
         while (MetaCParser_PeekMatch(self, tok_string, 1))
