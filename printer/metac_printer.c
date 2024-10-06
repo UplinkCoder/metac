@@ -2,6 +2,7 @@
 #include "metac_printer.h"
 #include "../parser/metac_lexer.h"
 #include "../parser/metac_parser.h"
+#include "../parser/metac_expr_parser.h"
 #include "../utils/int_to_str.c"
 #include "../3rd_party/fpconv/src/fpconv.h"
 
@@ -15,6 +16,10 @@
 static inline void PrintExpr(metac_printer_t* self, metac_expr_t* exp);
 #ifndef NO_SEMANTIC
 static inline void PrintSemaExpr(metac_printer_t* self, metac_sema_state_t* sema, metac_sema_expr_t* exp);
+#endif
+
+#ifndef emptyNode
+#define emptyNode (metac_node_t)0x1
 #endif
 
 static inline void PrintSpace(metac_printer_t* self)
@@ -170,7 +175,11 @@ static inline void PrintToken(metac_printer_t* self,
         case tok_assign:
             PrintChar(self, '=');
         break;
-    }
+
+       case tok_bang:
+            PrintChar(self, '!');
+        break;
+      }
 }
 #undef CASE_
 
@@ -396,10 +405,16 @@ static inline void PrintType(metac_printer_t* self, decl_type_t* type)
             else if (type->TypeKind == type_modifiers)
             {
                 // we already printed the modifiers
-            } else if (type->TypeKind == type_tuple)
+            }
+            else if (type->TypeKind == type_tuple)
             {
                 goto LprintTuple;
-            } else
+            }
+            else if (type->TypeKind == type_template_instance)
+            {
+                goto LprintTemplateInstance;
+            }
+            else
                 assert(0);
         } break;
         case decl_type_tuple :
@@ -418,6 +433,29 @@ static inline void PrintType(metac_printer_t* self, decl_type_t* type)
                 PrintType(self, typeTuple->Types[typeCount - 1]);
             }
             PrintString(self, "}", 1);
+        } break;
+        case decl_type_template_instance:
+        LprintTemplateInstance:
+        {
+            decl_type_template_instance_t* tinst = cast(decl_type_template_instance_t*) type;
+            const int32_t argumentCount = cast(int32_t)tinst->ArgumentCount;
+            expr_argument_t* arg = tinst->Arguments;
+            PrintIdentifier(self, tinst->Identifier);
+            PrintToken(self, tok_bang);
+            PrintToken(self, tok_lParen);
+
+            for(int32_t i = 0; i < argumentCount - 1; i++)
+            {
+                PrintExpr(self, arg->Expr);
+                PrintString(self, ", ", sizeof(", ") - 1);
+                arg = arg->Next;
+            }
+            if (argumentCount != 0)
+            {
+                PrintExpr(self, arg->Expr);
+                assert(METAC_NODE(arg->Next) == emptyNode);
+            }
+            PrintToken(self, tok_rParen);
         } break;
 
         case decl_type_struct :
@@ -799,9 +837,11 @@ static inline void PrintStmt(metac_printer_t* self, metac_stmt_t* stmt)
         } break;
 
         default : {
+#ifdef DEBUG
             fprintf(stderr,
                 "Statement Kind: not handled by printer %s\n",
                     StmtKind_toChars(stmt->Kind));
+#endif
             assert(0);
         }
     }
@@ -934,6 +974,12 @@ static inline void PrintDecl(metac_printer_t* self,
             {
                 PrintSpace(self);
                 PrintIdentifier(self, struct_->Identifier);
+            }
+
+            if (struct_->Parameters != 0)
+            {
+                PrintToken(self, tok_bang);
+                PrintParameterList(self, struct_->Parameters);
             }
 
             if (METAC_NODE(f) == emptyNode)
@@ -2342,6 +2388,14 @@ const char* MetaCPrinter_PrintStmt(metac_printer_t* self, metac_stmt_t* exp)
     ARENA_ARRAY_ADD(self->StringMemory, '\0');
 
     return result;
+}
+
+void MetaCPrinter_RemoveZeroTerminator(metac_printer_t* self)
+{
+    if (self->StringMemory[self->StringMemoryCount] == '\0')
+    {
+        self->StringMemoryCount -= 1;
+    }
 }
 
 const char* MetaCPrinter_PrintNode(metac_printer_t* self, metac_node_t node, uint32_t level)

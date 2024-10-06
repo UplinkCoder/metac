@@ -1360,6 +1360,12 @@ metac_expr_t* MetaCParser_ParseUnaryExpr(metac_parser_t* self)
         isPrimaryExp = true;
         result = MetaCParser_ParsePrimaryExpr(self, eflags);
     }
+    else if (IsTypeToken(tokenType))
+    {
+        result = AllocNewExpr(expr_type);
+        result->TypeExp = MetaCParser_ParseTypeDecl(self, 0, 0);
+        result->Hash = CRC32C_VALUE(type_key, result->TypeExp->Hash);
+    }
     else
     {
         if (tokenType != tok_eof && tokenType != tok_newline)
@@ -1397,16 +1403,21 @@ metac_expr_t* MetaCParser_ParseUnaryExpr(metac_parser_t* self)
 }
 #endif
 
-expr_argument_t* MetaCParser_ParseArgumentList(metac_parser_t* self, parse_expr_flags_t flags)
+expr_argument_list_t MetaCParser_ParseArgumentList(metac_parser_t* self, parse_expr_flags_t flags)
 {
     metac_location_t loc =
         LocationFromToken(self, MetaCParser_PeekToken(self, 0));
 
-    metac_token_t* peekToken = MetaCParser_PeekToken(self, 1);
-    expr_argument_t* arguments = (expr_argument_t*) _emptyPointer;
-    expr_argument_t** nextArgument = &arguments;
+    metac_token_t* peekToken;
+    expr_argument_list_t arguments = {0};
+    expr_argument_t** nextArgument = &arguments.Arguments;
     uint32_t nArguments = 0;
     uint32_t hash = ~0;
+
+    METAC_NODE(arguments.Arguments) = emptyNode;
+
+    MetaCParser_Match(self, tok_lParen);
+    peekToken = MetaCParser_PeekToken(self, 1);
 
     if (peekToken->TokenType == tok_rParen)
     {
@@ -1445,19 +1456,21 @@ expr_argument_t* MetaCParser_ParseArgumentList(metac_parser_t* self, parse_expr_
             break;
         }
     }
+
+    arguments.ArgumentCount = nArguments;
 #ifndef OLD_PARSER
     MetaCParser_PopExprStackBottom(self);
     MetaCParser_PopOpStackBottom(self);
     MetaCParser_PopOpenParens(self);
     MetaCParser_PopFlags(self);
 #endif
-    if (arguments != emptyPointer)
+    if (arguments.ArgumentCount != 0)
     {
-        arguments->Hash = hash;
+        arguments.Hash = hash;
 
         metac_token_t* rParen = MetaCParser_Match(self, tok_rParen);
         MetaCLocation_Expand(&loc, LocationFromToken(self, rParen));
-        arguments->LocationIdx =
+        arguments.LocationIdx =
                 MetaCLocationStorage_Store(&self->LocationStorage, loc);
     }
 
@@ -1542,7 +1555,7 @@ metac_expr_t* MetaCParser_ParseBinaryExpr(metac_parser_t* self,
         {
             expr_right = BinExpTypeFromTokenType(peekTokenType);
             uint32_t opPrecedence = OpToPrecedence(expr_right);
-            metac_token_t*  startTok = MetaCParser_Match(self, peekTokenType);
+            metac_token_t*  startTok = (expr_right == expr_call ? peekToken : MetaCParser_Match(self, peekTokenType));
             metac_location_t rhsLoc = LocationFromToken(self, startTok);
             metac_expr_t* rhs;
 
@@ -1557,13 +1570,12 @@ metac_expr_t* MetaCParser_ParseBinaryExpr(metac_parser_t* self,
             else if (expr_right == expr_template_instance
                 && MetaCParser_PeekMatch(self, tok_lParen, 1))
             {
-                MetaCParser_Match(self, tok_lParen);
                 goto LparseArgumentList;
             }
             else if (expr_right == expr_call)
             {
             LparseArgumentList:
-                rhs = (metac_expr_t*)MetaCParser_ParseArgumentList(self, expr_flags_call);
+                rhs = (metac_expr_t*)MetaCParser_ParseArgumentList(self, expr_flags_call).Arguments;
                 if ((metac_node_t)rhs != emptyPointer)
                 {
                     rhsIsArgs = true;
@@ -1630,7 +1642,7 @@ metac_expr_t* MetaCParser_ParseBinaryExpr(metac_parser_t* self,
     return result;
 }
 #endif
-static bool IsBinaryExp(metac_expr_kind_t kind)
+bool IsBinaryExp(metac_expr_kind_t kind)
 {
     return ((kind >= FIRST_BINARY_EXP(TOK_SELF)) & (kind <= LAST_BINARY_EXP(TOK_SELF))
             | (kind == expr_index)
@@ -2128,7 +2140,7 @@ LParseCall:
             MetaCParser_Match(self, tok_lParen);
             op = expr_call;
             opPrec = OpToPrecedence(op);
-            args = MetaCParser_ParseArgumentList(self, flags);
+            args = MetaCParser_ParseArgumentList(self, flags).Arguments;
             MetaCParser_Match(self, tok_rParen);
 
             if (opPrec > prec)

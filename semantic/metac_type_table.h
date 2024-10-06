@@ -185,6 +185,54 @@ static inline const bool TupleSlotsEqual(const metac_type_table_slot_t* a,
    return result;
 }
 
+static inline const bool MetaCExpr_Equal(const metac_expr_t* a,
+                                         const metac_expr_t* b)
+{
+    assert(0);
+}
+
+static inline const bool TemplateSlotsEqual(const metac_type_table_slot_t* a,
+                                            const metac_type_table_slot_t* b)
+{
+   metac_type_template_t* slotA = cast(metac_type_template_t*) a;
+   metac_type_template_t* slotB = cast(metac_type_template_t*) b;
+   bool result = false;
+
+    if (slotA->Symbol != slotB->Symbol)
+    {
+        goto Lret;
+    }
+
+    if (slotA->ArgumentCount != slotB->ArgumentCount)
+    {
+        goto Lret;
+    }
+
+    {
+       result = true;
+       const uint32_t argumentCount = slotA->ArgumentCount;
+       for(uint32_t i = 0; i < argumentCount; i++)
+       {
+           metac_expr_t argA = slotA->Arguments[i];
+           metac_expr_t argB = slotA->Arguments[i];
+           if (argA.Hash != argB.Hash)
+           {
+               result = false;
+               break;
+           }
+
+           if (!MetaCExpr_Equal(&argA, &argB))
+           {
+                result = false;
+                break;
+           }
+       }
+   }
+Lret:
+   return result;
+}
+
+
 #define METAC_TYPE_TABLE_T(SLOT_TYPE) \
     metac_type_table_##SLOT_TYPE##_t
 
@@ -210,7 +258,8 @@ typedef struct  METAC_TYPE_TABLE_T(SLOT_TYPE) \
     M(ptr) \
     M(functiontype) \
     M(typedef) \
-    M(tuple)
+    M(tuple) \
+    M(template)
 
 FOREACH_TABLE_SLOT_TYPE(METAC_TYPE_TABLE_T_DEF)
 
@@ -223,7 +272,8 @@ FOREACH_TABLE_SLOT_TYPE(METAC_TYPE_TABLE_T_DEF)
     M(ptr, Ptr, PtrSlotsEqual) \
     M(functiontype, Function, FunctiontypeSlotsEqual) \
     M(typedef, Typedef, TypedefSlotsEqual) \
-    M(tuple, Tuple, TupleSlotsEqual)
+    M(tuple, Tuple, TupleSlotsEqual) \
+    M(template, Template, TemplateSlotsEqual)
 
 #define DECLARE_ADD(TYPE_NAME, MEMBER_NAME, UNUSED_CMP) \
     metac_type_index_t MetaCTypeTable_Add ## MEMBER_NAME ## Type \

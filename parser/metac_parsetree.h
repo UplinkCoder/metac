@@ -36,6 +36,14 @@ typedef struct expr_argument_t
     struct expr_argument_t* Next;
 } expr_argument_t;
 
+typedef struct expr_argument_list_t
+{
+    EXPR_HEADER
+
+    expr_argument_t* Arguments;
+    uint32_t ArgumentCount;
+} expr_argument_list_t;
+
 typedef struct expr_tuple_t
 {
     EXPR_HEADER
@@ -401,6 +409,8 @@ typedef enum metac_type_kind_t
 
     type_tuple,
 
+    type_template_instance,
+
     type_modifiers,
 
     type_code,
@@ -426,6 +436,7 @@ typedef struct decl_type_t
 
     // only set if TypeKind == type_identifier
     metac_identifier_ptr_t TypeIdentifier;
+    //
 } decl_type_t;
 
 typedef struct decl_comment_t
@@ -572,8 +583,11 @@ typedef struct decl_type_struct_t
 
     metac_identifier_ptr_t BaseIdentifier;
 
+    decl_parameter_t* Parameters;
+
     struct decl_field_t* Fields;
 
+    uint32_t ParameterCount;
     uint32_t FieldCount;
 } decl_type_struct_t;
 
@@ -589,8 +603,11 @@ typedef struct decl_type_union_t
 
     metac_identifier_ptr_t BaseIdentifier;
 
+    decl_parameter_t* Parameters;
+
     struct decl_field_t* Fields;
 
+    uint32_t ParameterCount;
     uint32_t FieldCount;
 } decl_type_union_t;
 
@@ -626,6 +643,20 @@ typedef struct decl_type_tuple_t
     decl_type_t** Types;
     uint32_t TypeCount;
 } decl_type_tuple_t;
+
+typedef struct decl_type_template_instance_t
+{
+    DECL_HEADER
+
+    TYPE_HEADER
+
+    metac_identifier_ptr_t Identifier;
+
+    expr_argument_t* Arguments;
+
+    uint32_t ArgumentCount;
+} decl_type_template_instance_t;
+
 
 typedef struct decl_type_modifier_t
 {

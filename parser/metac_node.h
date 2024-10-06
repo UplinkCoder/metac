@@ -34,6 +34,7 @@
     M(decl_type_functiontype) \
     M(decl_type_typeof) \
     M(decl_type_tuple) \
+    M(decl_type_template_instance) \
     LAST_DECL_TYPE(M) \
     \
     M(decl_function) \

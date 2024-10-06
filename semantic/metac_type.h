@@ -25,6 +25,7 @@
     M(type_index_functiontype  , 0x9) \
     M(type_index_typedef       , 0xA) \
     M(type_index_tuple         , 0xB) \
+    M(type_index_template      , 0xC) \
     \
     M(type_index_unresolved    , 0xD) \
     M(type_index_extended      , 0xE) \
@@ -198,4 +199,17 @@ typedef struct metac_type_tuple_t
 
     uint32_t TypeCount;
 } metac_type_tuple_t;
+
+typedef struct metac_type_template_t
+{
+    metac_type_header_t Header;
+
+    metac_type_index_t TypeIndex;
+
+    metac_decl_t* Symbol;
+
+    metac_expr_t* Arguments;
+
+    uint32_t ArgumentCount;
+} metac_type_template_t;
 #endif

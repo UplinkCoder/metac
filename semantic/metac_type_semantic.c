@@ -1244,10 +1244,67 @@ metac_type_index_t MetaCSemantic_TypeSemantic(metac_sema_state_t* self,
 #endif
         }
     }
-    else if (type->Kind == decl_type && type->TypeKind == type_identifier)
+    else if (type->Kind == decl_type_template_instance)
     {
-        //printf("MetaCNodeKind_toChars: %s\n", MetaCNodeKind_toChars((metac_node_kind_t)type->Kind));
-        //printf("TypeIdentifier: %s\n", IdentifierPtrToCharPtr(self->ParserIdentifierTable, type->TypeIdentifier));
+        decl_type_template_instance_t* tInst = cast(decl_type_template_instance_t*) type;
+        expr_argument_t* args = tInst->Arguments;
+        STACK_ARENA_ARRAY(metac_sema_expr_t*, semaArguments, 64, &self->TempAlloc);
+
+#if 0
+        metac_printer_t debugPrinter = {0};
+        MetaCPrinter_Init(&debugPrinter, self->ParserIdentifierTable, self->ParserStringTable, &self->TempAlloc);
+#endif
+        ARENA_ARRAY_ENSURE_SIZE(semaArguments, tInst->ArgumentCount);
+
+
+        for(metac_expr_t* e = args->Expr; METAC_NODE(args) != emptyNode; args = args->Next, e = args->Expr)
+        {
+#if 0
+            MetaCPrinter_PrintExpr(&debugPrinter, e);
+            if (METAC_NODE(args->Next) != emptyNode)
+            {
+                MetaCPrinter_RemoveZeroTerminator(&debugPrinter);
+                MetacPrinter_PrintStringLiteral(&debugPrinter, ", ");
+            }
+#endif
+            ARENA_ARRAY_ADD(semaArguments, MetaCSemantic_doExprSemantic(self, e, 0));
+        }
+        int k = 12;
+       assert(!"I don't do template instances just yet");
+
+
+
+        /*
+metac_type_header_t Header;
+metac_type_index_t TypeIndex;
+metac_decl_t* Symbol;
+metac_expr_t* Arguments;
+uint32_t ArgumentCount;
+     */
+     uint32_t hash = ~0;
+     metac_decl_t* symbol = NULL;
+     metac_expr_t* arguments = cast(metac_expr_t*) emptyNode;
+     uint32_t nArguments = 0;
+            {
+                metac_type_header_t header = {decl_type_template_instance, 0, hash, 0};
+            metac_type_template_t key = {
+                header,
+                zeroIdx,
+                symbol,
+                arguments,
+                nArguments,
+            };
+    }
+
+    }
+    else if (type->Kind == decl_type)
+    {
+        if ((type->TypeKind != type_identifier) && (type->TypeKind != type_template_instance))
+        {
+            assert(!"Only identifier types and template types are expected to be resovled here");
+        }
+        xprintf("MetaCNodeKind_toChars: %s\n", MetaCNodeKind_toChars((metac_node_kind_t)type->Kind));
+        xprintf("TypeIdentifier: %s\n", IdentifierPtrToCharPtr(self->ParserIdentifierTable, type->TypeIdentifier));
 LtryAgian: {}
         metac_node_t node =
             MetaCSemantic_LookupIdentifier(self, type->TypeIdentifier);

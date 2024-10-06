@@ -67,8 +67,8 @@ void MetaCParser_Init(metac_parser_t* self, metac_alloc_t* allocator)
     self->CurrentBlockStmt = 0;
 
 
-    ARENA_ARRAY_INIT_SZ(uint16_t, self->PackStack, &self->Allocator, 4);
 /*
+    ARENA_ARRAY_INIT_SZ(uint16_t, self->PackStack, &self->Allocator, 4);
     self->Defines = self->inlineDefines;
     self->DefineCount = 0;
     self->DefineCapacity = ARRAY_SIZE(self->inlineDefines);
@@ -939,6 +939,93 @@ static void EatAttributes(metac_parser_t* self);
 
 #include "metac_expr_parser.c"
 
+static inline bool IsTypeDecl(metac_decl_kind_t kind)
+{
+    return ((kind >= FIRST_DECL_TYPE(TOK_SELF))
+          & (kind <= LAST_DECL_TYPE(TOK_SELF)));
+}
+uint32_t HashDecl(metac_decl_t* decl);
+
+
+decl_parameter_list_t ParseParameterList(metac_parser_t* self,
+                                         decl_function_t* parent)
+{
+    uint32_t hash = CRC32C_PARENPAREN;
+
+    decl_parameter_list_t result = {(decl_parameter_t*)emptyPointer};
+    uint32_t parameterCount = 0;
+    decl_parameter_t** nextParam = &result.List;
+
+    MetaCParser_Match(self, tok_lParen);
+
+    while (!MetaCParser_PeekMatch(self, tok_rParen, 1))
+    {
+        assert((*nextParam) == emptyPointer);
+
+        if (result.IsVariadic)
+        {
+            ParseError(self->LastLocation,
+                        "you cannot have ... at any position other than the end of the parameter list\n");
+        }
+
+        if (MetaCParser_PeekMatch(self, tok_dotdotdot, 1))
+        {
+            MetaCParser_Match(self, tok_dotdotdot);
+            result.IsVariadic = true;
+            continue;
+        }
+
+        decl_parameter_t* param;
+        AllocNewDecl(decl_parameter, &param);
+        parameterCount++;
+        (*nextParam) = param;
+
+        metac_decl_t* paramDecl =
+            MetaCParser_ParseDecl(self, (metac_decl_t*)parent);
+        if (paramDecl->Kind == decl_variable)
+        {
+            param->Parameter = (decl_variable_t*)
+                paramDecl;
+            hash = CRC32C_VALUE(hash, param->Parameter->Hash);
+        }
+        else if (IsTypeDecl(paramDecl->Kind))
+        {
+            // now we synthezie a variable without name
+            decl_variable_t* var;
+            AllocNewDecl(decl_variable, &var);
+            var->Hash = 0;
+            var->VarType = (decl_type_t*)paramDecl;
+            var->VarIdentifier = empty_identifier;
+            var->VarInitExpr = (metac_expr_t*) emptyPointer;
+            var->Hash = HashDecl(cast(metac_decl_t*)var);
+            hash = CRC32C_VALUE(hash, var->Hash);
+            param->Parameter = var;
+        }
+        else
+        {
+            metac_token_t* peek = MetaCParser_PeekToken(self , 1);
+            metac_location_t loc = LocationFromToken(self, peek);
+            ParseError(loc, "Invalid parameter");
+        }
+        nextParam = &param->Next;
+        (*nextParam) = (decl_parameter_t*) _emptyPointer;
+
+        if (MetaCParser_PeekMatch(self, tok_comma, 1))
+        {
+            MetaCParser_Match(self, tok_comma);
+        }
+        else
+        {
+            assert(MetaCParser_PeekMatch(self, tok_rParen, 1));
+        }
+    }
+    MetaCParser_Match(self, tok_rParen);
+    result.ParameterCount = parameterCount;
+    result.Hash = hash;
+
+    return result;
+}
+
 decl_type_t* MetaCParser_ParseTypeDecl(metac_parser_t* self, metac_decl_t* parent, metac_decl_t* prev)
 {
     decl_type_t* result = 0;
@@ -1002,13 +1089,13 @@ decl_type_t* MetaCParser_ParseTypeDecl(metac_parser_t* self, metac_decl_t* paren
         }
         else if (tokenType == tok_identifier)
         {
+            metac_token_t* identifier = MetaCParser_Match(self, tok_identifier);
+            type->TypeIdentifier = RegisterIdentifier(self, identifier);
             U32(type->TypeModifiers) |= typeModifiers;
-
 
             if (type->TypeIdentifier.v == self->SpecialNamePtr_Type.v)
             {
                 //TODO what to do about the hash
-                MetaCParser_Match(self, tok_identifier);
                 assert((typeModifiers & (typemod_unsigned | typemod_signed)) == 0);
                 type->TypeKind = type_type;
             }
@@ -1025,10 +1112,35 @@ decl_type_t* MetaCParser_ParseTypeDecl(metac_parser_t* self, metac_decl_t* paren
             }
             else
             {
-                type->TypeKind = type_identifier;
-                type->TypeIdentifier = RegisterIdentifier(self, currentToken);
                 hash = CRC32C_VALUE(hash, type->TypeIdentifier);
-                MetaCParser_Match(self, tok_identifier);
+                if (MetaCParser_PeekMatch(self, tok_bang, 1))
+                {
+                    decl_type_template_instance_t* tinst =
+                        AllocNewDecl(decl_type_template_instance, &result);
+
+                    expr_argument_list_t argList;
+                    hash ^= CRC32C_BANG;
+                    tinst->TypeKind = type_template_instance;
+
+                    MetaCParser_Match(self, tok_bang);
+                    tinst->Identifier = RegisterIdentifier(self, identifier);
+                    argList = MetaCParser_ParseArgumentList(self, expr_flags_type);
+                    if (argList.ArgumentCount)
+                    {
+                        tinst->ArgumentCount = argList.ArgumentCount;
+                        tinst->Arguments = argList.Arguments;
+                        hash = CRC32C_VALUE(hash, argList.Hash);
+                    }
+                    else
+                    {
+                        METAC_NODE(tinst->Arguments) = emptyNode;
+                    }
+
+                }
+                else
+                {
+                    type->TypeKind = type_identifier;
+                }
             }
             break;
         }
@@ -1101,6 +1213,16 @@ decl_type_t* MetaCParser_ParseTypeDecl(metac_parser_t* self, metac_decl_t* paren
             else
             {
                 struct_->Identifier = empty_identifier;
+            }
+
+            if (MetaCParser_PeekMatch(self, tok_bang, 1))
+            {
+                decl_parameter_list_t params;
+                MetaCParser_Match(self, tok_bang);
+                params = ParseParameterList(self, 0);
+                struct_->Parameters = params.List;
+                struct_->ParameterCount = params.ParameterCount;
+
             }
 
             switch(struct_->TypeKind)
@@ -1354,89 +1476,7 @@ decl_type_t* MetaCParser_ParseTypeDecl(metac_parser_t* self, metac_decl_t* paren
     return result;
 }
 
-bool IsTypeDecl(metac_decl_kind_t kind)
-{
-    return ((kind >= FIRST_DECL_TYPE(TOK_SELF))
-          & (kind <= LAST_DECL_TYPE(TOK_SELF)));
-}
-uint32_t HashDecl(metac_decl_t* decl);
 
-decl_parameter_list_t ParseParameterList(metac_parser_t* self,
-                                         decl_function_t* parent)
-{
-    uint32_t hash = CRC32C_PARENPAREN;
-
-    decl_parameter_list_t result = {(decl_parameter_t*)emptyPointer};
-    uint32_t parameterCount = 0;
-    decl_parameter_t** nextParam = &result.List;
-
-    while (!MetaCParser_PeekMatch(self, tok_rParen, 1))
-    {
-        assert((*nextParam) == emptyPointer);
-
-        if (result.IsVariadic)
-        {
-            ParseError(self->LastLocation,
-                        "you cannot have ... at any position other than the end of the parameter list\n");
-        }
-
-        if (MetaCParser_PeekMatch(self, tok_dotdotdot, 1))
-        {
-            MetaCParser_Match(self, tok_dotdotdot);
-            result.IsVariadic = true;
-            continue;
-        }
-
-        decl_parameter_t* param;
-        AllocNewDecl(decl_parameter, &param);
-        parameterCount++;
-        (*nextParam) = param;
-
-        metac_decl_t* paramDecl =
-            MetaCParser_ParseDecl(self, (metac_decl_t*)parent);
-        if (paramDecl->Kind == decl_variable)
-        {
-            param->Parameter = (decl_variable_t*)
-                paramDecl;
-            hash = CRC32C_VALUE(hash, param->Parameter->Hash);
-        }
-        else if (IsTypeDecl(paramDecl->Kind))
-        {
-            // now we synthezie a variable without name
-            decl_variable_t* var;
-            AllocNewDecl(decl_variable, &var);
-            var->Hash = 0;
-            var->VarType = (decl_type_t*)paramDecl;
-            var->VarIdentifier = empty_identifier;
-            var->VarInitExpr = (metac_expr_t*) emptyPointer;
-            var->Hash = HashDecl(cast(metac_decl_t*)var);
-            hash = CRC32C_VALUE(hash, var->Hash);
-            param->Parameter = var;
-        }
-        else
-        {
-            metac_token_t* peek = MetaCParser_PeekToken(self , 1);
-            metac_location_t loc = LocationFromToken(self, peek);
-            ParseError(loc, "Invalid parameter");
-        }
-        nextParam = &param->Next;
-        (*nextParam) = (decl_parameter_t*) _emptyPointer;
-
-        if (MetaCParser_PeekMatch(self, tok_comma, 1))
-        {
-            MetaCParser_Match(self, tok_comma);
-        }
-        else
-        {
-            assert(MetaCParser_PeekMatch(self, tok_rParen, 1));
-        }
-    }
-    MetaCParser_Match(self, tok_rParen);
-    result.ParameterCount = parameterCount;
-    result.Hash = hash;
-
-    return result;
-}
 
 static stmt_block_t* MetaCParser_ParseBlockStmt(metac_parser_t* self,
                                                      metac_stmt_t* parent,
@@ -1491,7 +1531,6 @@ decl_function_t* ParseFunctionDecl(metac_parser_t* self, decl_type_t* type)
     metac_location_t loc = LocationFromToken(self, id);
     metac_identifier_ptr_t identifier = RegisterIdentifier(self, id);
 
-    MetaCParser_Match(self, tok_lParen);
     decl_function_t* funcDecl = AllocNewDecl(decl_function, &result);
     funcDecl->ReturnType = type;
     funcDecl->Identifier = identifier;
@@ -1877,10 +1916,7 @@ metac_decl_t* MetaCParser_ParseDecl(metac_parser_t* self, metac_decl_t* parent)
 
                     fPtrVar->VarIdentifier = RegisterIdentifier(self, fPtrid);
                     MetaCParser_Match(self, tok_rParen);
-                    // self->OpenParens--;
-                    // we eat the paren before we do the parameterList
-                    //TODO maybe paramter list parsing should eat both parens
-                    MetaCParser_Match(self, tok_lParen);
+
                     decl_type_t* returnType = type;
                     decl_parameter_list_t paramterList =
                         ParseParameterList(self, 0);
