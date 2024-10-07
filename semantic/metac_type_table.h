@@ -36,6 +36,13 @@ static inline const bool EnumSlotsEqual(const metac_type_table_slot_t* a,
     bool result = true;
     metac_type_enum_t* slotA = cast(metac_type_enum_t*) a;
     metac_type_enum_t* slotB = cast(metac_type_enum_t*) b;
+
+    if (slotA->Identifier.v != slotB->Identifier.v)
+    {
+        result = false;
+        goto Lret;
+    }
+
     if (slotA->MemberCount == slotB->MemberCount)
     {
         uint32_t count = slotA->MemberCount;
@@ -53,7 +60,7 @@ static inline const bool EnumSlotsEqual(const metac_type_table_slot_t* a,
     {
         result = false;
     }
-
+Lret:
     return result;
 }
 

@@ -629,7 +629,7 @@ metac_type_aggregate_t* MetaCSemantic_PersistTemporaryAggregateAndPopulateScope(
         typeIndex = MetaCTypeTable_AddStructType(&self->StructTypeTable, tmpAgg);
         semaAgg = StructPtr(self, TYPE_INDEX_INDEX(typeIndex));
         scope_->Owner.v = SCOPE_OWNER_V(scope_owner_struct, StructIndex(self, semaAgg));
-    } 
+    }
     else if (tmpAgg->Header.Kind == decl_type_union)
     {
         typeIndex = MetaCTypeTable_AddUnionType(&self->UnionTypeTable, tmpAgg);
@@ -720,7 +720,7 @@ void MetaCSemantic_ComputeEnumValues(metac_sema_state_t* self,
     // such that you can interpret the increment operator
     // MetaCSemantic_SetInProgress(self, semaEnum, "Members");
 
-    semaEnum->Name = MetaCIdentifierTable_CopyIdentifier(self->ParserIdentifierTable, &self->SemanticIdentifierTable, enum_->Identifier);
+    semaEnum->Identifier = MetaCIdentifierTable_CopyIdentifier(self->ParserIdentifierTable, &self->SemanticIdentifierTable, enum_->Identifier);
     semaEnum->Header.Kind = decl_type_enum;
     if (METAC_NODE(enum_->BaseType) == emptyNode)
     {
@@ -962,7 +962,7 @@ metac_type_index_t TypeEnumSemantic(metac_sema_state_t* self,
 
     enumScope.Owner.v = SCOPE_OWNER_V(scope_owner_enum, 0);
     tmpSemaEnum.MemberCount = enm->MemberCount;
-    tmpSemaEnum.Name = enm->Identifier;
+    tmpSemaEnum.Identifier = enm->Identifier;
 
     MetaCScopeTable_InitN(&enumScope.ScopeTable, tmpSemaEnum.MemberCount, &self->TempAlloc);
 
@@ -1007,7 +1007,7 @@ metac_type_index_t TypeEnumSemantic(metac_sema_state_t* self,
         result = MetaCTypeTable_AddEnumType(&self->EnumTypeTable, &tmpSemaEnum);
 
         keepEnumScope = true;
-        MetaCSemantic_RegisterInScope(self, tmpSemaEnum.Name, cast(metac_node_t)EnumTypePtr(self, result.Index));
+        MetaCSemantic_RegisterInScope(self, tmpSemaEnum.Identifier, cast(metac_node_t)EnumTypePtr(self, result.Index));
         for(uint32_t i = 0; i < semaMembersCount; i++)
         {
             semaMembers[i].Value->TypeIndex.v = result.v;
@@ -1332,7 +1332,7 @@ LtryAgian: {}
     }
     else
     {
-        assert(0); // me not no what do do.
+        assert(0); // me not know what do do.
     }
 #ifndef NO_FIBERS
     const uint32_t funcHash = crc32c(~0, "MetaCSemantic_doTypeSemantic",

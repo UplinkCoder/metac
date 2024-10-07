@@ -792,7 +792,7 @@ scope_insert_error_t MetaCSemantic_RegisterInScope(metac_sema_state_t* self,
     ALIGN_STACK();
     MetaCSemantic_LRU_RemoveIdentifier(self, idPtr);
     RESTORE_STACK();
-    
+
     if (self->CurrentScope != 0)
     {
         result = MetaCScope_RegisterIdentifier(self->CurrentScope, idPtr, node);
@@ -1084,8 +1084,10 @@ const char* doDeclSemantic_PrintFunction(task_t* task)
     const char* declPrint = 0;
 //        MetaCPrinter_PrintDecl(&printer, ctx->Decl);
 
-    sprintf(buffer, "doDeclSemantic {Sema: %p, Decl: %s}\n",
+    ALIGN_STACK();
+    snprintf(buffer, 256,  "doDeclSemantic {Sema: %p, Decl: %s}\n",
                     ctx->Sema, declPrint);
+    RESTORE_STACK();
 
     return buffer;
 }
@@ -1199,7 +1201,7 @@ metac_sema_decl_t* MetaCSemantic_declSemantic(metac_sema_state_t* self,
 void MetaCSemantic_doDeclSemantic_Task(task_t* task)
 {
     const char* taskPrint = doDeclSemantic_PrintFunction(task);
-    printf("Task: %s\n", taskPrint);
+    xprintf("Task: %s\n", taskPrint);
     free(cast(void*)taskPrint);
 
     MetaCSemantic_doDeclSemantic_task_context_t* ctx =

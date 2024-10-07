@@ -126,7 +126,7 @@ typedef struct metac_type_enum_t
 
     metac_type_index_t TypeIndex;
 
-    metac_identifier_ptr_t Name;
+    metac_identifier_ptr_t Identifier;
 
     metac_type_index_t BaseType;
 
@@ -172,9 +172,9 @@ typedef struct metac_type_functiontype_t
 
     metac_type_index_t* ParameterTypes;
 
-    uint32_t ParameterTypeCount;
-
     metac_identifier_ptr_t* ParameterNames;
+
+    uint32_t ParameterTypeCount;
 } metac_type_functiontype_t;
 
 typedef struct metac_type_typedef_t

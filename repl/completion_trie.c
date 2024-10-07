@@ -37,9 +37,9 @@ void CompletionTrie_Init(completion_trie_root_t* self, metac_alloc_t* parentAllo
 {
     Allocator_Init(&self->TrieAllocator, parentAlloc);
 
-    ARENA_ARRAY_INIT_SZ(completion_trie_node_t, self->Nodes, &self->TrieAllocator, 786)
+    ARENA_ARRAY_INIT_SZ(completion_trie_node_t, self->Nodes, &self->TrieAllocator, 786);
 #if TRACK_RANGES
-    ARENA_ARRAY_INIT_SZ(node_range_t, self->NodeRanges, parentAlloc, 512)
+    ARENA_ARRAY_INIT_SZ(node_range_t, self->NodeRanges, parentAlloc, 512);
 #endif
     self->NodesCount = 64;
 

@@ -141,8 +141,23 @@ MetalNode {
     }
 
 
-    Variable @internal {
-        "type" / Identfier type, Identifier name
+    Stmt {
+        ReturnStmt {
+            "return", Expr value
+        }
+
+        YieldStmt {
+            "yield", Expr value
+        }
+
+        BlockStmt {
+            "{", Stmt[] statements : ";",  "}" 
+        }
+    }
+    Decl {
+        Variable @internal {
+            "type" / Identfier type, Identifier name
+        }
     }
 
     Comment {

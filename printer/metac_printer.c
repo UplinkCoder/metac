@@ -1453,7 +1453,7 @@ static inline void PrintSemaType(metac_printer_t* self,
         {
             uint32_t enumIdx = TYPE_INDEX_INDEX(typeIndex);
             metac_identifier_ptr_t enumName =
-                EnumTypePtr(sema, enumIdx)->Name;
+                EnumTypePtr(sema, enumIdx)->Identifier;
             PrintString(self, "enum ", sizeof("enum"));
             if (enumName.v != empty_identifier.v)
             {
@@ -1543,7 +1543,7 @@ static inline void PrintSemaDecl(metac_printer_t* self,
     {
         case decl_type_enum:
         {
-            PrintIdentifier(self, semaDecl->sema_decl_type_enum.Name);
+            PrintIdentifier(self, semaDecl->sema_decl_type_enum.Identifier);
         } break;
         case decl_type_typedef:
         {

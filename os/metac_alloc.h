@@ -77,8 +77,7 @@ arena_ptr_t ReallocArenaArray(tagged_arena_t* arena, metac_alloc_t* alloc, uint3
     tagged_arena_t NAME##Arena; \
     arena_ptr_t NAME##ArenaPtr;
 
-#define ARENA_ARRAY_INIT_SZ(TYPE, NAME, ALLOC, COUNT) \
-    { \
+#define ARENA_ARRAY_INIT_SZ(TYPE, NAME, ALLOC, COUNT) do { \
         (NAME) = cast(TYPE*)0; \
         (NAME##Count) = 0; \
         (NAME##Alloc) = (ALLOC); \
@@ -86,7 +85,7 @@ arena_ptr_t ReallocArenaArray(tagged_arena_t* arena, metac_alloc_t* alloc, uint3
         (NAME##Arena) = (ALLOC)->Arenas[(NAME##ArenaPtr).Index]; \
         (NAME##Arena).Flags |= arena_flag_inUse; \
         (NAME) = cast(TYPE*) (NAME##Arena).Memory; \
-    } while(0)
+} while(0)
 
 #define ARENA_ARRAY_INIT(TYPE, NAME, ALLOC) \
     ARENA_ARRAY_INIT_SZ(TYPE, NAME, ALLOC, 16)
