@@ -1140,7 +1140,19 @@ metac_type_index_t MetaCSemantic_TypeSemantic(metac_sema_state_t* self,
             case type_struct:
             {
                 uint32_t hash = 0;
+                metac_node_t unresolvedNode = emptyNode;
                 MetaCSemantic_MountScope(self, tmpSemaAgg->Scope);
+
+                if (agg->ParameterCount != 0)
+                {
+                    uint32_t parameterCount = agg->ParameterCount;
+                    decl_parameter_t* param = agg->Parameters;
+                    for(uint32_t paramIdx = 0; paramIdx < parameterCount; paramIdx++)
+                    {
+                        MetaCSemantic_RegisterInScope(self, param->Parameter->VarIdentifier, unresolvedNode);
+                        param = param->Next;
+                    }
+                }
 
                 MetaCSemantic_ComputeStructLayout(self, agg, tmpSemaAgg);
 
@@ -1226,8 +1238,8 @@ metac_type_index_t MetaCSemantic_TypeSemantic(metac_sema_state_t* self,
             zeroIdx,
             returnType,
             parameterTypes,
-            nParams,
-            0
+            0, // parameter names
+            nParams
         };
 
         result = MetaCTypeTable_GetOrEmptyFunctionType(&self->FunctionTypeTable, &key);
