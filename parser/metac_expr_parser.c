@@ -1409,7 +1409,7 @@ expr_argument_list_t MetaCParser_ParseArgumentList(metac_parser_t* self, parse_e
         LocationFromToken(self, MetaCParser_PeekToken(self, 0));
 
     metac_token_t* peekToken;
-    expr_argument_list_t arguments = {0};
+    expr_argument_list_t arguments = {(metac_expr_kind_t)0};
     expr_argument_t** nextArgument = &arguments.Arguments;
     uint32_t nArguments = 0;
     uint32_t hash = ~0;

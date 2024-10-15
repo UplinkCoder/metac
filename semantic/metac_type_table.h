@@ -189,6 +189,7 @@ static inline const bool MetaCExpr_Equal(const metac_expr_t* a,
                                          const metac_expr_t* b)
 {
     assert(0);
+    return false;
 }
 
 static inline const bool TemplateSlotsEqual(const metac_type_table_slot_t* a,

@@ -935,7 +935,8 @@ metac_type_index_t TypeArraySemantic(metac_sema_state_t* self,
             xprintf("Array dimension should eval to integer but it is: %s\n",
                 MetaCExprKind_toChars(dim->Kind));
             //TODO register this decl_type_t as an error so we do not reevaluate
-            return (metac_type_index_t) {0};
+            static const metac_type_index_t invalidTypeIndex = {0};
+            return invalidTypeIndex;
         }
     }
     uint32_t dimValue = (
