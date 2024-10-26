@@ -73,7 +73,8 @@ typedef struct metac_sema_decl_state_t
     M(aggregate,    UnionTypeTable,           union) \
     M(typedef,      TypedefTypeTable,       typedef) \
     M(functiontype, FunctionTypeTable, functiontype) \
-    M(tuple,        TupleTypeTable,           tuple)
+    M(tuple,        TupleTypeTable,           tuple) \
+    M(template,     TemplateTypeTable,     template)
 
 #define FOREACH_ON_RESOLVE_FAIL(M) \
     M(OnResolveFail_Invalid)       \

@@ -1119,6 +1119,24 @@ metac_type_index_t MetaCSemantic_TypeSemantic(metac_sema_state_t* self,
         decl_type_struct_t* agg = (decl_type_struct_t*) type;
         metac_type_aggregate_t tmpSemaAggMem = {(metac_decl_kind_t)0};
         metac_type_aggregate_t* tmpSemaAgg = &tmpSemaAggMem;
+        metac_scope_t tmpTemplateScope = {0};
+
+        if (agg->ParameterCount != 0)
+        {
+            U32(tmpTemplateScope.ScopeFlags) |= scope_flag_temporary;
+            MetaCSemantic_PushTemporaryScope(self, &tmpTemplateScope);
+            for(decl_parameter_t* param = agg->Parameters;
+                METAC_NODE(param->Next) != emptyNode;
+                param = param->Next)
+            {
+                metac_expr_t placeHolder;
+
+                AllocNewSemaExpr(self, )
+                metac_node_t unsresolvedNode = (metac_node_t) 0x2;
+                MetaCScope_RegisterIdentifier(&tmpTemplateScope, param->Parameter->VarIdentifier, unresolvedNode);
+            }
+            xprintf("We have a template\n");
+        }
 
         if (type->Kind == decl_type_struct)
             typeKind = type_struct;
@@ -1268,46 +1286,43 @@ metac_type_index_t MetaCSemantic_TypeSemantic(metac_sema_state_t* self,
         MetaCPrinter_Init(&debugPrinter, self->ParserIdentifierTable, self->ParserStringTable, &self->TempAlloc);
 #endif
         ARENA_ARRAY_ENSURE_SIZE(semaArguments, tInst->ArgumentCount);
+        // before calling semantic we need to mount the template instance scope.
+        metac_scope_t tmpScope = {(metac_decl_kind_t)0};
+        U32(tmpScope.ScopeFlags) |= scope_flag_temporary;
+        MetaCSemantic_PushTemporaryScope(self, &tmpScope);
 
-
-        for(metac_expr_t* e = args->Expr; METAC_NODE(args) != emptyNode; args = args->Next, e = args->Expr)
+        for(metac_expr_t** ep = &args->Expr; METAC_NODE(args) != emptyNode; args = args->Next, ep = &args->Expr)
         {
-#if 0
-            MetaCPrinter_PrintExpr(&debugPrinter, e);
-            if (METAC_NODE(args->Next) != emptyNode)
-            {
-                MetaCPrinter_RemoveZeroTerminator(&debugPrinter);
-                MetacPrinter_PrintStringLiteral(&debugPrinter, ", ");
-            }
-#endif
+            metac_expr_t* e = *ep;
             ARENA_ARRAY_ADD(semaArguments, MetaCSemantic_doExprSemantic(self, e, 0));
         }
-        int k = 12;
-       assert(!"I don't do template instances just yet");
 
-
-
-        /*
-metac_type_header_t Header;
-metac_type_index_t TypeIndex;
-metac_decl_t* Symbol;
-metac_expr_t* Arguments;
-uint32_t ArgumentCount;
-     */
-     uint32_t hash = ~0;
-     metac_decl_t* symbol = NULL;
-     metac_expr_t* arguments = cast(metac_expr_t*) emptyNode;
-     uint32_t nArguments = 0;
+        {
+            metac_decl_t* symbol = NULL;
+            metac_expr_t* arguments = cast(metac_expr_t*) emptyNode;
+            uint32_t hash = crc32c_nozero(~0, &symbol->Hash, sizeof(symbol->Hash));
+            uint32_t nArguments = 0;
+            for(uint32_t argIdx = 0; argIdx < nArguments; argIdx++)
+            {
+                hash = crc32c_nozero(hash, &arguments[argIdx].Hash, sizeof(arguments[argIdx].Hash));
+            }
             {
                 metac_type_header_t header = {decl_type_template_instance, 0, hash, 0};
-            metac_type_template_t key = {
-                header,
-                zeroIdx,
-                symbol,
-                arguments,
-                nArguments,
-            };
-    }
+                metac_type_template_t key = {
+                    header,
+                    zeroIdx,
+                    symbol,
+                    arguments,
+                    nArguments,
+                };
+                result = MetaCTypeTable_GetOrEmptyTemplateType(&self->TemplateTypeTable, &key);
+                if (result.v == 0)
+                {
+                    MetaCTypeTable_AddTemplateType(&self->TemplateTypeTable, &key);
+                }
+            }
+
+        }
 
     }
     else if (type->Kind == decl_type)
