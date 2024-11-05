@@ -60,6 +60,21 @@ static inline bool isBasicType(metac_type_kind_t typeKind)
     return false;
 }
 
+bool IsUnknownType(metac_sema_state_t* self,
+                   metac_type_index_t typeIndex)
+{
+    if (TYPE_INDEX_KIND(typeIndex) == type_index_unknown)
+    {
+        return true;
+    }
+    if (TYPE_INDEX_KIND(typeIndex) == type_index_array)
+    {
+        return IsUnknownType(self, self->ArrayTypeTable.Slots[TYPE_INDEX_INDEX(typeIndex)].TypeIndex);
+    }
+
+    return false;
+}
+
 sema_decl_type_t* MetaCSemantic_GetTypeNode(metac_sema_state_t* self,
                                             metac_type_index_t typeIndex)
 {
@@ -1121,22 +1136,6 @@ metac_type_index_t MetaCSemantic_TypeSemantic(metac_sema_state_t* self,
         metac_type_aggregate_t* tmpSemaAgg = &tmpSemaAggMem;
         metac_scope_t tmpTemplateScope = {0};
 
-        if (agg->ParameterCount != 0)
-        {
-            U32(tmpTemplateScope.ScopeFlags) |= scope_flag_temporary;
-            MetaCSemantic_PushTemporaryScope(self, &tmpTemplateScope);
-            for(decl_parameter_t* param = agg->Parameters;
-                METAC_NODE(param->Next) != emptyNode;
-                param = param->Next)
-            {
-                metac_expr_t placeHolder;
-
-                AllocNewSemaExpr(self, )
-                metac_node_t unsresolvedNode = (metac_node_t) 0x2;
-                MetaCScope_RegisterIdentifier(&tmpTemplateScope, param->Parameter->VarIdentifier, unresolvedNode);
-            }
-            xprintf("We have a template\n");
-        }
 
         if (type->Kind == decl_type_struct)
             typeKind = type_struct;
@@ -1159,16 +1158,30 @@ metac_type_index_t MetaCSemantic_TypeSemantic(metac_sema_state_t* self,
             case type_struct:
             {
                 uint32_t hash = 0;
-                metac_node_t unresolvedNode = emptyNode;
                 MetaCSemantic_MountScope(self, tmpSemaAgg->Scope);
 
                 if (agg->ParameterCount != 0)
                 {
                     uint32_t parameterCount = agg->ParameterCount;
                     decl_parameter_t* param = agg->Parameters;
+                    U32(tmpTemplateScope.ScopeFlags) |= scope_flag_temporary;
+                    MetaCSemantic_PushTemporaryScope(self, &tmpTemplateScope);
+                    xprintf("We have a template\n");
+
                     for(uint32_t paramIdx = 0; paramIdx < parameterCount; paramIdx++)
                     {
-                        MetaCSemantic_RegisterInScope(self, param->Parameter->VarIdentifier, unresolvedNode);
+                        metac_identifier_ptr_t paramIdent = param->Parameter->VarIdentifier;
+                        metac_location_ptr_t locIdx = param->Parameter->LocationIdx;
+                        metac_expr_t placeholderExpr;
+                        metac_sema_expr_t* placeholder = AllocNewSemaExpr(self, &placeholderExpr);
+
+                        placeholder->Kind = expr_unknown_value;
+                        placeholder->TypeIndex = MetaCSemantic_TypeSemantic(self, param->Parameter->VarType);
+                        METAC_NODE(placeholder->Expr) = emptyNode;
+
+
+                        MetaCSemantic_RegisterInScope(self, paramIdent, placeholder);
+
                         param = param->Next;
                     }
                 }
@@ -1609,7 +1622,7 @@ bool MetaCSemantic_ComputeStructLayout(metac_sema_state_t* self,
 {
     bool result = true;
 
-    assert(self->CurrentScope == semaAgg->Scope);
+    assert(self->CurrentScope == semaAgg->Scope || ((self->CurrentScope->ScopeFlags & scope_flag_temporary) && self->CurrentScope->Parent == semaAgg->Scope) );
     // make sure the scope is mounted.
     assert(semaAgg->Fields && semaAgg->Fields != emptyPointer);
 
@@ -1627,6 +1640,11 @@ bool MetaCSemantic_ComputeStructLayout(metac_sema_state_t* self,
 
         semaField->Type =
             MetaCSemantic_doTypeSemantic(self, declField->Field->VarType);
+        if (IsUnknownType(self, semaField->Type))
+        {
+            xprintf("Found unknown type \n");
+            return false;
+        }
 #ifndef NO_FIBERS
         while (!semaField->Type.v)
         {
@@ -1652,6 +1670,10 @@ bool MetaCSemantic_ComputeStructLayout(metac_sema_state_t* self,
             // YIELD_ON(declField->Field->VarType, MetaCSemantic_doTypeSemantic);
         }
 #endif
+        if (!semaField->Type.v)
+        {
+            return false;
+        }
         declField = declField->Next;
     }
 
