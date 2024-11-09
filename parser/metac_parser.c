@@ -1617,7 +1617,7 @@ uint32_t HashDecl(metac_decl_t* decl)
                     result = CRC32C_VALUE(result, fieldHash);
                     field = field->Next;
                 }
-                assert(field->Next = cast(decl_field_t*)emptyPointer);
+                assert(field->Next == cast(decl_field_t*)emptyPointer);
             }
         } break;
         case decl_variable:
@@ -1929,7 +1929,6 @@ metac_decl_t* MetaCParser_ParseDecl(metac_parser_t* self, metac_decl_t* parent)
                     functionType->ReturnType = returnType;
                     hash = CRC32C_VALUE(hash, returnType->Hash);
                     functionType->ParameterCount = paramterList.ParameterCount;
-                    const uint32_t pCount = functionType->ParameterCount;
                     hash = CRC32C_VALUE(hash, functionType->ParameterCount);
                     functionType->Parameters = paramterList.List;
                     hash = CRC32C_VALUE(hash, paramterList.Hash);

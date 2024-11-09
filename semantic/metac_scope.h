@@ -7,27 +7,27 @@
 
 struct metac_sema_decl_t;
 
+#define FOREACH_SCOPE_OWNER(M) \
+    M(scope_owner_unknown   , 0x0) \
+    /* unused for now */ \
+    M(scope_owner_module    , 0x1) \
+    M(scope_owner_function  , 0x2) \
+    M(scope_owner_struct    , 0x3) \
+    M(scope_owner_statement , 0x4) \
+    M(scope_owner_block     , 0x5) \
+    M(scope_owner_union     , 0x6) \
+    M(scope_owner_extended  , 0x7) \
+    M(scope_owner_enum      , 0x9) \
+    M(scope_owner_template  , 0xA) \
+    /* 0xF is for invalid reserved. */ \
+    M(scope_owner_invalid  , 0xF)
+
+#define DEF_MEMBER(NAME, VALUE) \
+    NAME = VALUE,
+
 typedef enum metac_scope_owner_kind_t
 {
-    scope_owner_unknown   = 0x0,
-
-    /// unused for now
-    scope_owner_module    = 0x1,
-
-    scope_owner_function  = 0x2,
-    scope_owner_struct    = 0x3,
-    scope_owner_statement = 0x4,
-    scope_owner_block     = 0x5,
-
-    scope_owner_union     = 0x6,
-
-    scope_owner_extended  = 0x7,
-
-    scope_owner_enum      = 0x9,
-
-    // unused range A-D A, B, C, D
-    scope_owner_invalid  = 0xF
-
+    FOREACH_SCOPE_OWNER(DEF_MEMBER)
 } metac_scope_owner_kind_t;
 
 

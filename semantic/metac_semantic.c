@@ -1061,6 +1061,8 @@ metac_type_t NodeFromTypeIndex(metac_sema_state_t* sema,
             return cast(metac_type_t) FunctiontypePtr(sema, index);
         case type_index_array:
             return cast(metac_type_t) ArrayTypePtr(sema, index);
+        case type_index_template:
+            return cast(metac_type_t) TemplateTypePtr(sema, index);
     }
 
     return 0;

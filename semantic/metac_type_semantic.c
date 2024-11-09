@@ -63,16 +63,18 @@ static inline bool isBasicType(metac_type_kind_t typeKind)
 bool IsUnknownType(metac_sema_state_t* self,
                    metac_type_index_t typeIndex)
 {
+    bool result = false;
+
     if (TYPE_INDEX_KIND(typeIndex) == type_index_unknown)
     {
-        return true;
+        result = true;
     }
     if (TYPE_INDEX_KIND(typeIndex) == type_index_array)
     {
-        return IsUnknownType(self, self->ArrayTypeTable.Slots[TYPE_INDEX_INDEX(typeIndex)].TypeIndex);
+        result = IsUnknownType(self, self->ArrayTypeTable.Slots[TYPE_INDEX_INDEX(typeIndex)].TypeIndex);
     }
 
-    return false;
+    return result;
 }
 
 sema_decl_type_t* MetaCSemantic_GetTypeNode(metac_sema_state_t* self,
@@ -346,6 +348,7 @@ metac_type_index_t MetaCSemantic_GetElementType(metac_sema_state_t* self,
             metac_type_ptr_t* ptrType = PtrTypePtr(self, TYPE_INDEX_INDEX(typeIndex));
             result = ptrType->ElementType;
         } break;
+        default:
     }
 
     return result;
@@ -1178,15 +1181,21 @@ metac_type_index_t MetaCSemantic_TypeSemantic(metac_sema_state_t* self,
                         placeholder->Kind = expr_unknown_value;
                         placeholder->TypeIndex = MetaCSemantic_TypeSemantic(self, param->Parameter->VarType);
                         METAC_NODE(placeholder->Expr) = emptyNode;
+                        placeholder->LocationIdx = locIdx;
 
 
-                        MetaCSemantic_RegisterInScope(self, paramIdent, placeholder);
+                        MetaCSemantic_RegisterInScope(self, paramIdent, METAC_NODE(placeholder));
 
                         param = param->Next;
                     }
                 }
 
                 MetaCSemantic_ComputeStructLayout(self, agg, tmpSemaAgg);
+
+                if (agg->ParameterCount != 0)
+                {
+                    MetaCSemantic_PopTemporaryScope(self);
+                }
 
                 MetaCSemantic_UnmountScope(self);
 
@@ -1313,7 +1322,7 @@ metac_type_index_t MetaCSemantic_TypeSemantic(metac_sema_state_t* self,
         {
             metac_decl_t* symbol = NULL;
             metac_expr_t* arguments = cast(metac_expr_t*) emptyNode;
-            uint32_t hash = crc32c_nozero(~0, &symbol->Hash, sizeof(symbol->Hash));
+            uint32_t hash = symbol ? crc32c_nozero(~0, &symbol->Hash, sizeof(symbol->Hash)) : ~0;
             uint32_t nArguments = 0;
             for(uint32_t argIdx = 0; argIdx < nArguments; argIdx++)
             {
@@ -1331,7 +1340,7 @@ metac_type_index_t MetaCSemantic_TypeSemantic(metac_sema_state_t* self,
                 result = MetaCTypeTable_GetOrEmptyTemplateType(&self->TemplateTypeTable, &key);
                 if (result.v == 0)
                 {
-                    MetaCTypeTable_AddTemplateType(&self->TemplateTypeTable, &key);
+                    result = MetaCTypeTable_AddTemplateType(&self->TemplateTypeTable, &key);
                 }
             }
 
@@ -1648,7 +1657,7 @@ bool MetaCSemantic_ComputeStructLayout(metac_sema_state_t* self,
 #ifndef NO_FIBERS
         while (!semaField->Type.v)
         {
-            printf("FieldType couldn't be resolved ... yielding fiber\n");
+            xprintf("FieldType couldn't be resolved ... yielding fiber\n");
             aco_t* me = (aco_t*)CurrentFiber();
             if (me != 0)
             {
@@ -1659,11 +1668,11 @@ bool MetaCSemantic_ComputeStructLayout(metac_sema_state_t* self,
 
                 assert(self->Waiters.WaiterCount < self->Waiters.WaiterCapacity);
                 self->Waiters.Waiters[self->Waiters.WaiterCount++] = waiter;
-                printf("We should Yield\n");
+                xprintf("We should Yield\n");
                 (cast(task_t*)(me->arg))->TaskFlags = Task_Waiting;
                 YIELD(watingOnTypeSemantic);
                 (cast(task_t*)(me->arg))->TaskFlags = Task_Running;
-                printf("Now we should be able to resolve\n");
+                xprintf("Now we should be able to resolve\n");
                 semaField->Type =
                     MetaCSemantic_doTypeSemantic(self, declField->Field->VarType);
             }

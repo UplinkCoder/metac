@@ -106,6 +106,12 @@ metac_type_array_t* ArrayTypePtr(metac_sema_state_t* self, uint32_t index)
     return result;
 }
 
+metac_type_template_t* TemplateTypePtr(metac_sema_state_t* self, uint32_t index)
+{
+    metac_type_template_t* result = (self->TemplateTypeTable.Slots + index);
+    return result;
+}
+
 metac_type_functiontype_t* FunctiontypePtr(metac_sema_state_t* self, uint32_t index)
 {
     metac_type_functiontype_t* result = (self->FunctionTypeTable.Slots + index);

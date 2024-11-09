@@ -106,7 +106,7 @@ void CompletionTrie_Collect(completion_trie_root_t* root,
     uint32_t currentUnmatchedPrefixLength = unmatchedPrefixLength;
     bool descend = true;
 
-    memcpy(completionString + completionLength, prefix, matchedUntil);
+    memcpy(completionString, prefix, matchedUntil);
 
     for (;;) // until we are back at the root and there are no children left
 LSetCurrent:
@@ -524,9 +524,10 @@ void CompletionTrie_PrintRanges(completion_trie_root_t* self)
     fclose(f);
 }
 #endif
-void CompletionTrie_PrintStats(completion_trie_root_t* self)
+
+void CompletionTrie_PrintTrie(completion_trie_root_t* self)
 {
-    {
+        ALIGN_STACK();
         FILE* f = fopen("g.dot", "w");
         fprintf(f, "digraph G {\n");
         fprintf(f, "  node [shape=record headport=n]\n");
@@ -535,7 +536,12 @@ void CompletionTrie_PrintStats(completion_trie_root_t* self)
 
         fprintf(f, "}\n");
         fclose(f);
-    }
+        RESTORE_STACK();
+}
+
+void CompletionTrie_PrintStats(completion_trie_root_t* self)
+{
+    CompletionTrie_PrintTrie(self);
 
     printf("UsedNodes: %u\n", self->TotalNodes);
     printf("AllocatedNodes: %u\n", self->NodesCount);
