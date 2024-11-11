@@ -91,7 +91,7 @@ void CompletionTrie_Collect(completion_trie_root_t* root,
     uint32_t parentStack[128];
     uint16_t childIndexStack[128];
     uint16_t completionLengthAddStack[128];
-    uint32_t unmatchedPrefixLengthStack[128];
+    uint8_t  matchedLengthStack[128];
 
     completion_trie_node_t const * nodes = root->Nodes;
     const uint32_t completionLengthBase = matchedUntil - PrefixLen(nodes[startNodeIdx].Prefix4);
@@ -134,10 +134,10 @@ LSetCurrent:
         for (uint32_t i = childBeginIdx + currentChildIndex; i < childEndIdx; i++)
         {
             const completion_trie_node_t* child = nodes + i;
+            uint32_t checkLength = currentUnmatchedPrefixLength;
 
             if (currentUnmatchedPrefixLength)
             {
-                uint32_t checkLength = currentUnmatchedPrefixLength;
                 uint32_t childPrefixLen = PrefixLen(child->Prefix4);
                 if (childPrefixLen < checkLength)
                 {
@@ -149,6 +149,7 @@ LSetCurrent:
                     continue;
                 }
                 currentUnmatchedPrefixLength -= checkLength;
+                matchedUntil += checkLength;
                 assert(currentUnmatchedPrefixLength >= 0 && currentUnmatchedPrefixLength <= 512);
             }
 
@@ -166,17 +167,18 @@ LSetCurrent:
                     if (currentNodeIdx == startNodeIdx)
                         currentUnmatchedPrefixLength = unmatchedPrefixLength;
                 }
-                else if (descend)
+                else
                 {
-                    // Push Completion stacks
+                    assert(descend);
+                     // Push Completion stacks
                     {
                         parentStack[currentStackIndex] = currentNodeIdx;
                         childIndexStack[currentStackIndex] = i - childBeginIdx;
                         completionLengthAddStack[currentStackIndex] = completionLength - completionLengthBase;
-                        unmatchedPrefixLengthStack[currentStackIndex] = currentUnmatchedPrefixLength;
+                        matchedLengthStack[currentStackIndex] = checkLength;
                         ++currentStackIndex;
                     }
-                    // change relevant iteration state
+                   // change relevant iteration state
                     currentNodeIdx = i;
                     currentChildIndex = 0;
                     goto LSetCurrent;
@@ -192,7 +194,8 @@ LSetCurrent:
             currentNodeIdx = parentStack[currentStackIndex];
             currentChildIndex = childIndexStack[currentStackIndex];
             completionLength = completionLengthBase + completionLengthAddStack[currentStackIndex];
-            currentUnmatchedPrefixLength = unmatchedPrefixLengthStack[currentStackIndex];
+            currentUnmatchedPrefixLength += matchedLengthStack[currentStackIndex];
+            matchedUntil -= matchedLengthStack[currentStackIndex];
             descend = false;
         }
     }
