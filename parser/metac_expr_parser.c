@@ -1434,15 +1434,16 @@ expr_argument_list_t MetaCParser_ParseArgumentList(metac_parser_t* self, parse_e
     {
         nArguments++;
         assert((*nextArgument) == _emptyPointer);
-        (*nextArgument) = (expr_argument_t*)AllocNewExpr(expr_argument);
+        (*nextArgument) = cast(expr_argument_t*)AllocNewExpr(expr_argument);
 #ifndef OLD_PARSER
         metac_expr_t* exp = MetaCParser_ParseExpr2(self, expr_flags_call);
 #else
         metac_expr_t* exp = MetaCParser_ParseExpr(self, expr_flags_call, 0);
 #endif
         ((*nextArgument)->Expr) = exp;
-        assert(exp->Hash);
         hash = CRC32C_VALUE(hash, exp->Hash);
+        (*nextArgument)->Hash = exp->Hash ^ CRC32C_PARENPAREN;
+        (*nextArgument)->LocationIdx = exp->LocationIdx;
         nextArgument = &((*nextArgument)->Next);
         (*nextArgument) = (expr_argument_t*) _emptyPointer;
 
