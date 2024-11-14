@@ -1,3 +1,4 @@
+#define OLD_PARSER 1
 #define ACCEL ACCEL_TABLE
 
 #include "../os/compat.h"
@@ -152,7 +153,7 @@ static inline int TranslateIdentifiers(metac_node_t node, void* ctx)
         } break;
 
 
-        default : {xprintf("No Identifier got Translated\n");} break;
+        default : {xprintf("No Identifier got Translated for '%s'\n", MetaCNodeKind_toChars(node->Kind));} break;
     }
 
     if ((node->Kind > expr_invalid) & (node->Kind < expr_max))
