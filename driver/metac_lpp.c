@@ -200,15 +200,6 @@ metac_expr_t* MetaCLPP_ParseExprFromString(metac_lpp_t* lpp, const char* exp)
     return result;
 }
 #endif
-metac_expr_t* MetaCLPP_ParseExpr2FromString(metac_lpp_t* lpp, const char* exp)
-{
-    // assert(g_lineLexer.TokenCapacity == ARRAY_SIZE(g_lineLexer.inlineTokens));
-    LexString(&lpp->Lexer, exp);
-
-    metac_expr_t* result = MetaCParser_ParseExpr2(&lpp->Parser, expr_flags_none);
-
-    return result;
-}
 
 metac_stmt_t* MetaCLPP_ParseStmtFromString(metac_lpp_t* lpp, const char* stmt)
 {

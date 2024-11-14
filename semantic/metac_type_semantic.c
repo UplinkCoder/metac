@@ -348,7 +348,7 @@ metac_type_index_t MetaCSemantic_GetElementType(metac_sema_state_t* self,
             metac_type_ptr_t* ptrType = PtrTypePtr(self, TYPE_INDEX_INDEX(typeIndex));
             result = ptrType->ElementType;
         } break;
-        default:
+        default: break;
     }
 
     return result;

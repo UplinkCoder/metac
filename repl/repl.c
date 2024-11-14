@@ -905,19 +905,6 @@ LswitchMode:
                 repl->Printer.ExtraParens = extraParens;
                 goto LnextLine;
             }
-            case repl_mode_e2:
-            {
-                exp = MetaCLPP_ParseExpr2FromString(&repl->LPP, repl->Line);
-                if (exp)
-                {
-                    MSGF("expr = %s\n", MetaCPrinter_PrintExpr(&repl->Printer, exp));
-                }
-                else
-                {
-                    MSG("Couldn't parse expression\n");
-                }
-                MetaCPrinter_Reset(&repl->Printer);
-            } goto LnextLine;
 
             case repl_mode_preproc:
             {

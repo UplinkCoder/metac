@@ -1396,7 +1396,7 @@ decl_type_t* MetaCParser_ParseTypeDecl(metac_parser_t* self, metac_decl_t* paren
         else if (tokenType == tok_kw_typeof)
         {
             metac_expr_t* typeof_exp =
-                MetaCParser_ParseExpr2(self, expr_flags_none);
+                MetaCParser_ParseExpr(self, expr_flags_none, 0);
 
             decl_type_typeof_t * decl = AllocNewDecl(decl_type_typeof, &result);
             decl->Expr = typeof_exp;
@@ -1448,7 +1448,7 @@ decl_type_t* MetaCParser_ParseTypeDecl(metac_parser_t* self, metac_decl_t* paren
 
                 if (tokenType == tok_lBracket)
                 {
-                    array->Dim = MetaCParser_ParseExpr2(self, expr_flags_none);
+                    array->Dim = MetaCParser_ParseExpr(self, expr_flags_none, 0);
                     MetaCParser_Match(self, tok_rBracket);
                 }
                 else
@@ -1770,12 +1770,12 @@ metac_decl_t* MetaCParser_ParseDecl(metac_parser_t* self, metac_decl_t* parent)
         else if (dirc == pp_if)
         {
             //TODO handle this #if properly!
-            MetaCParser_ParseExpr2(self, expr_flags_pp);
+            MetaCParser_ParseExpr(self, expr_flags_pp, 0);
         }
         else if (dirc == pp_elif)
         {
             //TODO handle this #elif properly!
-            MetaCParser_ParseExpr2(self, expr_flags_pp);
+            MetaCParser_ParseExpr(self, expr_flags_pp, 0);
         }
         else if (dirc == pp_else)
         {
@@ -2016,7 +2016,7 @@ static decl_type_array_t* ParseArraySuffix(metac_parser_t* self, decl_type_t* ty
         //TODO ErrorMessage array must have numeric dimension
         arrayType->ElementType = type;
 
-        arrayType->Dim = MetaCParser_ParseExpr2(self, expr_flags_none);
+        arrayType->Dim = MetaCParser_ParseExpr(self, expr_flags_none, 0);
         uint32_t dimToHash = 0;
         if (arrayType->Dim->Kind == expr_signed_integer)
         {
@@ -2303,7 +2303,7 @@ metac_stmt_t* MetaCParser_ParseStmt(metac_parser_t* self,
         if (isCase)
         {
             case_->CaseExp =
-                MetaCParser_ParseExpr2(self, expr_flags_none);
+                MetaCParser_ParseExpr(self, expr_flags_none, 0);
 
             hash = CRC32C_VALUE(hash, case_->CaseExp->Hash);
         }
@@ -2365,7 +2365,7 @@ metac_stmt_t* MetaCParser_ParseStmt(metac_parser_t* self,
         }
         else
         {
-            yield_->YieldExp = MetaCParser_ParseExpr2(self, expr_flags_none);
+            yield_->YieldExp = MetaCParser_ParseExpr(self, expr_flags_none, 0);
             hash = CRC32C_VALUE(hash, yield_->YieldExp->Hash);
         }
         yield_->Hash = hash;
@@ -2381,7 +2381,7 @@ metac_stmt_t* MetaCParser_ParseStmt(metac_parser_t* self,
         MetaCParser_Match(self, tok_kw_while);
 
         MetaCParser_Match(self, tok_lParen);
-        doWhile->DoWhileExp = MetaCParser_ParseExpr2(self, expr_flags_none);
+        doWhile->DoWhileExp = MetaCParser_ParseExpr(self, expr_flags_none, 0);
         hash = CRC32C_VALUE(hash, doWhile->DoWhileExp->Hash);
         MetaCParser_Match(self, tok_rParen);
 
@@ -2654,7 +2654,7 @@ void TestParseExprssion(void)
     TEST_STR_EQ(MetaCPrinter_PrintExpr(&printer, expr), "f(g(), (h() + 12), j(), l(k(1, 2, 3)))");
 
     expr = MetaCLPP_ParseExpr2FromString(&LPP,          "typeof(*.Compiler)");
-    TEST_STR_EQ(MetaCPrinter_PrintExpr(&printer, expr), "typeof((*(.(Compiler))))");
+    TEST_STR_EQ(MetaCPrinter_PrintExpr(&printer, expr), "typeof (*(.(Compiler)))");
 }
 
 void TestParseDecl(void)

@@ -175,7 +175,7 @@ metac_expr_t* MetaCPreProcessor_ResolveDefineToExp(metac_preprocessor_t* self,
 
     MetaCParser_InitFromLexer(&defineParser, &DefineLexer, &tmpDefineParserAlloc);
 
-    result = MetaCParser_ParseExpr2(&defineParser, expr_flags_none);
+    result = MetaCParser_ParseExpr(&defineParser, expr_flags_none, 0);
 Lret:
     return result;
 }
@@ -965,7 +965,7 @@ uint32_t MetaCPreProcessor_Eval(metac_preprocessor_t* self, struct metac_parser_
         if (!tok || tok->TokenType == tok_eof)
             return result;
 
-        metac_expr_t* exp = MetaCParser_ParseExpr2(parser, expr_flags_pp);
+        metac_expr_t* exp = MetaCParser_ParseExpr(parser, expr_flags_pp, 0);
         MetaCPrinter_Reset(&parser->DebugPrinter);
         const char* expr_string = MetaCPrinter_PrintExpr(&parser->DebugPrinter, exp);
         xprintf("#eval '%s'\n", expr_string);
