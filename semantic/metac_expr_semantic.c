@@ -281,6 +281,14 @@ metac_sema_expr_t* MetaCSemantic_doIndexSemantic_(metac_sema_state_t* self,
         result->E1 = indexed;
         result->E2 = index;
     }
+    else if (indexed->Kind == expr_string)
+    {
+        metac_type_index_t charType =
+            MetaCSemantic_GetTypeIndex(self, type_char, (decl_type_t*)emptyPointer);
+        result = AllocNewSemaExpr(self, expr);
+        result->TypeIndex = charType;
+        // result->Chars[
+    }
 
     return  result;
 }
