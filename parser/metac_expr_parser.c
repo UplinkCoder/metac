@@ -1549,7 +1549,7 @@ metac_expr_t* MetaCParser_ParseBinaryExpr(metac_parser_t* self,
         metac_expr_kind_t expr_right;
 
         while(IsBinaryOperator(peekTokenType, eflags)
-           && OpToPrecedence(BinExpTypeFromTokenType(peekTokenType)) >= min_prec)
+           && OpToPrecedence(BinExpTypeFromTokenType(peekTokenType)) > min_prec)
         {
             expr_right = BinExpTypeFromTokenType(peekTokenType);
             uint32_t opPrecedence = OpToPrecedence(expr_right);
@@ -1590,7 +1590,7 @@ metac_expr_t* MetaCParser_ParseBinaryExpr(metac_parser_t* self,
             peekTokenType = (peekToken ? peekToken->TokenType : tok_eof);
 
             while(IsBinaryOperator(peekTokenType, eflags)
-               && (OpToPrecedence(BinExpTypeFromTokenType(peekTokenType)) >= opPrecedence))
+               && (OpToPrecedence(BinExpTypeFromTokenType(peekTokenType)) > opPrecedence))
             {
                 rhs = MetaCParser_ParseBinaryExpr(self, eflags, rhs, opPrecedence + 0);
                 peekToken = MetaCParser_PeekToken(self, 1);
