@@ -844,7 +844,14 @@ sema_decl_function_t* MetaCSemantic_doFunctionSemantic(metac_sema_state_t* self,
 
     sema_decl_function_t* f = AllocNewSemaFunction(self, func);
     // for now we don't nest functions.
+    /* TODO use semanId
+    metac_identifier_ptr_t semaIdentifier =
+        MetaCIdentifierTable_CopyIdentifier(self->ParserIdentifierTable,
+                                            &self->SemanticIdentifierTable, func->Identifier);
+    f->Identifier = semaIdentifier;
+     */
     f->Identifier = func->Identifier;
+
     // printf("doing Function: %s\n", IdentifierPtrToCharPtr(self->ParserIdentifierTable, func->Identifier));
 
     // let's first do the parameters
@@ -861,8 +868,16 @@ sema_decl_function_t* MetaCSemantic_doFunctionSemantic(metac_sema_state_t* self,
         // as we have an easier time if we know at which
         // param we are and how many follow
         decl_variable_t* paramVar = currentParam->Parameter;
+        /*TODO use identifier in sema table
+        metac_identifier_ptr_t semaId =
+            MetaCIdentifierTable_CopyIdentifier(self->ParserIdentifierTable,
+                                                &self->SemanticIdentifierTable,
+                                                paramVar->VarIdentifier);
+        f->Parameters[i].VarIdentifier = semaId;
+        */
+        f->Parameters[i].VarIdentifier = paramVar.VarIdentifier;
+
         f->Parameters[i].VarFlags |= variable_is_parameter;
-        f->Parameters[i].VarIdentifier = paramVar->VarIdentifier;
         if (METAC_NODE(paramVar->VarInitExpr) != emptyNode)
         {
             f->Parameters[i].VarInitExpr =
@@ -885,10 +900,6 @@ sema_decl_function_t* MetaCSemantic_doFunctionSemantic(metac_sema_state_t* self,
     // now we should know the sizes
     assert(currentParam == emptyPointer);
 
-    if (func->FunctionBody == emptyPointer)
-    {
-        return f;
-    }
 
     metac_scope_owner_t Parent = {SCOPE_OWNER_V(scope_owner_function, FunctionIndex(self, f))};
 
@@ -947,8 +958,16 @@ sema_decl_function_t* MetaCSemantic_doFunctionSemantic(metac_sema_state_t* self,
                                           cast(metac_node_t)var);
     }
     f->FrameOffset = frameOffset;
-    f->FunctionBody = cast(sema_stmt_block_t*)
-        MetaCSemantic_doStmtSemantic(self, func->FunctionBody);
+
+    if (METAC_NODE(func->FunctionBody) != emptyNode)
+    {
+        f->FunctionBody = cast(sema_stmt_block_t*)
+            MetaCSemantic_doStmtSemantic(self, func->FunctionBody);
+    }
+    else
+    {
+        METAC_NODE(f->FunctionBody) = emptyNode;
+    }
 
     MetaCSemantic_PopScope(self);
 

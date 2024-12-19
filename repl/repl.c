@@ -1157,21 +1157,24 @@ LswitchMode:
                 MetaCSemantic_doDeclSemantic_task_context_t* ctxPtr =
                     &ctx;
 
-                task_t DeclSemaTask = {0};
-                DeclSemaTask.TaskFunction = MetaCSemantic_doDeclSemantic_Task;
-                DeclSemaTask.Context = ctxPtr;
-                DeclSemaTask.ContextSize = sizeof(ctx);
-                U32(DeclSemaTask.TaskFlags) |= Task_Continuation_Func;
-                DeclSemaTask.ContinuationFunc = cast(void (*)(void*)) Repl_doDeclSemantic_cont;
-
-                worker_context_t* replWorker = CurrentWorker();
-                taskqueue_t* q = &replWorker->Queue;
-                ORIGIN(DeclSemaTask.Origin);
-                uint32_t taskId = TaskQueue_Push(q, &DeclSemaTask);
-
-                if (taskId == 0)
                 {
-                    ERRORMSG("Couldn't Push\n");
+                    task_t DeclSemaTask = {0};
+                    DeclSemaTask.TaskFunction = MetaCSemantic_doDeclSemantic_Task;
+                    DeclSemaTask.Context = ctxPtr;
+                    DeclSemaTask.ContextSize = sizeof(ctx);
+                    U32(DeclSemaTask.TaskFlags) |= Task_Continuation_Func;
+                    DeclSemaTask.ContinuationFunc = cast(void (*)(void*)) Repl_doDeclSemantic_cont;
+                    {
+                        worker_context_t* replWorker = CurrentWorker();
+                        taskqueue_t* q = &replWorker->Queue;
+                        ORIGIN(DeclSemaTask.Origin);
+                        uint32_t taskId = TaskQueue_Push(q, &DeclSemaTask);
+
+                        if (taskId == 0)
+                        {
+                            ERRORMSG("Couldn't Push\n");
+                        }
+                    }
                 }
 #else
                 ds = MetaCSemantic_doDeclSemantic(&repl->SemanticState, decl);
