@@ -875,7 +875,7 @@ sema_decl_function_t* MetaCSemantic_doFunctionSemantic(metac_sema_state_t* self,
                                                 paramVar->VarIdentifier);
         f->Parameters[i].VarIdentifier = semaId;
         */
-        f->Parameters[i].VarIdentifier = paramVar.VarIdentifier;
+        f->Parameters[i].VarIdentifier = paramVar->VarIdentifier;
 
         f->Parameters[i].VarFlags |= variable_is_parameter;
         if (METAC_NODE(paramVar->VarInitExpr) != emptyNode)
@@ -888,10 +888,25 @@ sema_decl_function_t* MetaCSemantic_doFunctionSemantic(metac_sema_state_t* self,
         {
             METAC_NODE(f->Parameters[i].VarInitExpr) = emptyNode;
         }
-        metac_type_index_t idx;
-        idx = f->Parameters[i].TypeIndex =
-            MetaCSemantic_doTypeSemantic(self,
-                                         currentParam->Parameter->VarType);
+        for (;;)
+        {
+            static const metac_type_index_t unresolvedTypeIndex = {0};
+            metac_type_index_t idx;
+            idx = f->Parameters[i].TypeIndex =
+                MetaCSemantic_doTypeSemantic(self,
+                                             currentParam->Parameter->VarType);
+            if (idx.v != unresolvedTypeIndex.v)
+            {
+                break;
+            }
+            else
+            {
+#ifndef NO_FIBERS
+                YIELD("Waiting for type semantic on function parameter");
+#else
+#endif
+            }
+        }
         uint32_t hash = f->Parameters[i].TypeIndex.v;
         hash = CRC32C_VALUE(hash, i);
         f->Parameters[i].Hash = hash;
@@ -1115,7 +1130,7 @@ const char* doDeclSemantic_PrintFunction(task_t* task)
 #endif
 
 metac_sema_decl_t* MetaCSemantic_declSemantic(metac_sema_state_t* self,
-                                                     metac_decl_t* decl)
+                                              metac_decl_t* decl)
 {
     metac_sema_decl_t* result = cast(metac_sema_decl_t*)(intptr_t)0xFEFEFEFE;
     metac_identifier_ptr_t declId = {0};
@@ -1266,12 +1281,12 @@ metac_sema_decl_t* MetaCSemantic_doDeclSemantic_(metac_sema_state_t* self,
         (*(MetaCSemantic_doDeclSemantic_task_context_t*)declTask.Context) =
             CtxValue;
         MetaCSemantic_doDeclSemantic_task_context_t* CtxValuePtr = &CtxValue;
-        printf("We should yield now\n");
+        xprintf("We should yield now\n");
         declTask.Continuation = currentTask;
         TaskQueue_Push(q, &declTask);
         U32(currentTask->TaskFlags) |= Task_Waiting;
 
-        YIELD(waiting_for_declSemantic);
+        YIELD("waiting for declSemantic");
 
         printf("We are back\n");
         result = CtxValuePtr->Result;
