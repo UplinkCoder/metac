@@ -1309,8 +1309,7 @@ metac_type_index_t MetaCSemantic_TypeSemantic(metac_sema_state_t* self,
 #endif
         ARENA_ARRAY_ENSURE_SIZE(semaArguments, tInst->ArgumentCount);
         // before calling semantic we need to mount the template instance scope.
-        metac_scope_t tmpScope = {(metac_decl_kind_t)0};
-        U32(tmpScope.ScopeFlags) |= scope_flag_temporary;
+        metac_scope_t tmpScope = {scope_flag_temporary};
         MetaCSemantic_PushTemporaryScope(self, &tmpScope);
 
         for(metac_expr_t** ep = &args->Expr; METAC_NODE(args) != emptyNode; args = args->Next, ep = &args->Expr)

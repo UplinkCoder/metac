@@ -15,7 +15,7 @@ const char* Linenoise_GetInputLine(ui_state_t* state, repl_state_t* repl, uint32
 
     if (line)
     {
-        *length = (uint32_t)strlen(line);
+        *length = cast(uint32_t)strlen(line);
         linenoiseHistoryAdd(line);
     }
     else
