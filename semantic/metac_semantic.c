@@ -419,9 +419,9 @@ metac_type_index_t MetaCSemantic_GetType(metac_sema_state_t* self, metac_node_t 
 }
 
 metac_sema_stmt_t* MetaCSemantic_doStmtSemantic_(metac_sema_state_t* self,
-                                                           metac_stmt_t* stmt,
-                                                           const char* callFile,
-                                                           uint32_t callLine)
+                                                 metac_stmt_t* stmt,
+                                                 const char* callFile,
+                                                 uint32_t callLine)
 {
     metac_sema_stmt_t* result = 0;
 
@@ -496,6 +496,8 @@ metac_sema_stmt_t* MetaCSemantic_doStmtSemantic_(metac_sema_state_t* self,
                 metac_scope_owner_t owner = {
                     SCOPE_OWNER_V(scope_owner_statement, StmtIndex(self, semaDeclStmt))
                 };
+                // We need to remember to close the decl-scopes so we need to keep track of how many we have opend.
+                // As the decl scopes are invisble to the user and have no closing syntax.
                 metac_scope_t* declScope =
                     MetaCScope_PushNewScope(self, self->CurrentScope, owner);
 
@@ -1063,7 +1065,7 @@ void SetTypeIndex(metac_type_t typeNode,
             (cast(metac_type_enum_t*) typeNode)->TypeIndex = typeIndex;
         break;
         case type_index_basic:
-            (cast(metac_type_basic_t*)typeNode)->TypeIndex = typeIndex;
+            // for basic types the type index is always set.
         break;
         case type_index_tuple:
             (cast(metac_type_tuple_t*)typeNode)->TypeIndex = typeIndex;
@@ -1156,7 +1158,7 @@ metac_sema_decl_t* MetaCSemantic_declSemantic(metac_sema_state_t* self,
             sema_decl_variable_t* var = AllocNewSemaVariable(self, v, &result);
             /// XXX FIXME we want to assign a variable serial
             /// after we have determined the storage location ideally.
-            /// to keep stuff wokring though we just assign the decl hash
+            /// to keep stuff working though we just assign the decl hash
 
             var->Hash = v->Hash;
             var->TypeIndex = MetaCSemantic_doTypeSemantic(self, v->VarType);

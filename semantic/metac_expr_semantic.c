@@ -375,7 +375,7 @@ void MetaCSemantic_doCallSemantic(metac_sema_state_t* self,
 
     if (func->Function)
 
-    printf("function call with: %u arguments\n", nArgs);
+    xprintf("function call with: %u arguments\n", nArgs);
 
     STACK_ARENA_ARRAY_TO_HEAP(arguments, &self->Allocator);
 
