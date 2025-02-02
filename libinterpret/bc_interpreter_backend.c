@@ -2644,17 +2644,50 @@ static inline void BCGen_emitArithInstruction(BCGen* self
                                             , const BCValue* rhs
                                             , BCTypeEnum* resultTypeEnum);
 
+static inline void BCGen_Set(BCGen* self, BCValue* lhs, const BCValue* rhs)
+{
+    assert(BCValue_isStackValueOrParameter(lhs));//, "Set lhs is has to be a StackValue. Not: " ~ enumToString(lhs.vType));
+    assert(rhs->vType == BCValueType_Immediate || rhs->vType == BCValueType_External || BCValue_isStackValueOrParameter(rhs));//, "Set rhs is has to be a StackValue or Imm not: " ~ rhs.vType.enumToString);
+
+    if (rhs->vType == BCValueType_Immediate)
+    {
+        if(rhs->type.type == BCTypeEnum_i64 || rhs->type.type == BCTypeEnum_u64 || rhs->type.type == BCTypeEnum_f52)
+        {
+            BCGen_emitLongInstSI(self, LongInst_SetImm32, lhs->stackAddr, (rhs->imm64.imm64 & UINT32_MAX));
+            BCGen_emitLongInstSI(self, LongInst_SetHighImm32, lhs->stackAddr, (rhs->imm64.imm64 >> 32));
+        }
+        else
+        {
+            BCGen_emitLongInstSI(self, LongInst_SetImm32, lhs->stackAddr, rhs->imm32.imm32);
+        }
+    }
+    else if (!BCValue_eq(lhs, rhs)) // do not emit self assignments;
+    {
+        BCValue tmp = *lhs;
+        BCGen_emitArithInstruction(self, LongInst_Set, lhs, rhs, 0);
+    }
+}
+
 static inline BCValue BCGen_castTo(BCGen* self, const BCValue* rhs, BCTypeEnum targetType)
 {
+    bool rhsIsTemp = false;
+    BCValue rhsAsTemp = {0};
     BCTypeEnum sourceType = rhs->type.type;
-
-    if (sourceType == targetType)
-        return *rhs;
 
     BCType type = {targetType};
     BCValue lhs = BCGen_genTemporary(self, type);
 
-    assert(BCValue_isStackValueOrParameter(rhs));
+    if (sourceType == targetType)
+        return *rhs;
+
+
+    if (!BCValue_isStackValueOrParameter(rhs))
+    {
+        rhsIsTemp = true;
+        rhsAsTemp = BCGen_genTemporary(self, rhs->type);
+        BCGen_Set(self, &rhsAsTemp, rhs);
+        rhs = &rhsAsTemp;
+    }
 
     switch(targetType)
     {
@@ -2694,31 +2727,12 @@ static inline BCValue BCGen_castTo(BCGen* self, const BCValue* rhs, BCTypeEnum t
         //break;
     }
 
+    if (rhsIsTemp)
+    {
+        BCGen_destroyTemporary(self, &rhsAsTemp);
+    }
+
     return lhs;
-}
-
-static inline void BCGen_Set(BCGen* self, BCValue* lhs, const BCValue* rhs)
-{
-    assert(BCValue_isStackValueOrParameter(lhs));//, "Set lhs is has to be a StackValue. Not: " ~ enumToString(lhs.vType));
-    assert(rhs->vType == BCValueType_Immediate || rhs->vType == BCValueType_External || BCValue_isStackValueOrParameter(rhs));//, "Set rhs is has to be a StackValue or Imm not: " ~ rhs.vType.enumToString);
-
-    if (rhs->vType == BCValueType_Immediate)
-    {
-        if(rhs->type.type == BCTypeEnum_i64 || rhs->type.type == BCTypeEnum_u64 || rhs->type.type == BCTypeEnum_f52)
-        {
-            BCGen_emitLongInstSI(self, LongInst_SetImm32, lhs->stackAddr, (rhs->imm64.imm64 & UINT32_MAX));
-            BCGen_emitLongInstSI(self, LongInst_SetHighImm32, lhs->stackAddr, (rhs->imm64.imm64 >> 32));
-        }
-        else
-        {
-            BCGen_emitLongInstSI(self, LongInst_SetImm32, lhs->stackAddr, rhs->imm32.imm32);
-        }
-    }
-    else if (!BCValue_eq(lhs, rhs)) // do not emit self assignments;
-    {
-        BCValue tmp = *lhs;
-        BCGen_emitArithInstruction(self, LongInst_Set, lhs, rhs, 0);
-    }
 }
 
 static inline BCValue BCGen_pushTemporary(BCGen* self, const BCValue* val)

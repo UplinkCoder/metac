@@ -568,6 +568,7 @@ static inline void Printer_Finalize(Printer* self)
 {
     Printer_PutStr(self, "Finalize()");
     Printer_PutNewline(self);
+    *self->Buffer++ = '\0';
 }
 
 static inline uint32_t Printer_BeginFunction(Printer* self, uint32_t fnIdx, const char* name)

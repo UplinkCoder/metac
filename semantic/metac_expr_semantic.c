@@ -82,6 +82,8 @@ void ConvertTupleElementToExp(metac_sema_state_t* sema,
 }
 
 EXTERN_C const BackendInterface BCGen_interface;
+EXTERN_C const BackendInterface Printer_interface;
+
 metac_sema_expr_t
 EvaluateExpr(metac_sema_state_t* sema,
              metac_sema_expr_t* e,
@@ -97,6 +99,30 @@ EvaluateExpr(metac_sema_state_t* sema,
     }
 
     Allocator_Init(&interpAlloc, &sema->TempAlloc, 0);
+
+    if (false)
+    {
+        const char* result;
+
+        MetaCCodegen_SetDefaultInterface(&Printer_interface);
+
+        MetaCCodegen_Init(&ctx, &interpAlloc);
+        ctx.Sema = sema;
+
+        for(uint32_t i = 0; i < sema->GlobalsCount; i++)
+        {
+            MetaCCodegen_doGlobal(&ctx, sema->Globals[i], i);
+        }
+
+        MetaCCodegen_Begin(&ctx, sema->ParserIdentifierTable, sema->ParserStringTable, sema);
+
+        metac_bytecode_function_t fCode =
+            MetaCCodegen_GenerateFunctionFromExp(&ctx, e);
+
+        MetaCCodegen_End(&ctx);
+
+        Printer_StreamToFile(ctx.c, stderr);
+    }
 
     MetaCCodegen_SetDefaultInterface(&BCGen_interface);
 

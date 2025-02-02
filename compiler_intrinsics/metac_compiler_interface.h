@@ -51,6 +51,7 @@ typedef struct metac_compiler_t
                                         void* context);
     void (*PrintInt) (int32_t* value);
 } metac_compiler_t;
+
 /* Proposed Interface:
 typedef struct {
     // Other members...

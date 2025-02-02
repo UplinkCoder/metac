@@ -533,9 +533,13 @@ static BCValue MetaCCodegen_doFunction(metac_bytecode_ctx_t* ctx,
     return imm32(f.FunctionIndex);
 }
 
+#include "../compiler_intrinsics/metac_compiler_interface.h"
+
+extern metac_compiler_t compiler;
+
 static void InitCompilerInterface(metac_bytecode_ctx_t* ctx)
 {
-#ifdef METAC_COMPILER_INTERFACE
+// #ifdef METAC_COMPILER_INTERFACE
     void* c = ctx->c;
     const BackendInterface gen = *ctx->gen;
 
@@ -549,8 +553,9 @@ static void InitCompilerInterface(metac_bytecode_ctx_t* ctx)
         ctx->CompilerInterfaceValue = gen.GenExternal(c, compilerInterfaceType, ".compiler");
         gen.MapExternal(c, &ctx->CompilerInterfaceValue, &compiler, sizeof(compiler));
         ctx->Externals[0].ExtValue = ctx->CompilerInterfaceValue;
+        ctx->ExternalsCount += 1;
     }
-#endif
+// #endif
 }
 
 bool IsExternal(metac_sema_expr_t* expr)
@@ -618,10 +623,7 @@ metac_bytecode_function_t MetaCCodegen_GenerateFunctionFromExp(metac_bytecode_ct
     func.FunctionIndex =
         gen.BeginFunction(c, 0, "dummy_eval_func");
 
-    if (!compilerInterfaceInited)
-    {
-        InitCompilerInterface(ctx);
-    }
+    InitCompilerInterface(ctx);
 
     // we need to introduce all resolvable variables from the outer context here.
     // .compiler.help - .compiler
@@ -1160,7 +1162,9 @@ static void MetaCCodegen_doArrowExpr(metac_bytecode_ctx_t* ctx,
     field = e2->Field;
     offsetVal = imm32(field->Offset);
 
-    assert(e1Value.vType == BCValueType_StackValue);
+    assert(e1Value.vType == BCValueType_StackValue
+        || e1Value.vType == BCValueType_HeapValue
+        || e1Value.vType == BCValueType_External);
     gen.Add3(c, &addr, &e1Value, &offsetVal);
 
     MetaCCodegen_doDeref(ctx, &addr, field->Type, result);
@@ -1196,10 +1200,7 @@ static void MetaCCodegen_doExpr(metac_bytecode_ctx_t* ctx,
     {
         if (!result)
         {
-            // XXX: this is super dangerous
-            // FIXME remove stackref as soon as possible!
-            BCValue tmp = {BCValueType_Unknown};
-            result = &tmp;
+            assert(!"result must be non null");
         }
 
         if (op == expr_signed_integer)
@@ -1242,6 +1243,7 @@ static void MetaCCodegen_doExpr(metac_bytecode_ctx_t* ctx,
     }
     else if (op == expr_addr)
     {
+        assert(exp->E1->Kind == expr_variable);
     }
     else if (op == expr_dot)
     {

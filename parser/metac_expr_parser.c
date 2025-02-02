@@ -669,7 +669,9 @@ metac_expr_t* MetaCParser_ParsePrimaryExpr(metac_parser_t* self, parse_expr_flag
         metac_token_t* lParen = MetaCParser_Match(self, tok_lParen);
         metac_type_modifiers typeModifiers = ParseTypeModifiers(self);
 
-        if (IsTypeToken(MetaCParser_PeekToken(self, 1)->TokenType))
+        metac_token_t* peek = MetaCParser_PeekToken(self, 1);
+
+        if (peek && IsTypeToken(peek->TokenType))
         {
             result->CastType = MetaCParser_ParseTypeDecl(self, 0, 0);
             result->CastType->TypeModifiers =  typeModifiers;
@@ -855,14 +857,18 @@ metac_expr_t* MetaCParser_ParsePrimaryExpr(metac_parser_t* self, parse_expr_flag
             }
         }
 
-        //PushOperator(expr_paren);
+        //PushOperator(expr_paren);[New Thread 0x7ffff76fb640 (LWP 2094)]
+
         //PushOperand(result);
 
         metac_token_t* endParen =
             MetaCParser_Match(self, tok_rParen);
-        MetaCLocation_Expand(&loc, LocationFromToken(self, endParen));
+        if (endParen)
+        {
+            MetaCLocation_Expand(&loc, LocationFromToken(self, endParen));
 
-        self->ExprParser.OpenParens--;
+            self->ExprParser.OpenParens--;
+        }
 
         //PopOperator(expr_paren);
     }
