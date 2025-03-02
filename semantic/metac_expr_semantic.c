@@ -861,7 +861,7 @@ LswitchIdKey:
                     {
                         metac_type_aggregate_field_t* field =
                             cast(metac_type_aggregate_field_t*)node;
-                        result->AggMemberIndex = field->Index;
+
                         metac_expr_t* fieldExp = AllocNewExpr(expr_field);
                         fieldExp->LocationIdx = expr->E2->LocationIdx;
                         dotExp->DotE2 = AllocNewSemaExpr(self, fieldExp);
@@ -1237,7 +1237,7 @@ LswitchIdKey:
         } break;
         case expr_sizeof:
         {
-            uint32_t size = -1;
+            int32_t size = -1;
             hash = sizeof_key;
             metac_sema_expr_t* e1 =
                 MetaCSemantic_doExprSemantic(self, expr->E1, 0);

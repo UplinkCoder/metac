@@ -17,7 +17,7 @@
 #include "../codegen/metac_codegen.c"
 #include "../semantic/metac_type_table.h"
 #include "../repl/completion_trie.c"
-#include "repl.h"
+#include "../repl/repl.h"
 
 #include <stdio.h>
 
@@ -79,7 +79,6 @@ static inline int TranslateIdentifiers(metac_node_t node, void* ctx)
 
     const metac_identifier_table_t* SrcTable = context->SrcTable;
     metac_identifier_table_t* DstTable = context->DstTable;
-    xprintf("Node seen %s\n", MetaCNodeKind_toChars(node->Kind));
 
     switch(node->Kind)
     {
@@ -125,7 +124,17 @@ static inline int TranslateIdentifiers(metac_node_t node, void* ctx)
                 TranslateIdentifier(DstTable, SrcTable, &enum_->Identifier);
             }
         } break;
-        case decl_enum_member:
+/*
+        case decl_type_functiontype:
+        {
+            decl_type_functiontype_t* funcionType = (decl_type_functiontype_t*) node;
+            if (funcionType->Identifier.v != empty_identifier.v)
+            {
+                TranslateIdentifier(DstTable, SrcTable, &enum_->Identifier);
+            }
+        } break;
+*/
+      case decl_enum_member:
         {
             decl_enum_member_t* enumMember = (decl_enum_member_t*) node;
             if (enumMember->Name.v != empty_identifier.v)
@@ -154,7 +163,12 @@ static inline int TranslateIdentifiers(metac_node_t node, void* ctx)
         } break;
 
 
-        default : {xprintf("No Identifier got Translated for '%s'\n", MetaCNodeKind_toChars(node->Kind));} break;
+        default:
+        {
+#if 1
+            xprintf("No Identifier got Translated for '%s'\n", MetaCNodeKind_toChars(node->Kind));
+#endif
+        } break;
     }
 
     if ((node->Kind > expr_invalid) & (node->Kind < expr_max))

@@ -706,8 +706,6 @@ void MetaCSemantic_ComputeEnumValues(metac_sema_state_t* self,
                                      decl_type_enum_t* enum_,
                                      metac_type_enum_t* semaEnum)
 {
-    uint32_t lastUnresolvedMembers = 0;
-    uint32_t unresolvedMembers = 0;
     decl_enum_member_t* member = enum_->Members;
     int64_t nextValue = 0;
     const uint32_t memberCount = enum_->MemberCount;
@@ -770,10 +768,13 @@ void MetaCSemantic_ComputeEnumValues(metac_sema_state_t* self,
     // Since we are inserting members
     self->CurrentScope->ScopeTable.AllowOverride = true;
     {
+        uint32_t lastUnresolvedMembers = 0;
+        uint32_t unresolvedMembers = 0;
+
         const char* eName = IdentifierPtrToCharPtr(self->ParserIdentifierTable, enum_->Identifier);
-        MetaCSemantic_PushOnResolveFail(self, OnResolveFail_ReturnNull);
         do
         {
+            MetaCSemantic_PushOnResolveFail(self, OnResolveFail_ReturnNull);
             lastUnresolvedMembers = unresolvedMembers;
 
             member = enum_->Members;
@@ -803,16 +804,12 @@ void MetaCSemantic_ComputeEnumValues(metac_sema_state_t* self,
                 }
             }
             assert(METAC_NODE(member) == emptyNode);
+            MetaCSemantic_PopOnResolveFail(self);
 
-            if (!unresolvedMembers)
-            {
-                MetaCSemantic_PopOnResolveFail(self);
-            }
-            else if (unresolvedMembers == lastUnresolvedMembers)
+            if (unresolvedMembers == lastUnresolvedMembers)
             {
                 // we have a the same number of unresolved members as last round
                 // which indicates a lack of local progress.
-                MetaCSemantic_PopOnResolveFail(self);
                 YIELD("Yielding because we are waiting for more enum members to become resolvable");
             }
         } while (unresolvedMembers);
@@ -1155,53 +1152,46 @@ metac_type_index_t MetaCSemantic_TypeSemantic(metac_sema_state_t* self,
         tmpSemaAgg->FieldCount = agg->FieldCount;
 
         PopulateTemporaryAggregateScope(self, tmpSemaAgg, agg);
+        MetaCSemantic_MountScope(self, tmpSemaAgg->Scope);
+
+        if (agg->ParameterCount != 0)
+        {
+            uint32_t parameterCount = agg->ParameterCount;
+            decl_parameter_t* param = agg->Parameters;
+            U32(tmpTemplateScope.ScopeFlags) |= scope_flag_temporary;
+            MetaCSemantic_PushTemporaryScope(self, &tmpTemplateScope);
+         
+            for(uint32_t paramIdx = 0; paramIdx < parameterCount; paramIdx++)
+            {
+                metac_identifier_ptr_t paramIdent = param->Parameter->VarIdentifier;
+                metac_location_ptr_t locIdx = param->Parameter->LocationIdx;
+                metac_expr_t placeholderExpr;
+                metac_sema_expr_t* placeholder = AllocNewSemaExpr(self, &placeholderExpr);
+
+                placeholder->Kind = expr_unknown_value;
+                placeholder->TypeIndex = MetaCSemantic_TypeSemantic(self, param->Parameter->VarType);
+                METAC_NODE(placeholder->Expr) = emptyNode;
+                placeholder->LocationIdx = locIdx;
+
+
+                MetaCSemantic_RegisterInScope(self, paramIdent, METAC_NODE(placeholder));
+
+                param = param->Next;
+            }
+        }
 
         switch(typeKind)
         {
             case type_struct:
             {
-                uint32_t hash = 0;
-                MetaCSemantic_MountScope(self, tmpSemaAgg->Scope);
-
-                if (agg->ParameterCount != 0)
-                {
-                    uint32_t parameterCount = agg->ParameterCount;
-                    decl_parameter_t* param = agg->Parameters;
-                    U32(tmpTemplateScope.ScopeFlags) |= scope_flag_temporary;
-                    MetaCSemantic_PushTemporaryScope(self, &tmpTemplateScope);
-                    xprintf("We have a template\n");
-
-                    for(uint32_t paramIdx = 0; paramIdx < parameterCount; paramIdx++)
-                    {
-                        metac_identifier_ptr_t paramIdent = param->Parameter->VarIdentifier;
-                        metac_location_ptr_t locIdx = param->Parameter->LocationIdx;
-                        metac_expr_t placeholderExpr;
-                        metac_sema_expr_t* placeholder = AllocNewSemaExpr(self, &placeholderExpr);
-
-                        placeholder->Kind = expr_unknown_value;
-                        placeholder->TypeIndex = MetaCSemantic_TypeSemantic(self, param->Parameter->VarType);
-                        METAC_NODE(placeholder->Expr) = emptyNode;
-                        placeholder->LocationIdx = locIdx;
-
-
-                        MetaCSemantic_RegisterInScope(self, paramIdent, METAC_NODE(placeholder));
-
-                        param = param->Next;
-                    }
-                }
-
+                uint32_t hash;
                 MetaCSemantic_ComputeStructLayout(self, agg, tmpSemaAgg);
 
                 if (agg->ParameterCount != 0)
                 {
                     MetaCSemantic_PopTemporaryScope(self);
                 }
-
-                MetaCSemantic_UnmountScope(self);
-
-                hash = AggregateHash(tmpSemaAgg);
-
-                tmpSemaAgg->Header.Hash = hash;
+                tmpSemaAgg->Header.Hash = AggregateHash(tmpSemaAgg);
 
                 result =
                     MetaCTypeTable_GetOrEmptyStructType(&self->StructTypeTable, tmpSemaAgg);
@@ -1230,6 +1220,8 @@ metac_type_index_t MetaCSemantic_TypeSemantic(metac_sema_state_t* self,
             default: assert(0);
 
         }
+
+        MetaCSemantic_UnmountScope(self);
     }
     else if (IsPointerType(type->Kind))
     {

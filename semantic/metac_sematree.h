@@ -56,11 +56,11 @@ typedef struct metac_storage_location_t
 #define STORAGE_KIND(STORAGE) \
     ((metac_storage_kind_t) ((STORAGE).v >> 28) & 0xF)
 
-typedef struct sema_exp_argument_list_t
+typedef struct sema_expr_argument_list_t
 {
     struct metac_sema_expr_t** Arguments;
     uint32_t ArgumentCount;
-} sema_exp_argument_list_t;
+} sema_expr_argument_list_t;
 
 typedef struct metac_sema_expr_header_t
 {
@@ -68,12 +68,12 @@ typedef struct metac_sema_expr_header_t
 } metac_sema_expr_header_t;
 
 #pragma pack(push, 1)
-typedef struct sema_exp_call_t
+typedef struct sema_expr_call_t
 {
     struct metac_sema_expr_t* Function;
     struct metac_sema_expr_t** Arguments;
     uint32_t ArgumentCount;
-} sema_exp_call_t;
+} sema_expr_call_t;
 
 
 typedef struct metac_sema_expr_t
@@ -107,7 +107,7 @@ typedef struct metac_sema_expr_t
         // case expr_dot, expr_arrow:
         struct {
             struct metac_sema_expr_t* AggExp;
-            uint32_t AggMemberIndex;
+            // uint32_t AggMemberIndex;
             struct metac_sema_expr_t* DotE2;
         };
         // case expr_type
@@ -118,11 +118,11 @@ typedef struct metac_sema_expr_t
             uint32_t TupleExprCount;
         };
         // case expr_argument:
-        sema_exp_argument_list_t* ArgumentList;
+        sema_expr_argument_list_t* ArgumentList;
         // case expr_function:
         struct sema_decl_function_t* Function;
         // case expr_call:
-        struct sema_exp_call_t Call;
+        struct sema_expr_call_t Call;
 
         // case unknown_value_exp:
         metac_expr_t* Expr;

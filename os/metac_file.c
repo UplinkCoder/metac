@@ -221,9 +221,6 @@ metac_file_ptr_t MetaCFileStorage_LoadFile(metac_file_storage_t* self, const cha
         filePathPtr = GetOrAddIdentifier(&self->Paths, filePathKey, path);
     }
 
-    printf("fileNamePtr: %u\n", fileNamePtr.v);
-    printf("filePathPtr: %u\n", filePathPtr.v);
-
     assert(fileNamePtr.v < UINT16_MAX);
     assert(filePathPtr.v < UINT16_MAX);
 

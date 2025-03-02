@@ -27,11 +27,11 @@
 #include "metac_codegen.h"
 
 #include <stdarg.h>
-
+/*
 #ifdef METAC_COMPILER_INTERFACE
 #include "../compiler_intrinsics/metac_compiler_interface.c"
 #endif
-
+*/
 uint32_t MetaCCodegen_GetTypeABISize(metac_bytecode_ctx_t* ctx,
                                      metac_type_index_t type)
 {

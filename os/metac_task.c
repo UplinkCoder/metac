@@ -119,6 +119,7 @@ void FiberDoTask(void)
         U32(task->TaskFlags) |= Task_Running;
         task->TaskFunction(task);
         U32(task->TaskFlags) |= Task_Complete;
+        U32(task->TaskFlags) &= ~Task_Running;
 
         fiber->arg = 0;
 
