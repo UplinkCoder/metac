@@ -827,20 +827,20 @@ void MetaCSemantic_ComputeEnumValues(metac_sema_state_t* self,
 
             if (METAC_NODE(member->Value) != emptyNode)
             {
-                metac_sema_expr_t* semaValue =
-                    semaEnum->Members[memberIdx].Value;
-                assert(member->Value);
-                if (semaValue->Kind != expr_signed_integer)
+                metac_sema_expr_t semaValue =
+                    *semaEnum->Members[memberIdx].Value;
+
+                if (semaValue.Kind != expr_signed_integer)
                 {
-                    semaValue->TypeIndex.v = semaEnum->BaseType.v;
-                    MetaCSemantic_ConstantFold(self, semaValue);
+                    semaValue.TypeIndex.v = semaEnum->BaseType.v;
+                    semaValue = EvaluateExpr(self, &semaValue, 0);
                 }
-                if (semaValue->Kind != expr_signed_integer)
+                if (semaValue.Kind != expr_signed_integer)
                 {
                     fatalf("Value of %s could not be constant folded\n", IdentifierPtrToCharPtr(self->ParserIdentifierTable, member->Name));
                 }
                 //assert(semaValue->Kind == expr_signed_integer);
-                nextValue = semaValue->ValueI64 + 1;
+                nextValue = semaValue.ValueI64 + 1;
             }
             else
             {

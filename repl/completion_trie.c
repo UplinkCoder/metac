@@ -426,14 +426,14 @@ void CompletionTrie_Print(completion_trie_root_t* root, uint32_t nodeIdx, const 
 
 void CompletionTrie_Add(completion_trie_root_t* root, const char* word, uint32_t length)
 {
-    uint32_t remaning_length = length;
+    uint32_t remaining_length = length;
     completion_trie_node_t* PrefNode =
-        CompletionTrie_FindLongestMatchingPrefix(root, word, &remaning_length);
+        CompletionTrie_FindLongestMatchingPrefix(root, word, &remaining_length);
 
-    if (remaning_length)
+    if (remaining_length)
     {
-        int posWord = length - remaning_length;
-        PrefNode = CompletionTrie_AddChild(root, PrefNode, word + posWord, remaning_length);
+        int posWord = length - remaining_length;
+        PrefNode = CompletionTrie_AddChild(root, PrefNode, word + posWord, remaining_length);
     }
     // insert terminal node
     CompletionTrie_AddChild(root, PrefNode, "", 0);

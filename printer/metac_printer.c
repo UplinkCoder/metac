@@ -1735,19 +1735,21 @@ static inline void PrintSemaExpr(metac_printer_t* self,
     }
     else if (semaExpr->Kind == expr_tuple)
     {
-        PrintChar(self, '{');
+        uint32_t tupleExprCount = semaExpr->TupleExprCount;
         metac_sema_expr_t** tupleElement =
             semaExpr->TupleExprs;
+        PrintChar(self, '{');
         for(uint32_t i = 0;
-            i < semaExpr->TupleExprCount;
+            i < tupleExprCount - 1;
             i++)
         {
             PrintSemaExpr(self, sema,  tupleElement[i]);
-            if (i != (semaExpr->TupleExprCount - 1))
-            {
-                PrintChar(self, ',');
-                PrintSpace(self);
-            }
+            PrintChar(self, ',');
+            PrintSpace(self);
+        }
+        if (tupleExprCount > 0)
+        {
+            PrintSemaExpr(self, sema,  tupleElement[tupleExprCount - 1]);
         }
         PrintChar(self, '}');
     }
