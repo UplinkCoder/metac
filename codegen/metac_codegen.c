@@ -1703,7 +1703,7 @@ static void MetaCCodegen_doExpr(metac_bytecode_ctx_t* ctx,
 
         case expr_call:
         {
-            sema_exp_call_t call = exp->Call;
+            sema_expr_call_t call = exp->Call;
             bool isExternal = IsExternal(call.Function);
 
             BCValue resultVal =

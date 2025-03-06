@@ -2,6 +2,11 @@
 #include <stdio.h>
 #include <string.h>
 
+#if defined(TEST_MAIN)
+#  include "../os/os.c"
+#  include "../os/metac_alloc.c"
+#endif
+
 #include "../os/metac_atomic.h"
 
 #define TRACK_RANGES 0

@@ -1812,7 +1812,7 @@ static inline void PrintSemaExpr(metac_printer_t* self,
     {
         PrintSemaExpr(self, sema,  semaExpr->E1);
         PrintChar(self, '(');
-        sema_exp_argument_list_t* argList =
+        sema_expr_argument_list_t* argList =
             semaExpr->E2->ArgumentList;
         metac_sema_expr_t** onePastLastArg =
             cast(metac_sema_expr_t**)
