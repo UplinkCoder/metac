@@ -16,9 +16,9 @@ typedef struct Printer
 {
     char* Buffer;
     const char* BufferStart;
-    uint32_t BufferCapacity;
+    uint32_t BufferSizeLeft;
 
-    uint32_t vIp;
+    uint32_t VirualInstructionPointer;
     uint32_t CurrentIndent;
     bool LineIndented;
 
@@ -42,9 +42,9 @@ typedef struct Printer
     void* getTypeInfoCtx;
 } Printer;
 
-void static inline Printer_EnsureCapacity(Printer* self, uint32_t capacity)
+void static inline Printer_EnsureSizeLeft(Printer* self, uint32_t shouldBeLeft)
 {
-    if (self->BufferCapacity < capacity)
+    if (self->BufferSizeLeft < shouldBeLeft)
     {
         assert(0); // we don't support growing yet :->
     }
@@ -63,7 +63,7 @@ static inline void Printer_PutIndent(Printer* self)
     assert(!self->LineIndented);
     assert((self->CurrentIndent * 4) <= 128);
 
-    Printer_EnsureCapacity(self, 128);
+    Printer_EnsureSizeLeft(self, 128);
     for(int i = 0; i < self->CurrentIndent; i++)
     {
         *self->Buffer++ = ' ';
@@ -83,12 +83,12 @@ static inline void Printer_PutNewlineIndent(Printer* self)
 static inline void Printer_PutStr(Printer* self, const char* str)
 {
     uint32_t length = 0;
-    Printer_EnsureCapacity(self, 128);
+    Printer_EnsureSizeLeft(self, 128);
 
     if (!self->LineIndented)
     {
         Printer_PutIndent(self);
-        Printer_EnsureCapacity(self, 128);
+        Printer_EnsureSizeLeft(self, 128);
     }
     char c;
     if (str)
@@ -101,14 +101,14 @@ static inline void Printer_PutStr(Printer* self, const char* str)
 
             if (length & 128)
             {
-                self->BufferCapacity -= 128;
+                self->BufferSizeLeft -= 128;
                 length -= 128;
-                Printer_EnsureCapacity(self, 128);
+                Printer_EnsureSizeLeft(self, 128);
             }
         }
     }
 
-    self->BufferCapacity -= length;
+    self->BufferSizeLeft -= length;
 }
 
 static inline void Printer_PutChar(Printer *self, char c)
@@ -118,10 +118,10 @@ static inline void Printer_PutChar(Printer *self, char c)
         Printer_PutIndent(self);
     }
 
-    assert(self->BufferCapacity >= 1);
+    assert(self->BufferSizeLeft >= 1);
 
     *self->Buffer++ = c;
-    self->BufferCapacity--;
+    self->BufferSizeLeft--;
 }
 
 static inline void Printer_PutQuotedStr(Printer* self, const char* str)
@@ -183,11 +183,11 @@ static inline void Printer_DecreaseIndent(Printer* self)
 
 static inline void Printer_PutDouble(Printer* self, double d)
 {
-    Printer_EnsureCapacity(self, 24);
+    Printer_EnsureSizeLeft(self, 24);
 
     uint32_t sz = fpconv_dtoa(d, self->Buffer);
     self->Buffer += sz;
-    self->BufferCapacity -= sz;
+    self->BufferSizeLeft -= sz;
 }
 
 static inline void Printer_PutFloat(Printer* self, float f)
@@ -437,14 +437,14 @@ extern void Printer_StreamToFile(Printer* self, FILE* fd)
     assert(sz == bytes_written);
 
     self->Buffer = cast(char*)self->BufferStart;
-    self->BufferCapacity += sz;
+    self->BufferSizeLeft += sz;
 }
 
 static inline void Printer_Op3(Printer* self,
     const BCValue *result, const BCValue *lhs, const BCValue *rhs
   , const char* inst)
 {
-    self->vIp += 2;
+    self->VirualInstructionPointer += 2;
     Printer_PutStr(self, inst);
     Printer_PutChar(self, '(');
 
@@ -472,7 +472,7 @@ static inline void Printer_Op2(Printer* self,
     const BCValue *lhs, const BCValue *rhs
   , const char* inst)
 {
-    self->vIp += 2;
+    self->VirualInstructionPointer += 2;
 
     Printer_PutStr(self, inst);
     Printer_PutChar(self, '(');
@@ -491,7 +491,7 @@ static inline void Printer_Op1(Printer* self,
     const BCValue *lhs
   , const char* inst)
 {
-    self->vIp += 2;
+    self->VirualInstructionPointer += 2;
 
     Printer_PutStr(self, inst);
 
@@ -899,25 +899,25 @@ static inline void Printer_PrintLabel(Printer* self, const BCLabel* label)
 
 static inline BCLabel Printer_GenLabel(Printer* self)
 {
-    BCLabel result = {{self->vIp}};
-    if (self->LastLabel != self->vIp)
+    BCLabel result = {{self->VirualInstructionPointer}};
+    if (self->LastLabel != self->VirualInstructionPointer)
     {
 
         Printer_PrintLabel(self, &result);
         Printer_PutStr(self, " = GenLabel();");
         Printer_PutNewline(self);
-        self->LastLabel = self->vIp;
+        self->LastLabel = self->VirualInstructionPointer;
     }
     return result;
 }
 
 static inline BCAddr Printer_BeginJmp(Printer* self)
 {
-    BCAddr result = {self->vIp};
+    BCAddr result = {self->VirualInstructionPointer};
 
     Printer_PutStr(self, "BCAddr jmp");
     Printer_PutU32(self, result.addr);
-    self->vIp += 2;
+    self->VirualInstructionPointer += 2;
 
     Printer_PutStr(self, " = BeginJmp();");
     Printer_PutNewline(self);
@@ -956,14 +956,14 @@ static inline CndJmpBegin Printer_BeginCndJmp(Printer* self, const BCValue* cond
 {
     CndJmpBegin result;
 
-    BCAddr at = {self->vIp};
+    BCAddr at = {self->VirualInstructionPointer};
     result.at = at;
     result.cond = cast(BCValue*)cond;
     result.ifTrue = ifTrue;
 
     Printer_PutStr(self, "CndJmpBegin ");
     Printer_PrintCndJmp(self, &result);
-    self->vIp += 2;
+    self->VirualInstructionPointer += 2;
 
     Printer_PutStr(self, " = BeginCndJmp(");
 
@@ -1010,7 +1010,7 @@ PR_OP3(Realloc)
 
 static inline void Printer_ReadI32(Printer* self, const BCValue* val, const ReadI32_cb_t readCb, void* userCtx)
 {
-    self->vIp += 2;
+    self->VirualInstructionPointer += 2;
 
     Printer_PutStr(self, "ReadI32(");
     Printer_PrintBCValue(self, val);
@@ -1054,7 +1054,7 @@ static inline void Printer_init_instance(Printer* instance)
 
     instance->BufferStart = instance->Buffer = cast(char*)
         instance->allocMemory(instance->allocCtx, initialSize, 0);
-    instance->BufferCapacity = initialSize;
+    instance->BufferSizeLeft = initialSize;
     instance->ErrorInfoCount = 0;
     instance->ErrorInfoCapacity = 1024;
     instance->ErrorInfos = cast (ErrorInfo*)

@@ -106,6 +106,8 @@ static inline void PrintStringWithNewline(metac_printer_t* self,
     uint32_t pos = 0;
 
     int32_t newline_pos = FindLastNewline(string, length);
+    ARENA_ARRAY_ADD_N(self->StringMemory, string, length);
+
     if (newline_pos != -1)
     {
         self->CurrentColumn = length - newline_pos;
@@ -114,14 +116,16 @@ static inline void PrintStringWithNewline(metac_printer_t* self,
     {
         self->CurrentColumn += length;
     }
+
 }
 
 static inline void PrintIdentifier(metac_printer_t* self,
                                    metac_identifier_ptr_t idPtr)
 {
+    const char* ident = IdentifierPtrToCharPtr(self->IdentifierTable, idPtr);
+
     if (idPtr.v == empty_identifier.v)
         assert(0); // One is not supposed to print the empty identifier
-    const char* ident = IdentifierPtrToCharPtr(self->IdentifierTable, idPtr);
 
     PrintString(self, ident, (uint32_t)strlen(ident));
 }
@@ -215,7 +219,7 @@ static inline void PrintF23(metac_printer_t* self, float value)
 
 static inline void PrintType(metac_printer_t* self, decl_type_t* type);
 static inline void PrintParameterList(metac_printer_t* self,
-                                     decl_parameter_t* Parameters);
+                                      decl_parameter_t* Parameters);
 
 static inline void PrintFunctionTypeWithIdentifier(metac_printer_t* self,
                                                    decl_type_t* type,
@@ -705,13 +709,13 @@ static inline void PrintStmt(metac_printer_t* self, metac_stmt_t* stmt)
         } break;
         case stmt_break:
         {
-            stmt_break_t* stmt_break = cast(stmt_break_t*) stmt;
+            // stmt_break_t* stmt_break = cast(stmt_break_t*) stmt;
             PrintKeyword(self, tok_kw_break);
             PrintToken(self, tok_semicolon);
         } break;
         case stmt_continue:
         {
-            stmt_continue_t* stmt_continue = cast(stmt_continue_t*) stmt;
+            // stmt_continue_t* stmt_continue = cast(stmt_continue_t*) stmt;
             PrintKeyword(self, tok_kw_continue);
             PrintToken(self, tok_semicolon);
         } break;

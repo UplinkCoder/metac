@@ -258,6 +258,20 @@ static inline bool TypeConvertsToPointer(const metac_type_index_t a)
 }
 
 
+bool MetaCSemantic_TypeConvertsTo(metac_sema_state_t* self,
+                                  const metac_type_index_t a,
+                                  const metac_type_index_t b)
+{
+    if (a.v == b.v)
+    {
+        return true;
+    }
+    else
+    {
+        //TODO this is not nearly complete.
+        return false;
+    }
+}
 ///TODO FIXME
 /// this is not nearly complete!
 metac_type_index_t MetaCSemantic_CommonSubtype(metac_sema_state_t* self,
@@ -764,8 +778,18 @@ void MetaCSemantic_ComputeEnumValues(metac_sema_state_t* self,
                                           METAC_NODE(placeHolder));
         }
     }
+/*
+    macro ScopeTable_AllowOverrideDo(metac_scope_table_t* self, __code code)
+    {
+        bool oldAllowOverride = self->CurrentScope->ScopeTable.AllowOverride;
+        self->AllowOverride = true;
+        inject code;
+        self->AllowOverride = oldAllowOverride;
+    }
+ */   
     // Set the currentScope to be an override scope
     // Since we are inserting members
+    bool oldAllowOverride = self->CurrentScope->ScopeTable.AllowOverride;
     self->CurrentScope->ScopeTable.AllowOverride = true;
     {
         uint32_t lastUnresolvedMembers = 0;
@@ -862,6 +886,7 @@ void MetaCSemantic_ComputeEnumValues(metac_sema_state_t* self,
                                           METAC_NODE(semaEnum->Members[memberIdx].Value));
         }
     }
+    self->CurrentScope->ScopeTable.AllowOverride = oldAllowOverride;
     semaEnum->Header.Hash = hash;
 
     return ;
@@ -975,6 +1000,7 @@ metac_type_index_t TypeEnumSemantic(metac_sema_state_t* self,
 
     metac_scope_t enumScope = { scope_flag_temporary };
     STACK_ARENA_ARRAY(metac_enum_member_t, semaMembers, 64, &self->TempAlloc)
+    bool keepEnumScope = false;
 
     enumScope.Owner.v = SCOPE_OWNER_V(scope_owner_enum, 0);
     tmpSemaEnum.MemberCount = enm->MemberCount;
@@ -983,7 +1009,6 @@ metac_type_index_t TypeEnumSemantic(metac_sema_state_t* self,
     MetaCScopeTable_InitN(&enumScope.ScopeTable, tmpSemaEnum.MemberCount, &self->TempAlloc);
 
     MetaCSemantic_PushTemporaryScope(self, &enumScope);
-    bool keepEnumScope = false;
 
     ARENA_ARRAY_ENSURE_SIZE(semaMembers, tmpSemaEnum.MemberCount);
 
@@ -1092,6 +1117,11 @@ metac_type_index_t MetaCSemantic_TypeSemantic(metac_sema_state_t* self,
     else if (type->Kind == decl_type_typedef)
     {
         decl_type_typedef_t* typedef_ = cast(decl_type_typedef_t*) type;
+        metac_identifier_ptr_t semaId = 
+            MetaCIdentifierTable_CopyIdentifier(self->ParserIdentifierTable,
+                                                &self->SemanticIdentifierTable,
+                                                typedef_->Identifier);
+
         self->CurrentLocIdx = typedef_->LocationIdx;
         metac_type_index_t elementTypeIndex =
             MetaCSemantic_doTypeSemantic(self, typedef_->Type);

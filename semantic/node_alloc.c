@@ -152,7 +152,7 @@ metac_sema_expr_t* AllocNewSemaExpr(metac_sema_state_t* self, metac_expr_t* expr
     metac_sema_expr_t* result = 0;
 
     {
-        metac_sema_expr_t exp = {(metac_expr_kind_t)0};
+        metac_sema_expr_t exp = {(metac_expr_kind_t) expr->Kind};
         METAC_COPY_HEADER(expr, &exp);
 
         exp.TypeIndex.v = 0;

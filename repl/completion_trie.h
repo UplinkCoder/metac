@@ -21,6 +21,10 @@ typedef struct completion_trie_node_t {
 
 typedef void (*collect_cb_t) (const char* completionString, uint32_t length, void* ctx);
 
+#define MAX_TRIE_DEPTH 64
+
+bool CompletionTrie_NoPreallocatedCIdentifierChars = false;
+
 typedef struct completion_trie_root_t {
     ARENA_ARRAY(completion_trie_node_t, Nodes)
 #if TRACK_RANGES
@@ -36,6 +40,7 @@ typedef struct completion_trie_root_t {
     metac_alloc_t TrieAllocator;
 } completion_trie_root_t;
 
+
 void CompletionTrie_Init (completion_trie_root_t* self, metac_alloc_t* parentAlloc);
 
 void CompletionTrie_Add (completion_trie_root_t* root, const char* word, uint32_t length);
@@ -44,6 +49,6 @@ void AddIdentifierToCompletionSet (const char* idStr, uint32_t idKey, void* ctx)
 
 void CompletionTrie_PrintRanges(completion_trie_root_t* self);
 
-void CompletionTrie_PrintStats (completion_trie_root_t* root);
+void CompletionTrie_PrintStats (completion_trie_root_t* root, uint32_t n);
 
 #endif

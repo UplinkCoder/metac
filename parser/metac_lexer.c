@@ -1255,7 +1255,7 @@ LcontinueLexnig:
                 lastNewline = newlinePtr;
                 offset = (newlinePtr - text);
                 state->Line++;
-                newlinePtr = (char*)memchr(lastNewline + 1, '\n', len - (lastNewline - text));
+                newlinePtr = (char*)memchr(lastNewline + 1, '\n', len - offset);
             }
             if (!slashPtr) assert(0);
             offset = (slashPtr - text);

@@ -16,7 +16,7 @@ bool IsLiteral(metac_expr_kind_t kind)
     }
 }
 
-bool IsConstant(metac_sema_state_t* sema, metac_sema_expr_t* expr)
+bool IsConstant(metac_sema_expr_t* expr)
 {
     switch(expr->Kind)
     {
@@ -27,14 +27,16 @@ bool IsConstant(metac_sema_state_t* sema, metac_sema_expr_t* expr)
             return true;
 
         FOREACH_UNARY_EXP(CASE_)
-            return IsConstant(sema, expr->E1);
+            return IsConstant(expr->E1);
 
         FOREACH_BINARY_EXP(CASE_)
-            return (IsConstant(sema, expr->E1) && IsConstant(sema, expr->E2));
+            return (IsConstant(expr->E1) && IsConstant(expr->E2));
     }
 }
 
 #undef CASE_
+
+#if 0
 
 static inline metac_sema_expr_t** FindInParentExpr(metac_sema_expr_t* parent,
                                                    metac_sema_expr_t* child)
@@ -107,7 +109,7 @@ void ConstantFold_ApplyReplacements(constant_fold_ctx_t* ctx)
     metac_printer_t printer;
     if (count)
     {
-        MetaCPrinter_Init(&printer, ctx->Sema->ParserIdentifierTable, ctx->Sema->ParserStringTable);
+        // MetaCPrinter_Init(&printer, ctx->Sema->ParserIdentifierTable, ctx->Sema->ParserStringTable, ctx->Sema->DebugAlloc);
     }
 #endif
     for(i = 0; i < count; i++)
@@ -138,7 +140,7 @@ static inline int ConstantFold_WalkerFn(metac_node_t node, void* ctx)
     if (IsExprNode(node->Kind))
     {
         metac_sema_expr_t* e = (metac_sema_expr_t*) node;
-        if (!IsLiteral(e->Kind) && IsConstant(context->Sema, e))
+        if (!IsLiteral(e->Kind) && IsConstant(e))
         {
             metac_sema_expr_t replacement =
                 EvaluateExpr(context->Sema, e, &context->Heap);
@@ -185,3 +187,4 @@ constant_fold_result_t ConstantFold_SubExps(metac_sema_state_t* sema, metac_sema
     return result;
 
 }
+#endif

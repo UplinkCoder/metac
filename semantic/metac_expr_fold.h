@@ -26,8 +26,9 @@ typedef struct constant_fold_result_t
     constant_fold_ctx_t Ctx;
 }  constant_fold_result_t;
 
+bool IsLiteral(metac_expr_kind_t e);
 
-bool IsConstant(metac_sema_state_t* sema, metac_sema_expr_t* e);
+bool IsConstant(metac_sema_expr_t* e);
 
 void ConstantFold_ReplaceInParent (metac_node_t parent, metac_sema_expr_t* child, metac_sema_expr_t replacement);
 
@@ -35,4 +36,4 @@ void ConstantFold_AddReplacement (constant_fold_ctx_t* ctx, metac_sema_expr_t* e
 
 void ConstantFold_ApplyReplacements (constant_fold_ctx_t* ctx);
 
-constant_fold_result_t ConstantFold_SubExps(metac_sema_state_t* sema, metac_sema_expr_t* expr);
+// constant_fold_result_t ConstantFold_SubExps(metac_sema_state_t* sema, metac_sema_expr_t* expr);

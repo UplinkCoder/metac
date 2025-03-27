@@ -308,6 +308,17 @@ void* Allocator_Calloc_(metac_alloc_t* alloc, uint32_t elemSize, uint32_t elemCo
     return arena->Memory;
 }
 
+bool Arena_ContainsMemoryP(tagged_arena_t* arena, void* memP)
+{
+    intptr_t memPi = (intptr_t) memP;
+    intptr_t arenaMemPi = (intptr_t) arena->Memory;
+    if (arenaMemPi <= memPi && (arenaMemPi + arena->Offset) < memPi)
+    {
+        return true;
+    }
+    return false;
+}
+
 void* Allocator_Realloc_(metac_alloc_t* alloc, void* oldMem,
                          uint32_t elemSize, uint32_t elemCount,
                          const char* file, uint32_t line)
@@ -323,7 +334,7 @@ void* Allocator_Realloc_(metac_alloc_t* alloc, void* oldMem,
         for(i = 0; i < alloc->inuseArenasCount; i++)
         {
             tagged_arena_t* candidate = &alloc->Arenas[alloc->ArenasCapacity - (i + 1)];
-            if (candidate->Memory == oldMem)
+            if (Arena_ContainsMemoryP(candidate->Memory, oldMem))
             {
                 oldArena = candidate;
                 oldArenaPtr.Index = i;
@@ -355,6 +366,10 @@ void* Allocator_Realloc_(metac_alloc_t* alloc, void* oldMem,
     if (spaceLeft >= requestedSize) {
         oldArena->Offset = requestedSize;
         oldArena->SizeLeft = spaceLeft - requestedSize;
+        if (requestedSize == 0)
+        {
+            return 0;
+        }
         return oldMem;
     }
 

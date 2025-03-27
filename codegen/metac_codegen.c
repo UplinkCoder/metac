@@ -309,7 +309,7 @@ void MetaCCodegen_doGlobal(metac_bytecode_ctx_t* ctx, metac_sema_decl_t* decl, u
             sema_decl_variable_t var = decl->sema_decl_variable;
             if (METAC_NODE(var.VarInitExpr) != emptyNode)
             {
-                BCValue initVal;
+                BCValue initVal = {0};
                 MetaCCodegen_doExpr(ctx, var.VarInitExpr, &initVal, _Rvalue);
             }
             ctx->GlobalMemoryOffset += sz;
@@ -1173,7 +1173,7 @@ static void MetaCCodegen_doArrowExpr(metac_bytecode_ctx_t* ctx,
 static void MetaCCodegen_doExpr(metac_bytecode_ctx_t* ctx,
                                 metac_sema_expr_t* exp,
                                 BCValue* result,
-                                metac_value_type_t lValue)
+                                metac_value_type_t lValueType)
 {
     const BackendInterface gen = *ctx->gen;
     void* c = ctx->c;
@@ -1184,11 +1184,11 @@ static void MetaCCodegen_doExpr(metac_bytecode_ctx_t* ctx,
     metac_expr_kind_t op = exp->Kind;
     BCType expType = MetaCCodegen_GetBCType(ctx, exp->TypeIndex);
 
-    if (lValue == _Discard && !HasSideEffect(exp))
+    if (lValueType == _Discard && !HasSideEffect(exp))
     {
         return ;
     }
-    else if (lValue == _Cond && exp->Kind == expr_signed_integer)
+    else if (lValueType == _Cond && exp->Kind == expr_signed_integer)
     {
         int32_t truthval = exp->ValueI64 & 0xffffffff
                          | exp->ValueI64 << 32;
@@ -1411,7 +1411,7 @@ static void MetaCCodegen_doExpr(metac_bytecode_ctx_t* ctx,
                 }
                 r = r->E2;
             }
-            MetaCCodegen_doExpr(ctx, r, result, lValue);
+            MetaCCodegen_doExpr(ctx, r, result, lValueType);
         } break;
 
         case expr_addr:
@@ -1462,7 +1462,7 @@ static void MetaCCodegen_doExpr(metac_bytecode_ctx_t* ctx,
 
             //metac_identifier_ptr_t idPtr = e->E1->Variable->VarIdentifier;
             //metac_identifier_ptr_t vStorePtr = GetVStoreID(vstore, e->E1);
-            if (lValue != _Discard)
+            if (lValueType != _Discard)
             {
                 gen.Set(c, result, &rhs);
             }
@@ -1487,7 +1487,14 @@ static void MetaCCodegen_doExpr(metac_bytecode_ctx_t* ctx,
                 STACK_ARENA_ARRAY(BCValue, bcValues, 32, &ctx->Allocator);
                 uint32_t currentOffset = 0;
                 BCValue sz;
-
+/*
+                // TODO don't know if this does mean an ARENA_ARRAY_ADD
+                // would lead to append behind the preallocated space
+                ARENA_ARRAY_ENSURE_SIZE(types, exp->TupleExprCount);
+                ARENA_ARRAY_ENSURE_SIZE(offsets, exp->TupleExprCount);
+                ARENA_ARRAY_ENSURE_SIZE(bcTypes, exp->TupleExprCount);
+                ARENA_ARRAY_ENSURE_SIZE(bcValues, exp->TupleExprCount);
+*/
 
                 for(uint32_t i = 0; i < exp->TupleExprCount; i++)
                 {
@@ -1534,6 +1541,13 @@ static void MetaCCodegen_doExpr(metac_bytecode_ctx_t* ctx,
                     else if (TYPE_INDEX_KIND(te.TypeIndex) == type_index_struct)
                     {
                         gen.Store32(c, &address, bcValues + i);
+                    }
+                    else if (TYPE_INDEX_KIND(te.TypeIndex) == type_index_array)
+                    {
+                        metac_type_array_t* arrayType = ArrayTypePtr(ctx->Sema, TYPE_INDEX_INDEX(te.TypeIndex));
+                        uint32_t elemSize =
+                            MetaCCodegen_GetStorageSize(ctx, MetaCCodegen_GetBCType(ctx,  arrayType->ElementType));
+                            // gen.MemCpy(c, MetaCCodegen_ComputeAddress(ctx, bcValues + i,l ))
                     }
                     else
                     {
@@ -1656,7 +1670,7 @@ static void MetaCCodegen_doExpr(metac_bytecode_ctx_t* ctx,
         } break;
         case expr_variable:
         {
-            if (MetaCCodegen_AccessVariable(ctx, exp->Variable, result, lValue))
+            if (MetaCCodegen_AccessVariable(ctx, exp->Variable, result, lValueType))
             {
                 BCType bcType = MetaCCodegen_GetBCType(ctx, exp->Variable->TypeIndex);
                 uint32_t sz = MetaCCodegen_GetStorageSize(ctx, bcType);
@@ -1666,7 +1680,7 @@ static void MetaCCodegen_doExpr(metac_bytecode_ctx_t* ctx,
         } break;
         case expr_paren:
         {
-            MetaCCodegen_doExpr(ctx, exp->E1, result, lValue);
+            MetaCCodegen_doExpr(ctx, exp->E1, result, lValueType);
         } break;
         case expr_compl:
         {
@@ -2084,6 +2098,8 @@ void MetaCCodegen_doStmt(metac_bytecode_ctx_t* ctx,
             }
 
             MetaCCodegen_doStmt(ctx, forStmt->ForBody);
+
+            MetaCCodegen_doExpr(ctx, forStmt->ForPostLoop, 0, _Discard);
             gen.Jmp(c, loopBegin);
 
             if (METAC_NODE(forStmt->ForCond) != emptyNode)

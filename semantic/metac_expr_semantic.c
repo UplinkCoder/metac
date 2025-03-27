@@ -5,7 +5,7 @@
 #  include "../os/metac_task.h"
 #endif
 
-// #include "../semantic/metac_expr_fold.c"
+#include "../semantic/metac_expr_fold.c"
 
 #ifndef _emptyPointer
 #  define _emptyPointer (void*)0x1
@@ -79,10 +79,47 @@ void ConvertTupleElementToExp(metac_sema_state_t* sema,
         dst->TypeIndex = elemType;
         dst->TypeExp = value;
     }
+    else assert(0);
 }
 
 EXTERN_C const BackendInterface BCGen_interface;
 EXTERN_C const BackendInterface Printer_interface;
+/*
+#define CASE_(EXP) \
+    case EXP:
+
+bool IsLiteral(metac_expr_kind_t kind)
+{
+    switch(kind)
+    {
+        default: return false;
+
+        FOREACH_LITERAL_EXP(CASE_)
+            return true;
+    }
+}
+
+
+bool IsConstant(metac_sema_state_t* sema, metac_sema_expr_t* expr)
+{
+    switch(expr->Kind)
+    {
+        default:
+            return false;
+
+        FOREACH_LITERAL_EXP(CASE_)
+            return true;
+
+        FOREACH_UNARY_EXP(CASE_)
+            return IsConstant(sema, expr->E1);
+
+        FOREACH_BINARY_EXP(CASE_)
+            return (IsConstant(sema, expr->E1) && IsConstant(sema, expr->E2));
+    }
+}
+
+#undef CASE_
+*/
 
 metac_sema_expr_t
 EvaluateExpr(metac_sema_state_t* sema,
@@ -98,12 +135,15 @@ EvaluateExpr(metac_sema_state_t* sema,
         return result;
     }
 
+    if (IsLiteral(e->Kind))
+    {
+        return *e;
+    }
+
     Allocator_Init(&interpAlloc, &sema->TempAlloc, 0);
 
-    if (false)
+    if (true)
     {
-        const char* result;
-
         MetaCCodegen_SetDefaultInterface(&Printer_interface);
 
         MetaCCodegen_Init(&ctx, &interpAlloc);
@@ -121,7 +161,7 @@ EvaluateExpr(metac_sema_state_t* sema,
 
         MetaCCodegen_End(&ctx);
 
-        Printer_StreamToFile(ctx.c, stderr);
+        // Printer_StreamToFile(ctx.c, stderr);
     }
 
     MetaCCodegen_SetDefaultInterface(&BCGen_interface);
@@ -206,53 +246,8 @@ EvaluateExpr(metac_sema_state_t* sema,
     return result;
 }
 
-#define CASE_(EXP) \
-    case EXP:
-
-bool IsLiteral(metac_expr_kind_t kind)
-{
-    switch(kind)
-    {
-        default: return false;
-
-        FOREACH_LITERAL_EXP(CASE_)
-            return true;
-    }
-}
-
-bool IsConstant(metac_sema_state_t* sema, metac_sema_expr_t* expr)
-{
-    switch(expr->Kind)
-    {
-        default:
-            return false;
-
-        FOREACH_LITERAL_EXP(CASE_)
-            return true;
-
-        FOREACH_UNARY_EXP(CASE_)
-            return IsConstant(sema, expr->E1);
-
-        FOREACH_BINARY_EXP(CASE_)
-            return (IsConstant(sema, expr->E1) && IsConstant(sema, expr->E2));
-    }
-}
-
-#undef CASE_
 
 
-bool MetaCSemantic_ConstantFold(metac_sema_state_t* self, metac_sema_expr_t* exp)
-{
-    bool couldFold = false;
-
-    if (IsConstant(self, exp))
-    {
-        couldFold = true;
-        (*exp) = EvaluateExpr(self, exp, 0);
-    }
-
-    return couldFold;
-}
 /// a return value of INT32_MIN indicates an error
 static inline int32_t GetConstI32(metac_sema_state_t* self, metac_sema_expr_t* index, bool *errored)
 {
@@ -529,7 +524,7 @@ metac_sema_expr_t* UnwrapCastExp(metac_sema_expr_t* e)
     {
         if (e->Kind == expr_cast)
         {
-            result->CastExp;
+            result = result->CastExp;
         }
         else if (e->Kind == expr_paren)
         {
@@ -1003,6 +998,7 @@ LswitchIdKey:
         break;
 
         case expr_assign:
+            result->Kind = expr_assign;
             MetaCSemantic_doAssignSemantic(self, expr, result);
             result->TypeIndex = result->E1->TypeIndex;
         break;

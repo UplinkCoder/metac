@@ -440,11 +440,12 @@ metac_sema_stmt_t* MetaCSemantic_doStmtSemantic_(metac_sema_state_t* self,
         case stmt_do_while:
         case stmt_while:
         {
-            hash ^= stmt->Kind;
-
             stmt_while_t* whileStmt = cast(stmt_while_t*) stmt;
             sema_stmt_while_t* semaWhileStmt =
                 AllocNewSemaStmt(self, stmt_while, &result);
+            
+            hash ^= stmt->Kind;
+
             semaWhileStmt->Kind = stmt->Kind;
 
             semaWhileStmt->WhileExp =
@@ -464,9 +465,9 @@ metac_sema_stmt_t* MetaCSemantic_doStmtSemantic_(metac_sema_state_t* self,
 
         case stmt_expr:
         {
-            hash ^= stmt_expr;
             stmt_expr_t* exprStmt = (stmt_expr_t*) stmt;
             sema_stmt_expr_t* sse = AllocNewSemaStmt(self, stmt_expr, cast(void**)&result);
+            hash ^= stmt_expr;
             sse->Expr =
                 MetaCSemantic_doExprSemantic(self, exprStmt->Expr, 0);
             hash = CRC32C_VALUE(hash, sse->Hash);
@@ -579,7 +580,6 @@ metac_sema_stmt_t* MetaCSemantic_doStmtSemantic_(metac_sema_state_t* self,
 
         case stmt_block:
         {
-            hash ^= stmt_block;
             stmt_block_t* blockStmt = (stmt_block_t*) stmt;
             uint32_t stmtCount = blockStmt->StmtCount;
             sema_stmt_block_t* semaBlockStmt =
@@ -588,11 +588,14 @@ metac_sema_stmt_t* MetaCSemantic_doStmtSemantic_(metac_sema_state_t* self,
             metac_scope_owner_t parent = {SCOPE_OWNER_V(scope_owner_statement,
                                           BlockStmtIndex(self, semaBlockStmt))};
 
+            metac_stmt_t* currentStmt = blockStmt->Body;
+
+            hash ^= stmt_block;
+
             MetaCSemantic_PushNewScope(self,
                                        scope_owner_block,
                                        (metac_node_t)semaBlockStmt);
 
-            metac_stmt_t* currentStmt = blockStmt->Body;
             for(uint32_t i = 0;
                 i < stmtCount;
                 i++)
@@ -616,11 +619,12 @@ metac_sema_stmt_t* MetaCSemantic_doStmtSemantic_(metac_sema_state_t* self,
 
         case stmt_for:
         {
-            hash ^= stmt_for;
 
             stmt_for_t* forStmt = (stmt_for_t*) stmt;
             sema_stmt_for_t* semaFor =
                 AllocNewSemaStmt(self, stmt_for, &result);
+
+            hash ^= stmt_for;
 
             semaFor->Scope =
                 MetaCSemantic_PushNewScope(self,
@@ -687,7 +691,6 @@ metac_sema_stmt_t* MetaCSemantic_doStmtSemantic_(metac_sema_state_t* self,
         // can share the same code as the layout is the same
         case stmt_yield:
         {
-            hash ^= stmt_yield;
 
             stmt_yield_t* yieldStmt = (stmt_yield_t*) stmt;
             sema_stmt_yield_t* semaYieldStmt =
@@ -695,6 +698,9 @@ metac_sema_stmt_t* MetaCSemantic_doStmtSemantic_(metac_sema_state_t* self,
 
             metac_sema_expr_t* yieldValue =
                 MetaCSemantic_doExprSemantic(self, yieldStmt->YieldExp, 0);
+
+            hash ^= stmt_yield;
+
             semaYieldStmt->YieldExp = yieldValue;
 
             if (cast(metac_node_t)yieldValue != emptyNode)
@@ -1113,21 +1119,17 @@ typedef struct MetaCSemantic_doDeclSemantic_task_context_t
 
 const char* doDeclSemantic_PrintFunction(task_t* task)
 {
+    metac_printer_t printer = {0};
     MetaCSemantic_doDeclSemantic_task_context_t* ctx =
          (MetaCSemantic_doDeclSemantic_task_context_t*)
             task->Context;
-    char* buffer = cast(char*)malloc(256);
-    metac_printer_t printer;
-    //MetaCPrinter_Init(&printer, ctx->)
-    const char* declPrint = 0;
-//        MetaCPrinter_PrintDecl(&printer, ctx->Decl);
+    metac_alloc_t tmpAlloc = ctx->Sema->TempAlloc;
+    const char* declPrint;
+    
+    MetaCPrinter_Init(&printer, ctx->Sema->ParserIdentifierTable, ctx->Sema->ParserStringTable, &tmpAlloc);
+    declPrint = MetaCPrinter_PrintDecl(&printer, ctx->Decl);
 
-    ALIGN_STACK();
-    snprintf(buffer, 256,  "doDeclSemantic {Sema: %p, Decl: %s}\n",
-                    ctx->Sema, declPrint);
-    RESTORE_STACK();
-
-    return buffer;
+    return declPrint;
 }
 #endif
 
@@ -1238,14 +1240,16 @@ metac_sema_decl_t* MetaCSemantic_declSemantic(metac_sema_state_t* self,
 #ifndef NO_FIBERS
 void MetaCSemantic_doDeclSemantic_Task(task_t* task)
 {
-    const char* taskPrint = doDeclSemantic_PrintFunction(task);
-    xprintf("Task: %s\n", taskPrint);
-    free(cast(void*)taskPrint);
-
+    
     MetaCSemantic_doDeclSemantic_task_context_t* ctx =
         (MetaCSemantic_doDeclSemantic_task_context_t*)
             task->Context;
     task_origin_t Origin = task->Origin;
+
+    const char* taskPrint = doDeclSemantic_PrintFunction(task);
+    xprintf("Task: %s\n", taskPrint);
+
+    Allocator_Realloc(&ctx->Sema->TempAlloc, taskPrint, char, 0);
     ctx->Result =
         MetaCSemantic_doDeclSemantic_(ctx->Sema, ctx->Decl, Origin.File, Origin.Line);
 }
