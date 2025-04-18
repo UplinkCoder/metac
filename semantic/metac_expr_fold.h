@@ -26,7 +26,7 @@ typedef struct constant_fold_result_t
     constant_fold_ctx_t Ctx;
 }  constant_fold_result_t;
 
-bool IsLiteral(metac_expr_kind_t e);
+bool IsLiteral(metac_sema_expr_t* e);
 
 bool IsConstant(metac_sema_expr_t* e);
 

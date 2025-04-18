@@ -119,7 +119,7 @@ name_cache_ptr_t GetOrAddNameByKey(cache_t* cache, const char* name,
         currentBranch;)
     {
         int cmp_result = entry_key - currentBranch->entry_key;
-        if (!cmp_result)
+        if (cmp_result == 0)
         {
             const char* cached_name = (currentBranch->name_ptr.v - 4)
                                     + cache->name_stringtable;

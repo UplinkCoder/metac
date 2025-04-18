@@ -2179,6 +2179,10 @@ LendSearch2:{}
 
                 if (cpySrc != cpyDst && cpySize != 0)
                 {
+                    uint8_t* cpySrcP;
+                    uint8_t* cpyDstP;
+                    uint8_t* heapData = heapPtr->heapData;
+
                     // assert(cpySize, "cpySize == 0");
                     assert(cpySrc);//, "cpySrc == 0" ~ " inLine: " ~ itos(lastLine));
 
@@ -2188,10 +2192,27 @@ LendSearch2:{}
                     //, "Overlapping MemCpy is not supported --- src: " ~ itos(cpySrc)
                     //    ~ " dst: " ~ itos(cpyDst) ~ " size: " ~ itos(cpySize));
 
-                    uint8_t* heapData = heapPtr->heapData;
 
-                    uint8_t* cpyDstP = heapData + cpyDst;
-                    uint8_t* cpySrcP = heapData + cpySrc;
+                    switch (ClassifyAddress(cpySrc))
+                    {
+                        case AddressKind_External:
+                            cpySrcP = state.externals[cpySrc & ~AddrMask].addr;
+                        break;
+                        case AddressKind_Heap:
+                            cpySrcP = heapData + cpySrc;
+                        break;
+                        default : assert(0);
+                    }
+                    switch (ClassifyAddress(cpyDst))
+                    {
+                        case AddressKind_External:
+                            cpyDstP = state.externals[cpyDst & ~AddrMask].addr;
+                        break;
+                        case AddressKind_Heap:
+                            cpyDstP = heapData + cpyDst;
+                        break;
+                        default : assert(0);
+                    }
 
                     memcpy(cpyDstP, cpySrcP, cpySize * sizeof(*heapPtr->heapData));
                     //heapPtr->heapData[cpyDst .. cpyDst + cpySize] = heapPtr->heapData[cpySrc .. cpySrc + cpySize];

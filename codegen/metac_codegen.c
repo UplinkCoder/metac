@@ -324,7 +324,7 @@ void MetaCCodegen_doGlobal(metac_bytecode_ctx_t* ctx, metac_sema_decl_t* decl, u
     }
     else
     {
-        assert(0);
+        assert(!"Invalid type index not expected here");
     }
 
 }
@@ -1534,6 +1534,10 @@ static void MetaCCodegen_doExpr(metac_bytecode_ctx_t* ctx,
                     {
                         gen.Store32(c, &address, bcValues + i);
                     }
+                    else if (te.TypeIndex.v == TYPE_INDEX_V(type_index_basic, type_float))
+                    {
+                        gen.Store32(c, &address, bcValues + i);
+                    }
                     else if (te.TypeIndex.v == TYPE_INDEX_V(type_index_basic, type_type))
                     {
                         gen.Store32(c, &address, bcValues + i);
@@ -2078,12 +2082,12 @@ void MetaCCodegen_doStmt(metac_bytecode_ctx_t* ctx,
                 {
                     BCValue dontCare;
                     MetaCCodegen_doExpr(ctx,
-                        (metac_sema_expr_t*)forStmt->ForInit, &dontCare, _Discard);
+                        cast(metac_sema_expr_t*)forStmt->ForInit, &dontCare, _Discard);
                 }
                 else
                 {
                     MetaCCodegen_doLocalVar(ctx,
-                        (sema_decl_variable_t*)forStmt->ForInit);
+                        cast(sema_decl_variable_t*)forStmt->ForInit);
                 }
             }
 

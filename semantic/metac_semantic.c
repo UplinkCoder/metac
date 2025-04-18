@@ -1249,7 +1249,7 @@ void MetaCSemantic_doDeclSemantic_Task(task_t* task)
     const char* taskPrint = doDeclSemantic_PrintFunction(task);
     xprintf("Task: %s\n", taskPrint);
 
-    Allocator_Realloc(&ctx->Sema->TempAlloc, taskPrint, char, 0);
+    // Allocator_Realloc(&ctx->Sema->TempAlloc, taskPrint, char, 0);
     ctx->Result =
         MetaCSemantic_doDeclSemantic_(ctx->Sema, ctx->Decl, Origin.File, Origin.Line);
 }

@@ -135,7 +135,7 @@ EvaluateExpr(metac_sema_state_t* sema,
         return result;
     }
 
-    if (IsLiteral(e->Kind))
+    if (IsLiteral(e))
     {
         return *e;
     }
@@ -1107,6 +1107,27 @@ LswitchIdKey:
         {
             result->TypeIndex.v = TYPE_INDEX_V(type_index_basic, type_code);
         } break;
+        case expr_stringize:
+        {
+            metac_expr_t* e1 = expr->E1;
+            uint32_t identifierLength = 0;
+            if (e1->Kind == expr_identifier)
+            {
+                identifierLength = LENGTH_FROM_IDENTIFIER_KEY(e1->IdentifierKey);
+                result->TypeIndex = MetaCSemantic_GetArrayTypeOf(self,
+                    MetaCSemantic_GetTypeIndex(self, type_char, (decl_type_t*)emptyPointer),
+                    identifierLength + 1
+                );
+            }
+            else
+            {
+                xfprintf(stderr,
+                         "expr_semantic does not support %s as a stringize expression\n",
+                         MetaCExprKind_toChars(e1->Kind)
+                );
+            }
+        } break;
+
         case expr_dot_compiler:
         {
             if (expr->E1->Kind != expr_call)

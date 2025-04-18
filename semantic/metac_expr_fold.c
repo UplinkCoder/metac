@@ -5,15 +5,32 @@
 #define CASE_(EXP) \
     case EXP:
 
-bool IsLiteral(metac_expr_kind_t kind)
+bool IsLiteral(metac_sema_expr_t* e)
 {
+    metac_expr_kind_t kind = e->Kind;
     switch(kind)
     {
-        default: return false;
+        case expr_type:
+            return true;
 
         FOREACH_LITERAL_EXP(CASE_)
             return true;
     }
+
+    if (kind == expr_tuple)
+    {
+        const uint32_t tupleExprCount = e->TupleExprCount;
+        for(uint32_t i = 0; i < tupleExprCount; i++)
+        {
+            metac_sema_expr_t* te = e->TupleExprs[i];
+            if (!IsLiteral(te))
+                return false;
+        }
+        return true;
+    }
+
+    // by default return false;
+    return false;
 }
 
 bool IsConstant(metac_sema_expr_t* expr)

@@ -1334,20 +1334,20 @@ metac_type_index_t MetaCSemantic_TypeSemantic(metac_sema_state_t* self,
         metac_scope_t tmpScope = {scope_flag_temporary};
         MetaCSemantic_PushTemporaryScope(self, &tmpScope);
 
-        for(metac_expr_t** ep = &args->Expr; METAC_NODE(args) != emptyNode; args = args->Next, ep = &args->Expr)
+        for(metac_expr_t* e = args->Expr; METAC_NODE(args) != emptyNode; args = args->Next, e = args->Expr)
         {
-            metac_expr_t* e = *ep;
             ARENA_ARRAY_ADD(semaArguments, MetaCSemantic_doExprSemantic(self, e, 0));
         }
 
         {
             metac_decl_t* symbol = NULL;
-            metac_expr_t* arguments = cast(metac_expr_t*) emptyNode;
+            metac_sema_expr_t** arguments = semaArguments;
             uint32_t hash = symbol ? crc32c_nozero(~0, &symbol->Hash, sizeof(symbol->Hash)) : ~0;
-            uint32_t nArguments = 0;
+            uint32_t nArguments = tInst->ArgumentCount;
             for(uint32_t argIdx = 0; argIdx < nArguments; argIdx++)
             {
-                hash = crc32c_nozero(hash, &arguments[argIdx].Hash, sizeof(arguments[argIdx].Hash));
+                metac_sema_expr_t* semaArg = arguments[argIdx];
+                hash = crc32c_nozero(hash, semaArg->Hash, sizeof(semaArg->Hash));
             }
             {
                 metac_type_header_t header = {decl_type_template_instance, 0, hash, 0};

@@ -1045,6 +1045,7 @@ decl_type_t* MetaCParser_ParseTypeDecl(metac_parser_t* self, metac_decl_t* paren
 
     while(IsTypeToken(tokenType))
     {
+        loc = LocationFromToken(self, currentToken);
         if (tokenType == tok_lBrace)
         {
             STACK_ARENA_ARRAY(decl_type_t*, types, 16, &self->Allocator)
@@ -1058,6 +1059,11 @@ decl_type_t* MetaCParser_ParseTypeDecl(metac_parser_t* self, metac_decl_t* paren
             {
                 ARENA_ARRAY_ADD(types,
                     MetaCParser_ParseTypeDecl(self, cast(metac_decl_t*)type, 0));
+                if (types[typesCount - 1]->TypeKind == type_invalid)
+                {
+                    ParseError(loc, "Parsed invalid type");
+                    MetaCParser_Advance(self);
+                }
                 if (MetaCParser_PeekMatch(self, tok_comma, 1))
                 {
                     MetaCParser_Match(self, tok_comma);
@@ -1115,6 +1121,7 @@ decl_type_t* MetaCParser_ParseTypeDecl(metac_parser_t* self, metac_decl_t* paren
                 hash = CRC32C_VALUE(hash, type->TypeIdentifier);
                 if (MetaCParser_PeekMatch(self, tok_bang, 1))
                 {
+
                     decl_type_template_instance_t* tinst =
                         AllocNewDecl(decl_type_template_instance, &result);
 

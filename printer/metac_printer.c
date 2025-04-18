@@ -1743,16 +1743,16 @@ static inline void PrintSemaExpr(metac_printer_t* self,
         metac_sema_expr_t** tupleElement =
             semaExpr->TupleExprs;
         PrintChar(self, '{');
-        for(uint32_t i = 0;
-            i < tupleExprCount - 1;
-            i++)
-        {
-            PrintSemaExpr(self, sema,  tupleElement[i]);
-            PrintChar(self, ',');
-            PrintSpace(self);
-        }
         if (tupleExprCount > 0)
         {
+            for(uint32_t i = 0;
+                i < tupleExprCount - 1;
+                i++)
+            {
+                PrintSemaExpr(self, sema,  tupleElement[i]);
+                PrintChar(self, ',');
+                PrintSpace(self);
+            }
             PrintSemaExpr(self, sema,  tupleElement[tupleExprCount - 1]);
         }
         PrintChar(self, '}');
