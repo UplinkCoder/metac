@@ -310,6 +310,12 @@ metac_sema_expr_t* MetaCSemantic_doIndexSemantic_(metac_sema_state_t* self,
         result->TypeIndex = charType;
         // result->Chars[
     }
+    else
+    {
+        SemanticError(expr->LocationIndex,
+                      "%s is not supported for indexing",
+                      MetaCExprKind_toChars(indexed->Kind));
+    }
 
     return  result;
 }
