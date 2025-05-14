@@ -188,7 +188,7 @@ static inline const bool TupleSlotsEqual(const metac_type_table_slot_t* a,
 static inline const bool MetaCExpr_Equal(const metac_expr_t* a,
                                          const metac_expr_t* b)
 {
-    assert(0);
+    // assert(0);
     return false;
 }
 

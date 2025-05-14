@@ -539,7 +539,7 @@ extern metac_compiler_t compiler;
 
 static void InitCompilerInterface(metac_bytecode_ctx_t* ctx)
 {
-// #ifdef METAC_COMPILER_INTERFACE
+#ifdef METAC_COMPILER_INTERFACE
     void* c = ctx->c;
     const BackendInterface gen = *ctx->gen;
 
@@ -555,7 +555,7 @@ static void InitCompilerInterface(metac_bytecode_ctx_t* ctx)
         ctx->Externals[0].ExtValue = ctx->CompilerInterfaceValue;
         ctx->ExternalsCount += 1;
     }
-// #endif
+#endif
 }
 
 bool IsExternal(metac_sema_expr_t* expr)

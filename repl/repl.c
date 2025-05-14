@@ -233,6 +233,11 @@ static inline int Presemantic(metac_node_t node, void* ctx)
 
         return 1;
     }
+    else if (node->Kind == node_decl_preproc)
+    {
+        // ignore preproc decls in presemantic
+        return 1;
+    }
     else if (MetaCNode_IsDecl(node))
     {
         MetaCSemantic_doDeclSemantic(context->Sema, node);

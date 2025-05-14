@@ -40,11 +40,6 @@ typedef struct metac_lvn_table_t
 #define SLOT_FROM_HASH(HASH, COLLIDER, MASK) \
     (((HASH) ^ (COLLIDER)) & (MASK))
 
-#if !defined(ALIGN16)
-#define ALIGN16(N) \
-    ((N + 15) & (~15))
-#endif
-
 metac_lvn_table_t* MetaCLVNTable_Init(metac_alloc_t* alloc)
 {
 #define INITIAL_LVN_SLOT_LOG2 7
