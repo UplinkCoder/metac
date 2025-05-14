@@ -7,7 +7,9 @@
 
 #include "metac_node.h"
 #include "metac_lexer.h"
-
+#ifndef NO_PREPROCESSOR
+#  include "metac_preproc.h"
+#endif
 #pragma pack(push, 1)
 
 typedef enum number_flags_t
@@ -495,6 +497,22 @@ typedef struct decl_parameter_list_t
     uint32_t Hash;
     bool IsVariadic;
 } decl_parameter_list_t;
+
+#ifndef NO_PREPROCESSOR
+
+typedef struct decl_preproc_t
+{
+    DECL_HEADER
+
+    metac_preprocessor_directive_t DirectiveKind;
+
+    union
+    {
+        metac_preprocessor_define_ptr_t DefinePtr;
+    };
+} decl_preproc_t;
+
+#endif
 
 typedef struct decl_function_t
 {

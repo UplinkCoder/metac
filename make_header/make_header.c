@@ -2,6 +2,7 @@
 
 #define NO_FIBERS
 #define NO_SEMANTIC
+#define OLD_PARSER
 
 #include "../os/compat.h"
 #include "../driver/metac_driver.c"

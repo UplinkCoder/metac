@@ -1751,18 +1751,24 @@ metac_decl_t* MetaCParser_ParseDecl(metac_parser_t* self, metac_decl_t* parent)
     decl_type_t* type = 0;
 
 #ifndef NO_PREPROCESSOR
+    decl_preproc_t* preProcDecl = AllocNewDecl(decl_preproc, &result);
+    preProcDecl->DirectiveKind = pp_invalid;
+
     if (MetaCParser_PeekMatch(self, tok_hash, 1))
     {
         metac_preprocessor_directive_t dirc =
             MetaCParser_ParsePreprocDirective(self, self->Preprocessor);
+        preProcDecl->DirectiveKind = dirc;
+
         if (dirc == pp_include)
         {
             MetaCPreProcessor_Include(self->Preprocessor, self);
         }
         else if (dirc == pp_define)
         {
-            metac_preprocessor_define_ptr_t define_ =
+            metac_preprocessor_define_ptr_t definePtr =
                 MetaCPreProcessor_ParseDefine(self->Preprocessor, self);
+           preProcDecl->DefinePtr = definePtr;
         }
         else if (dirc == pp_ifdef)
         {
@@ -1809,7 +1815,7 @@ metac_decl_t* MetaCParser_ParseDecl(metac_parser_t* self, metac_decl_t* parent)
             printf("Saw preprocssor directive %s\n", Preprocessor_Directive_toChars(dirc));
         }
 
-        return (metac_decl_t*) emptyPointer;
+        return result;
         // MetaCParser_HandlePreprocessorDirective(self, dirc);
     }
 #endif
@@ -1873,15 +1879,13 @@ metac_decl_t* MetaCParser_ParseDecl(metac_parser_t* self, metac_decl_t* parent)
 
     if (tokenType == tok_kw_typedef)
     {
-        MetaCParser_Match(self, tok_kw_typedef);
-        currentToken = MetaCParser_PeekToken(self, 1);
-            tokenType =
-        (currentToken ? currentToken->TokenType : tok_invalid);
         uint32_t hash = typedef_key;
-
         decl_type_typedef_t* typdef = AllocNewDecl(decl_type_typedef, &result);
         // typedefs are exactly like variables
-        decl_variable_t* var = (decl_variable_t*)MetaCParser_ParseDecl(self, (metac_decl_t*) typdef);
+        decl_variable_t* var;
+        MetaCParser_Match(self, tok_kw_typedef);
+        var = (decl_variable_t*)MetaCParser_ParseDecl(self, (metac_decl_t*) typdef);
+
         MetaCParser_Match(self, tok_semicolon);
 
         typdef->Type = var->VarType;
@@ -2004,7 +2008,7 @@ metac_decl_t* MetaCParser_ParseDecl(metac_parser_t* self, metac_decl_t* parent)
     }
     else
     {
-        ParseErrorF(loc, "A declaration is expected to start with a type CurrentToken %s\n", MetaCTokenEnum_toChars(tokenType));
+        ParseErrorF(loc, "A declaration is expected to start with a type. But CurrentToken %s\n", MetaCTokenEnum_toChars(tokenType));
     }
 LendDecl:
     return result;
