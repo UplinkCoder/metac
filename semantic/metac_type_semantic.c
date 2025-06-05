@@ -1347,7 +1347,7 @@ metac_type_index_t MetaCSemantic_TypeSemantic(metac_sema_state_t* self,
             for(uint32_t argIdx = 0; argIdx < nArguments; argIdx++)
             {
                 metac_sema_expr_t* semaArg = arguments[argIdx];
-                hash = crc32c_nozero(hash, semaArg->Hash, sizeof(semaArg->Hash));
+                hash = crc32c_nozero(hash, &semaArg->Hash, sizeof(semaArg->Hash));
             }
             {
                 metac_type_header_t header = {decl_type_template_instance, 0, hash, 0};
