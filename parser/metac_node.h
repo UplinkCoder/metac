@@ -39,8 +39,6 @@
     \
     M(decl_function) \
     \
-    M(decl_preproc) \
-    \
     M(decl_label) \
     M(decl_comment)
 

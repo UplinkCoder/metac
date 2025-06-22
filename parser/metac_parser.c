@@ -1737,6 +1737,29 @@ static metac_storageclasses_t ParseStorageClasses(metac_parser_t* self)
     return result;
 }
 
+bool NextIsStmt(metac_parser_t* self, int32_t offset)
+{
+    metac_token_t* peek = MetaCParser_PeekToken(self, offset);
+    metac_token_t* peek2 = MetaCParser_PeekToken(self, offset + 1);
+    metac_token_enum_t tok = peek->TokenType;
+
+    return (tok == tok_kw_if ||
+            tok == tok_kw_while ||
+            tok == tok_kw_do ||
+            (tok == tok_at && peek2->IdentifierKey == run_key) ||
+            tok == tok_kw_for ||
+            tok == tok_kw_switch ||
+            (tok == tok_identifier && peek2->TokenType == tok_colon) ||
+            tok == tok_kw_goto ||
+            tok == tok_kw_break ||
+            tok == tok_kw_continue ||
+            tok == tok_kw_case ||
+            tok == tok_kw_default ||
+            tok == tok_kw_return ||
+            tok == tok_kw__yield);
+}
+
+
 metac_decl_t* MetaCParser_ParseDecl(metac_parser_t* self, metac_decl_t* parent)
 {
     metac_storageclasses_t stc = storageclass_none;
@@ -1750,7 +1773,7 @@ metac_decl_t* MetaCParser_ParseDecl(metac_parser_t* self, metac_decl_t* parent)
 
     decl_type_t* type = 0;
 
-#ifndef NO_PREPROCESSOR
+#if !defined(NO_PREPROCESSOR) && 0
     decl_preproc_t* preProcDecl = AllocNewDecl(decl_preproc, &result);
     preProcDecl->DirectiveKind = pp_invalid;
 
@@ -1884,11 +1907,11 @@ metac_decl_t* MetaCParser_ParseDecl(metac_parser_t* self, metac_decl_t* parent)
         // typedefs are exactly like variables
         decl_variable_t* var;
         MetaCParser_Match(self, tok_kw_typedef);
-        var = (decl_variable_t*)MetaCParser_ParseDecl(self, (metac_decl_t*) typdef);
+        var = cast(decl_variable_t*) MetaCParser_ParseDecl(self, (metac_decl_t*) typdef);
 
         MetaCParser_Match(self, tok_semicolon);
 
-        typdef->Type = var->VarType;
+        typdef->Type       = var->VarType;
         typdef->Identifier = var->VarIdentifier;
         assert(typdef->Type->Hash != 0);
         hash = CRC32C_VALUE(hash, typdef->Type->Hash);

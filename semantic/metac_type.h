@@ -55,7 +55,7 @@ typedef struct metac_type_index_t
 } metac_type_index_t;
 
 #define TYPE_INDEX_INDEX(TYPE_INDEX) \
-    ((TYPE_INDEX).v & 0xFFFFFfF)
+    ((TYPE_INDEX).v & 0xFFFFFFFF)
 
 #define TYPE_INDEX_KIND(TYPE_INDEX) \
     ((metac_type_index_kind_t)((TYPE_INDEX).v >> 28))

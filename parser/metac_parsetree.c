@@ -38,11 +38,6 @@ int MetaCNode_TreeWalk_Real(metac_node_t node, walker_function_t walker_fn, void
         // decl_type_tuple doesn't really exist
             assert(0);
 
-        case node_decl_preproc:
-        {
-            //TODO do something here.
-        } break;
-
         case node_decl_variable:
         {
             decl_variable_t* decl_variable = cast(decl_variable_t*) node;

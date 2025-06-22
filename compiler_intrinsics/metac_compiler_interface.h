@@ -12,10 +12,17 @@ typedef void* type;
 typedef enum type_kind_t
 {
     TypeKind_Invalid,
+    TypeKind_Enum,
     TypeKind_Struct = 5,
     TypeKind_Class = TypeKind_Struct + 2,
     TypeKind_Max
 } type_kind_t;
+
+typedef struct  metac_enum_members_t {
+    const char** Names;
+    uint32_t* Values;
+    uint32_t Count;
+} metac_enum_members_t;
 
 typedef struct metac_compiler_t
 {
@@ -50,6 +57,11 @@ typedef struct metac_compiler_t
                                         void (*IdentfierCb)(const char* idChars, uint32_t idKey, void* context),
                                         void* context);
     void (*PrintInt) (int32_t* value);
+
+    metac_enum_members_t* (*GetEnumMembers) (struct metac_compiler_t* compilerP, type* T);
+
+    metac_node_t (*ResolveNode)(struct metac_compiler_t* compilerP, const char* name);
+
 } metac_compiler_t;
 
 /* Proposed Interface:

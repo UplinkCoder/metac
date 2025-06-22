@@ -86,6 +86,10 @@ typedef struct metac_expr_t
         struct {
             struct metac_expr_t* E1;
         };
+        // case expr_eject:
+        struct {
+            struct metac_stmt_t* EjectedStmt;
+        };
         // case expr_sizeof:
         struct {
             struct metac_expr_t* SizeofExp;

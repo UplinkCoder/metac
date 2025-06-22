@@ -113,6 +113,7 @@ bool IsExprNode(metac_node_kind_t Kind);
 bool IsBinaryAssignExp(metac_expr_kind_t expr_kind);
 bool IsBinaryExp(metac_expr_kind_t expr_kind);
 static bool IsUnaryExp(metac_expr_kind_t expr_kind);
+bool NextIsStmt(metac_parser_t* self, int32_t offset);
 
 void MetaCParser_Init(metac_parser_t* self, metac_alloc_t* allocator);
 void MetaCParser_InitFromLexer(metac_parser_t* self, metac_lexer_t* lexer, metac_alloc_t* allocator);

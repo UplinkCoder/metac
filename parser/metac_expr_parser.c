@@ -1182,6 +1182,12 @@ metac_expr_t* MetaCParser_ParseUnaryExpr(metac_parser_t* self)
         MetaCParser_Match(self, tok_kw_eject);
         result = AllocNewExpr(expr_eject);
         //PushOperator(expr_eject);
+
+        if (NextIsStmt(self, 1))
+        {
+            result->EjectedStmt = MetaCParser_ParseStmt(self, 0, 0);
+        }
+
         result->E1 = MetaCParser_ParseExpr(self, expr_flags_none, 0);
         result->Hash = CRC32C_VALUE(eject_key, result->E1->Hash);
         //PushOperand(result);

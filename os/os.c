@@ -5,6 +5,7 @@
 #include <stdio.h>
 
 #define DEFAULT_PAGESIZE 4096
+
 os_error_t PageAlloc(uint32_t minSize, uint32_t* allocatedSize, void** outMemory);
 os_error_t GetTimeStamp(uint32_t* tsp);
 os_error_t SetStartTime(void);
@@ -41,6 +42,7 @@ os_error_t PageAlloc(uint32_t minSize, uint32_t* allocatedSize, void** outMemory
 #else
 #  error "OS not supported"
 #endif
+
     if (result)
     {
         (*allocatedSize) = allocated;

@@ -876,15 +876,18 @@ sema_decl_function_t* MetaCSemantic_doFunctionSemantic(metac_sema_state_t* self,
         // as we have an easier time if we know at which
         // param we are and how many follow
         decl_variable_t* paramVar = currentParam->Parameter;
-        /*TODO use identifier in sema table
-        metac_identifier_ptr_t semaId =
-            MetaCIdentifierTable_CopyIdentifier(self->ParserIdentifierTable,
-                                                &self->SemanticIdentifierTable,
-                                                paramVar->VarIdentifier);
-        f->Parameters[i].VarIdentifier = semaId;
-        */
+#if 0
+        // TODO use identifier in sema table
+        {
+            metac_identifier_ptr_t semaId =
+                MetaCIdentifierTable_CopyIdentifier(self->ParserIdentifierTable,
+                                                    &self->SemanticIdentifierTable,
+                                                    paramVar->VarIdentifier);
+            f->Parameters[i].VarIdentifier = semaId;
+        }
+#else
         f->Parameters[i].VarIdentifier = paramVar->VarIdentifier;
-
+#endif
         f->Parameters[i].VarFlags |= variable_is_parameter;
         if (METAC_NODE(paramVar->VarInitExpr) != emptyNode)
         {
@@ -914,6 +917,13 @@ sema_decl_function_t* MetaCSemantic_doFunctionSemantic(metac_sema_state_t* self,
 #else
 #endif
             }
+        }
+        metac_type_index_t paramTypeIdx = f->Parameters[i].TypeIndex;
+        if (paramTypeIdx.Kind == type_index_basic
+         && paramTypeIdx.Index == type_auto)
+        {
+            fprintf(stderr,
+                "Detected auto type in func params which implies template\n");
         }
         uint32_t hash = f->Parameters[i].TypeIndex.v;
         hash = CRC32C_VALUE(hash, i);
