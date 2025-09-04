@@ -1,13 +1,9 @@
 #ifndef _METAC_COMPILER_INTERFACE_H_
 #define _METAC_COMPILER_INTERFACE_H_
 
-typedef int int32_t;
-typedef unsigned int uint32_t;
-typedef unsigned long int uint64_t;
-
-#ifndef __METAC__
-typedef void* type;
-#endif
+#  ifndef __METAC__
+  typedef void* type;
+#  endif
 
 typedef enum type_kind_t
 {
