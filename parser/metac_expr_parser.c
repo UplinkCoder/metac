@@ -1187,9 +1187,11 @@ metac_expr_t* MetaCParser_ParseUnaryExpr(metac_parser_t* self)
         {
             result->EjectedStmt = MetaCParser_ParseStmt(self, 0, 0);
         }
-
-        result->E1 = MetaCParser_ParseExpr(self, expr_flags_none, 0);
-        result->Hash = CRC32C_VALUE(eject_key, result->E1->Hash);
+        else
+        {
+            result->E1 = MetaCParser_ParseExpr(self, expr_flags_none, 0);
+            result->Hash = CRC32C_VALUE(eject_key, result->E1->Hash);
+        }
         //PushOperand(result);
         //PopOperator(expr_eject);
     }

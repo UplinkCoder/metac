@@ -1756,7 +1756,10 @@ bool NextIsStmt(metac_parser_t* self, int32_t offset)
             tok == tok_kw_case ||
             tok == tok_kw_default ||
             tok == tok_kw_return ||
-            tok == tok_kw__yield);
+            tok == tok_kw__yield ||
+            //TODO we cannot just use lBrace here as we could have a tuple expression
+            // or maybe we just don't eject tuple expressions ????
+            tok == tok_lBrace);
 }
 
 
