@@ -1,0 +1,22 @@
+enum E { one, two, three };
+
+const char* EnumToString(auto enumValue)
+{
+    const char* result = cast(const char*) 0;
+
+    switch(enumValue)
+    {
+        @run {
+            type enumType = .Compiler->GetType(.Compiler, enumValue);
+            metac_enum_members_t* members = .Compiler->GetEnumMembers(.Compiler, enumType);
+            for(uint32_t i = 0; i < members->Count; i++)
+            {
+                eject case $(members->Names[i]):
+                    result = #$(members->Names[i]); 
+            }
+        };
+    }
+    return result;
+}
+
+@run { assert(0 == strcmp(EnumToString(E.two), "two")); };
