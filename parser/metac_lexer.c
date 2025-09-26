@@ -874,7 +874,7 @@ metac_token_t* MetaCLexerLexNextToken(metac_lexer_t* self,
     }
     int32_t eatenChars = 0;
     char c = *text++;
-LcontinueLexnig:
+LcontinueLexing:
     {
         uint32_t column = state->Column;
         uint32_t line = state->Line;
@@ -1205,13 +1205,13 @@ LcontinueLexnig:
                     c = *text++;
                     state->Line++;
                     state->Column = 0;
-                    goto LcontinueLexnig;
+                    goto LcontinueLexing;
                 }
                 else if (c == '\r')
                 {
                     c = *text++;
                     state->Column = 0;
-                    goto LcontinueLexnig;
+                    goto LcontinueLexing;
                 }
                 else
                 {
@@ -1321,7 +1321,7 @@ LcontinueLexnig:
             c = '\0';
             token.TokenType = tok_eof;
         }
-        goto LcontinueLexnig;
+        goto LcontinueLexing;
     }
 #endif
     else
