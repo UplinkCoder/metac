@@ -309,7 +309,7 @@ void MetaCCodegen_doGlobal(metac_bytecode_ctx_t* ctx, metac_sema_decl_t* decl, u
             sema_decl_variable_t var = decl->sema_decl_variable;
             if (METAC_NODE(var.VarInitExpr) != emptyNode)
             {
-                BCValue initVal = {0};
+                BCValue initVal = {BCValueType_Unknown};
                 MetaCCodegen_doExpr(ctx, var.VarInitExpr, &initVal, _Rvalue);
             }
             ctx->GlobalMemoryOffset += sz;
@@ -1513,9 +1513,9 @@ static void MetaCCodegen_doExpr(metac_bytecode_ctx_t* ctx,
                 }
                 sz = imm32(currentOffset);
 
-                gen.Alloc(c, result, &sz);
                 BCValue address = gen.GenTemporary(c, BCType_i32);
-                gen.Set(c, &address, result);
+                gen.Alloc(c, &address, &sz);
+                gen.Set(c, result, &address);
                 for(uint32_t i = 0; i < exp->TupleExprCount; i++)
                 {
                     metac_sema_expr_t te = *exp->TupleExprs[i];
