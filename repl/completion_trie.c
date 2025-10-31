@@ -16,6 +16,12 @@
 
 #define MAXIMUM(a,b) (((a)>(b)) ? (a) : (b))
 
+typedef struct completion_trie_viz_params_t
+{
+    uint16_t FrameNumber;
+    uint32_t HighlightedNodeIdx;
+} completion_trie_viz_params_t;
+
 static inline void InitializeCIdentifierCharacters(completion_trie_root_t* root) {
     static const char cIdentifierChars[] =
         "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_";
@@ -388,7 +394,12 @@ LGotChild:
  * @param rootPrefix  The prefix of the root node.
  * @param f           The file to which the DOT code will be written.
  */
-void CompletionTrie_Print(completion_trie_root_t* root, uint32_t nodeIdx, const char* rootPrefix, FILE* f) {
+void CompletionTrie_Print(completion_trie_root_t* root,
+    uint32_t nodeIdx,
+    const char* rootPrefix,
+    FILE* f,
+    const completion_trie_viz_params_t * params
+) {
     // Retrieve a pointer to the nodes array for easier access
     completion_trie_node_t const * nodes = root->Nodes;
     uint32_t childIdx;
@@ -406,6 +417,12 @@ void CompletionTrie_Print(completion_trie_root_t* root, uint32_t nodeIdx, const 
                 childIdx, nodes[childIdx].Prefix4);
     }
 
+    // Output highlight if we have params
+    if (params && params->HighlightedNodeIdx == nodeIdx)
+    {
+        fprintf(f, "{ %d: %.4s [color=red style=filled fillcolor=lightpink] }\n",
+                nodeIdx, rootPrefix);
+    }
     // Output DOT code to ensure that child nodes appear in the same rank
     fprintf(f, "{ rank = same; ");
     for(childIdx = childIdxBegin; childIdx < childIdxEnd; childIdx++)
@@ -421,9 +438,16 @@ void CompletionTrie_Print(completion_trie_root_t* root, uint32_t nodeIdx, const 
         if (nodes[childIdx].ChildCount)
         {
             // Recursively traverse child nodes with ChildCount
-            CompletionTrie_Print(root, childIdx, nodes[childIdx].Prefix4, f);
+            CompletionTrie_Print(root, childIdx, nodes[childIdx].Prefix4, f, params);
         }
     }
+}
+
+completion_trie_node_t* CompletionTrie_SplitNode(completion_trie_root_t* root,
+                                                 completion_trie_node_t* nodeToSplit,
+                                                 int splitAt)
+{
+    return 0;
 }
 
 void CompletionTrie_Add(completion_trie_root_t* root, const char* word, uint32_t length)
@@ -432,10 +456,16 @@ void CompletionTrie_Add(completion_trie_root_t* root, const char* word, uint32_t
     completion_trie_node_t* parentNode =
         CompletionTrie_FindLongestMatchingPrefix(root, word, &remaining_length);
 
+
     if (remaining_length)
     {
         int posWord = length - remaining_length;
         parentNode = CompletionTrie_AddChild(root, parentNode, word + posWord, remaining_length);
+        if (parentNode->ChildCount != 0)
+        {
+            // here we potentially need a split to determine if we need a split
+            // if we do need it we need to compute where to split the parentNode
+        }
     }
     // insert terminal node
     CompletionTrie_AddChild(root, parentNode, "", 0);
@@ -526,9 +556,10 @@ void CompletionTrie_PrintRanges(completion_trie_root_t* self)
 }
 #endif
 
-void CompletionTrie_PrintTrie(completion_trie_root_t* self, uint32_t n)
+void CompletionTrie_PrintTrie(completion_trie_root_t* self, const completion_trie_viz_params_t params)
 {
         char fname[32] = "g.dot";
+        int n = params.FrameNumber;
         if (n != 0)
         {
             snprintf(fname, sizeof(fname), "g%u.dot", n);
@@ -538,17 +569,18 @@ void CompletionTrie_PrintTrie(completion_trie_root_t* self, uint32_t n)
         fprintf(f, "digraph G {\n");
         fprintf(f, "  node [shape=record headport=n]\n");
 
-        CompletionTrie_Print(self, 0, "", f);
+        CompletionTrie_Print(self, 0, "", f, &params);
 
         fprintf(f, "}\n");
         fclose(f);
         RESTORE_STACK();
 }
 
-void CompletionTrie_PrintStats(completion_trie_root_t* self, uint32_t n)
+void CompletionTrie_PrintStats(completion_trie_root_t* self, uint16_t n)
 {
 
-    CompletionTrie_PrintTrie(self, n);
+    completion_trie_viz_params_t params = {.FrameNumber = n};
+    CompletionTrie_PrintTrie(self, params);
 
     printf("UsedNodes: %u\n", self->TotalNodes);
     printf("AllocatedNodes: %u\n", self->NodesCount);

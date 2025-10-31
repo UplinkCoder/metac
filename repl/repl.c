@@ -269,6 +269,7 @@ void AddIdentifierToCompletion(repl_state_t* self, const char* idString)
 
 void Presemantic_(repl_state_t* self)
 {
+#if 0
     metac_type_aggregate_t* compilerStruct = 0;
 
     metac_alloc_t PresemanticAlloc;
@@ -417,6 +418,7 @@ void Presemantic_(repl_state_t* self)
     }
     // Allocator_Remove
     Debug_RemoveAllocator(g_DebugServer, &PresemanticAlloc);
+#endif
 }
 
 
@@ -748,7 +750,7 @@ LswitchMode:
                     goto LswitchMode;
                 }
             case 'D' :
-                CompletionTrie_Print(&repl->CompletionTrie, 0, "", stderr);
+                CompletionTrie_Print(&repl->CompletionTrie, 0, "", stderr, 0);
                 goto LswitchMode;
             case 'g' :
                 if (0 == strcmp("lobals", repl->Line + 2))
