@@ -31,7 +31,7 @@
 #  define DEBUG(...)
 #endif
 
-static int16_t BCGen_isShortJump(const int32_t offset)
+static inline int16_t BCGen_isShortJump(const int32_t offset)
 {
     assert(offset != 0);//, "A Jump to the Jump itself is invalid");
 

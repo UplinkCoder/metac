@@ -49,6 +49,6 @@ void AddIdentifierToCompletionSet (const char* idStr, uint32_t idKey, void* ctx)
 
 void CompletionTrie_PrintRanges(completion_trie_root_t* self);
 
-void CompletionTrie_PrintStats (completion_trie_root_t* root, uint32_t n);
+void CompletionTrie_PrintStats (completion_trie_root_t* root, uint16_t n);
 
 #endif

@@ -1006,6 +1006,8 @@ sema_decl_function_t* MetaCSemantic_doFunctionSemantic(metac_sema_state_t* self,
 
     MetaCSemantic_RegisterInScope(self, f->Identifier, METAC_NODE(f));
 
+    printf("returnTypeIndex %x\n", returnType.v);
+
     return f;
 }
 
