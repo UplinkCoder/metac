@@ -1275,16 +1275,17 @@ LswitchIdKey:
         case expr_sizeof:
         {
             int32_t size = -1;
-            hash = sizeof_key;
             metac_sema_expr_t* e1 =
                 MetaCSemantic_doExprSemantic(self, expr->E1, 0);
+            metac_type_index_t typeIdx;
+            hash = sizeof_key;
 
             while (e1->Kind == expr_paren)
             {
                 e1 = e1->E1;
             }
 
-            metac_type_index_t typeIdx = e1->TypeIndex;
+            typeIdx = e1->TypeIndex;
             // usually we assume the type of which we want
             // to get the size is the type of the expression
             if (e1->Kind == expr_type)
@@ -1293,15 +1294,18 @@ LswitchIdKey:
                 // which is something that resolves to a type such as the identifier int
                 typeIdx = e1->TypeExp;
                 hash = CRC32C_VALUE(hash, e1->TypeExp);
-            } else if (e1->TypeIndex.v == TYPE_INDEX_V(type_index_basic, type_type))
+            }
+            else if (e1->TypeIndex.v == TYPE_INDEX_V(type_index_basic, type_type))
             {
                 // if the expression is any other kind of expression and it is of type type
                 // it indicates we want this sizeof be resolved at a later time
                 // possibly when calling a function
             }
 
-            if (e1->TypeIndex.v != 0 && e1->TypeIndex.v != -1)
+            if (typeIdx.v != 0 && typeIdx.v != -1)
+            {
                 size = MetaCSemantic_GetTypeSize(self, typeIdx);
+            }
 
             result->TypeIndex.v = TYPE_INDEX_V(type_index_basic, type_size_t);
             result->Kind = expr_signed_integer;

@@ -2,7 +2,7 @@
 #include <stdio.h>
 #include <string.h>
 
-#if defined(TEST_MAIN)
+#if defined(COMP_TRIE_TEST_MAIN)
 #  include "../os/os.c"
 #  include "../os/metac_alloc.c"
 #endif
@@ -471,7 +471,7 @@ void CompletionTrie_Add(completion_trie_root_t* root, const char* word, uint32_t
     CompletionTrie_AddChild(root, parentNode, "", 0);
 }
 
-#if defined(TEST_MAIN)
+#if defined(COMP_TRIE_TEST_MAIN)
 typedef struct {
     const char** Strings;
     uint32_t nStrings;
@@ -596,7 +596,7 @@ void CompletionTrie_PrintStats(completion_trie_root_t* self, uint16_t n)
 #endif
 }
 
-#ifdef TEST_MAIN
+#if defined(COMP_TRIE_TEST_MAIN)
     int main(int argc, const char* argv[])
     {
         CompletionTrie_NoPreallocatedCIdentifierChars = true;
