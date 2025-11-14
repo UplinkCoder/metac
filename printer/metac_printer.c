@@ -1516,6 +1516,17 @@ static inline void PrintSemaType(metac_printer_t* self,
             PrintSemaType(self, sema, elementType);
             PrintString(self, "*", sizeof("*") - 1);
         } break;
+        case type_index_typedef:
+        {
+            uint32_t typedefTypeIdx = TYPE_INDEX_INDEX(typeIndex);
+            metac_type_typedef_t* typedefType =
+                TypedefPtr(sema, typedefTypeIdx);
+            metac_identifier_ptr_t nullIdPtr = {};
+            PrintString(self, "typedef ", sizeof("typedef ") - 1);
+            PrintSemaType(self, sema, typedefType->Type);
+            PrintString(self, " ", sizeof(" ") - 1);
+            PrintIdentifier(self, typedefType->Identifier);
+        } break;
         case type_index_functiontype:
         {
             uint32_t funcTypeIdx = TYPE_INDEX_INDEX(typeIndex);

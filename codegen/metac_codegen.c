@@ -1163,6 +1163,7 @@ static void MetaCCodegen_doArrowExpr(metac_bytecode_ctx_t* ctx,
     offsetVal = imm32(field->Offset);
 
     assert(e1Value.vType == BCValueType_StackValue
+        || e1Value.vType == BCValueType_Parameter
         || e1Value.vType == BCValueType_HeapValue
         || e1Value.vType == BCValueType_External);
     gen.Add3(c, &addr, &e1Value, &offsetVal);
