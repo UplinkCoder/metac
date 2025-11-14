@@ -466,16 +466,21 @@ void ResolveIdentifierToExp(metac_sema_state_t* self,
     }
     else if (node->Kind == node_decl_type_struct)
     {
+        metac_type_aggregate_t* t_agg = cast(metac_type_aggregate_t*)node;
         result->Kind = expr_type;
         result->TypeExp.v =
-            TYPE_INDEX_V(type_index_struct, StructIndex(self, cast(metac_type_aggregate_t*)node));
+            TYPE_INDEX_V(type_index_struct, StructIndex(self, t_agg));
         result->TypeIndex.v = TYPE_INDEX_V(type_index_basic, type_type);
+        // hash = t_agg->Hash; ? where is hash
     }
     else if (node->Kind == node_decl_type_typedef)
     {
+        metac_type_typedef_t* t_def = cast(metac_type_typedef_t*)node;
         result->Kind = expr_type;
         result->TypeExp.v =
-            TYPE_INDEX_V(type_index_typedef, TypedefIndex(self, cast(metac_type_typedef_t*)node));
+            TYPE_INDEX_V(type_index_typedef, TypedefIndex(self, t_def));
+        result->TypeIndex.v = TYPE_INDEX_V(type_index_basic, type_type);
+        // hash = t_def->Hash; // where is hash
     }
     else if (node->Kind == node_decl_function)
     {
@@ -483,6 +488,7 @@ void ResolveIdentifierToExp(metac_sema_state_t* self,
         result->Kind = expr_function;
         result->Function = func;
         result->TypeIndex = func->TypeIndex;
+        hash = func->Hash;
     }
     else if (node->Kind == node_expr_unknown_value)
     {
@@ -1250,7 +1256,7 @@ LswitchIdKey:
             if (e1->TypeIndex.v == TYPE_INDEX_V(type_index_basic, type_type))
             {
                 // if the expression is any other kind of expression and it is of type type
-                // it indicates we want this sizeof be resolved at a later time
+                // it indicates we want this typeof be resolved at a later time
                 // possibly when calling a function
             }
 
