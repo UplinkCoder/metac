@@ -13,7 +13,7 @@ typedef struct counted_string
     uint32_t size;
 } counted_string;
 
-
+#define LENGTH_SHIFT 16
 #if 0
 counted_string StripLastComponent(counted_string *path)
 {
@@ -35,7 +35,7 @@ meta_data_entry_t* LookupDirPathByKey(cache_t* cache, const char* dir_path,
 {
     uint32_t toc_size = cache->toc_size;
     meta_data_entry_t* result = 0;
-    size_t path_length = (entry_key >> 16);
+    size_t path_length = (entry_key >> LENGTH_SHIFT);
 
     toc_entry_t* one_past_last = cache->toc_entries + toc_size;
     for(toc_entry_t* toc_entry = cache->toc_entries;
@@ -111,7 +111,7 @@ name_cache_ptr_t GetOrAddNameByKey(cache_t* cache, const char* name,
                                    uint32_t entry_key)
 {
 	name_cache_ptr_t result = {0};
-    size_t length = (entry_key >> 16);
+    size_t length = (entry_key >> LENGTH_SHIFT);
     if (!length)
         return result;
 
@@ -228,7 +228,7 @@ meta_data_entry_t* LookupInDirectoryByKey(cache_t* cache, cached_dir_t* lookupDi
 {
     meta_data_entry_t* result = 0;
 
-    const size_t name_length = (entry_key >> 16);
+    const size_t name_length = (entry_key >> LENGTH_SHIFT);
 
     meta_data_entry_t const * one_past_last_entry =
         lookupDir->entries + lookupDir->entries_size;

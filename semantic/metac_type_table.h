@@ -2,7 +2,7 @@
 #define _METAC_TYPE_TABLE_H_
 
 #include "../os/compat.h"
-#include "metac_type.h"
+#include "../semantic/metac_type.h"
 
 uint32_t EntangleInts(uint32_t a, uint32_t b);
 uint32_t UntangleInts(uint32_t tangled);
@@ -28,7 +28,7 @@ typedef struct  metac_type_table_t
     (A == B ? true : Expr_IsEqual_(A, B))
 
 bool Expr_IsEqual_(const struct metac_sema_expr_t* a,
-                         const struct metac_sema_expr_t* b);
+                   const struct metac_sema_expr_t* b);
 
 static inline const bool EnumSlotsEqual(const metac_type_table_slot_t* a,
                                         const metac_type_table_slot_t* b)
@@ -185,8 +185,8 @@ static inline const bool TupleSlotsEqual(const metac_type_table_slot_t* a,
    return result;
 }
 
-static inline const bool MetaCExpr_Equal(const metac_expr_t* a,
-                                         const metac_expr_t* b)
+static inline const bool MetaCExpr_Equal(const struct metac_expr_t* a,
+                                         const struct metac_expr_t* b)
 {
     // assert(0);
     return false;
@@ -215,7 +215,7 @@ static inline const bool TemplateSlotsEqual(const metac_type_table_slot_t* a,
        for(uint32_t i = 0; i < argumentCount; i++)
        {
            metac_expr_t argA = slotA->Arguments[i];
-           metac_expr_t argB = slotA->Arguments[i];
+           metac_expr_t argB = slotB->Arguments[i];
            if (argA.Hash != argB.Hash)
            {
                result = false;

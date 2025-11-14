@@ -441,6 +441,10 @@ void MetaCPreProcessor_Init(metac_preprocessor_t *self, metac_lexer_t* lexer,
                             metac_alloc_t* alloc,
                             metac_file_storage_t* fs, const char* filepath)
 {
+    {
+        metac_preprocessor_t zero = {0};
+        *self = zero;
+    }
     self->FileStorage = fs;
     if (filepath)
         self->File = MetaCFileStorage_LoadFile(fs, filepath);
