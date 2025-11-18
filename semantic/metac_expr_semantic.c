@@ -438,7 +438,7 @@ void ResolveIdentifierToExp(metac_sema_state_t* self,
 
     if (node->Kind == (metac_node_kind_t)expr_identifier)
     {
-        xfprintf(stderr, "we should not be retured an identifier\n");
+        xfprintf(stderr, "we should not be returned an identifier\n");
     }
     else if (node->Kind == node_decl_variable ||
              node->Kind == node_decl_parameter)
@@ -471,7 +471,7 @@ void ResolveIdentifierToExp(metac_sema_state_t* self,
         result->TypeExp.v =
             TYPE_INDEX_V(type_index_struct, StructIndex(self, t_agg));
         result->TypeIndex.v = TYPE_INDEX_V(type_index_basic, type_type);
-        // hash = t_agg->Hash; ? where is hash
+        hash = t_agg->Header.Hash;
     }
     else if (node->Kind == node_decl_type_typedef)
     {
@@ -480,7 +480,7 @@ void ResolveIdentifierToExp(metac_sema_state_t* self,
         result->TypeExp.v =
             TYPE_INDEX_V(type_index_typedef, TypedefIndex(self, t_def));
         result->TypeIndex.v = TYPE_INDEX_V(type_index_basic, type_type);
-        // hash = t_def->Hash; // where is hash
+        hash = t_def->Header.Hash;
     }
     else if (node->Kind == node_decl_function)
     {
@@ -930,9 +930,10 @@ LswitchIdKey:
             hash = CRC32C_VALUE(hash, E1->Hash);
 
             if (result->E1->Kind == expr_unknown_value)
+            {
                 result->Kind = expr_unknown_value;
+            }
 
-            //result->Kind = expr_paren;
             result->TypeIndex = E1->TypeIndex;
             result->E1 = E1;
         } break;
@@ -953,22 +954,29 @@ LswitchIdKey:
             if (castType.v == 0 || castExp->Kind == expr_unknown_value)
                 result->Kind = expr_unknown_value;
         } break;
+
 #define CASE(M) \
     case M:
+
         FOREACH_BIN_ARITH_EXP(CASE)
         case expr_ternary:
             if (result->E1->Kind == expr_unknown_value || result->E2->Kind == expr_unknown_value)
+            {
                 result->Kind = expr_unknown_value;
+            }
 
             result->TypeIndex =
                 MetaCSemantic_CommonSubtype(self, result->E1->TypeIndex, result->E2->TypeIndex);
         break;
+
         FOREACH_BIN_ARITH_ASSIGN_EXP(CASE)
             if (result->E1->Kind == expr_unknown_value)
                 result->Kind = expr_unknown_value;
             result->TypeIndex = result->E1->TypeIndex;
         break;
+
 #undef CASE
+
         case expr_index:
             result = MetaCSemantic_doIndexSemantic(self, expr);
         break;
@@ -1224,12 +1232,12 @@ LswitchIdKey:
                 }
             }
             // type ptrs can also be binary expressions
-            else if (expr->TypeExp->TypeKind == type_ptr)
+            else if (typeExpr->TypeKind == type_ptr)
             {
 
             }
             // and so can type-arrays
-            else if (expr->TypeExp->TypeKind == type_array)
+            else if (typeExpr->TypeKind == type_array)
             {
 
             }

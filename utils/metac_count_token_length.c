@@ -15,7 +15,7 @@ int main(int argc, char* argv[])
 
 void CountTokenLengths()
 {
-    uint32_t token_len[10] = {0};
+    uint32_t token_len[16] = {0};
 
 #define TOK_SELF(TOK) \
     TOK
