@@ -1776,15 +1776,16 @@ metac_decl_t* MetaCParser_ParseDecl(metac_parser_t* self, metac_decl_t* parent)
 
     decl_type_t* type = 0;
 
-#if !defined(NO_PREPROCESSOR) && 0
-    decl_preproc_t* preProcDecl = AllocNewDecl(decl_preproc, &result);
-    preProcDecl->DirectiveKind = pp_invalid;
+#if !defined(NO_PREPROCESSOR)
+    // decl_preproc_t* preProcDecl = AllocNewDecl(decl_preproc, &result);
+    // preProcDecl->DirectiveKind = pp_invalid;
 
     if (MetaCParser_PeekMatch(self, tok_hash, 1))
     {
         metac_preprocessor_directive_t dirc =
             MetaCParser_ParsePreprocDirective(self, self->Preprocessor);
-        preProcDecl->DirectiveKind = dirc;
+        // preProcDecl->DirectiveKind = dirc;
+        result = cast(metac_decl_t*) emptyNode;
 
         if (dirc == pp_include)
         {
@@ -1794,7 +1795,7 @@ metac_decl_t* MetaCParser_ParseDecl(metac_parser_t* self, metac_decl_t* parent)
         {
             metac_preprocessor_define_ptr_t definePtr =
                 MetaCPreProcessor_ParseDefine(self->Preprocessor, self);
-           preProcDecl->DefinePtr = definePtr;
+           // preProcDecl->DefinePtr = definePtr;
         }
         else if (dirc == pp_ifdef)
         {

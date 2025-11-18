@@ -84,25 +84,25 @@ static inline int TranslateIdentifiers(metac_node_t node, void* ctx)
     {
         case decl_variable:
         {
-            decl_variable_t* var = (decl_variable_t*) node;
+            decl_variable_t* var = cast(decl_variable_t*) node;
             if (var->VarIdentifier.v && var->VarIdentifier.v != empty_identifier.v)
                 TranslateIdentifier(DstTable, SrcTable, &var->VarIdentifier);
         } break;
         case decl_function:
         {
-            decl_function_t* func = (decl_function_t*) node;
+            decl_function_t* func = cast(decl_function_t*) node;
             if (func->Identifier.v != empty_identifier.v)
                 TranslateIdentifier(DstTable, SrcTable, &func->Identifier);
         } break;
         case decl_type:
         {
-            decl_type_t* type = (decl_type_t*) node;
+            decl_type_t* type = cast(decl_type_t*) node;
             if (type->TypeIdentifier.v && type->TypeIdentifier.v != empty_identifier.v)
                 TranslateIdentifier(DstTable, SrcTable, &type->TypeIdentifier);
         } break;
         case decl_type_typedef:
         {
-            decl_type_typedef_t* typedef_ = (decl_type_typedef_t*) node;
+            decl_type_typedef_t* typedef_ = cast(decl_type_typedef_t*) node;
             if (typedef_->Identifier.v != empty_identifier.v)
             {
                 TranslateIdentifier(DstTable, SrcTable, &typedef_->Identifier);
@@ -110,7 +110,7 @@ static inline int TranslateIdentifiers(metac_node_t node, void* ctx)
         } break;
         case decl_type_struct:
         {
-            decl_type_struct_t* struct_ = (decl_type_struct_t*) node;
+            decl_type_struct_t* struct_ = cast(decl_type_struct_t*) node;
             if (struct_->BaseIdentifier.v != empty_identifier.v)
                 TranslateIdentifier(DstTable, SrcTable, &struct_->BaseIdentifier);
             if (struct_->Identifier.v != empty_identifier.v)
@@ -118,7 +118,7 @@ static inline int TranslateIdentifiers(metac_node_t node, void* ctx)
         } break;
         case decl_type_enum:
         {
-            decl_type_enum_t* enum_ = (decl_type_enum_t*) node;
+            decl_type_enum_t* enum_ = cast(decl_type_enum_t*) node;
             if (enum_->Identifier.v != empty_identifier.v)
             {
                 TranslateIdentifier(DstTable, SrcTable, &enum_->Identifier);
@@ -127,7 +127,7 @@ static inline int TranslateIdentifiers(metac_node_t node, void* ctx)
 /*
         case decl_type_functiontype:
         {
-            decl_type_functiontype_t* funcionType = (decl_type_functiontype_t*) node;
+            decl_type_functiontype_t* funcionType = cast(decl_type_functiontype_t*) node;
             if (funcionType->Identifier.v != empty_identifier.v)
             {
                 TranslateIdentifier(DstTable, SrcTable, &enum_->Identifier);
@@ -136,7 +136,7 @@ static inline int TranslateIdentifiers(metac_node_t node, void* ctx)
 */
       case decl_enum_member:
         {
-            decl_enum_member_t* enumMember = (decl_enum_member_t*) node;
+            decl_enum_member_t* enumMember = cast(decl_enum_member_t*) node;
             if (enumMember->Name.v != empty_identifier.v)
             {
                 TranslateIdentifier(DstTable, SrcTable, &enumMember->Name);
@@ -225,7 +225,7 @@ static inline int Presemantic(metac_node_t node, void* ctx)
 
     if (node->Kind == node_decl_type_typedef)
     {
-        decl_type_typedef_t* typedef_ = (decl_type_typedef_t*) node;
+        decl_type_typedef_t* typedef_ = cast(decl_type_typedef_t*) node;
         metac_identifier_ptr_t typedefId = typedef_->Identifier;
 
         metac_type_index_t typeIndex =
@@ -261,7 +261,7 @@ void SeeIdentifier(const char* idStr, uint32_t key, repl_state_t* replCtx)
 
 void AddIdentifierToCompletion(repl_state_t* self, const char* idString)
 {
-    uint32_t len = (uint32_t) strlen(idString);
+    uint32_t len = cast(uint32_t) strlen(idString);
     uint32_t hash = crc32c(~0, idString, len);
     uint32_t key = IDENTIFIER_KEY(hash, len);
     SeeIdentifier(idString, key, self);
@@ -300,7 +300,7 @@ void Presemantic_(repl_state_t* self)
 #if 1
             {
                 identifier_callback_t cb;
-                cb.Ctx = (void*)self;
+                cb.Ctx = cast(void*)self;
                 cb.FuncP = cast(identifier_cb_t)&SeeIdentifier;
                 tmpLpp.Parser.IdentifierCallbacks[0] = cb;
                 tmpLpp.Parser.IdentifierCallbacksCount = 1;
@@ -352,22 +352,22 @@ void Presemantic_(repl_state_t* self)
 
             if (decl->Kind == decl_type_typedef)
             {
-                decl_type_typedef_t* typedef_ = (decl_type_typedef_t*) decl;
+                decl_type_typedef_t* typedef_ = cast(decl_type_typedef_t*) decl;
                 if (typedef_->Type->Kind == decl_type_struct)
                 {
-                    decl_type_struct_t* structPtr = (decl_type_struct_t*)typedef_->Type;
+                    decl_type_struct_t* structPtr = cast(decl_type_struct_t*)typedef_->Type;
                     if (structPtr->Identifier.v == empty_identifier.v)
                     {
                         printIdentifier = typedef_->Identifier;
                     }
-                    decl = (metac_decl_t*)typedef_->Type;
+                    decl = cast(metac_decl_t*)typedef_->Type;
                 }
             }
 
             if (decl->Kind == decl_type_struct)
             {
                 const char* structNameStr = 0;
-                decl_type_struct_t* struct_ = (decl_type_struct_t*) decl;
+                decl_type_struct_t* struct_ = cast(decl_type_struct_t*) decl;
                 metac_printer_t printer;
 
                 MetaCPrinter_Init(&printer,
@@ -389,7 +389,7 @@ void Presemantic_(repl_state_t* self)
                  && printIdentifier.v != empty_identifier.v
                  && 0 == strcmp("metac_compiler_t", structNameStr))
                 {
-                    compilerStruct = (metac_type_aggregate_t*)
+                    compilerStruct = cast(metac_type_aggregate_t*)
                         MetaCSemantic_doDeclSemantic(&self->SemanticState, struct_);
 //                    xprintf("compilerStruct: %s\n",
 //                        MetaCPrinter_PrintSemaNode(&printer, &self->SemanticState, cast(metac_node_t)compilerStruct));
@@ -701,20 +701,20 @@ LswitchMode:
                     uint32_t estimatedTokenCount = (((sz / 4) + 128) & ~127);
                     if (fileLexer->TokenCapacity < estimatedTokenCount)
                     {
-                        fileLexer->Tokens = (metac_token_t*)
+                        fileLexer->Tokens = cast(metac_token_t*)
                             malloc(sizeof(metac_token_t) * estimatedTokenCount);
                         fileLexer->TokenCount = 0;
                         fileLexer->TokenCapacity = estimatedTokenCount;
-                        fileLexer->Tokens = (metac_token_t*)
+                        fileLexer->Tokens = cast(metac_token_t*)
                             malloc(sizeof(metac_token_t) * estimatedTokenCount);
 
-                        fileLexer->LocationStorage.Locations = (metac_location_t*)
+                        fileLexer->LocationStorage.Locations = cast(metac_location_t*)
                             malloc(sizeof(metac_location_t) * estimatedTokenCount);
                         fileLexer->LocationStorage.LocationSize = 0;
                         fileLexer->LocationStorage.LocationCapacity = estimatedTokenCount;
                     }
-                    repl->SrcBuffer = (char*)calloc(1, sz + 4);
-                    repl->FreePtr = (void*)repl->SrcBuffer;
+                    repl->SrcBuffer = cast(char*)calloc(1, sz + 4);
+                    repl->FreePtr = cast(void*)repl->SrcBuffer;
                     repl->SrcBufferLength = sz;
                     fread((void*)repl->SrcBuffer, 1, sz, fd);
                     repl->ParseMode = repl_mode_lex_file;
@@ -896,7 +896,7 @@ LswitchMode:
 
         if (repl->ParseMode != repl_mode_lex_file)
         {
-            repl->SrcBuffer = (char*)repl->Line;
+            repl->SrcBuffer = cast(char*)repl->Line;
             repl->SrcBufferLength = line_length;
         }
 
@@ -1415,7 +1415,7 @@ void Repl_Fiber(void)
 
     {
         identifier_callback_t cb;
-        cb.Ctx = (void*)repl;
+        cb.Ctx = cast(void*)repl;
         cb.FuncP = cast(identifier_cb_t)&SeeIdentifier;
         repl->LPP.Parser.IdentifierCallbacks[0] = cb;
         repl->LPP.Parser.IdentifierCallbacksCount = 1;
@@ -1437,7 +1437,7 @@ void Repl_Fiber(void)
     while (Repl_Loop(repl, uiContext) != false)
     {
 #ifndef NO_FIBERS
-        task_t* replTask = (task_t*)(GET_CO()->arg);
+        task_t* replTask = cast(task_t*)(GET_CO()->arg);
         YIELD(ReplYield);
 #endif
     }

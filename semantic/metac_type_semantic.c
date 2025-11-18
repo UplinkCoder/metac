@@ -786,7 +786,7 @@ void MetaCSemantic_ComputeEnumValues(metac_sema_state_t* self,
         inject code;
         self->AllowOverride = oldAllowOverride;
     }
- */   
+ */
     // Set the currentScope to be an override scope
     // Since we are inserting members
     bool oldAllowOverride = self->CurrentScope->ScopeTable.AllowOverride;
@@ -1190,7 +1190,7 @@ metac_type_index_t MetaCSemantic_TypeSemantic(metac_sema_state_t* self,
             decl_parameter_t* param = agg->Parameters;
             U32(tmpTemplateScope.ScopeFlags) |= scope_flag_temporary;
             MetaCSemantic_PushTemporaryScope(self, &tmpTemplateScope);
-         
+
             for(uint32_t paramIdx = 0; paramIdx < parameterCount; paramIdx++)
             {
                 metac_identifier_ptr_t paramIdent = param->Parameter->VarIdentifier;
@@ -1374,8 +1374,8 @@ metac_type_index_t MetaCSemantic_TypeSemantic(metac_sema_state_t* self,
         {
             assert(!"Only identifier types and template types are expected to be resovled here");
         }
-        xprintf("MetaCNodeKind_toChars: %s\n", MetaCNodeKind_toChars((metac_node_kind_t)type->Kind));
-        xprintf("TypeIdentifier: %s\n", IdentifierPtrToCharPtr(self->ParserIdentifierTable, type->TypeIdentifier));
+        // xprintf("MetaCNodeKind_toChars: %s\n", MetaCNodeKind_toChars((metac_node_kind_t)type->Kind));
+        // xprintf("TypeIdentifier: %s\n", IdentifierPtrToCharPtr(self->ParserIdentifierTable, type->TypeIdentifier));
 LtryAgian: {}
         metac_node_t node =
             MetaCSemantic_LookupIdentifier(self, type->TypeIdentifier);
@@ -1405,7 +1405,7 @@ LtryAgian: {}
 #endif
                 aco_t* me = (aco_t*)CurrentFiber();
                 task_t* task = CurrentTask();
-                printf("Yield!\n");
+
                 metac_semantic_waiter_t* meWaiter = &self->Waiters.Waiters[INC(self->Waiters.WaiterCount)];
                 meWaiter->FuncHash = CRC32C_S("MetaCSemantic_LookupIdentifier");
                 meWaiter->NodeHash = CRC32C_VALUE(~0, type->TypeIdentifier);
@@ -1413,7 +1413,6 @@ LtryAgian: {}
                 U32(task->TaskFlags) |= Task_Waiting;
                 U32(task->TaskFlags) &= (~Task_Running);
                 YIELD(WaitOnResolve);
-                printf("Trying agian after yielding\n");
                 goto LtryAgian;
 #else
                 printf("No fiber support ... cannot deal with deferred lookup\n");
@@ -1652,7 +1651,8 @@ bool MetaCSemantic_ComputeStructLayout(metac_sema_state_t* self,
 {
     bool result = true;
 
-    assert(self->CurrentScope == semaAgg->Scope || ((self->CurrentScope->ScopeFlags & scope_flag_temporary) && self->CurrentScope->Parent == semaAgg->Scope) );
+    assert(self->CurrentScope == semaAgg->Scope ||
+           ((self->CurrentScope->ScopeFlags & scope_flag_temporary) && self->CurrentScope->Parent == semaAgg->Scope) );
     // make sure the scope is mounted.
     assert(semaAgg->Fields && semaAgg->Fields != emptyPointer);
 

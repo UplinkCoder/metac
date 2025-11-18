@@ -10,11 +10,10 @@ void print_case_for(const char* id)
     uint32_t len = strlen(id);
     uint32_t crc32 =
         crc32c(~0, id, len);
-    uint32_t identifier_hash =
-    ( IDENTIFIER_KEY( crc32, len ) );
+    uint32_t identifier_hash = IDENTIFIER_KEY(crc32, len);
     printf("bool Is%s(metac_token_t token)", id);
     printf("{\n");
-    printf("    return (token->identifierHash == 0x%x) &&\n",
+    printf("    return (token->IdentifierHash == 0x%x) &&\n",
         identifier_hash);
     printf("      && (!memcmp(identifier, \"%s\", %u) )\n", id, len);
     printf("}\n\n");
