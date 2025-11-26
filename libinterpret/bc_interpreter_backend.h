@@ -127,7 +127,7 @@ typedef enum LongInst
     LongInst_F32ToI,
     LongInst_IToF32,
 
-#define FLT64_BEGIN LongInst_FAdd32
+#define FLT64_BEGIN LongInst_FAdd64
     LongInst_FAdd64,
     LongInst_FSub64,
     LongInst_FDiv64,
@@ -165,8 +165,8 @@ typedef enum LongInst
 
 #define HEAP_STORE_BEGIN LongInst_HeapStore8
     LongInst_HeapStore8,
-    LongInst_HeapStore32, ///Heap[align4(SP[hi & 0xFFFF)] = SP[hi >> 16]]
     LongInst_HeapStore16,
+    LongInst_HeapStore32, ///Heap[align4(SP[hi & 0xFFFF)] = SP[hi >> 16]]
     LongInst_HeapStore64,
 #define HEAP_STORE_END LongInst_HeapStore64
 
