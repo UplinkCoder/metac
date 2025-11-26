@@ -1314,13 +1314,14 @@ LswitchIdKey:
 
         case expr_identifier:
         {
-
+            metac_identifier_ptr_t semaIdentifier =
+                MetaCIdentifierTable_CopyIdentifier(
+                    self->ParserIdentifierTable, &self->SemanticIdentifierTable, expr->IdentifierPtr
+                );
             //printf("Looking up: %s\n",
             //    IdentifierPtrToCharPtr(self->ParserIdentifierTable, result->IdentifierPtr));
 
-            metac_node_t node =
-                MetaCSemantic_LookupIdentifier(self,
-                                               expr->IdentifierPtr);
+            metac_node_t node = MetaCSemantic_LookupIdentifier(self, semaIdentifier);
             if (node == emptyPointer)
             {
                 xfprintf(stderr, "Identifier lookup failed\n");
