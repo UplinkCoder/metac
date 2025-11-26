@@ -14,7 +14,7 @@ void MetaCScopeTable_InitN(metac_scope_table_t* self, uint32_t nMembers, metac_a
 {
     // we need to avoid the table being 100% full
     // so allocate 25% more than needed.
-    uint32_t extraMembers = (nMembers > 16) ? 8 : (nMembers >> 2);
+    uint32_t extraMembers = ((nMembers < 16) ? 4 : (nMembers >> 2));
     tagged_arena_t* arena = 0;
     const uint32_t slotsLog2 = LOG2(nMembers + extraMembers);
     const uint32_t maxSlots = (1 << slotsLog2);
@@ -31,7 +31,7 @@ void MetaCScopeTable_InitN(metac_scope_table_t* self, uint32_t nMembers, metac_a
 
 void MetaCScopeTable_Init(metac_scope_table_t* self, metac_alloc_t* alloc)
 {
-    MetaCScopeTable_InitN(self, 32, alloc);
+    MetaCScopeTable_InitN(self, 24, alloc);
 }
 
 void MetaCScopeTable_Free(metac_scope_table_t* self)
@@ -74,7 +74,7 @@ metac_scope_table_slot_t* MetaCScopeTable_Lookup(metac_scope_table_t* self,
     return 0;
 }
 #define existsPointer ((metac_scope_table_slot_t*) 2)
-#define fullPointer ((metac_scope_table_slot_t*) 1)
+#define fullPointer ((metac_scope_table_slot_t*) 3)
 
 metac_scope_table_slot_t* MetaCScopeTable_Insert(metac_scope_table_t* self,
                                                  metac_identifier_ptr_t idPtr)
