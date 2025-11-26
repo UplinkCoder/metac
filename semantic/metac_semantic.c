@@ -26,6 +26,9 @@
 #include "metac_type_semantic.c"
 #include "metac_expr_semantic.c"
 
+#define USE_SEMA_ID_IN_SCOPE_TABLE 1
+
+
 const char* MetaCExprKind_toChars(metac_expr_kind_t);
 bool IsExprNode(metac_node_kind_t);
 
@@ -443,7 +446,7 @@ metac_sema_stmt_t* MetaCSemantic_doStmtSemantic_(metac_sema_state_t* self,
             stmt_while_t* whileStmt = cast(stmt_while_t*) stmt;
             sema_stmt_while_t* semaWhileStmt =
                 AllocNewSemaStmt(self, stmt_while, &result);
-            
+
             hash ^= stmt->Kind;
 
             semaWhileStmt->Kind = stmt->Kind;
@@ -795,7 +798,14 @@ scope_insert_error_t MetaCSemantic_RegisterInScope(metac_sema_state_t* self,
                                                    metac_identifier_ptr_t idPtr,
                                                    metac_node_t node)
 {
-    const char* idChars = IdentifierPtrToCharPtr(self->ParserIdentifierTable, idPtr);
+    const metac_identifier_table_t* idSource =
+#if USE_SEMA_ID_IN_SCOPE_TABLE
+    &self->SemanticIdentifierTable
+#else
+    self->ParserIdentifierTable
+#endif
+    ;
+    const char* idChars = IdentifierPtrToCharPtr(idSource, idPtr);
     scope_insert_error_t result = no_scope;
     ALIGN_STACK();
     MetaCSemantic_LRU_RemoveIdentifier(self, idPtr);
@@ -804,6 +814,7 @@ scope_insert_error_t MetaCSemantic_RegisterInScope(metac_sema_state_t* self,
     if (self->CurrentScope != 0)
     {
         result = MetaCScope_RegisterIdentifier(self->CurrentScope, idPtr, node);
+        assert(result == success);
     }
     else
     {
@@ -841,7 +852,6 @@ scope_insert_error_t MetaCSemantic_RegisterInScope(metac_sema_state_t* self,
     return result;
 }
 
-
 sema_decl_function_t* MetaCSemantic_doFunctionSemantic(metac_sema_state_t* self,
                                                        decl_function_t* func)
 {
@@ -852,14 +862,14 @@ sema_decl_function_t* MetaCSemantic_doFunctionSemantic(metac_sema_state_t* self,
 
     sema_decl_function_t* f = AllocNewSemaFunction(self, func);
     // for now we don't nest functions.
-    /* TODO use semanId
+# if USE_SEMA_ID_IN_SCOPE_TABLE
     metac_identifier_ptr_t semaIdentifier =
         MetaCIdentifierTable_CopyIdentifier(self->ParserIdentifierTable,
                                             &self->SemanticIdentifierTable, func->Identifier);
     f->Identifier = semaIdentifier;
-     */
+#else
     f->Identifier = func->Identifier;
-
+#endif
     // printf("doing Function: %s\n", IdentifierPtrToCharPtr(self->ParserIdentifierTable, func->Identifier));
 
     // let's first do the parameters
@@ -876,7 +886,7 @@ sema_decl_function_t* MetaCSemantic_doFunctionSemantic(metac_sema_state_t* self,
         // as we have an easier time if we know at which
         // param we are and how many follow
         decl_variable_t* paramVar = currentParam->Parameter;
-#if 0
+#if USE_SEMA_ID_IN_SCOPE_TABLE
         // TODO use identifier in sema table
         {
             metac_identifier_ptr_t semaId =
@@ -1137,7 +1147,7 @@ const char* doDeclSemantic_PrintFunction(task_t* task)
             task->Context;
     metac_alloc_t tmpAlloc = ctx->Sema->TempAlloc;
     const char* declPrint;
-    
+
     MetaCPrinter_Init(&printer, ctx->Sema->ParserIdentifierTable, ctx->Sema->ParserStringTable, &tmpAlloc);
     declPrint = MetaCPrinter_PrintDecl(&printer, ctx->Decl);
 
@@ -1176,6 +1186,10 @@ metac_sema_decl_t* MetaCSemantic_declSemantic(metac_sema_state_t* self,
 
             var->Hash = v->Hash;
             var->TypeIndex = MetaCSemantic_doTypeSemantic(self, v->VarType);
+            var->VarIdentifier = MetaCIdentifierTable_CopyIdentifier(
+                self->ParserIdentifierTable, &self->SemanticIdentifierTable,
+                v->VarIdentifier);
+
 
             if (METAC_NODE(v->VarInitExpr) != emptyNode)
             {
@@ -1188,7 +1202,6 @@ metac_sema_decl_t* MetaCSemantic_declSemantic(metac_sema_state_t* self,
 
             //TODO make sure nLocals is reset at the end of a function
             //     also this doesn't deal with static properly
-            var->VarIdentifier = v->VarIdentifier;
             if (v->StorageClass == storageclass_local)
             {
                 var->Storage.v = STORAGE_V(storage_local, self->nLocals++);
@@ -1199,11 +1212,10 @@ metac_sema_decl_t* MetaCSemantic_declSemantic(metac_sema_state_t* self,
                 // TODO maybe we have to mark the global as having been inserted.
                 ARENA_ARRAY_ADD(self->Globals, cast(metac_sema_decl_t*)var);
             }
-
             MetaCSemantic_RegisterInScope(self, var->VarIdentifier, METAC_NODE(var));
 /*
             Info("Introducing variable: %s\n",
-                  IdentifierPtrToCharPtr(self->ParserIdentifierTable, v->VarIdentifier));
+                  IdentifierPtrToCharPtr(&self->SemanticIdentifierTable, v->VarIdentifier));
 */
         } break;
         case decl_type_typeof:
@@ -1252,7 +1264,6 @@ metac_sema_decl_t* MetaCSemantic_declSemantic(metac_sema_state_t* self,
 #ifndef NO_FIBERS
 void MetaCSemantic_doDeclSemantic_Task(task_t* task)
 {
-    
     MetaCSemantic_doDeclSemantic_task_context_t* ctx =
         (MetaCSemantic_doDeclSemantic_task_context_t*)
             task->Context;
@@ -1428,7 +1439,7 @@ const char* TypeToChars(metac_sema_state_t* self, metac_type_index_t typeIndex)
     const char* result = 0;
     static metac_printer_t printer = {0};
     if (!printer.StringMemory)
-        MetaCPrinter_InitSz(&printer, self->ParserIdentifierTable, 0, (metac_alloc_t*)0, 32);
+        MetaCPrinter_InitSz(&printer, &self->SemanticIdentifierTable, 0, (metac_alloc_t*)0, 32);
     else
         MetaCPrinter_Reset(&printer);
     TypeToCharsP(self, &printer, typeIndex);
