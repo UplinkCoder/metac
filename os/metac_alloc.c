@@ -312,7 +312,7 @@ bool Arena_ContainsMemoryP(tagged_arena_t* arena, void* memP)
 {
     intptr_t memPi = (intptr_t) memP;
     intptr_t arenaMemPi = (intptr_t) arena->Memory;
-    if (arenaMemPi <= memPi && (arenaMemPi + arena->Offset) < memPi)
+    if (arenaMemPi <= memPi && memPi < (arenaMemPi + arena->Offset))
     {
         return true;
     }
