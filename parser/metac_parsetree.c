@@ -53,7 +53,7 @@ int MetaCNode_TreeWalk_Real(metac_node_t node, walker_function_t walker_fn, void
 
         case node_decl_field:
         {
-            decl_field_t* field = (decl_field_t*) node;
+            decl_field_t* field = cast(decl_field_t*) node;
             while(((metac_node_t)field) != emptyNode)
             {
                 result = MetaCNode_TreeWalk_Real(field->Field, walker_fn, ctx);
@@ -65,7 +65,7 @@ int MetaCNode_TreeWalk_Real(metac_node_t node, walker_function_t walker_fn, void
 
         case node_decl_parameter:
         {
-            decl_parameter_t* parameter = (decl_parameter_t*) node;
+            decl_parameter_t* parameter = cast(decl_parameter_t*) node;
             result = MetaCNode_TreeWalk_Real(parameter->Parameter, walker_fn, ctx);
             if (result)
                 return result;
@@ -81,7 +81,7 @@ int MetaCNode_TreeWalk_Real(metac_node_t node, walker_function_t walker_fn, void
 
         case node_decl_enum_member:
         {
-            decl_enum_member_t* enum_member = (decl_enum_member_t*) node;
+            decl_enum_member_t* enum_member = cast(decl_enum_member_t*) node;
             while((metac_node_t)(enum_member) != emptyNode)
             {
                 result = walker_fn(enum_member, ctx);
@@ -92,13 +92,13 @@ int MetaCNode_TreeWalk_Real(metac_node_t node, walker_function_t walker_fn, void
         } break;
         case node_decl_type:
         {
-            decl_type_t* type = (decl_type_t*) node;
+            decl_type_t* type = cast(decl_type_t*) node;
             if (result)
                 return result;
         } break;
         case node_decl_type_struct:
         {
-            decl_type_struct_t* type_struct = (decl_type_struct_t*) node;
+            decl_type_struct_t* type_struct = cast(decl_type_struct_t*) node;
             if (type_struct->Fields && (metac_node_t)type_struct->Fields != emptyNode)
                 result = MetaCNode_TreeWalk_Real(type_struct->Fields, walker_fn, ctx);
             if (result)
@@ -106,21 +106,21 @@ int MetaCNode_TreeWalk_Real(metac_node_t node, walker_function_t walker_fn, void
         } break;
         case node_decl_type_union:
         {
-            decl_type_union_t* type_union = (decl_type_union_t*) node;
+            decl_type_union_t* type_union = cast(decl_type_union_t*) node;
             result = MetaCNode_TreeWalk_Real(type_union->Fields, walker_fn, ctx);
             if (result)
                 return result;
         } break;
         case node_decl_type_enum:
         {
-            decl_type_enum_t* type_enum = (decl_type_enum_t*) node;
+            decl_type_enum_t* type_enum = cast(decl_type_enum_t*) node;
             result = MetaCNode_TreeWalk_Real(type_enum->Members, walker_fn, ctx);
             if (result)
                 return result;
         } break;
         case node_decl_type_array:
         {
-            decl_type_array_t* type_array = (decl_type_array_t*) node;
+            decl_type_array_t* type_array = cast(decl_type_array_t*) node;
             result = MetaCNode_TreeWalk_Real(type_array->ElementType, walker_fn, ctx);
             if (result)
                 return result;
@@ -130,14 +130,14 @@ int MetaCNode_TreeWalk_Real(metac_node_t node, walker_function_t walker_fn, void
         } break;
         case node_decl_type_ptr:
         {
-            decl_type_ptr_t* type_ptr = (decl_type_ptr_t*) node;
+            decl_type_ptr_t* type_ptr = cast(decl_type_ptr_t*) node;
             result = MetaCNode_TreeWalk_Real(type_ptr->ElementType, walker_fn, ctx);
             if (result)
                 return result;
         } break;
         case node_decl_type_functiontype:
         {
-            decl_type_functiontype_t* type_functiontype = (decl_type_functiontype_t*) node;
+            decl_type_functiontype_t* type_functiontype = cast(decl_type_functiontype_t*) node;
             result = MetaCNode_TreeWalk_Real(type_functiontype->ReturnType, walker_fn, ctx);
             if (result)
                 return result;
@@ -148,7 +148,7 @@ int MetaCNode_TreeWalk_Real(metac_node_t node, walker_function_t walker_fn, void
         } break;
         case node_decl_type_typedef:
         {
-            decl_type_typedef_t* typedef_ = (decl_type_typedef_t*) node;
+            decl_type_typedef_t* typedef_ = cast(decl_type_typedef_t*) node;
             result = MetaCNode_TreeWalk_Real(typedef_->Type, walker_fn, ctx);
             if (result)
                 return result;
