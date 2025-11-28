@@ -452,6 +452,8 @@ typedef struct sema_decl_type_functiontype_t
 
     SEMA_TYPE_HEADER
 
+    metac_type_index_t YieldType;
+
     metac_type_index_t ReturnType;
 
     metac_type_index_t* ParameterTypes;
