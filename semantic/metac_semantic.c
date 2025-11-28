@@ -1011,7 +1011,7 @@ sema_decl_function_t* MetaCSemantic_doFunctionSemantic(metac_sema_state_t* self,
                            ? parentFunc->FrameOffset : 0);
 
     metac_type_index_t returnType = MetaCSemantic_doTypeSemantic(self, func->ReturnType);
-
+    metac_type_index_t yieldType = ((METAC_NODE(func->YieldType) != emptyNode) ? MetaCSemantic_doTypeSemantic(self, func->YieldType) : (metac_type_index_t){0});
     // synthesize function type
     decl_type_functiontype_t fType = {};
     fType.Kind = decl_type_functiontype;

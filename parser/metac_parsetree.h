@@ -522,6 +522,8 @@ typedef struct decl_function_t
 {
     DECL_HEADER
 
+    decl_type_t* YieldType;
+
     decl_type_t* ReturnType;
 
     decl_parameter_t* Parameters;

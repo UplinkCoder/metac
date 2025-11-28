@@ -1775,6 +1775,7 @@ metac_decl_t* MetaCParser_ParseDecl(metac_parser_t* self, metac_decl_t* parent)
     metac_decl_t* result = 0;
 
     decl_type_t* type = 0;
+    decl_type_t* yieldType = 0;
 
 #if !defined(NO_PREPROCESSOR)
     // decl_preproc_t* preProcDecl = AllocNewDecl(decl_preproc, &result);
@@ -1850,13 +1851,13 @@ metac_decl_t* MetaCParser_ParseDecl(metac_parser_t* self, metac_decl_t* parent)
     // get rid of attribs before declarations
     //TODO acutally keep track of them
     EatAttributes(self);
+#define REFRESH_TOKEN()  do { \
+    currentToken = MetaCParser_PeekToken(self, 1); \
+    tokenType = (currentToken ? currentToken->TokenType : tok_eof); \
+    loc = currentToken ? LocationFromToken(self, currentToken) : invalidLocation; \
+} while (0)
 
-    currentToken = MetaCParser_PeekToken(self, 1);
-    tokenType =
-        (currentToken ? currentToken->TokenType : tok_eof);
-    loc =
-        currentToken ? LocationFromToken(self, currentToken) : invalidLocation;
-
+    REFRESH_TOKEN();
 
     if (tokenType == tok_eof)
         return (metac_decl_t*)emptyNode;
@@ -1895,6 +1896,20 @@ metac_decl_t* MetaCParser_ParseDecl(metac_parser_t* self, metac_decl_t* parent)
     metac_storageclasses_t stc2_ = ParseStorageClasses(self);
     // check for duplicates
     U32(stc) |= U32(stc2_);
+
+
+    //TODO this allows _yield annotations in places other than the funcDecl
+    if (MetaCParser_PeekMatch(self, tok_kw__yield, 1))
+    {
+        // Consume the '_yield' keyword
+        MetaCParser_Match(self, tok_kw__yield);
+
+        // Parse the (Type) argument
+        MetaCParser_Match(self, tok_lParen);
+        yieldType = MetaCParser_ParseTypeDecl(self, parent, 0); // Reuse existing Type parser
+        MetaCParser_Match(self, tok_rParen);
+        REFRESH_TOKEN();
+    }
 
     if (IsTypeToken(tokenType))
     {
@@ -1983,6 +1998,7 @@ metac_decl_t* MetaCParser_ParseDecl(metac_parser_t* self, metac_decl_t* parent)
             if (afterId && afterId->TokenType == tok_lParen)
             {
                 decl_function_t* funcDecl = ParseFunctionDecl(self, type);
+                funcDecl->YieldType = yieldType;
                 result = (metac_decl_t*) funcDecl;
             }
             else
