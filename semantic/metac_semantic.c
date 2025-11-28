@@ -794,6 +794,71 @@ static inline void MetaCSemantic_LRU_RemoveIdentifier(metac_sema_state_t* self,
     Store16(&self->LRU.LRUContentHashes, cleared);
 }
 
+
+/// retruns an emptyNode in case it couldn't be found in the cache
+metac_node_t MetaCSemantic_LRU_LookupIdentifier(metac_sema_state_t* self,
+                                                uint32_t idPtrHash,
+                                                metac_identifier_ptr_t idPtr)
+{
+    uint32_t mask = 0;
+    int16x8_t hashes = Load16(&self->LRU.LRUContentHashes);
+
+    metac_node_t result = emptyNode;
+    uint16_t hash12 = idPtrHash & LRU_HASH_MASK;
+
+    const int16x8_t hash12_8 = Set1_16(hash12);
+    const int16x8_t hashMask = Set1_16(LRU_HASH_MASK);
+    const int16x8_t maskedHashes = And16(hashes, hashMask);
+    const int16x8_t matches = Eq16(maskedHashes, hash12_8);
+    mask = MoveMask16(matches);
+
+    while(mask)
+    {
+        const uint32_t i = BSF(mask);
+        // remove the bit we are going to check
+        mask &= ~(1 << i);
+        if (self->LRU.Slots[i].Ptr.v == idPtr.v)
+        {
+            result = self->LRU.Slots[i].Node;
+            break;
+        }
+    }
+
+    return result;
+}
+
+/// Returns _emptyNode to signifiy it could not be found
+/// a valid node otherwise
+metac_node_t MetaCSemantic_LookupIdentifier(metac_sema_state_t* self,
+                                            metac_identifier_ptr_t identifierPtr)
+{
+
+    metac_node_t result = emptyNode;
+    uint32_t idPtrHash = crc32c_nozero(~0, &identifierPtr.v, sizeof(identifierPtr.v));
+#if 0
+    printf("Looking up: %s\n",
+        IdentifierPtrToCharPtr(self->ParserIdentifierTable, identifierPtr));
+#endif
+    metac_scope_t *currentScope = self->CurrentScope;
+    {
+        while(currentScope)
+        {
+          metac_node_t lookupResult =
+                MetaCScope_LookupIdentifier(currentScope, idPtrHash, identifierPtr);
+            if (lookupResult)
+            {
+                result = lookupResult;
+                break;
+            }
+            assert(currentScope != currentScope->Parent);
+            currentScope = currentScope->Parent;
+        }
+    }
+
+    return result;
+}
+
+
 scope_insert_error_t MetaCSemantic_RegisterInScope(metac_sema_state_t* self,
                                                    metac_identifier_ptr_t idPtr,
                                                    metac_node_t node)
@@ -862,15 +927,11 @@ sema_decl_function_t* MetaCSemantic_doFunctionSemantic(metac_sema_state_t* self,
 
     sema_decl_function_t* f = AllocNewSemaFunction(self, func);
     // for now we don't nest functions.
-# if USE_SEMA_ID_IN_SCOPE_TABLE
     metac_identifier_ptr_t semaIdentifier =
         MetaCIdentifierTable_CopyIdentifier(self->ParserIdentifierTable,
                                             &self->SemanticIdentifierTable, func->Identifier);
     f->Identifier = semaIdentifier;
-#else
-    f->Identifier = func->Identifier;
-#endif
-    // printf("doing Function: %s\n", IdentifierPtrToCharPtr(self->ParserIdentifierTable, func->Identifier));
+    // printf("doing Function: %s\n", IdentifierPtrToCharPtr(&self->SemanticIdentifierTable, func->Identifier));
 
     // let's first do the parameters
     sema_decl_variable_t* params =
@@ -886,8 +947,6 @@ sema_decl_function_t* MetaCSemantic_doFunctionSemantic(metac_sema_state_t* self,
         // as we have an easier time if we know at which
         // param we are and how many follow
         decl_variable_t* paramVar = currentParam->Parameter;
-#if USE_SEMA_ID_IN_SCOPE_TABLE
-        // TODO use identifier in sema table
         {
             metac_identifier_ptr_t semaId =
                 MetaCIdentifierTable_CopyIdentifier(self->ParserIdentifierTable,
@@ -895,9 +954,6 @@ sema_decl_function_t* MetaCSemantic_doFunctionSemantic(metac_sema_state_t* self,
                                                     paramVar->VarIdentifier);
             f->Parameters[i].VarIdentifier = semaId;
         }
-#else
-        f->Parameters[i].VarIdentifier = paramVar->VarIdentifier;
-#endif
         f->Parameters[i].VarFlags |= variable_is_parameter;
         if (METAC_NODE(paramVar->VarInitExpr) != emptyNode)
         {
@@ -1326,37 +1382,6 @@ metac_sema_decl_t* MetaCSemantic_doDeclSemantic_(metac_sema_state_t* self,
     return result;
 }
 
-/// retruns an emptyNode in case it couldn't be found in the cache
-metac_node_t MetaCSemantic_LRU_LookupIdentifier(metac_sema_state_t* self,
-                                                uint32_t idPtrHash,
-                                                metac_identifier_ptr_t idPtr)
-{
-    uint32_t mask = 0;
-    int16x8_t hashes = Load16(&self->LRU.LRUContentHashes);
-
-    metac_node_t result = emptyNode;
-    uint16_t hash12 = idPtrHash & LRU_HASH_MASK;
-
-    const int16x8_t hash12_8 = Set1_16(hash12);
-    const int16x8_t hashMask = Set1_16(LRU_HASH_MASK);
-    const int16x8_t maskedHashes = And16(hashes, hashMask);
-    const int16x8_t matches = Eq16(maskedHashes, hash12_8);
-    mask = MoveMask16(matches);
-
-    while(mask)
-    {
-        const uint32_t i = BSF(mask);
-        // remove the bit we are going to check
-        mask &= ~(1 << i);
-        if (self->LRU.Slots[i].Ptr.v == idPtr.v)
-        {
-            result = self->LRU.Slots[i].Node;
-            break;
-        }
-    }
-
-    return result;
-}
 // Sets the behavior for the case of a name-resolve failing
 void MetaCSemantic_PushOnResolveFail(metac_sema_state_t* self,
                                      metac_semantic_on_resolve_fail_t onFail)
@@ -1403,36 +1428,6 @@ metac_node_t MetaCSemantic_LookupIdentifierInScope(metac_scope_t* scope_,
     return result;
 }
 */
-/// Returns _emptyNode to signifiy it could not be found
-/// a valid node otherwise
-metac_node_t MetaCSemantic_LookupIdentifier(metac_sema_state_t* self,
-                                            metac_identifier_ptr_t identifierPtr)
-{
-
-    metac_node_t result = emptyNode;
-    uint32_t idPtrHash = crc32c_nozero(~0, &identifierPtr.v, sizeof(identifierPtr.v));
-#if 0
-    printf("Looking up: %s\n",
-        IdentifierPtrToCharPtr(self->ParserIdentifierTable, identifierPtr));
-#endif
-    metac_scope_t *currentScope = self->CurrentScope;
-    {
-        while(currentScope)
-        {
-          metac_node_t lookupResult =
-                MetaCScope_LookupIdentifier(currentScope, idPtrHash, identifierPtr);
-            if (lookupResult)
-            {
-                result = lookupResult;
-                break;
-            }
-            assert(currentScope != currentScope->Parent);
-            currentScope = currentScope->Parent;
-        }
-    }
-
-    return result;
-}
 
 const char* TypeToChars(metac_sema_state_t* self, metac_type_index_t typeIndex)
 {

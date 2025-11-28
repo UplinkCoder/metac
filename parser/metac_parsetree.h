@@ -545,7 +545,7 @@ typedef struct decl_enum_member_t
 {
     DECL_HEADER
 
-    metac_identifier_ptr_t Name;
+    metac_identifier_ptr_t Identifier;
 
     metac_expr_t* Value;
 

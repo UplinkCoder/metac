@@ -465,7 +465,7 @@ typedef struct sema_decl_type_array_t
 
     SEMA_TYPE_HEADER
 
-    metac_type_index_t* ElementType;
+    metac_type_index_t ElementType;
 
     metac_sema_expr_t* Dim;
 } sema_decl_type_array_t;

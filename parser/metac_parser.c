@@ -1370,8 +1370,8 @@ decl_type_t* MetaCParser_ParseTypeDecl(metac_parser_t* self, metac_decl_t* paren
                                             nextMemberPtr);
                     member->Next = (decl_enum_member_t*) _emptyPointer;
                     metac_token_t* idToken = MetaCParser_Match(self, tok_identifier);
-                    member->Name = RegisterIdentifier(self, idToken);
-                    hash = CRC32C_VALUE(hash, member->Name);
+                    member->Identifier = RegisterIdentifier(self, idToken);
+                    hash = CRC32C_VALUE(hash, member->Identifier);
                     metac_token_t* afterName = MetaCParser_PeekToken(self, 1);
                     if (afterName
                          && ((afterName->TokenType == tok_comma)
