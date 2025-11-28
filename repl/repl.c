@@ -137,9 +137,9 @@ static inline int TranslateIdentifiers(metac_node_t node, void* ctx)
       case decl_enum_member:
         {
             decl_enum_member_t* enumMember = cast(decl_enum_member_t*) node;
-            if (enumMember->Name.v != empty_identifier.v)
+            if (enumMember->Identifier.v != empty_identifier.v)
             {
-                TranslateIdentifier(DstTable, SrcTable, &enumMember->Name);
+                TranslateIdentifier(DstTable, SrcTable, &enumMember->Identifier);
             }
         } break;
 

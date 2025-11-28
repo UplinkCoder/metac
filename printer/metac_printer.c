@@ -915,7 +915,7 @@ static inline void PrintDecl(metac_printer_t* self,
                 memberIndex < enum_->MemberCount;
                 memberIndex++)
             {
-                PrintIdentifier(self, member->Name);
+                PrintIdentifier(self, member->Identifier);
                 if (member->Value != emptyPointer)
                 {
                     PrintSpace(self);

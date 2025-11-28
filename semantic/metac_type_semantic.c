@@ -577,7 +577,7 @@ scope_and_fields_t AllocateAggregateScopeAndFields(metac_alloc_t* alloc, uint32_
         aggregateArena->Memory;
 
     metac_scope_t* scope_ = cast(metac_scope_t*) (aggFields + nFields);
-    metac_scope_table_slot_t* slots = (metac_scope_table_slot_t*) (scope_ + 1);
+    metac_scope_table_slot_t* slots = cast(metac_scope_table_slot_t*) (scope_ + 1);
     scope_and_fields_t result = {scope_, aggFields, nFields};
 
     memset(scope_, 0, scopeTableSize);
@@ -771,19 +771,11 @@ void MetaCSemantic_ComputeEnumValues(metac_sema_state_t* self,
             placeHolder->TypeIndex = semaEnum->BaseType;
             placeHolder->Expr = member->Value;
 
-            MetaCSemantic_RegisterInScope(self, member->Name,
+            MetaCSemantic_RegisterInScope(self, member->Identifier,
                                           METAC_NODE(placeHolder));
         }
     }
-/*
-    macro ScopeTable_AllowOverrideDo(metac_scope_table_t* self, __code code)
-    {
-        bool oldAllowOverride = self->CurrentScope->ScopeTable.AllowOverride;
-        self->AllowOverride = true;
-        inject code;
-        self->AllowOverride = oldAllowOverride;
-    }
- */
+
     // Set the currentScope to be an override scope
     // Since we are inserting members
     bool oldAllowOverride = self->CurrentScope->ScopeTable.AllowOverride;
@@ -803,7 +795,7 @@ void MetaCSemantic_ComputeEnumValues(metac_sema_state_t* self,
                 memberIdx < memberCount;
                 memberIdx++, member = member->Next)
             {
-                const char* mName = IdentifierPtrToCharPtr(self->ParserIdentifierTable, member->Name);
+                const char* mName = IdentifierPtrToCharPtr(self->ParserIdentifierTable, member->Identifier);
 
                 if (METAC_NODE(member->Value) != emptyNode)
                 {
@@ -820,7 +812,7 @@ void MetaCSemantic_ComputeEnumValues(metac_sema_state_t* self,
                     else
                     {
                         metac_enum_member_t* semaMember = semaEnum->Members + memberIdx;
-                        MetaCSemantic_RegisterInScope(self, member->Name, METAC_NODE(semaMember));
+                        MetaCSemantic_RegisterInScope(self, member->Identifier, METAC_NODE(semaMember));
                     }
                 }
             }
@@ -843,7 +835,7 @@ void MetaCSemantic_ComputeEnumValues(metac_sema_state_t* self,
             memberIdx++, member = member->Next)
         {
 
-            semaEnum->Members[memberIdx].Identifier = member->Name;
+            semaEnum->Members[memberIdx].Identifier = member->Identifier;
             semaEnum->Members[memberIdx].Header.Kind = decl_enum_member;
 
             if (METAC_NODE(member->Value) != emptyNode)
@@ -858,7 +850,7 @@ void MetaCSemantic_ComputeEnumValues(metac_sema_state_t* self,
                 }
                 if (semaValue.Kind != expr_signed_integer)
                 {
-                    fatalf("Value of %s could not be constant folded\n", IdentifierPtrToCharPtr(self->ParserIdentifierTable, member->Name));
+                    fatalf("Value of %s could not be constant folded\n", IdentifierPtrToCharPtr(self->ParserIdentifierTable, member->Identifier));
                 }
                 //assert(semaValue->Kind == expr_signed_integer);
                 nextValue = semaValue.ValueI64 + 1;

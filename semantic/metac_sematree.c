@@ -186,9 +186,9 @@ int MetaCSemaTree_Walk_Real(metac_node_t node, struct metac_sema_state_t* sema,
         case node_decl_type_array:
         {
             sema_decl_type_array_t* type_array = (sema_decl_type_array_t*) node;
-            result = MetaCSemaTree_Walk_Real(type_array->ElementType, sema, walker_fn, ctx);
-            if (result)
-                return result;
+            //result = MetaCSemaTree_Walk_Real(type_array->ElementType, sema, walker_fn, ctx);
+            //if (result)
+             //   return result;
             result = walker_fn(type_array->Dim, ctx);
             if (result)
                 return result;
