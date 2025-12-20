@@ -5,6 +5,10 @@
 #include "metac_identifier_table.h"
 // #include "metac_type_table.h"
 
+#ifndef AT
+#  define AT(...)
+#endif
+
 #include "metac_node.h"
 #include "metac_lexer.h"
 #ifndef NO_PREPROCESSOR
@@ -522,7 +526,7 @@ typedef struct decl_function_t
 {
     DECL_HEADER
 
-    decl_type_t* YieldType;
+    AT(maybeEmpty) decl_type_t* YieldType;
 
     decl_type_t* ReturnType;
 
@@ -576,12 +580,14 @@ typedef struct decl_type_functiontype_t
 
     TYPE_HEADER
 
+    AT(maybeEmpty) decl_type_t* YieldType;
+
     decl_type_t* ReturnType;
 
     //TODO maybe use decl_parameter_list_t here?
 
     /// this may or may not include identifiers
-    decl_parameter_t* Parameters;
+    AT(maybeEmpty) decl_parameter_t* Parameters;
 
     uint32_t ParameterCount;
 } decl_type_functiontype_t;
@@ -607,9 +613,9 @@ typedef struct decl_type_struct_t
 
     metac_identifier_ptr_t BaseIdentifier;
 
-    decl_parameter_t* Parameters;
+    AT(maybeEmpty) decl_parameter_t* Parameters;
 
-    struct decl_field_t* Fields;
+    AT(maybeEmpty) struct decl_field_t* Fields;
 
     uint32_t ParameterCount;
     uint32_t FieldCount;
@@ -627,9 +633,9 @@ typedef struct decl_type_union_t
 
     metac_identifier_ptr_t BaseIdentifier;
 
-    decl_parameter_t* Parameters;
+    AT(maybeEmpty) decl_parameter_t* Parameters;
 
-    struct decl_field_t* Fields;
+    AT(maybeEmpty) struct decl_field_t* Fields;
 
     uint32_t ParameterCount;
     uint32_t FieldCount;

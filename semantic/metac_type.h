@@ -169,6 +169,8 @@ typedef struct metac_type_functiontype_t
 
     metac_type_index_t TypeIndex;
 
+    metac_type_index_t YieldType;
+
     metac_type_index_t ReturnType;
 
     metac_type_index_t* ParameterTypes;
