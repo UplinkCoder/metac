@@ -15,56 +15,6 @@
 #  define offsetof(st, m) \
       ((size_t)((char *)&((st *)0)->m - (char *)0))
 #endif
-/*
-#define CHUNK_MAX_IN_BYTES ((65536 * 4) - 1);
-
-typedef struct memory_t
-{
-    void* MostEmptyChunkFreeArea;
-    uint16_t MostEmptyChunkBytesUsed4;
-
-    uint16_t chunksUsed;
-    uint16_t chunksAllocated;
-
-
-    uint16_t MostEmptyChunk;
-    uint16_t SecondMostEmptyChunk;
-    uint16_t SecondMostEmptyChunkBytesUsed4;
-
-    void* SecondMostEmptyChunkFreeArea;
-} memory_t;
-
-typedef struct move_target_t
-{
-    uint16_t TargetChunk;
-    uint16_t Offset4;
-} move_target_t;
-
-typedef struct chunk_header_t
-{
-    uint16_t BytesFree4;
-    /// 0xFFFF means there is no move target;
-
-
-} chunk_header_t;
-
-typedef struct chunk_ptr_t
-{
-    union
-    {
-        uint32_t v;
-        struct
-        {
-            uint8_t  Kind : 4;
-            /// Chunk 0xFFFF is reserved for extension
-            uint16_t Chunk;
-            /// offset from chunk start in multiples of 4
-            /// i.e. ptr = ((char*)chunks[index].Memory) + (offset4 * 4);
-            uint16_t Offset4 : 12;
-        }
-    }
-} chunk_ptr_t;
-*/
 
 metac_noinline void _newMemRealloc(void** memP, uint32_t* capacityP, const uint32_t elementSize)
 {

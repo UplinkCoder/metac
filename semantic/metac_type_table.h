@@ -127,6 +127,11 @@ static inline const bool FunctiontypeSlotsEqual(const metac_type_table_slot_t* a
         cast(metac_type_functiontype_t*) b;
 
 
+    if (slotA->YieldType.v != slotB->YieldType.v)
+    {
+        return false;
+    }
+
     if (slotA->ReturnType.v == slotB->ReturnType.v &&
         slotA->ParameterTypeCount == slotB->ParameterTypeCount)
     {
