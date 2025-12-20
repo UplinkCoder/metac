@@ -1,24 +1,22 @@
-#define error_key   0x14a01b4
-#define warning_key 0x1d2b1fc
+#define error_key   0x5a01b4
+#define warning_key 0x72b1fc
+#define undef_key   0x5cabf4
+#define elif_key    0x4f8f4e
+#define ifdef_key   0x581ce0
+#define ifndef_key  0x634e0c
+#define endif_key   0x506843
+#define line_key    0x4c4ac5
+#define pragma_key  0x6a6e5b
+#define include_key 0x7e87f0
+#define define_key  0x6a491b
 
-#define undef_key  0x16cabf4
-#define elif_key   0x11f8f4e
-#define ifdef_key  0x1681ce0
-#define ifndef_key 0x1a34e0c
-#define endif_key  0x1506843
-#define line_key   0x13c4ac5
-#define pragma_key 0x18a6e5b
+#define defined_key 0x7d9260
+#define eval_key    0x45758c
+#define va_args_key 0xbc18fc
 
-#define include_key 0x1de87f0
-#define define_key  0x1ba491b
-#define defined_key 0x1cd9260
-#define eval_key    0x135758c
-#define va_args_key 0x1e1a141
-
-#define pack_key 0x12b121c
-#define push_key 0x102c9f9
-#define pop_key  0xe52134
-
+#define pack_key    0x4b121c
+#define push_key    0x42c9f9
+#define pop_key     0x352134
 
 #ifndef _METAC_PREPROC_H_
 #define _METAC_PREPROC_H_

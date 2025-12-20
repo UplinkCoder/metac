@@ -1,5 +1,4 @@
-#define cast_key 0x12520d2
-
+#define cast_key 0x4520d2
 #define CRC32C_QUESTION 0xc372d93b
 #define CRC32C_PLUSPLUS 0x61d225eb
 #define CRC32C_MINUSMINUS 0x2ebc9331
