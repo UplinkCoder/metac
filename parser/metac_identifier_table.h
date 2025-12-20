@@ -2,15 +2,15 @@
 #define _METAC_IDENTIFIER_TABLE_H_
 #pragma once
 
-#define IDENTIFIER_LENGTH_SHIFT 20
-#define STRING_LENGTH_SHIFT 12
+#define IDENTIFIER_LENGTH_SHIFT 22
+#define STRING_LENGTH_SHIFT 16
 #define CHAR_LENGTH_SHIFT 28
 
 #define IDENTIFIER_KEY(HASH, LENGTH) \
-    ( ((uint32_t)(HASH & 0xFFFFF)) | (((uint32_t)(LENGTH)) << IDENTIFIER_LENGTH_SHIFT) )
+    ( ((uint32_t)(HASH & 0x3FFFFF)) | (((uint32_t)(LENGTH)) << IDENTIFIER_LENGTH_SHIFT) )
 
 #define STRING_KEY(HASH, LENGTH) \
-    ( (uint32_t)((HASH) & 0xFFF) | (((uint32_t)(LENGTH)) << STRING_LENGTH_SHIFT) )
+    ( (uint32_t)((HASH) & 0xFFFF) | (((uint32_t)(LENGTH)) << STRING_LENGTH_SHIFT) )
 
 #define CHAR_KEY(HASH, LENGTH) \
     ( (uint32_t)((HASH) & 0xFFFFFFF) | (((uint32_t)(LENGTH)) << CHAR_LENGTH_SHIFT) )

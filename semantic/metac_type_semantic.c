@@ -903,7 +903,8 @@ static metac_type_index_t TypeTupleSemantic(metac_sema_state_t* self,
     metac_type_index_t result = {0};
 
     uint32_t i;
-#define tuple_key 0x55ee11
+#define tuple_key 0x165ee11
+
     uint32_t hash = tuple_key;
     decl_type_tuple_t* tupleType = cast(decl_type_tuple_t*) type_;
 
