@@ -113,9 +113,9 @@ metac_expr_kind_t UnaExpTypeFromTokenType(metac_token_enum_t tokenType,
     {
         result = expr_compl;
     }
+#define run_key 0x3809a6
     else if (tokenType == tok_at)
     {
-#define run_key 0xf809a6
         if (peek2 && peek2->TokenType == tok_identifier
          && peek2->IdentifierKey == run_key)
         {
@@ -1358,8 +1358,7 @@ metac_expr_t* MetaCParser_ParseUnaryExpr(metac_parser_t* self)
     }
     else if (tokenType == tok_at)
     {
-#define run_key 0xf809a6
-
+#define run_key 0x3809a6
         metac_token_t* peek = MetaCParser_PeekToken(self, 2);
         if (peek->TokenType == tok_identifier
          && peek->IdentifierKey == run_key)

@@ -26,9 +26,7 @@ uint32_t MetaCPreProcessor_PushDefine(metac_preprocessor_t* self,
     uint32_t result = 0;
 
     DEF_STACK_ARRAY(metac_token_t, tokens, 64);
-
-#define va_args_key 0x1e1a141
-
+#define va_args_key 0xbc18fc
     if (parameters.Count != define->ParameterCount &&
         ((define->ParameterCount >= parameters.Count) && !define->IsVariadic))
     {
@@ -111,9 +109,7 @@ metac_expr_t* MetaCPreProcessor_ResolveDefineToExp(metac_preprocessor_t* self,
     defineParser.Preprocessor = self;
     metac_preprocessor_define_t* define = &self->DefineTable.DefineMemory[definePtr.v - 4];
     DEF_STACK_ARRAY(metac_token_t, tokens, 32);
-#define va_args_key 0x1e1a141
-
-
+#define va_args_key 0xbc18fc
 
     if ((parameters.Count != define->ParameterCount) &&
         ((define->ParameterCount >= parameters.Count) && !define->IsVariadic))
