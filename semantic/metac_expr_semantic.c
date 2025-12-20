@@ -1081,7 +1081,8 @@ LswitchIdKey:
                 result = AllocNewSemaExpr(self, &typeExp);
             }
 
-#define tuple_key 0x55ee11
+#define tuple_key 0x165ee11
+
 
             uint32_t hash = crc32c(tuple_key, typeIndicies,
                 sizeof(metac_type_index_t) * expr->TupleExprCount);

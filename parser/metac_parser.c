@@ -31,11 +31,11 @@ bool IsExprNode(metac_node_kind_t Kind)
     return ((Kind > node_expr_invalid) & (Kind < node_expr_max));
 }
 
-#define Compiler_key 0x84e479
-#define Context_key 0x71a9c2
-#define Target_key 0x67b649
-#define type_key 0x40869f
-#define defined_key 0x7d9260
+#define Compiler_key 0x224e479
+#define Context_key 0x1c1a9c2
+#define Target_key 0x1a7b649
+#define type_key 0x120869f
+#define defined_key 0x1cd9260
 
 static inline void InitSpecialIdentifier(metac_parser_t* self)
 {
@@ -1679,7 +1679,9 @@ uint32_t HashDecl(metac_decl_t* decl)
 
     return result;
 }
-#define __thread_key 0x8c8d19
+
+#define __thread_key 0x22c8d19
+
 static metac_storageclasses_t ParseStorageClasses(metac_parser_t* self)
 {
     metac_token_t* currentToken = 0;
