@@ -1974,7 +1974,13 @@ metac_decl_t* MetaCParser_ParseDecl(metac_parser_t* self, metac_decl_t* parent)
                         AllocNewDecl(decl_type_functiontype, &fPtrVar->VarType);
 
                     uint32_t hash = CRC32C_PARENSTARPAREN;
-
+                    //FIXME deal with yield type
+                    decl_type_t* yieldType = cast(decl_type_t*)emptyNode;
+                    functionType->YieldType = yieldType;
+                    if (METAC_NODE(yieldType) != emptyNode)
+                    {
+                        hash = CRC32C_VALUE(hash, yieldType->Hash);
+                    }
                     functionType->ReturnType = returnType;
                     hash = CRC32C_VALUE(hash, returnType->Hash);
                     functionType->ParameterCount = paramterList.ParameterCount;
