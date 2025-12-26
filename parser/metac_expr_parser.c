@@ -256,43 +256,6 @@ void MetaCParser_PopOpenParens(metac_parser_t* self)
         ];
 }
 
-void MetaCParser_PushFlags(metac_parser_t* self, parse_expr_flags_t flags)
-{
-    ARENA_ARRAY_ADD(self->ExprParser.ExprFlagsStack, flags);
-}
-
-void MetaCParser_PopFlags(metac_parser_t* self)
-{
-    assert(self->ExprParser.ExprFlagsStackCount >= 1);
-    self->ExprParser.ExprFlagsStackCount--;
-}
-
-parse_expr_flags_t MetaCParser_TopFlags(metac_parser_t* self)
-{
-    assert(self->ExprParser.ExprFlagsStackCount >= 1);
-    return self->ExprParser.ExprFlagsStack[
-        self->ExprParser.ExprFlagsStackCount - 1
-    ];
-}
-
-void MetaCParser_PushOpStackBottom(metac_parser_t* self, uint32_t bottom)
-{
-    ARENA_ARRAY_ADD(self->ExprParser.OpStackBottomStack, bottom);
-}
-
-void MetaCParser_PopOpStackBottom(metac_parser_t* self)
-{
-    self->ExprParser.OpStackBottomStackCount--;
-}
-
-uint32_t MetaCParser_TopOpStackBottom(metac_parser_t* self)
-{
-    return (self->ExprParser.OpStackBottomStackCount ?
-        self->ExprParser.OpStackBottomStack[
-            self->ExprParser.OpStackBottomStackCount - 1
-        ] : 0);
-}
-
 static inline uint32_t OpToPrecedence(metac_expr_kind_t exp)
 {
     if (exp == expr_comma)
