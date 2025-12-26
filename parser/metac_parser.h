@@ -56,11 +56,8 @@ typedef struct identifier_callback_t
 
 typedef struct metac_expr_parser_t
 {
-    ARENA_ARRAY(metac_expr_t*, ExprStack)
+    
     ARENA_ARRAY(parse_expr_flags_t, ExprFlagsStack)
-    ARENA_ARRAY(metac_expr_kind_t, OpStack)
-    ARENA_ARRAY(int32_t, ExprStackBottomStack)
-    ARENA_ARRAY(int32_t, OpStackBottomStack)
     ARENA_ARRAY(int32_t, OpenParensStack)
 
     int32_t OpenParens;

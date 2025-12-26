@@ -90,12 +90,8 @@ void MetaCParser_Init(metac_parser_t* self, metac_alloc_t* allocator)
                       &self->IdentifierTable, &self->StringTable,
                       &self->Allocator);
 
-    ARENA_ARRAY_INIT(metac_expr_t*, self->ExprParser.ExprStack, &self->Allocator);
     ARENA_ARRAY_INIT(parse_expr_flags_t, self->ExprParser.ExprFlagsStack, &self->Allocator);
-    ARENA_ARRAY_INIT(metac_expr_kind_t, self->ExprParser.OpStack, &self->Allocator);
 
-    ARENA_ARRAY_INIT(int32_t, self->ExprParser.ExprStackBottomStack, &self->Allocator);
-    ARENA_ARRAY_INIT(int32_t, self->ExprParser.OpStackBottomStack, &self->Allocator);
     ARENA_ARRAY_INIT(int32_t, self->ExprParser.OpenParensStack, &self->Allocator);
 
     ARENA_ARRAY_INIT_SZ(identifier_callback_t, self->IdentifierCallbacks, &self->Allocator, 4);
