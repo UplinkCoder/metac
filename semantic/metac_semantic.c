@@ -115,6 +115,7 @@ static const char* OnResolveFail_toChars(metac_semantic_on_resolve_fail_t onFail
 void MetaCSemantic_Init(metac_sema_state_t* self, metac_parser_t* parser,
                         metac_type_aggregate_t* compilerStruct)
 {
+    metac_scope_owner_t globalOwner = {SCOPE_OWNER_V(scope_owner_module, 0)};
     //const metac_sema_state_t _init = {};
     // *self = _init;
 
@@ -139,6 +140,12 @@ void MetaCSemantic_Init(metac_sema_state_t* self, metac_parser_t* parser,
     ARENA_ARRAY_INIT(metac_scope_t, self->Scopes, &self->Allocator);
 
     self->TemporaryScopeDepth = 0;
+
+    self->StructTagScope =
+        MetaCScope_PushNewScope(self, 0, globalOwner);
+
+    self->UnionTagScope =
+        MetaCScope_PushNewScope(self, 0, globalOwner);
 
     self->ExprStackCapacity = 64;
     self->ExprStackSize = 0;
@@ -1216,6 +1223,8 @@ metac_sema_decl_t* MetaCSemantic_declSemantic(metac_sema_state_t* self,
 {
     metac_sema_decl_t* result = cast(metac_sema_decl_t*)(intptr_t)0xFEFEFEFE;
     metac_identifier_ptr_t declId = {0};
+    // this is either the scope for struct tags or union tag or null;
+    metac_scope_t* tagScope = cast(metac_scope_t*) 0;
 
     switch(decl->Kind)
     {
@@ -1283,10 +1292,12 @@ metac_sema_decl_t* MetaCSemantic_declSemantic(metac_sema_state_t* self,
         case decl_type_struct:
             (cast(decl_type_t*)decl)->TypeKind = type_struct;
             declId = ((decl_type_struct_t*) decl)->Identifier;
+            tagScope = self->StructTagScope;
             goto LdoTypeSemantic;
         case decl_type_union:
             (cast(decl_type_t*)decl)->TypeKind = type_union;
             declId = ((decl_type_union_t*) decl)->Identifier;
+            tagScope = self->UnionTagScope;
             goto LdoTypeSemantic;
         case decl_type_array:
             (cast(decl_type_t*)decl)->TypeKind = type_array;
@@ -1310,7 +1321,15 @@ metac_sema_decl_t* MetaCSemantic_declSemantic(metac_sema_state_t* self,
 
             if (declId.v != 0 && declId.v != -1)
             {
+                if (tagScope)
+                {
+                    MetaCSemantic_MountScope(self, tagScope);
+                }
                 MetaCSemantic_RegisterInScope(self, declId, METAC_NODE(typeNode));
+                if (tagScope)
+                {
+                    MetaCSemantic_UnmountScope(self);
+                }
             }
         } break;
     }

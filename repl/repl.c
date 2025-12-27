@@ -269,7 +269,7 @@ void AddIdentifierToCompletion(repl_state_t* self, const char* idString)
 
 void Presemantic_(repl_state_t* self)
 {
-#if 0
+#if METAC_COMPILER_INTERFACE
     metac_type_aggregate_t* compilerStruct = 0;
 
     metac_alloc_t PresemanticAlloc;
@@ -878,6 +878,22 @@ LswitchMode:
                 if (repl->SemanticState.CurrentScope)
                 {
                     metac_scope_table_t* table = &repl->SemanticState.CurrentScope->ScopeTable;
+                    uint32_t nMembers = table->SlotsUsed;
+
+                    for(uint32_t slotIdx = 0, memberIdx = 0; memberIdx < nMembers; slotIdx++)
+                    {
+                        metac_scope_table_slot_t slot = table->Slots[slotIdx];
+                        if (slot.Hash)
+                        {
+                            xprintf("Kind %s\n", MetaCNodeKind_toChars(slot.Node->Kind));
+                            MSGF("Member [%u] : %s\n", memberIdx++, MetaCPrinter_PrintSemaNode(&repl->Printer, &repl->SemanticState, slot.Node));
+                        }
+                    }
+                }
+                MSG("StructTagScope\n");
+                if (repl->SemanticState.StructTagScope)
+                {
+                    metac_scope_table_t* table = &repl->SemanticState.StructTagScope->ScopeTable;
                     uint32_t nMembers = table->SlotsUsed;
 
                     for(uint32_t slotIdx = 0, memberIdx = 0; memberIdx < nMembers; slotIdx++)
