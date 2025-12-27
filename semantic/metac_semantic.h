@@ -112,9 +112,12 @@ typedef struct metac_sema_state_t
 
     metac_location_t_array* LexerLocations;
 
-    metac_semantic_waitlist_t Waiters;
+    AT(transient) metac_semantic_waitlist_t Waiters;
 
     AT(per_function) uint32_t nLocals;
+
+    metac_scope_t* StructTagScope;
+    metac_scope_t* UnionTagScope;
 
     // has state such as the current stack offset and the like
     // to layout variables
