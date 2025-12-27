@@ -1574,6 +1574,9 @@ static inline void PrintSemaVariable(metac_printer_t* self,
                                      metac_sema_state_t* sema,
                                      sema_decl_variable_t* variable)
 {
+    metac_identifier_table_t* oldTable = self->IdentifierTable;
+    self->IdentifierTable = &sema->SemanticIdentifierTable;
+
     if (TYPE_INDEX_KIND(variable->TypeIndex) == type_index_functiontype)
     {
         metac_type_functiontype_t* funcType =
@@ -1598,6 +1601,7 @@ static inline void PrintSemaVariable(metac_printer_t* self,
     }
 
 
+    self->IdentifierTable = oldTable;
 }
 
 static inline void PrintSemaDecl(metac_printer_t* self,
@@ -1665,8 +1669,10 @@ static inline void PrintSemaDecl(metac_printer_t* self,
                 PrintSemaVariable(self, sema, &synVar);
                 PrintChar(self, ';');
                 PrintNewline(self);
-                if (memberIndex && memberIndex != (struct_->FieldCount - 1))
+                if (memberIndex != (struct_->FieldCount - 1))
+                {
                     PrintIndent(self);
+                }
 
             }
             --self->IndentLevel;
