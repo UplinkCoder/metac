@@ -219,10 +219,11 @@ typedef enum metac_token_enum_t
 #define FOREACH_PARSE_NUMBER_FLAG(M)       \
     M(parse_number_flag_none,           0) \
     M(parse_number_flag_hex,       1 << 0) \
-    M(parse_number_flag_float,     1 << 1) \
-    M(parse_number_flag_unsigned,  1 << 2) \
-    M(parse_number_flag_long,      1 << 3) \
-    M(parse_number_flag_long_long, 1 << 4)
+    M(parse_number_flag_octal,     1 << 1) \
+    M(parse_number_flag_float,     1 << 2) \
+    M(parse_number_flag_unsigned,  1 << 3) \
+    M(parse_number_flag_long,      1 << 4) \
+    M(parse_number_flag_long_long, 1 << 5)
 
 #define DEF_MEMBER(NAME, VALUE) \
     NAME = VALUE,

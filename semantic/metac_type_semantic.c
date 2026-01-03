@@ -1286,9 +1286,9 @@ metac_type_index_t MetaCSemantic_TypeSemantic(metac_sema_state_t* self,
 
         metac_type_index_t yieldType =
             MetaCSemantic_doTypeSemantic(self,
-                functionType->ReturnType);
+                functionType->YieldType);
 
-       metac_type_index_t returnType =
+        metac_type_index_t returnType =
             MetaCSemantic_doTypeSemantic(self,
                 functionType->ReturnType);
 

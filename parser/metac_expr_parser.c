@@ -113,9 +113,9 @@ metac_expr_kind_t UnaExpTypeFromTokenType(metac_token_enum_t tokenType,
     {
         result = expr_compl;
     }
-#define run_key 0x3809a6
     else if (tokenType == tok_at)
     {
+#define run_key 0x3809a6
         if (peek2 && peek2->TokenType == tok_identifier
          && peek2->IdentifierKey == run_key)
         {
