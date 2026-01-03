@@ -53,7 +53,7 @@ static inline char* u64tohexstr(uint64_t v, char buffer[17])
     for(i = 15; v > 0; --i)
     {
         uint8_t nibble = v & 0xF;
-        buffer[i] = nibble + ((nibble > 9) ? ('A' - 10) : '0');
+        buffer[i] = nibble + ((nibble > 9) ? ('a' - 10) : '0');
         v = (v & ~0xFUL) >> 4;
     }
     return buffer + i + 1;

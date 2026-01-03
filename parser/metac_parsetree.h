@@ -16,11 +16,17 @@
 #endif
 #pragma pack(push, 1)
 
+// XXX: KEEP COMPATIBLE WITH parse_number_flags_t
 typedef enum number_flags_t
 {
-    number_flag_unsigned =  (1 << 2),
-    number_flag_long =      (1 << 3),
-    number_flag_long_long = (1 << 4)
+    number_flag_hex       = (1 << 0),
+    number_flag_octal     = (1 << 1),
+    number_flag_float     = (1 << 2),
+
+    number_flag_unsigned =  (1 << 3),
+
+    number_flag_long =      (1 << 4),
+    number_flag_long_long = (1 << 5)
 } number_flags_t;
 
 #define EXPR_HEADER \

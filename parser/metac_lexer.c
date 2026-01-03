@@ -1000,6 +1000,8 @@ LcontinueLexing:
                             result = &err_token;
                             goto Lreturn;
                         }
+                        U32(numberFlags) |= parse_number_flag_hex;
+
                         c = *text++;
                         //printf("eaten_chars: %u -- C: %c\n", eatenChars, c);
                         goto LParseNumberDone;
@@ -1012,6 +1014,8 @@ LcontinueLexing:
                             result = &err_token;
                             goto Lreturn;
                         }
+                        U32(numberFlags) |= parse_number_flag_octal;
+
                         c = *text++;
                         goto LParseNumberDone;
                     }

@@ -1122,13 +1122,13 @@ static inline void PrintExpr(metac_printer_t* self, metac_expr_t* expr)
 {
     if (expr->Kind == expr_paren)
     {
-        if (self->ExtraParens || !IsBinaryExp(expr->E1->Kind))
-            PrintChar(self, '(');
+        bool printParens = true; //self->ExtraParens || (!IsBinaryExp(expr->E1->Kind) && IsUnaryExp(expr->Kind));
+
+        if (printParens) PrintChar(self, '(');
 
         PrintExpr(self, expr->E1);
 
-        if (self->ExtraParens || !IsBinaryExp(expr->E1->Kind))
-            PrintChar(self, ')');
+        if (printParens)  PrintChar(self, ')');
     }
     else if (expr->Kind == expr_ternary)
     {
@@ -1193,7 +1193,20 @@ static inline void PrintExpr(metac_printer_t* self, metac_expr_t* expr)
     }
     else if (expr->Kind == expr_signed_integer)
     {
-        PrintI64(self, expr->ValueI64);
+        if (expr->NumberFlags & number_flag_hex)
+        {
+            char buffer[18];
+            char* ptr = buffer;
+            u64tohexstr(expr->ValueU64, buffer);
+            while(ptr[0] && ptr[0] == '0') ptr++;
+
+            PrintString(self, "0x", sizeof("0x") - 1);
+            PrintString(self, ptr, strlen(ptr));
+        }
+        else
+        {
+            PrintI64(self, expr->ValueI64);
+        }
     }
     else if (expr->Kind == expr_float)
     {
@@ -1364,6 +1377,9 @@ static inline void PrintExpr(metac_printer_t* self, metac_expr_t* expr)
           || expr->Kind == expr_typeof || expr->Kind == expr_assert
           || expr->Kind == expr_unary_dot)
     {
+        bool printParens =
+             (!IsBinaryExp(expr->E1->Kind) || self->ExtraParens || expr->Kind == expr_assert);
+
         {
             const char* op = 0;
             if (expr->Kind == expr_inject)
@@ -1382,15 +1398,14 @@ static inline void PrintExpr(metac_printer_t* self, metac_expr_t* expr)
             PrintString(self, op, (uint32_t)strlen(op));
             if (expr->Kind != expr_unary_dot) PrintSpace(self);
         }
-
-        if (!IsBinaryExp(expr->E1->Kind) || self->ExtraParens)
+        if (printParens)
         {
            PrintChar(self, '(');
         }
 
         PrintExpr(self, expr->E1);
 
-        if (!IsBinaryExp(expr->E1->Kind) || self->ExtraParens)
+        if (printParens)
         {
             PrintChar(self, ')');
         }
