@@ -813,15 +813,8 @@ static bool MetaCCodegen_AccessVariable(metac_bytecode_ctx_t* ctx,
         } break;
         case storage_global:
         {
-            BCValue globalHeapRef = ctx->Globals[var->Storage.Offset];
-
-            assert(globalHeapRef.vType == BCValueType_HeapValue);
-            BCValue resTmp = gen.GenTemporary(c, globalHeapRef.type);
-
-            resTmp.heapRef.vType = BCValueType_HeapValue;
-            resTmp.heapRef.heapAddr = globalHeapRef.heapAddr;
-
-            (*result) = resTmp;
+            BCValue globalRef = ctx->Globals[var->Storage.Offset];
+            assert(!"Not implemented");
             return true;
         } break;
     }
@@ -846,109 +839,9 @@ static bool Is32BitLoad(const BCType type)
 
 }
 
-static void LoadFromHeapRef(metac_bytecode_ctx_t* ctx, BCValue* hrv, uint32_t abiSize)
-{
-    // import std.stdio; writeln("Calling LoadHeapRef from: ", line); //DEBUGLINE
-    const BackendInterface gen = *ctx->gen;
-    void* c = ctx->c;
-
-    // since the stuff below are heapValues we may not want to do this ??
-    {
-        BCTypeEnum types[] =
-            { BCTypeEnum_Struct, BCTypeEnum_Slice, BCTypeEnum_Array, BCTypeEnum_Tuple, BCTypeEnum_Ptr };
-        if (BCTypeEnum_anyOf(hrv->type.type, types, ARRAY_SIZE(types)))
-        {
-            BCValue sz = imm32(abiSize);
-            BCValue hrv_i32 = *hrv;
-            BCValue hr = BCValue_fromHeapref(hrv->heapRef);
-            hr.type = BCType_i32;
-            hrv_i32.type = BCType_i32;
-
-            gen.MemCpy(c, &hrv_i32, &hr, &sz);
-        }
-        else if (Is32BitLoad(hrv->type) || abiSize == 4)
-        {
-            goto Lload32;
-        }
-        else if (Is64BitLoad(hrv->type) || abiSize == 8)
-        {
-            goto Lload64;
-        }
-
-        else
-        {
-            assert(!"is not supported in LoadFromHeapRef");
-        }
-Lload64:
-        {
-            BCValue hr = BCValue_fromHeapref(hrv->heapRef);
-            gen.Load64(c, hrv, &hr);
-            return ;
-        }
-Lload32:
-        {
-            BCValue hr = BCValue_fromHeapref(hrv->heapRef);
-            gen.Load32(c, hrv, &hr);
-            return ;
-        }
-
-
-    }
-}
-
 static void StructMemberInit(void *c, BCValue* result, uint32_t offset, BCValue* initValue, uint32_t memberSz)
 {
     assert(0);
-}
-
-static void StoreToHeapRef(metac_bytecode_ctx_t* ctx, BCValue* hrv, uint32_t abiSize)
-{
-    const BackendInterface gen = *ctx->gen;
-    void* c = ctx->c;
-    // import std.stdio; writeln("Calling LoadHeapRef from: ", line); //DEBUGLINE
-    {
-        BCTypeEnum types[] = {BCTypeEnum_i64, BCTypeEnum_f52};
-        if(BCTypeEnum_anyOf(hrv->type.type, types, ARRAY_SIZE(types)))
-        {
-            BCValue hr = BCValue_fromHeapref(hrv->heapRef);
-            gen.Store64(c, &hr, hrv);
-            return ;
-        }
-    }
-
-    {
-        BCTypeEnum types[] = {
-            BCTypeEnum_u8, BCTypeEnum_u16, BCTypeEnum_u32,
-            BCTypeEnum_i8, BCTypeEnum_i16, BCTypeEnum_i32,
-            BCTypeEnum_c8, BCTypeEnum_c16, BCTypeEnum_c32,
-            BCTypeEnum_f23
-        };
-
-        if(BCTypeEnum_anyOf(hrv->type.type, types, ARRAY_SIZE(types)))
-        {
-            BCValue hr = BCValue_fromHeapref(hrv->heapRef);
-            gen.Store32(c, &hr, hrv);
-            return ;
-        }
-    }
-    // since the stuff below are heapValues we may not want to do this ??
-    {
-        BCTypeEnum types[] =
-            { BCTypeEnum_Struct, BCTypeEnum_Slice, BCTypeEnum_Array, BCTypeEnum_Tuple, BCTypeEnum_Ptr };
-        if (BCTypeEnum_anyOf(hrv->type.type, types, ARRAY_SIZE(types)))
-        {
-            BCValue hr = BCValue_fromHeapref(hrv->heapRef);
-            hr.type = BCType_i32;
-            BCValue sz = imm32(abiSize);
-            BCValue hrv_i32 = *hrv;
-            hrv_i32.type = BCType_i32;
-            gen.MemCpy(c, &hr, &hrv_i32, &sz);
-        }
-        else
-        {
-            assert(!"is not supported in StoreToHeapRef");
-        }
-    }
 }
 
 static void doArithExp(metac_bytecode_ctx_t* ctx,
@@ -1004,28 +897,6 @@ void MetaCCodegen_doDeref(metac_bytecode_ctx_t* ctx,
                           metac_type_index_t varType,
                           BCValue* result)
 {
-    if (TYPE_INDEX_KIND(varType) == type_index_functiontype
-     || TYPE_INDEX_KIND(varType) == type_index_ptr)
-    {
-        BCType bct = MetaCCodegen_GetBCType(ctx, varType);
-        BCHeapRef heapRef;
-        heapRef.vType = addr->vType;
-        heapRef.localIndex = addr->localIndex;
-        heapRef.stackAddr = addr->stackAddr;
-        result->heapRef = heapRef;
-        LoadFromHeapRef(ctx, result, sizeof(void*));
-    }
-    else if (TYPE_INDEX_KIND(varType) == type_index_basic)
-    {
-        BCType bct = MetaCCodegen_GetBCType(ctx, varType);
-        BCHeapRef heapRef;
-        heapRef.vType = addr->vType;
-        heapRef.localIndex = addr->localIndex;
-        heapRef.stackAddr = addr->stackAddr;
-        result->heapRef = heapRef;
-        LoadFromHeapRef(ctx, result, BCTypeEnum_basicTypeSize(bct.type));
-    }
-    else
     {
         assert(!"doDeref not implemented right now");
     }
@@ -1470,7 +1341,7 @@ static void MetaCCodegen_doExpr(metac_bytecode_ctx_t* ctx,
 
             if (exp->E1->Variable->Storage.Kind == storage_global)
             {
-                StoreToHeapRef(ctx, result, MetaCCodegen_GetTypeABISize(ctx, exp->E1->TypeIndex));
+                assert(!"Not implemented");
             }
             //gen.Set(c, result, &lhs);
         } break;
@@ -1679,7 +1550,8 @@ static void MetaCCodegen_doExpr(metac_bytecode_ctx_t* ctx,
             {
                 BCType bcType = MetaCCodegen_GetBCType(ctx, exp->Variable->TypeIndex);
                 uint32_t sz = MetaCCodegen_GetStorageSize(ctx, bcType);
-                LoadFromHeapRef(ctx, result, sz);
+                assert(!"Not implemented");
+                // LoadFromHeapRef(ctx, result, sz);
                 // Info("Indirected access");
             }
         } break;
@@ -1768,7 +1640,8 @@ static void MetaCCodegen_doExpr(metac_bytecode_ctx_t* ctx,
     {
         if (exp->E1->Variable->Storage.Kind == storage_global)
         {
-            StoreToHeapRef(ctx, result, MetaCCodegen_GetTypeABISize(ctx, exp->E1->TypeIndex));
+            assert(!"Not implemented");
+            // StoreToHeapRef(ctx, result, MetaCCodegen_GetTypeABISize(ctx, exp->E1->TypeIndex));
         }
     }
 

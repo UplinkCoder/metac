@@ -12,6 +12,7 @@
 #include <string.h>
 
 #include "bc_common.h"
+#include "backend_interface_funcs.h"
 
 #ifdef __cplusplus
 #define EXTERN_C extern "C"
@@ -285,192 +286,6 @@ static inline uint32_t BCValue_toU32(const BCValue* self)
     return result;
 }
 
-#define STRUCT_NAME BCValue
-#if 0
-    const char* STRUCT_NAME::toChars() const
-    {
-        const char* result = "vType: ";
-/*
-        result ~= enumToString(vType);
-        result ~= "\tType: ";
-        result ~= type.toString;
-        result ~= "\n\tValue: ";
-        result ~= valueToString;
-        result ~= "\n";
-        if (name)
-            result ~= "\tname: " ~ name ~ "\n";
-*/
-        return result;
-    }
-
-    string STRvalueToString()
-    {
-        switch (vType)
-        {
-        case BCValueType_Local : goto case;
-        case BCValueType_Parameter, BCValueType_Temporary,
-                BCValueType_StackValue:
-                return "stackAddr: " ~ itos(stackAddr);
-        case BCValueType_HeapValue:
-            return "heapAddr: " ~ itos(heapAddr);
-        case BCValueType_Immediate:
-            return "imm: " ~ (type.type == BCTypeEnum.i64 || type.type == BCTypeEnum.f52
-                    ? itos64(imm64) : itos(imm32));
-        default:
-            return "unknown value format";
-        }
-    }
-
-    bool operator bool()
-    {
-        // the check for Undef is a workaround
-        // consider removing it when everything works correctly.
-
-        return this.vType != vType.Unknown && this.type.type != BCTypeEnum.Undef;
-    }
-
-    STRUCT_NAME(const Imm32 imm32)
-    {
-        this.type.type = imm32.signed ? BCTypeEnum_i32 : BCTypeEnum_u32;
-        this.vType = BCValueType_Immediate;
-        this.imm32.imm32 = imm32.imm32;
-    }
-
-    STRUCT_NAME(const Imm64 imm64)
-    {
-        this.type.type = imm64.signed ? BCTypeEnum_i64 : BCTypeEnum_u64;
-        this.vType = BCValueType_Immediate;
-        this.imm64 = imm64;
-    }
-
-    STRUCT_NAME(const Imm23f imm23f)
-    {
-        this.type.type = BCTypeEnum.f23;
-        this.vType = BCValueType_Immediate;
-        this.imm32.imm32 = *cast(uint*)&imm23f;
-    }
-
-    STRUCT_NAME(const Imm52f imm52f)
-    {
-        this.type.type = BCTypeEnum.f52;
-        this.vType = BCValueType_Immediate;
-        this.imm64.imm64 = *cast(uint64_t*)&imm52f;
-    }
-
-    STRUCT_NAME(const BCParameter param)
-    {
-        this.vType = BCValueType_Parameter;
-        this.type = param.type;
-        this.paramIndex = param.idx;
-        this.stackAddr = param.pOffset;
-        this.name = param.name;
-    }
-
-    STRUCT_NAME(const StackAddr sp, const BCType type, const ushort temporaryIndex)
-    {
-        this.vType = BCValueType_StackValue;
-        this.stackAddr = sp;
-        this.type = type;
-        this.temporaryIndex = temporaryIndex;
-    }
-
-    STRUCT_NAME(const StackAddr sp, const BCType type, const ushort localIndex, const char* name)
-    {
-        this.vType = BCValueType_Local;
-        this.stackAddr = sp;
-        this.type = type;
-        this.localIndex = localIndex;
-        this.name = name;
-    }
-
-    STRUCT_NAME(const void* base, const short addr, const BCType type)
-    {
-        this.vType = BCValueType_StackValue;
-        this.stackAddr = StackAddr(addr);
-        this.type = type;
-    }
-
-    STRUCT_NAME(const HeapAddr addr, const BCType type = i32Type)
-    {
-        this.vType = BCValueType_HeapValue;
-        this.type = type;
-        this.heapAddr = addr;
-    }
-
-    STRUCT_NAME(const BCHeapRef heapRef)
-    {
-        this.vType = heapRef.vType;
-        switch (vType)
-        {
-        case BCValueType_StackValue, BCValueType_Parameter:
-            stackAddr = heapRef.stackAddr;
-            temporaryIndex = heapRef.temporaryIndex;
-            break;
-        case BCValueType_Local:
-            stackAddr = heapRef.stackAddr;
-            temporaryIndex = heapRef.localIndex;
-            name = heapRef.name;
-            break;
-
-        case BCValueType_Temporary:
-            stackAddr = heapRef.stackAddr;
-            temporaryIndex = heapRef.temporaryIndex;
-            break;
-
-        case BCValueType_HeapValue:
-            heapAddr = heapRef.heapAddr;
-            break;
-
-        case BCValueType_Immediate:
-            imm32 = heapRef.imm32;
-            break;
-
-        default:
-            assert(0, "vType unsupported: " ~ enumToString(vType));
-        }
-    }
-#endif
-
-EXTERN_C BCValue BCValue_fromHeapref(const BCHeapRef heapRef)
-{
-    BCValue result;
-
-    result.vType = heapRef.vType;
-
-    switch (result.vType)
-    {
-    case BCValueType_StackValue:
-        result.stackAddr = heapRef.stackAddr;
-        result.temporaryIndex = heapRef.tmpIndex;
-        break;
-    case BCValueType_Parameter:
-        result.stackAddr = heapRef.stackAddr;
-        result.parameterIndex = heapRef.paramIndex;
-    break;
-    case BCValueType_Local:
-        result.stackAddr = heapRef.stackAddr;
-        result.temporaryIndex = heapRef.localIndex;
-        result.name = heapRef.name;
-        break;
-
-    case BCValueType_Temporary:
-        result.stackAddr = heapRef.stackAddr;
-        result.temporaryIndex = heapRef.tmpIndex;
-        break;
-
-    case BCValueType_HeapValue:
-        result.vType = BCValueType_Immediate;
-        result.type = BCType_u32;
-        result.imm32.imm32 = heapRef.heapAddr.addr;
-        break;
-
-    default:
-        assert(!"vType unsupported");
-    }
-
-    return result;
-}
-
 EXTERN_C bool BCValue_eq(const BCValue* lhs, const BCValue* rhs)
 {
     BCTypeEnum commonType = BCTypeEnum_commonTypeEnum(lhs->type.type, rhs->type.type);
@@ -726,6 +541,103 @@ EXTERN_C bool BCValue_isStackValueOrParameter(const BCValue* val)
          || val->vType == BCValueType_Local
          || val->vType == BCValueType_Temporary
          || val->vType == BCValueType_External);
+}
+/*
++ADDRESS RANGE           | SIZE    | SEGMENT NAME    | BITMASK (Top 7)  | PURPOSE / NOTES
++------------------------|---------|-----------------|------------------|---------------------------------------
++ 0x00000000 - 0x00001FFF| 8 KB    | NULL TRAP       | 0000000          | Catch NULL derefs (up to 8KB offset)
++ 0x00002000 - 0x00002FFF| 4 KB    | REGISTER PAGE   | 0000000          | 256 x 64-bit GPRs + VM State
++ 0x00003000 - 0x00003FFF| 4 KB    | DOUBLE GUARD    | 0000000          | Protects Regs from Stack underflow
++ 0x00004000 - 0x01FFFFFF| ~32 MB  | STACK (UP)      | 0000000          | Grows UP toward External boundary
++------------------------|---------|-----------------|------------------|---------------------------------------
++ 0x02000000 - 0x41FFFFFF| 1 GB    | EXTERNAL (TLB)  | 0000001 - 0100000| 4096 x 256KB Cascaded Slots
++------------------------|---------|-----------------|------------------|---------------------------------------
++ 0x42000000 - 0xC1FFFFFF| ~2 GB   | HEAP (ARENA)    | 0100001 - 1100000| Main Growable Host Memory
++------------------------|---------|-----------------|------------------|---------------------------------------
++ 0xC2000000 - 0xFFFFFFFF| 1 GB    | SYSTEM RESERVED | 1100001 - 1111111| Fiber Meta / Waiter Tables / Debug
+*/
+
+
+#if 0
+static inline address_kind_t
+ClassifyAddress(uint32_t addr, uint32_t* out_offset)
+{
+    const uint32_t top = addr >> 25; // 128 chunks of 32MB
+    address_kind_t kind = AddressKind_Invalid;
+    uint32_t offset = 0;
+
+    /* HOT PATH: Heap (Der meiste Traffic im CTFE) */
+    if (top >= 33 && top <= 96)
+    {
+        kind   = AddressKind_Heap;
+        offset = addr - HeapStart;
+    }
+    /* SECOND HOT PATH: Low system area (Stack & Regs) */
+    else if (top == 0)
+    {
+        // Stack wächst nach oben, Start bei 0x4000
+        if (addr >= StackStart)
+        {
+            kind   = AddressKind_Stack;
+            offset = addr - StackStart;
+        }
+        // 4KB Double Guard (0x3000 - 0x3FFF)
+        else if (addr >= DoubleGuard)
+        {
+            // kind = AddressKind_Invalid; // Guard Hit
+        }
+        // 4KB Register Page (0x2000 - 0x2FFF)
+        else if (addr >= RegisterPage)
+        {
+            kind   = AddressKind_Register;
+            offset = addr - RegisterPage;
+        }
+        // 8KB NULL trap (0x0000 - 0x1FFF)
+        else
+        {
+            // kind = AddressKind_Invalid; // NULL trap Hit
+        }
+    }
+    /* EXTERNAL (TLB-backed) */
+    else if (top <= 32)
+    {
+        kind   = AddressKind_External;
+        offset = addr - ExternalStart;
+    }
+    /* SYSTEM RESERVED */
+    else
+    {
+        kind   = AddressKind_Reserved;
+        offset = addr - ReservedStart;
+    }
+
+    *out_offset = offset;
+    return kind;
+}
+#endif
+
+static inline address_kind_t ClassifyAddress(uint32_t addr)
+{
+    const uint32_t top = addr >> 25; // 128 chunks of 32MB
+
+    /* HOT PATH: Heap */
+    if (top >= 33 && top <= 96)
+        return AddressKind_Heap;
+
+    /* SECOND HOT PATH: Stack (top == 0, addr >= 0x4000) */
+    if (top == 0)
+    {
+        if (addr >= 0x4000) return AddressKind_Stack;
+        if (addr < 0x1000)  return AddressKind_Invalid; // NULL trap
+        if (addr < 0x2000)  return AddressKind_Register;  // Register page
+
+        return AddressKind_Invalid;         // Guard page
+    }
+
+    if (top <= 32)
+        return AddressKind_External;
+
+    return AddressKind_Reserved;
 }
 
 /*

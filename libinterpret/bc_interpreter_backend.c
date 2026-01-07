@@ -209,9 +209,14 @@ typedef struct BCExternal {
   uint32_t mapAddr;
 } BCExternal;
 
+#define MAX_REGS 256
+
 typedef struct BCInterpreter {
+    int64_t regs[MAX_REGS];
+
     int64_t* fp;
     int64_t* sp;
+
     uint32_t ip;
     uint32_t mode;
 
@@ -1080,7 +1085,7 @@ BCValue BCGen_interpret(BCGen* self, uint32_t fnIdx, BCValue* args, uint32_t n_a
 
     {
         int argOffset = 1;
-        int64_t* frameP = state.fp;
+        int64_t* regsP = state.regs;
         for(uint32_t i = 0; i < n_args;i++)
         {
             BCValue* arg = args + i;
@@ -2793,13 +2798,11 @@ static inline void BCGen_emitArithInstruction(BCGen* self
     BCTypeEnum commonType = BCTypeEnum_commonTypeEnum(lhs_type_type, rhs_type_type);
     bool pushedLhs = 0, pushedRhs = 0;
 
-    // FIXME Implement utf8 <-> utf32 conversion
-/*
     assert(commonType == BCTypeEnum_i32 || commonType == BCTypeEnum_i64
         || commonType == BCTypeEnum_u32 || commonType == BCTypeEnum_u64
         || commonType == BCTypeEnum_f23 || commonType == BCTypeEnum_c32
-        || commonType == BCTypeEnum_c8  || commonType == BCTypeEnum_f52);//,
-*/
+        || commonType == BCTypeEnum_f52);
+
   //    "only i32, i64, f23, f52, is supported for now not: " ~ enumToString(commonType));
     //assert(lhs.type.type == rhs.type.type, enumToString(lhs.type.type) ~ " != " ~ enumToString(rhs.type.type));
 
@@ -3510,94 +3513,94 @@ extern "C"
 const BackendInterface BCGen_interface = {
     /*.name = */ "Bytecode Interpreter (BCGen)",
 
-    /*.Initialize =*/ (Initialize_t) BCGen_Initialize,
+    /*.Initialize =*/ cast(Initialize_t) BCGen_Initialize,
 
-    /*.InitializeV =*/ (InitializeV_t) BCGen_InitializeV,
-    /*.Finalize =*/ (Finalize_t) BCGen_Finalize,
-    /*.BeginFunction =*/ (BeginFunction_t) BCGen_beginFunction,
-    /*.EndFunction =*/ (EndFunction_t) BCGen_endFunction,
-    /*.GenTemporary =*/ (GenTemporary_t) BCGen_genTemporary,
-    /*.DestroyTemporary =*/ (DestroyTemporary_t) BCGen_destroyTemporary,
-    /*.GenLocal =*/ (GenLocal_t) BCGen_genLocal,
-    /*.DestroyLocal =*/ (DestroyLocal_t) BCGen_destroyLocal,
-    /*.GenParameter =*/ (GenParameter_t) BCGen_genParameter,
+    /*.InitializeV =*/ cast(InitializeV_t) BCGen_InitializeV,
+    /*.Finalize =*/ cast(Finalize_t) BCGen_Finalize,
+    /*.BeginFunction =*/ cast(BeginFunction_t) BCGen_beginFunction,
+    /*.EndFunction =*/ cast(EndFunction_t) BCGen_endFunction,
+    /*.GenTemporary =*/ cast(GenTemporary_t) BCGen_genTemporary,
+    /*.DestroyTemporary =*/ cast(DestroyTemporary_t) BCGen_destroyTemporary,
+    /*.GenLocal =*/ cast(GenLocal_t) BCGen_genLocal,
+    /*.DestroyLocal =*/ cast(DestroyLocal_t) BCGen_destroyLocal,
+    /*.GenParameter =*/ cast(GenParameter_t) BCGen_genParameter,
 
-    /*.GenExternal =*/ (GenExternal_t) BCGen_genExternal,
-    /*.MapExternal =*/ (MapExternal_t) BCGen_MapExternal,
+    /*.GenExternal =*/ cast(GenExternal_t) BCGen_genExternal,
+    /*.MapExternal =*/ cast(MapExternal_t) BCGen_MapExternal,
 
-    /*.GenExternalFunc =*/ (GenExternalFunc_t) BCGen_GenExternalFunc,
-    /*.MapExternalFunc =*/ (MapExternalFunc_t) BCGen_MapExternalFunc,
+    /*.GenExternalFunc =*/ cast(GenExternalFunc_t) BCGen_GenExternalFunc,
+    /*.MapExternalFunc =*/ cast(MapExternalFunc_t) BCGen_MapExternalFunc,
 
-    /*.EmitFlag =*/ (EmitFlag_t) BCGen_emitFlag,
-    /*.Alloc =*/ (Alloc_t) BCGen_Alloc,
-    /*.Assert =*/ (Assert_t) BCGen_Assert,
-    /*.MemCpy =*/ (MemCpy_t) BCGen_MemCpy,
-    /*.File =*/ (File_t) BCGen_File,
-    /*.Line =*/ (Line_t) BCGen_Line,
-    /*.Comment =*/ (Comment_t) BCGen_Comment,
-    /*.Prt =*/ (Prt_t) BCGen_Prt,
-    /*.Set =*/ (Set_t) BCGen_Set,
-    /*.Ult3 =*/ (Ult3_t) BCGen_Ult3,
-    /*.Ule3 =*/ (Ule3_t) BCGen_Ule3,
-    /*.Lt3 =*/ (Lt3_t) BCGen_Lt3,
-    /*.Le3 =*/ (Le3_t) BCGen_Le3,
-    /*.Ugt3 =*/ (Ugt3_t) BCGen_Ugt3,
-    /*.Uge3 =*/ (Uge3_t) BCGen_Uge3,
-    /*.Gt3 =*/ (Gt3_t) BCGen_Gt3,
-    /*.Ge3 =*/ (Ge3_t) BCGen_Ge3,
-    /*.Eq3 =*/ (Eq3_t) BCGen_Eq3,
-    /*.Neq3 =*/ (Neq3_t) BCGen_Neq3,
-    /*.Add3 =*/ (Add3_t) BCGen_Add3,
-    /*.Sub3 =*/ (Sub3_t) BCGen_Sub3,
-    /*.Mul3 =*/ (Mul3_t) BCGen_Mul3,
-    /*.Div3 =*/ (Div3_t) BCGen_Div3,
-    /*.Udiv3 =*/ (Udiv3_t) BCGen_Udiv3,
-    /*.And3 =*/ (And3_t) BCGen_And3,
-    /*.Or3 =*/ (Or3_t) BCGen_Or3,
-    /*.Xor3 =*/ (Xor3_t) BCGen_Xor3,
-    /*.Lsh3 =*/ (Lsh3_t) BCGen_Lsh3,
-    /*.Rsh3 =*/ (Rsh3_t) BCGen_Rsh3,
-    /*.Mod3 =*/ (Mod3_t) BCGen_Mod3,
-    /*.Umod3 =*/ (Umod3_t) BCGen_Umod3,
-    /*.Not =*/ (Not_t) BCGen_Not,
-    /*.LoadFramePointer =*/ (LoadFramePointer_t) BCGen_LoadFramePointer,
-    /*.Call =*/ (Call_t) BCGen_Call,
-    /*.GenLabel =*/ (GenLabel_t) BCGen_genLabel,
-    /*.Jmp =*/ (Jmp_t) BCGen_Jmp,
-    /*.BeginJmp =*/ (BeginJmp_t) BCGen_beginJmp,
-    /*.EndJmp =*/ (EndJmp_t) BCGen_endJmp,
-    /*.BeginCndJmp =*/ (BeginCndJmp_t) BCGen_beginCndJmp,
-    /*.EndCndJmp =*/ (EndCndJmp_t) BCGen_endCndJmp,
-    /*.Load8 =*/ (Load8_t) BCGen_Load8,
-    /*.Store8 =*/ (Store8_t) BCGen_Store8,
-    /*.Load16 =*/ (Load16_t) BCGen_Load16,
-    /*.Store16 =*/ (Store16_t) BCGen_Store16,
-    /*.Load32 =*/ (Load32_t) BCGen_Load32,
-    /*.Store32 =*/ (Store32_t) BCGen_Store32,
-    /*.Load64 =*/ (Load64_t) BCGen_Load64,
-    /*.Store64 =*/ (Store64_t) BCGen_Store64,
-    /*.Throw =*/ (Throw_t) BCGen_Throw,
-    /*.PushCatch =*/ (PushCatch_t) BCGen_PushCatch,
-    /*.PopCatch =*/ (PopCatch_t) BCGen_PopCatch,
-    /*.Ret =*/ (Ret_t) BCGen_Ret,
-    /*.IToF32 =*/ (IToF32_t) BCGen_IToF32,
-    /*.IToF64 =*/ (IToF64_t) BCGen_IToF64,
-    /*.F32ToI =*/ (F32ToI_t) BCGen_F32ToI,
-    /*.F64ToI =*/ (F64ToI_t) BCGen_F64ToI,
-    /*.F32ToF64 =*/ (F32ToF64_t) BCGen_F32ToF64,
-    /*.F64ToF32 =*/ (F64ToF32_t) BCGen_F64ToF32,
-    /*.Memcmp =*/ (Memcmp_t) BCGen_Memcmp,
-    /*.Realloc =*/ (Realloc_t) BCGen_Realloc,
-    /*.Run =*/ (run_t) BCGen_run,
-    /*.ReadI32 =*/ (ReadI32_t) BCGen_ReadI32,
+    /*.EmitFlag =*/ cast(EmitFlag_t) BCGen_emitFlag,
+    /*.Alloc =*/ cast(Alloc_t) BCGen_Alloc,
+    /*.Assert =*/ cast(Assert_t) BCGen_Assert,
+    /*.MemCpy =*/ cast(MemCpy_t) BCGen_MemCpy,
+    /*.File =*/ cast(File_t) BCGen_File,
+    /*.Line =*/ cast(Line_t) BCGen_Line,
+    /*.Comment =*/ cast(Comment_t) BCGen_Comment,
+    /*.Prt =*/ cast(Prt_t) BCGen_Prt,
+    /*.Set =*/ cast(Set_t) BCGen_Set,
+    /*.Ult3 =*/ cast(Ult3_t) BCGen_Ult3,
+    /*.Ule3 =*/ cast(Ule3_t) BCGen_Ule3,
+    /*.Lt3 =*/ cast(Lt3_t) BCGen_Lt3,
+    /*.Le3 =*/ cast(Le3_t) BCGen_Le3,
+    /*.Ugt3 =*/ cast(Ugt3_t) BCGen_Ugt3,
+    /*.Uge3 =*/ cast(Uge3_t) BCGen_Uge3,
+    /*.Gt3 =*/ cast(Gt3_t) BCGen_Gt3,
+    /*.Ge3 =*/ cast(Ge3_t) BCGen_Ge3,
+    /*.Eq3 =*/ cast(Eq3_t) BCGen_Eq3,
+    /*.Neq3 =*/ cast(Neq3_t) BCGen_Neq3,
+    /*.Add3 =*/ cast(Add3_t) BCGen_Add3,
+    /*.Sub3 =*/ cast(Sub3_t) BCGen_Sub3,
+    /*.Mul3 =*/ cast(Mul3_t) BCGen_Mul3,
+    /*.Div3 =*/ cast(Div3_t) BCGen_Div3,
+    /*.Udiv3 =*/ cast(Udiv3_t) BCGen_Udiv3,
+    /*.And3 =*/ cast(And3_t) BCGen_And3,
+    /*.Or3 =*/ cast(Or3_t) BCGen_Or3,
+    /*.Xor3 =*/ cast(Xor3_t) BCGen_Xor3,
+    /*.Lsh3 =*/ cast(Lsh3_t) BCGen_Lsh3,
+    /*.Rsh3 =*/ cast(Rsh3_t) BCGen_Rsh3,
+    /*.Mod3 =*/ cast(Mod3_t) BCGen_Mod3,
+    /*.Umod3 =*/ cast(Umod3_t) BCGen_Umod3,
+    /*.Not =*/ cast(Not_t) BCGen_Not,
+    /*.LoadFramePointer =*/ cast(LoadFramePointer_t) BCGen_LoadFramePointer,
+    /*.Call =*/ cast(Call_t) BCGen_Call,
+    /*.GenLabel =*/ cast(GenLabel_t) BCGen_genLabel,
+    /*.Jmp =*/ cast(Jmp_t) BCGen_Jmp,
+    /*.BeginJmp =*/ cast(BeginJmp_t) BCGen_beginJmp,
+    /*.EndJmp =*/ cast(EndJmp_t) BCGen_endJmp,
+    /*.BeginCndJmp =*/ cast(BeginCndJmp_t) BCGen_beginCndJmp,
+    /*.EndCndJmp =*/ cast(EndCndJmp_t) BCGen_endCndJmp,
+    /*.Load8 =*/ cast(Load8_t) BCGen_Load8,
+    /*.Store8 =*/ cast(Store8_t) BCGen_Store8,
+    /*.Load16 =*/ cast(Load16_t) BCGen_Load16,
+    /*.Store16 =*/ cast(Store16_t) BCGen_Store16,
+    /*.Load32 =*/ cast(Load32_t) BCGen_Load32,
+    /*.Store32 =*/ cast(Store32_t) BCGen_Store32,
+    /*.Load64 =*/ cast(Load64_t) BCGen_Load64,
+    /*.Store64 =*/ cast(Store64_t) BCGen_Store64,
+    /*.Throw =*/ cast(Throw_t) BCGen_Throw,
+    /*.PushCatch =*/ cast(PushCatch_t) BCGen_PushCatch,
+    /*.PopCatch =*/ cast(PopCatch_t) BCGen_PopCatch,
+    /*.Ret =*/ cast(Ret_t) BCGen_Ret,
+    /*.IToF32 =*/ cast(IToF32_t) BCGen_IToF32,
+    /*.IToF64 =*/ cast(IToF64_t) BCGen_IToF64,
+    /*.F32ToI =*/ cast(F32ToI_t) BCGen_F32ToI,
+    /*.F64ToI =*/ cast(F64ToI_t) BCGen_F64ToI,
+    /*.F32ToF64 =*/ cast(F32ToF64_t) BCGen_F32ToF64,
+    /*.F64ToF32 =*/ cast(F64ToF32_t) BCGen_F64ToF32,
+    /*.Memcmp =*/ cast(Memcmp_t) BCGen_Memcmp,
+    /*.Realloc =*/ cast(Realloc_t) BCGen_Realloc,
+    /*.Run =*/ cast(run_t) BCGen_run,
+    /*.ReadI32 =*/ cast(ReadI32_t) BCGen_ReadI32,
 
     /*.sizeof_instance =*/ BCGen_sizeof_instance,
-    /*.clear_instance =*/ (clear_instance_t) BCGen_clear_instance,
-    /*.init_instance =*/ (init_instance_t) BCGen_init_instance,
-    /*.fini_instance =*/ (fini_instance_t) BCGen_fini_instance,
+    /*.clear_instance =*/ cast(clear_instance_t) BCGen_clear_instance,
+    /*.init_instance =*/ cast(init_instance_t) BCGen_init_instance,
+    /*.fini_instance =*/ cast(fini_instance_t) BCGen_fini_instance,
 
-    /*.set_alloc_memory =*/ (set_alloc_memory_t) BCGen_set_alloc_memory,
-    /*.set_get_typeinfo =*/ (set_get_typeinfo_t) BCGen_set_get_typetypeinfo,
+    /*.set_alloc_memory =*/ cast(set_alloc_memory_t) BCGen_set_alloc_memory,
+    /*.set_get_typeinfo =*/ cast(set_get_typeinfo_t) BCGen_set_get_typetypeinfo,
 };
 
 #endif
