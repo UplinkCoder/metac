@@ -1086,6 +1086,7 @@ BCValue BCGen_interpret(BCGen* self, uint32_t fnIdx, BCValue* args, uint32_t n_a
     {
         int argOffset = 1;
         int64_t* regsP = state.regs;
+        void* frameP = (void*)state.fp;
         for(uint32_t i = 0; i < n_args;i++)
         {
             BCValue* arg = args + i;
@@ -1097,7 +1098,8 @@ BCValue BCGen_interpret(BCGen* self, uint32_t fnIdx, BCValue* args, uint32_t n_a
                 case BCTypeEnum_i16:
                 case BCTypeEnum_i8:
                 {
-                    frameP[argOffset++] = cast(int32_t)arg->imm32.imm32;
+                    (*cast(int32_t*)frameP) = cast(int32_t)arg->imm32.imm32;
+                    frameP += 4;
                 }
                 break;
 
@@ -1107,20 +1109,23 @@ BCValue BCGen_interpret(BCGen* self, uint32_t fnIdx, BCValue* args, uint32_t n_a
                 case BCTypeEnum_u16:
                 case BCTypeEnum_u8:
                 {
-                    frameP[argOffset++] = cast(uint32_t)arg->imm32.imm32;
+                    (*cast(uint32_t*)frameP) = cast(uint32_t)arg->imm32.imm32;
+                    frameP += 4;
                 }
                 break;
 
             case BCTypeEnum_i64:
                 {
-                    frameP[argOffset++] = arg->imm64.imm64;
+                    (*cast(int64_t*)frameP) = cast(int64_t)arg->imm64.imm64;
+                    frameP += 8;
                 }
                 break;
 
             case BCTypeEnum_u64:
             case BCTypeEnum_f52:
             {
-                frameP[argOffset++] = arg->imm64.imm64;
+                    (*cast(uint64_t*)frameP) = cast(uint64_t)arg->imm64.imm64;
+                    frameP += 8;
             }
             break;
 
@@ -1129,8 +1134,7 @@ BCValue BCGen_interpret(BCGen* self, uint32_t fnIdx, BCValue* args, uint32_t n_a
             case BCTypeEnum_string8:
             case BCTypeEnum_Array:
                 {
-                    // This might need to be removed again?
-                    frameP[argOffset++] = arg->heapAddr.addr;
+                    assert(!"this should be done via a roDataPush");
                 }
                 break;
             default:

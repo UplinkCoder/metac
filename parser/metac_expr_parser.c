@@ -51,10 +51,11 @@ const char* BinExpTypeToChars(metac_binary_expr_kind_t t)
     }
 
     printf("Not a binary operator: %s\n",
-        MetaCExprKind_toChars( cast(metac_expr_kind_t)t ));
+        MetaCExprKind_toChars( (metac_expr_kind_t)t ));
     assert(0);
     return 0;
 }
+
 metac_expr_kind_t UnaExpTypeFromTokenType(metac_token_enum_t tokenType,
                                           metac_token_t* peek2)
 {
@@ -72,7 +73,6 @@ metac_expr_kind_t UnaExpTypeFromTokenType(metac_token_enum_t tokenType,
     {
         result = expr_typeof;
     }
-    // sizeof is possibly special
     else if (tokenType == tok_kw_sizeof)
     {
         result = expr_sizeof;
