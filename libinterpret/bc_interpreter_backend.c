@@ -1139,6 +1139,8 @@ BCValue BCGen_interpret(BCGen* self, uint32_t fnIdx, BCValue* args, uint32_t n_a
 
     BCInterpreter state = {0};
     BCFunction* f = self->functions + (fnIdx - 1);
+    void* frameP = (void*)state.fp;
+
     state.ip = f->bytecode_start;
     state.fp = state.stack;
     state.sp = state.stack;
@@ -1151,7 +1153,6 @@ BCValue BCGen_interpret(BCGen* self, uint32_t fnIdx, BCValue* args, uint32_t n_a
 
     {
         int argOffset = 1;
-        void* frameP = (void*)state.fp;
         for(uint32_t i = 0; i < n_args;i++)
         {
             BCValue* arg = args + i;
@@ -2063,7 +2064,7 @@ BCValue BCGen_interpret(BCGen* self, uint32_t fnIdx, BCValue* args, uint32_t n_a
 
                 uint32_t fn = ((call.fn.vType == BCValueType_Immediate) ?
                     call.fn.imm32.imm32 :
-                    frameP[call.fn.stackAddr.addr / 4]
+                    regsP[call.fn.stackAddr.addr / 4]
                 ) & UINT32_MAX;
 
                 bool isExternal =
@@ -2085,7 +2086,7 @@ BCValue BCGen_interpret(BCGen* self, uint32_t fnIdx, BCValue* args, uint32_t n_a
                         const int argOffset_ = (i * 1) + 1;
                         if(BCValue_isStackValueOrParameter(arg))
                         {
-                            newStack[argOffset_] = frameP[arg->stackAddr.addr / 4];
+                            newStack[argOffset_] = *(cast(uint64_t*)(frameP + arg->stackAddr.addr));
                         }
                         else if (arg->vType == BCValueType_Immediate)
                         {
@@ -2114,54 +2115,6 @@ BCValue BCGen_interpret(BCGen* self, uint32_t fnIdx, BCValue* args, uint32_t n_a
                 }
                 else
                 {
-                    // printf("Should call fnPtr: %p\n", frameP[call.fn.stackAddr.addr / 4]);
-                    uint32_t nParams = 0;
-                    void* result = 0;
-/*
-                    uint32_t unrealAddresses[3];
-                    unrealAddresses[0] = args[0].imm32.imm32;
-                    unrealAddresses[1] = args[1].imm32.imm32;
-                    unrealAddresses[2] = args[2].imm32.imm32;
-
-                    void* arg0 = (void*) BCInterpreter_toRealPointer(&state, heapPtr, unrealAddresses[0]);
-                    void* arg1 = (void*) BCInterpreter_toRealPointer(&state, heapPtr, unrealAddresses[1]);
-                    void* arg2 = (void*) BCInterpreter_toRealPointer(&state, heapPtr, unrealAddresses[2]);
-*/
-                   void* arg0;
-                   void* arg1;
-                   void* arg2;
-
-                   switch(call.n_args)
-                   {
-                        default:
-                            assert(!"More than 3 args not suppoerted");
-                        case 3:
-                            arg2 = call.args[2].voidStar;
-                        case 2:
-                            arg1 = call.args[1].voidStar;
-                        case 1:
-                            arg0 = call.args[0].voidStar;
-                        case 0: break;
-                   }
-
-                   switch(call.n_args)
-                   {
-                        case 0:
-                            result = ((void* (*)()) frameP[call.fn.stackAddr.addr / 4])();
-                        break;
-                        case 1:
-                            result = ((void* (*)(void*)) frameP[call.fn.stackAddr.addr / 4])(arg0);
-                        break;
-                        case 2:
-                            result = ((void* (*)(void*, void*)) frameP[call.fn.stackAddr.addr / 4])(arg0, arg1);
-                        break;
-                        case 3:
-                            result = ((void* (*)(void*, void*, void*)) frameP[call.fn.stackAddr.addr / 4])(arg0, arg1, arg2);
-                        break;
-                        default: assert(0);
-                    }
-
-                    printf("External Call returned: %s\n", (char*)result);
                 }
             }
             break;

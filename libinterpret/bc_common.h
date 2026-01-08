@@ -259,6 +259,11 @@ static inline void storeu32(uint8_t* ptr, const uint32_t v32)
     ptr[3] = (v32 >> 24) & 0xFF;
 }
 
+static inline void storeu64(uint8_t* ptr, const uint64_t v64)
+{
+    storeu32(ptr, v64 & 0xFFFFFFFF);
+    storeu32(ptr + 4, (v64 >> 32) & 0xFFFFFFFF);
+}
 
 static inline uint32_t loadu32(const uint8_t* ptr)
 {
@@ -267,6 +272,13 @@ static inline uint32_t loadu32(const uint8_t* ptr)
                  | (ptr[2] << 16)
                  | (ptr[3] << 24);
     return v32;
+}
+
+static inline uint64_t loadu64(uint8_t* ptr)
+{
+    uint64_t v64;
+    v64 = loadu32(ptr);
+    v64 |= ((uint64_t)loadu32(ptr + 4)) << 32;
 }
 
 /* newCTFE VM Memory Map - 2026 Edition */
