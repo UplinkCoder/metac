@@ -240,33 +240,10 @@ typedef enum address_kind_t
     AddressKind_External,
     AddressKind_Heap,
     AddressKind_Reserved,
+    AddressKind_ROMetadata,
 
     AddressKind_Max
 } address_kind_t;
-
-static inline bool isStackAddress(uint32_t unrealPointer)
-{
-    // a stack address has the upper 2 bits set
-    return (unrealPointer & AddrMask) == stackAddrMask;
-}
-
-static inline bool isExternalAddress(uint32_t unrealPointer)
-{
-    // an external address has 1 upper bit set
-    return (unrealPointer & AddrMask) == externalAddrMask;
-}
-
-static inline bool isHeapAddress(uint32_t unrealPointer)
-{
-    // a heap address does not have the upper 2 bits set
-    return (unrealPointer & stackAddrMask) == heapAddrMask;
-}
-
-static inline uint32_t toStackOffset(uint32_t unrealPointer)
-{
-    assert(isStackAddress(unrealPointer));
-    return (unrealPointer & ~stackAddrMask);
-}
 
 
 CONSTEXPR static inline const uint32_t align4(const uint32_t val)

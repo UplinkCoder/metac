@@ -209,7 +209,7 @@ typedef struct BCExternal {
   uint32_t mapAddr;
 } BCExternal;
 
-#define MAX_REGS 256
+#define MAX_REGS 512
 
 typedef struct BCInterpreter {
     int64_t regs[MAX_REGS];
@@ -1051,16 +1051,82 @@ void BCGen_PrintCode(BCGen* self, uint32_t start, uint32_t end)
 }
 #endif // PRINT_CODE
 
-static inline uint8_t* BCInterpreter_toRealPointer(const BCInterpreter* self, const BCHeap* heapPtr, uint32_t unrealAddress)
+static inline uint8_t* BCInterpreter_toRealPointer(const BCInterpreter* self, const BCHeap* heapPtr, uint32_t addr)
 {
-    uint8_t* result = heapPtr->heapData + unrealAddress;
+    uint32_t offset;
+    address_kind_t kind = ClassifyAddress(addr, &offset);
+    uint8_t* result = NULL;
 
-    if (isStackAddress(unrealAddress))
-    {
-        assert((unrealAddress & 3) == 0);
-        result = (uint8_t*) (self->fp + toStackOffset(unrealAddress / 4));
+    switch(kind) {
+        case AddressKind_Heap:
+            result = heapPtr->heapData + offset;
+            break;
+            
+        case AddressKind_Stack:
+            // Stack grows up from VM_ADDR_STACK_START
+            // offset is already addr - VM_ADDR_STACK_START
+            assert((offset & 3) == 0);  // 4-byte aligned for stack slots
+            result = (uint8_t*)(self->fp + offset);
+            break;
+            
+        case AddressKind_Register:
+            // Register page at VM_ADDR_REG_PAGE
+            result = (cast(uint8_t*)self->regs[Align(offset, 8) / 8]) + (offset & 7);
+            break;
+            
+        case AddressKind_External:
+            // Find external mapping
+            for(uint32_t i = 0; i < self->externalsCount; i++) {
+                BCExternal candidate = self->externals[i];
+                if (candidate.mapAddr <= addr && candidate.mapAddr + candidate.size > addr) {
+                    uint32_t externalOffset = addr - candidate.mapAddr;
+                    result = (uint8_t*)candidate.addr + externalOffset;
+                    break;
+                }
+            }
+            if (!result) {
+                assert(!"External address not mapped");
+            }
+            break;
+            
+         case AddressKind_ROMetadata:
+             //result = self->roMetadata + offset;
+            //break;
+            
+         case AddressKind_Reserved:
+            //result = self->systemWorker + offset;
+            //break;
+            
+        case AddressKind_Invalid:
+        default:
+            assert(!"Invalid address for pointer conversion");
+            break;
     }
+    
     return result;
+}
+
+static inline uint64_t loadWithWidthSafe(uint8_t* ptr, int width) {
+    switch(width) {
+        case 1: return ptr[0];
+        case 2: return ptr[0] | (ptr[1] << 8);
+        case 4: return loadu32(ptr);
+        case 8: return loadu64(ptr);
+        default: assert(0); return 0;
+    }
+}
+
+static inline void storeWithWidthSafe(uint8_t* ptr, uint64_t value, int width) {
+    switch(width) {
+        case 1: ptr[0] = value & 0xFF; break;
+        case 2:
+            ptr[0] = value & 0xFF;
+            ptr[1] = (value >> 8) & 0xFF;
+            break;
+        case 4: storeu32(ptr, value); break;
+        case 8: storeu64(ptr, value); break;
+        default: assert(0);
+    }
 }
 
 #define MODE_STICKY_MASK  ((0x3) << 7)
@@ -1085,7 +1151,6 @@ BCValue BCGen_interpret(BCGen* self, uint32_t fnIdx, BCValue* args, uint32_t n_a
 
     {
         int argOffset = 1;
-        int64_t* regsP = state.regs;
         void* frameP = (void*)state.fp;
         for(uint32_t i = 0; i < n_args;i++)
         {
@@ -1176,11 +1241,11 @@ BCValue BCGen_interpret(BCGen* self, uint32_t fnIdx, BCValue* args, uint32_t n_a
         const uint32_t lhsOffset   = hi & 0xFFFF;
         const uint32_t rhsOffset   = (hi >> 16) & 0xFFFF;
 
-        const int64_t* frameP = state.fp;
+        const int64_t* regsP = state.regs;
 
-        int64_t* lhsRef = cast(int64_t*) &frameP[(lhsOffset / 4)];
-        int64_t* rhs = cast(int64_t*) &frameP[(rhsOffset / 4)];
-        int64_t* opRef = cast(int64_t*) &frameP[(opRefOffset / 4)];
+        int64_t* lhsRef = cast(int64_t*) &regsP[(lhsOffset / 4)];
+        int64_t* rhs = cast(int64_t*) &regsP[(rhsOffset / 4)];
+        int64_t* opRef = cast(int64_t*) &regsP[(opRefOffset / 4)];
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wstrict-aliasing"
@@ -1742,123 +1807,70 @@ BCValue BCGen_interpret(BCGen* self, uint32_t fnIdx, BCValue* args, uint32_t n_a
                 }
             }
             break;
-
         case LongInst_HeapLoad8:
             {
-                assert(*rhs);//, "trying to deref null pointer inLine: " ~ itos(lastLine));
-                (*lhsRef) = heapPtr->heapData[*rhs];
+                assert(*rhs);
+                uint8_t* realPtr = BCInterpreter_toRealPointer(self, heapPtr, (uint32_t)*rhs);
+                (*lhsRef) = loadWithWidthSafe(realPtr, 1);
             }
             break;
+
         case LongInst_HeapStore8:
             {
-                assert(*lhsRef);//, "trying to deref null pointer SP[" ~ itos(cast(int)((lhsRef - &frameP[0])*4)) ~ "] at : &" ~ itos (ip - 2));
-                heapPtr->heapData[*lhsRef] = ((*rhs) & 0xFF);
+                assert(*lhsRef);
+                uint8_t* realPtr = BCInterpreter_toRealPointer(self, heapPtr, (uint32_t)*lhsRef);
+                storeWithWidthSafe(realPtr, *rhs, 1);
             }
             break;
 
-            case LongInst_HeapLoad16:
+        // 16-bit operations
+        case LongInst_HeapLoad16:
             {
-                assert(*rhs);//, "trying to deref null pointer inLine: " ~ itos(lastLine));
-                const uint32_t addr = (uint32_t)*rhs;
-                (*lhsRef) =  heapPtr->heapData[addr]
-                          | (heapPtr->heapData[addr + 1] << 8);
-
-            }
-            break;
-            case LongInst_HeapStore16:
-            {
-                assert(*lhsRef);//, "trying to deref null pointer SP[" ~ itos(cast(int)((lhsRef - &frameP[0])*4)) ~ "] at : &" ~ itos (ip - 2));
-                const uint32_t addr = (uint32_t)*lhsRef;
-                heapPtr->heapData[addr    ] = ((*rhs     ) & 0xFF);
-                heapPtr->heapData[addr + 1] = ((*rhs >> 8) & 0xFF);
+                assert(*rhs);
+                uint8_t* realPtr = BCInterpreter_toRealPointer(self, heapPtr, (uint32_t)*rhs);
+                (*lhsRef) = loadWithWidthSafe(realPtr, 2);
             }
             break;
 
-            case LongInst_HeapLoad32:
+        case LongInst_HeapStore16:
             {
-                uint32_t addr = (uint32_t)*rhs;
-                address_kind_t addressKind = ClassifyAddress(addr);
-                assert(*rhs); //, "trying to deref null pointer inLine: " ~ itos(lastLine));
-                if (addressKind == AddressKind_Heap)
-                {
-                    (*lhsRef) = loadu32(heapPtr->heapData + addr);
-                }
-                else if (addressKind == AddressKind_External)
-                {
-                    for(uint32_t i = 0; i < state.externalsCount; i++)
-                    {
-                        BCExternal canidate = state.externals[i];
-                        if (canidate.mapAddr <= addr && canidate.mapAddr + canidate.size > addr)
-                        {
-                            uint32_t offset = (addr & (~externalAddrMask));
-                            (*lhsRef) = loadu32((uint8_t*)canidate.addr + offset);
-                            goto LendSearch;
-                        }
-                    }
-                    assert(!"couldn't find mapped addr");
-LendSearch:{}
-                }
-                else
-                {
-                    assert(0);
-                }
+                assert(*lhsRef);
+                uint8_t* realPtr = BCInterpreter_toRealPointer(self, heapPtr, (uint32_t)*lhsRef);
+                storeWithWidthSafe(realPtr, *rhs, 2);
             }
             break;
+
+        // 32-bit operations
+        case LongInst_HeapLoad32:
+            {
+                assert(*rhs);
+                uint8_t* realPtr = BCInterpreter_toRealPointer(self, heapPtr, (uint32_t)*rhs);
+                (*lhsRef) = loadWithWidthSafe(realPtr, 4);
+            }
+            break;
+
         case LongInst_HeapStore32:
             {
-                assert(*lhsRef);//, "trying to deref null pointer SP[" ~ itos(cast(int)((lhsRef - &frameP[0])*4)) ~ "] at : &" ~ itos (ip - 2));
-                //(*(heapPtr->heapData.ptr + *lhsRef)) = (*rhs) & 0xFF_FF_FF_FF;
-                storeu32((&heapPtr->heapData[*lhsRef]),  (*rhs) & UINT32_MAX);
+                assert(*lhsRef);
+                uint8_t* realPtr = BCInterpreter_toRealPointer(self, heapPtr, (uint32_t)*lhsRef);
+                storeWithWidthSafe(realPtr, *rhs, 4);
             }
             break;
 
+        // 64-bit operations
         case LongInst_HeapLoad64:
             {
-                assert(*rhs);//, "trying to deref null pointer ");
-                const uint32_t addr = (uint32_t)*rhs;
-                uint8_t* basePtr = heapPtr->heapData + addr;
-                address_kind_t addressKind = ClassifyAddress(addr);
-                assert(*rhs); //, "trying to deref null pointer inLine: " ~ itos(lastLine));
-
-                if (addressKind == AddressKind_Heap)
-                {
-                    basePtr = heapPtr->heapData + addr;
-                }
-                else if (addressKind == AddressKind_External)
-                {
-                    for(uint32_t i = 0; i < state.externalsCount; i++)
-                    {
-                        BCExternal canidate = state.externals[i];
-                        if (canidate.mapAddr <= addr && canidate.mapAddr + canidate.size > addr)
-                        {
-                            uint32_t offset = (addr & (~externalAddrMask));
-                            basePtr = (uint8_t*)canidate.addr + offset;
-                            goto LendSearch2;
-                        }
-                    }
-                    assert(!"couldn't find mapped addr");
-                }
-LendSearch2:{}
-
-                uint64_t value = loadu32(basePtr + 4);
-                value <<= 32UL;
-                value |= loadu32(basePtr);
-
-                (*lhsRef) = value;
+                assert(*rhs);
+                uint8_t* realPtr = BCInterpreter_toRealPointer(self, heapPtr, (uint32_t)*rhs);
+                (*lhsRef) = loadWithWidthSafe(realPtr, 8);
             }
             break;
 
         case LongInst_HeapStore64:
             {
-                const uint32_t addr = (uint32_t)*lhsRef;
-                assert(addr);//, "trying to deref null pointer SP[" ~ itos(cast(int)(lhsRef - &frameP[0])*4) ~ "] at : &" ~ itos (ip - 2));
-                assert(addr < heapPtr->heapSize);//, "Store out of range at ip: &" ~ itos(ip - 2) ~ " atLine: " ~ itos(lastLine));
-
-                uint8_t* basePtr = heapPtr->heapData + addr;
-                const uint64_t value = *(uint64_t*)rhs;
-
-                storeu32(basePtr,     value & UINT32_MAX);
-                storeu32(basePtr + 4, cast(uint32_t)(value >> 32));
+                assert(*lhsRef);
+                uint8_t* realPtr = BCInterpreter_toRealPointer(self, heapPtr, (uint32_t)*lhsRef);
+                storeWithWidthSafe(realPtr, *rhs, 8);
             }
             break;
 
@@ -2182,53 +2194,36 @@ LendSearch2:{}
             break;
         case LongInst_MemCpy:
             {
-                uint32_t cpySize = cast(uint32_t) *opRef;
-                uint32_t cpySrc = cast(uint32_t) *rhs;
-                uint32_t cpyDst = cast(uint32_t) *lhsRef;
+                uint32_t cpySize = cast(uint32_t)*opRef;
+                uint32_t cpySrc = cast(uint32_t)*rhs;
+                uint32_t cpyDst = cast(uint32_t)*lhsRef;
 
                 if (cpySrc != cpyDst && cpySize != 0)
                 {
-                    uint8_t* cpySrcP;
-                    uint8_t* cpyDstP;
-                    uint8_t* heapData = heapPtr->heapData;
-
-                    // assert(cpySize, "cpySize == 0");
-                    assert(cpySrc);//, "cpySrc == 0" ~ " inLine: " ~ itos(lastLine));
-
-                    assert(cpyDst);//, "cpyDst == 0" ~ " inLine: " ~ itos(lastLine));
-
-                    assert(cpyDst >= cpySrc + cpySize || cpyDst + cpySize <= cpySrc);
-                    //, "Overlapping MemCpy is not supported --- src: " ~ itos(cpySrc)
-                    //    ~ " dst: " ~ itos(cpyDst) ~ " size: " ~ itos(cpySize));
-
-
-                    switch (ClassifyAddress(cpySrc))
-                    {
-                        case AddressKind_External:
-                            cpySrcP = state.externals[cpySrc & ~AddrMask].addr;
-                        break;
-                        case AddressKind_Heap:
-                            cpySrcP = heapData + cpySrc;
-                        break;
-                        default : assert(0);
-                    }
-                    switch (ClassifyAddress(cpyDst))
-                    {
-                        case AddressKind_External:
-                            cpyDstP = state.externals[cpyDst & ~AddrMask].addr;
-                        break;
-                        case AddressKind_Heap:
-                            cpyDstP = heapData + cpyDst;
-                        break;
-                        default : assert(0);
-                    }
-
-                    memcpy(cpyDstP, cpySrcP, cpySize * sizeof(*heapPtr->heapData));
-                    //heapPtr->heapData[cpyDst .. cpyDst + cpySize] = heapPtr->heapData[cpySrc .. cpySrc + cpySize];
+                    // Basic validation
+                    assert(cpySrc); // Null source pointer
+                    assert(cpyDst); // Null destination pointer
+                    
+                    // Get real pointers using the unified function
+                    uint8_t* cpySrcP = BCInterpreter_toRealPointer(self, heapPtr, cpySrc);
+                    uint8_t* cpyDstP = BCInterpreter_toRealPointer(self, heapPtr, cpyDst);
+                    
+                    // Check for overlapping regions (if you want to keep this safety check)
+                    // Note: memcpy doesn't handle overlap, memmove does
+                    // But we can keep your original check for safety
+                    uintptr_t src_start = (uintptr_t)cpySrcP;
+                    uintptr_t src_end = src_start + cpySize;
+                    uintptr_t dst_start = (uintptr_t)cpyDstP;
+                    uintptr_t dst_end = dst_start + cpySize;
+                    
+                    assert(dst_start >= src_end || dst_end <= src_start);
+                    
+                    // Perform the copy
+                    memcpy(cpyDstP, cpySrcP, cpySize);
                 }
             }
             break;
-        case LongInst_ReadI32:
+            case LongInst_ReadI32:
             {
                 assert(hi < self->contextCount);
                 ReadI32_ctx_t ctx = self->contexts[hi];

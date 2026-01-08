@@ -590,7 +590,7 @@ EXTERN_C bool BCValue_isStackValueOrParameter(const BCValue* val)
 #define VM_SIZE_RO_METADATA       (256 * 1024 * 1024)
 #define VM_LIMIT_RECURSION        2000
 
-#if 0
+
 address_kind_t ClassifyAddress(uint32_t addr, uint32_t* out_offset)
 {
     const uint32_t top = addr >> VM_TOP_BITS_SHIFT; // 128 chunks of 32MB
@@ -599,7 +599,7 @@ address_kind_t ClassifyAddress(uint32_t addr, uint32_t* out_offset)
 
     /* HOT PATH: Heap (0x42000000 - 0xC1FFFFFF) */
     // Top 7 bits: 33 (0100001) to 96 (1100000)
-    if (top >= VM_KIND_HEAP_START && top <=  VM_KIND_HEAP_START)
+    if (top >= VM_KIND_HEAP_START && top <=  VM_KIND_HEAP_END)
     {
         kind   = AddressKind_Heap;
         offset = addr - VM_ADDR_HEAP_START;
@@ -635,60 +635,35 @@ address_kind_t ClassifyAddress(uint32_t addr, uint32_t* out_offset)
     else if (top >= 97)
     {
         // Shadow Return Stack (dedicated for 32-bit return addresses)
-/*      this is address invalid
-        if (addr < 0xC2101000) 
+        // this is address invalid
+        if (addr < VM_ADDR_RETURN_STACK) 
         {
-            kind   = AddressKind_ReturnStack;
-            offset = addr - 0xC2000000;
+            // kind   = AddressKind_ReturnStack;
+            // offset = addr - VM_ADDR_RETURN_STACK;
         }
-*/
         // RO METADATA (core.reflect, string literals, immutable data)
-        else if (addr < 0xD2101000)
+        else if (addr < VM_ADDR_RO_METADATA)
         {
             kind   = AddressKind_ROMetadata;
-            offset = addr - 0xC2101000;
+            offset = addr - VM_ADDR_RO_METADATA;
         }
         // Rest of SYSTEM RESERVED (Fibers, Waiter Tables, etc.)
         else
         {
-            kind   = AddressKind_SystemReserved;
-            offset = addr - 0xD2101000;
+            // this is also invald
+            // kind   = AddressKind_Reserved;
+            // offset = addr - VM_ADDR_RESERVED_START;
         }
     }
     /* EXTERNAL (TLB-backed) (0x02000000 - 0x41FFFFFF) */
     else if (top <= 32)
     {
         kind   = AddressKind_External;
-        offset = addr - 0x02000000;
+        offset = VM_ADDR_EXTERNAL_START;
     }
 
     *out_offset = offset;
     return kind;
-}
-#endif
-
-static inline address_kind_t ClassifyAddress(uint32_t addr)
-{
-    const uint32_t top = addr >> 25; // 128 chunks of 32MB
-
-    /* HOT PATH: Heap */
-    if (top >= 33 && top <= 96)
-        return AddressKind_Heap;
-
-    /* SECOND HOT PATH: Stack (top == 0, addr >= 0x4000) */
-    if (top == 0)
-    {
-        if (addr >= 0x4000) return AddressKind_Stack;
-        if (addr < 0x1000)  return AddressKind_Invalid; // NULL trap
-        if (addr < 0x2000)  return AddressKind_Register;  // Register page
-
-        return AddressKind_Invalid;         // Guard page
-    }
-
-    if (top <= 32)
-        return AddressKind_External;
-
-    return AddressKind_Reserved;
 }
 
 /*
