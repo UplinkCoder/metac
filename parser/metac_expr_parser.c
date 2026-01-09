@@ -355,7 +355,8 @@ static inline uint32_t OpToPrecedence(metac_expr_kind_t exp)
           || exp == expr_identifier
           || exp == expr_char
           || exp == expr_tuple
-          || exp == expr_type)
+          || exp == expr_type
+          || exp == expr_function)
     {
         return 34;
     }

@@ -40,6 +40,16 @@ typedef struct metac_expr_header_t
     EXPR_HEADER
 } metac_expr_header_t;
 
+typedef struct expr_function_t
+{
+    EXPR_HEADER
+
+    struct decl_parameter_t* Parameters;
+    uint32_t ParameterCount;
+
+    struct metac_stmt_t* FunctionBody;
+} expr_function_t;
+
 typedef struct expr_argument_t
 {
     EXPR_HEADER
