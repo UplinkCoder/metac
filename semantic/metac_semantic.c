@@ -924,6 +924,70 @@ scope_insert_error_t MetaCSemantic_RegisterInScope(metac_sema_state_t* self,
     return result;
 }
 
+void doParameterSemantic(metac_sema_state_t* self, decl_parameter_t* funcParameters, sema_decl_variable_t* semaParams, uint32_t parameterCount)
+{
+        decl_parameter_t* currentParam = funcParameters;
+    for(uint32_t i = 0;
+        i < parameterCount;
+        i++)
+    {
+        // let's do the parameter semantic inline
+        // as we have an easier time if we know at which
+        // param we are and how many follow
+        decl_variable_t* paramVar = currentParam->Parameter;
+        {
+            metac_identifier_ptr_t semaId =
+                MetaCIdentifierTable_CopyIdentifier(self->ParserIdentifierTable,
+                                                    &self->SemanticIdentifierTable,
+                                                    paramVar->VarIdentifier);
+            semaParams[i].VarIdentifier = semaId;
+        }
+        semaParams[i].VarFlags |= variable_is_parameter;
+        if (METAC_NODE(paramVar->VarInitExpr) != emptyNode)
+        {
+            semaParams[i].VarInitExpr =
+                MetaCSemantic_doExprSemantic(self, paramVar->VarInitExpr, 0);
+            assert(semaParams[i].Storage.Kind == storage_parameter);
+        }
+        else
+        {
+            METAC_NODE(semaParams[i].VarInitExpr) = emptyNode;
+        }
+        for (;;)
+        {
+            static const metac_type_index_t unresolvedTypeIndex = {0};
+            metac_type_index_t idx;
+            idx = semaParams[i].TypeIndex =
+                MetaCSemantic_doTypeSemantic(self,
+                                             currentParam->Parameter->VarType);
+            if (idx.v != unresolvedTypeIndex.v)
+            {
+                break;
+            }
+            else
+            {
+#ifndef NO_FIBERS
+                YIELD("Waiting for type semantic on function parameter");
+#else
+#endif
+            }
+        }
+        metac_type_index_t paramTypeIdx = semaParams[i].TypeIndex;
+        if (paramTypeIdx.Kind == type_index_basic
+         && paramTypeIdx.Index == type_auto)
+        {
+            fprintf(stderr,
+                "Detected auto type in func params which implies template\n");
+        }
+        uint32_t hash = semaParams[i].TypeIndex.v;
+        hash = CRC32C_VALUE(hash, i);
+        semaParams[i].Hash = hash;
+        currentParam = currentParam->Next;
+    }
+    // now we should know the sizes
+    assert(currentParam == emptyPointer);
+}
+
 sema_decl_function_t* MetaCSemantic_doFunctionSemantic(metac_sema_state_t* self,
                                                        decl_function_t* func)
 {
@@ -945,67 +1009,8 @@ sema_decl_function_t* MetaCSemantic_doFunctionSemantic(metac_sema_state_t* self,
         f->Parameters =
             AllocFunctionParameters(self, f, func->ParameterCount);
 
-    decl_parameter_t* currentParam = func->Parameters;
-    for(uint32_t i = 0;
-        i < func->ParameterCount;
-        i++)
-    {
-        // let's do the parameter semantic inline
-        // as we have an easier time if we know at which
-        // param we are and how many follow
-        decl_variable_t* paramVar = currentParam->Parameter;
-        {
-            metac_identifier_ptr_t semaId =
-                MetaCIdentifierTable_CopyIdentifier(self->ParserIdentifierTable,
-                                                    &self->SemanticIdentifierTable,
-                                                    paramVar->VarIdentifier);
-            f->Parameters[i].VarIdentifier = semaId;
-        }
-        f->Parameters[i].VarFlags |= variable_is_parameter;
-        if (METAC_NODE(paramVar->VarInitExpr) != emptyNode)
-        {
-            f->Parameters[i].VarInitExpr =
-                MetaCSemantic_doExprSemantic(self, paramVar->VarInitExpr, 0);
-            assert(f->Parameters[i].Storage.Kind == storage_parameter);
-        }
-        else
-        {
-            METAC_NODE(f->Parameters[i].VarInitExpr) = emptyNode;
-        }
-        for (;;)
-        {
-            static const metac_type_index_t unresolvedTypeIndex = {0};
-            metac_type_index_t idx;
-            idx = f->Parameters[i].TypeIndex =
-                MetaCSemantic_doTypeSemantic(self,
-                                             currentParam->Parameter->VarType);
-            if (idx.v != unresolvedTypeIndex.v)
-            {
-                break;
-            }
-            else
-            {
-#ifndef NO_FIBERS
-                YIELD("Waiting for type semantic on function parameter");
-#else
-#endif
-            }
-        }
-        metac_type_index_t paramTypeIdx = f->Parameters[i].TypeIndex;
-        if (paramTypeIdx.Kind == type_index_basic
-         && paramTypeIdx.Index == type_auto)
-        {
-            fprintf(stderr,
-                "Detected auto type in func params which implies template\n");
-        }
-        uint32_t hash = f->Parameters[i].TypeIndex.v;
-        hash = CRC32C_VALUE(hash, i);
-        f->Parameters[i].Hash = hash;
-        currentParam = currentParam->Next;
-    }
-    // now we should know the sizes
-    assert(currentParam == emptyPointer);
 
+    doParameterSemantic(self, func->Parameters, f->Parameters, func->ParameterCount);
 
     metac_scope_owner_t Parent = {SCOPE_OWNER_V(scope_owner_function, FunctionIndex(self, f))};
 
@@ -1018,7 +1023,8 @@ sema_decl_function_t* MetaCSemantic_doFunctionSemantic(metac_sema_state_t* self,
                            ? parentFunc->FrameOffset : 0);
 
     metac_type_index_t returnType = MetaCSemantic_doTypeSemantic(self, func->ReturnType);
-    metac_type_index_t yieldType = ((METAC_NODE(func->YieldType) != emptyNode) ? MetaCSemantic_doTypeSemantic(self, func->YieldType) : (metac_type_index_t){0});
+    // TODO set yieldType properly.
+    // metac_type_index_t yieldType = ((METAC_NODE(func->YieldType) != emptyNode) ? MetaCSemantic_doTypeSemantic(self, func->YieldType) : (metac_type_index_t){0});
     // synthesize function type
     decl_type_functiontype_t fType = {};
     fType.Kind = decl_type_functiontype;
@@ -1051,7 +1057,7 @@ sema_decl_function_t* MetaCSemantic_doFunctionSemantic(metac_sema_state_t* self,
         i < func->ParameterCount;
         i++)
     {
-        decl_variable_t* var = cast(decl_variable_t*)(f->Parameters + i);
+        sema_decl_variable_t* var = (f->Parameters + i);
        // (XXX) here we tried to force the __cdecl calling convention
        // this is commented out for now
        // params[i].Storage.v = STORAGE_V(storage_stack, frameOffset);
