@@ -143,6 +143,9 @@ metac_token_t* MetaCParser_Match_(metac_parser_t* self, metac_token_enum_t type,
 const char* MetaCNodeKind_toChars(metac_node_kind_t type);
 const char* MetaCExprKind_toChars(metac_expr_kind_t type);
 
+decl_parameter_list_t ParseParameterList(metac_parser_t* self,
+                                         decl_function_t* parent);
+
 bool IsExprNode(metac_node_kind_t Kind);
 
 static inline metac_location_t LocationFromToken(metac_parser_t* self,

@@ -415,7 +415,58 @@ static inline bool IsPunctuationToken(metac_token_enum_t tok)
         ||  tok == tok_tilde
         ||  tok == tok_rParen);
 }
+static bool CouldBeFunctionLiteral(metac_parser_t* self, metac_token_enum_t tok) {
+    if (tok != tok_lParen) return false;
 
+    metac_token_t* peek = MetaCParser_PeekToken(self, 2);
+    int parenDepth = 1;
+    bool hasParamDecl = false;
+    
+    // Fast path for () {
+    if (peek && peek->TokenType == tok_rParen) {
+        metac_token_t* peek3 = MetaCParser_PeekToken(self, 3);
+        return (peek3 && peek3->TokenType == tok_lBrace);
+    }
+
+    for (int i = 2; (peek = MetaCParser_PeekToken(self, i)) != NULL; i++) {
+        switch(peek->TokenType) {
+            case tok_lParen: {
+                parenDepth++;
+            } break;
+            case tok_rParen: {
+                parenDepth--;
+                if (parenDepth == 0) {
+                    metac_token_t* after = MetaCParser_PeekToken(self, i + 1);
+                    // Must have seen Type + Ident AND be followed by {
+                    return (after && after->TokenType == tok_lBrace && hasParamDecl);
+                }
+            } break;
+            case tok_kw_struct:
+            case tok_kw_union:
+            case tok_kw_enum: {
+                // Skip the keyword and the tag (e.g., 'struct S')
+                // This ensures 'S' isn't mistaken for a parameter identifier
+                metac_token_t* tag = MetaCParser_PeekToken(self, i + 1);
+                if (tag && tag->TokenType == tok_identifier) {
+                    i++; // Skip the identifier tag
+                }
+            } break;
+            default: {
+                if (!hasParamDecl) {
+                    metac_token_t* next = MetaCParser_PeekToken(self, i + 1);
+                    // Check for 'Type Identifier' sequence
+                    if (next && IsTypeToken(peek->TokenType) && next->TokenType == tok_identifier) {
+                        hasParamDecl = true;
+                    }
+                }
+            } break;
+        }
+
+        if (peek->TokenType == tok_semicolon || peek->TokenType == tok_lBrace) 
+            return false;
+    }
+    return false;
+}
 static bool CouldBeCast(metac_parser_t* self, metac_token_enum_t tok)
 {
     bool result = true;
@@ -594,6 +645,7 @@ static inline bool CouldBeType(metac_parser_t* self,
     return result;
 }
 
+
 metac_expr_t* MetaCParser_ParsePrimaryExpr(metac_parser_t* self, parse_expr_flags_t flags)
 {
     metac_expr_t* result = 0;
@@ -624,45 +676,77 @@ metac_expr_t* MetaCParser_ParsePrimaryExpr(metac_parser_t* self, parse_expr_flag
         invalidLocation);
     uint32_t hash = 0;
 
-    if (tokenType == tok_lParen && CouldBeCast(self, tokenType))
+    if (tokenType == tok_lParen)
     {
-        // printf("going to parse cast\n");
-        hash = cast_key;
-        result = AllocNewExpr(expr_cast);
-        //typedef unsigned int b;
-        metac_token_t* lParen = MetaCParser_Match(self, tok_lParen);
-        metac_type_modifiers typeModifiers = ParseTypeModifiers(self);
-
-        metac_token_t* peek = MetaCParser_PeekToken(self, 1);
-
-        if (peek && IsTypeToken(peek->TokenType))
+        if (CouldBeFunctionLiteral(self, tokenType))
         {
-            result->CastType = MetaCParser_ParseTypeDecl(self, 0, 0);
-            result->CastType->TypeModifiers =  typeModifiers;
-        }
-        else
+            metac_token_t* peek2 = MetaCParser_PeekToken(self, 2);
+            // Parse function literal: (ParamList?) BlockStatement
+#define function_key 0x8cbe2f
+            hash = function_key;
+            result = AllocNewExpr(expr_function);
+                
+            // Check for empty params '()' vs '(...)'
+            if (peek2 && peek2->TokenType == tok_rParen)
+            {
+                MetaCParser_Match(self, tok_lParen);
+                MetaCParser_Match(self, tok_rParen);
+                METAC_NODE(result->FunctionExp.Parameters) = emptyNode;
+                result->FunctionExp.ParameterCount = 0;
+                hash ^= CRC32C_PARENSTARPAREN;
+            }
+            else
+            {
+                decl_parameter_list_t paramList;
+                paramList = ParseParameterList(self, result);
+                result->FunctionExp.ParameterCount = paramList.ParameterCount;
+                result->FunctionExp.Parameters = paramList.List;
+                hash ^= paramList.Hash;
+            }
+            
+            // Parse mandatory '{ ... }' block
+            result->FunctionExp.Body = MetaCParser_ParseStmt(self, 0, 0);
+            hash = CRC32C_VALUE(hash, result->FunctionExp.Body->Hash);
+            MetaCLocation_Expand(&loc, LocationFromToken(self, MetaCParser_PeekToken(self, 0)));
+ 
+            result->Hash = hash;
+        }            
+        else if (CouldBeCast(self, tokenType))
         {
-            AllocNewDecl(decl_type, &result->CastType);
-            result->CastType->TypeModifiers = typeModifiers;
-            result->CastType->TypeKind = type_modifiers;
-            result->CastType->Hash = CRC32C_VALUE(~0, typeModifiers);
-        }
-        hash = CRC32C_VALUE(hash, result->CastType->Hash);
-        MetaCParser_Match(self, tok_rParen);
-#ifdef OLD_PARSER
-        result->CastExp = MetaCParser_ParseExpr(self, flags, 0);
-#else
-        result->CastExp = MetaCParser_ParseExpr2(self, flags);
-#endif
+            // printf("going to parse cast\n");
+            hash = cast_key;
+            result = AllocNewExpr(expr_cast);
+            //typedef unsigned int b;
+            metac_token_t* lParen = MetaCParser_Match(self, tok_lParen);
+            metac_type_modifiers typeModifiers = ParseTypeModifiers(self);
 
-        hash = CRC32C_VALUE(hash, result->CastExp->Hash);
+            metac_token_t* peek = MetaCParser_PeekToken(self, 1);
 
-        if (MetaCLocationPtr_IsValid(result->CastExp->LocationIdx))
-        {
-            MetaCLocation_Expand(&loc,
-                MetaCLocationStorage_FromPtr(&self->LocationStorage, result->CastExp->LocationIdx));
+            if (peek && IsTypeToken(peek->TokenType))
+            {
+                result->CastType = MetaCParser_ParseTypeDecl(self, 0, 0);
+                result->CastType->TypeModifiers =  typeModifiers;
+            }
+            else
+            {
+                AllocNewDecl(decl_type, &result->CastType);
+                result->CastType->TypeModifiers = typeModifiers;
+                result->CastType->TypeKind = type_modifiers;
+                result->CastType->Hash = CRC32C_VALUE(~0, typeModifiers);
+            }
+            hash = CRC32C_VALUE(hash, result->CastType->Hash);
+            MetaCParser_Match(self, tok_rParen);
+            result->CastExp = MetaCParser_ParseExpr(self, flags, 0);
+
+            hash = CRC32C_VALUE(hash, result->CastExp->Hash);
+
+            if (MetaCLocationPtr_IsValid(result->CastExp->LocationIdx))
+            {
+                MetaCLocation_Expand(&loc,
+                    MetaCLocationStorage_FromPtr(&self->LocationStorage, result->CastExp->LocationIdx));
+            }
+            result->Hash = hash;
         }
-        result->Hash = hash;
     }
 #ifdef TYPE_EXP
     else if (CouldBeType(self, tokenType, flags))

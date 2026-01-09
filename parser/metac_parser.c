@@ -1077,11 +1077,7 @@ decl_type_t* MetaCParser_ParseTypeDecl(metac_parser_t* self, metac_decl_t* paren
             decl_type_array_t* typeArray = AllocNewDecl(decl_type_array, &result);
             if(!MetaCParser_PeekMatch(self, tok_rBracket, 1))
             {
-#ifdef OLD_PARSER
                 typeArray->Dim = MetaCParser_ParseExpr(self, expr_flags_none, 0);
-#else
-                typeArray->Dim = MetaCParser_ParseExpr2(self, expr_flags_none);
-#endif
                 MetaCParser_Match(self, tok_rBracket);
             }
             else

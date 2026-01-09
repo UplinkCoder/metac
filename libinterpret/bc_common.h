@@ -281,19 +281,6 @@ static inline uint64_t loadu64(uint8_t* ptr)
     v64 |= ((uint64_t)loadu32(ptr + 4)) << 32;
 }
 
-/* newCTFE VM Memory Map - 2026 Edition */
-typedef enum BCMemoryMap {
-    NullTrapStart   = 0x00000000,
-    RegisterPage    = 0x00002000, // 8KB Trap
-    DoubleGuard     = 0x00003000, // 4KB Register Page
-    StackStart      = 0x00004000, // 4KB Double Guard
-    
-    ExternalStart   = 0x02000000,
-    HeapStart       = 0x42000000,
-    ReservedStart   = 0xC2000000
-} BCMemoryMap;
-
-
 CONSTEXPR static inline uint32_t align16(const uint32_t val)
 {
     return ((val + 15) & ~15);

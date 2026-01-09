@@ -47,7 +47,7 @@ typedef struct expr_function_t
     struct decl_parameter_t* Parameters;
     uint32_t ParameterCount;
 
-    struct metac_stmt_t* FunctionBody;
+    struct metac_stmt_t* Body;
 } expr_function_t;
 
 typedef struct expr_argument_t
@@ -164,6 +164,7 @@ typedef struct metac_expr_t
             };
             number_flags_t NumberFlags;
         };
+        expr_function_t FunctionExp;
     };
 } metac_expr_t;
 
