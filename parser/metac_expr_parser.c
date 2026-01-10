@@ -746,6 +746,32 @@ metac_expr_t* MetaCParser_ParsePrimaryExpr(metac_parser_t* self, parse_expr_flag
                     MetaCLocationStorage_FromPtr(&self->LocationStorage, result->CastExp->LocationIdx));
             }
             result->Hash = hash;
+        } 
+        else // None of the special 'cast()' or '() {}' cases match 
+        {
+            self->ExprParser.OpenParens++;
+
+            MetaCParser_Match(self, tok_lParen);
+            result = AllocNewExpr(expr_paren);
+            result->Hash = CRC32C_PARENPAREN;
+            if (!MetaCParser_PeekMatch(self, tok_rParen, 1))
+            {
+                result->E1 = MetaCParser_ParseExpr(self, expr_flags_none, 0);
+                result->Hash = CRC32C_VALUE(result->Hash, result->E1->Hash);
+            }
+            else
+            {
+                METAC_NODE(result->E1) = emptyNode;
+            }
+        
+            metac_token_t* endParen =
+                MetaCParser_Match(self, tok_rParen);
+            if (endParen)
+            {
+                MetaCLocation_Expand(&loc, LocationFromToken(self, endParen));
+
+                self->ExprParser.OpenParens--;
+            }
         }
     }
 #ifdef TYPE_EXP
@@ -880,45 +906,6 @@ metac_expr_t* MetaCParser_ParsePrimaryExpr(metac_parser_t* self, parse_expr_flag
         result->IdentifierKey = currentToken->IdentifierKey;
         result->Hash = currentToken->IdentifierKey;
         //PushOperand(result);
-    }
-    else if (tokenType == tok_lParen)
-    {
-        self->ExprParser.OpenParens++;
-        MetaCParser_Match(self, tok_lParen);
-        result = AllocNewExpr(expr_paren);
-        result->Hash = CRC32C_PARENPAREN;
-        {
-            if (!MetaCParser_PeekMatch(self, tok_rParen, 1))
-            {
-#ifdef OLD_PARSER
-                result->E1 = MetaCParser_ParseExpr(self, expr_flags_none, 0);
-#else
-                result->E1 = MetaCParser_ParseExpr2(self, expr_flags_none);
-#endif
-                // result->E1 = MetaCParser_ParseExpr(self, expr_flags_none, 0);
-                // printf("E1: %s\n", MetaCExprKind_toChars(result->E1->Kind));
-                result->Hash = CRC32C_VALUE(result->Hash, result->E1->Hash);
-            }
-            else
-            {
-                METAC_NODE(result->E1) = emptyNode;
-            }
-        }
-
-        //PushOperator(expr_paren);[New Thread 0x7ffff76fb640 (LWP 2094)]
-
-        //PushOperand(result);
-
-        metac_token_t* endParen =
-            MetaCParser_Match(self, tok_rParen);
-        if (endParen)
-        {
-            MetaCLocation_Expand(&loc, LocationFromToken(self, endParen));
-
-            self->ExprParser.OpenParens--;
-        }
-
-        //PopOperator(expr_paren);
     }
     else if (tokenType == tok_lBrace)
     {

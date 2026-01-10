@@ -1019,7 +1019,7 @@ sema_decl_function_t* MetaCSemantic_doFunctionSemantic(metac_sema_state_t* self,
 
     sema_decl_function_t* parentFunc = cast(sema_decl_function_t*) emptyNode;
 
-	uint32_t frameOffset = ((parentFunc != cast(sema_decl_function_t*)emptyNode)
+    uint32_t frameOffset = ((parentFunc != cast(sema_decl_function_t*)emptyNode)
                            ? parentFunc->FrameOffset : 0);
 
     metac_type_index_t returnType = MetaCSemantic_doTypeSemantic(self, func->ReturnType);
