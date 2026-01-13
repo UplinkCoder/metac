@@ -1811,7 +1811,7 @@ BCValue BCGen_interpret(BCGen* self, uint32_t fnIdx, BCValue* args, uint32_t n_a
         case LongInst_HeapLoad8:
             {
                 assert(*rhs);
-                uint8_t* realPtr = BCInterpreter_toRealPointer(self, heapPtr, (uint32_t)*rhs);
+                uint8_t* realPtr = BCInterpreter_toRealPointer(&state, heapPtr, (uint32_t)*rhs);
                 (*lhsRef) = loadWithWidthSafe(realPtr, 1);
             }
             break;
@@ -1819,7 +1819,7 @@ BCValue BCGen_interpret(BCGen* self, uint32_t fnIdx, BCValue* args, uint32_t n_a
         case LongInst_HeapStore8:
             {
                 assert(*lhsRef);
-                uint8_t* realPtr = BCInterpreter_toRealPointer(self, heapPtr, (uint32_t)*lhsRef);
+                uint8_t* realPtr = BCInterpreter_toRealPointer(&state, heapPtr, (uint32_t)*lhsRef);
                 storeWithWidthSafe(realPtr, *rhs, 1);
             }
             break;
@@ -1828,7 +1828,7 @@ BCValue BCGen_interpret(BCGen* self, uint32_t fnIdx, BCValue* args, uint32_t n_a
         case LongInst_HeapLoad16:
             {
                 assert(*rhs);
-                uint8_t* realPtr = BCInterpreter_toRealPointer(self, heapPtr, (uint32_t)*rhs);
+                uint8_t* realPtr = BCInterpreter_toRealPointer(&state, heapPtr, (uint32_t)*rhs);
                 (*lhsRef) = loadWithWidthSafe(realPtr, 2);
             }
             break;
@@ -1836,7 +1836,7 @@ BCValue BCGen_interpret(BCGen* self, uint32_t fnIdx, BCValue* args, uint32_t n_a
         case LongInst_HeapStore16:
             {
                 assert(*lhsRef);
-                uint8_t* realPtr = BCInterpreter_toRealPointer(self, heapPtr, (uint32_t)*lhsRef);
+                uint8_t* realPtr = BCInterpreter_toRealPointer(&state, heapPtr, (uint32_t)*lhsRef);
                 storeWithWidthSafe(realPtr, *rhs, 2);
             }
             break;
@@ -1845,7 +1845,7 @@ BCValue BCGen_interpret(BCGen* self, uint32_t fnIdx, BCValue* args, uint32_t n_a
         case LongInst_HeapLoad32:
             {
                 assert(*rhs);
-                uint8_t* realPtr = BCInterpreter_toRealPointer(self, heapPtr, (uint32_t)*rhs);
+                uint8_t* realPtr = BCInterpreter_toRealPointer(&state, heapPtr, (uint32_t)*rhs);
                 (*lhsRef) = loadWithWidthSafe(realPtr, 4);
             }
             break;
@@ -1853,7 +1853,7 @@ BCValue BCGen_interpret(BCGen* self, uint32_t fnIdx, BCValue* args, uint32_t n_a
         case LongInst_HeapStore32:
             {
                 assert(*lhsRef);
-                uint8_t* realPtr = BCInterpreter_toRealPointer(self, heapPtr, (uint32_t)*lhsRef);
+                uint8_t* realPtr = BCInterpreter_toRealPointer(&state, heapPtr, (uint32_t)*lhsRef);
                 storeWithWidthSafe(realPtr, *rhs, 4);
             }
             break;
@@ -1862,7 +1862,7 @@ BCValue BCGen_interpret(BCGen* self, uint32_t fnIdx, BCValue* args, uint32_t n_a
         case LongInst_HeapLoad64:
             {
                 assert(*rhs);
-                uint8_t* realPtr = BCInterpreter_toRealPointer(self, heapPtr, (uint32_t)*rhs);
+                uint8_t* realPtr = BCInterpreter_toRealPointer(&state, heapPtr, (uint32_t)*rhs);
                 (*lhsRef) = loadWithWidthSafe(realPtr, 8);
             }
             break;
@@ -1870,7 +1870,7 @@ BCValue BCGen_interpret(BCGen* self, uint32_t fnIdx, BCValue* args, uint32_t n_a
         case LongInst_HeapStore64:
             {
                 assert(*lhsRef);
-                uint8_t* realPtr = BCInterpreter_toRealPointer(self, heapPtr, (uint32_t)*lhsRef);
+                uint8_t* realPtr = BCInterpreter_toRealPointer(&state, heapPtr, (uint32_t)*lhsRef);
                 storeWithWidthSafe(realPtr, *rhs, 8);
             }
             break;
@@ -2158,8 +2158,8 @@ BCValue BCGen_interpret(BCGen* self, uint32_t fnIdx, BCValue* args, uint32_t n_a
                     assert(cpyDst); // Null destination pointer
                     
                     // Get real pointers using the unified function
-                    uint8_t* cpySrcP = BCInterpreter_toRealPointer(self, heapPtr, cpySrc);
-                    uint8_t* cpyDstP = BCInterpreter_toRealPointer(self, heapPtr, cpyDst);
+                    uint8_t* cpySrcP = BCInterpreter_toRealPointer(&state, heapPtr, cpySrc);
+                    uint8_t* cpyDstP = BCInterpreter_toRealPointer(&state, heapPtr, cpyDst);
                     
                     // Check for overlapping regions (if you want to keep this safety check)
                     // Note: memcpy doesn't handle overlap, memmove does

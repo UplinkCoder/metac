@@ -872,8 +872,7 @@ LswitchMode:
         }
         else if (repl->Line[0] == '.')
         {
-            if (line_length == sizeof("scope")
-             && 0 == memcmp(repl->Line + 1, "scope", strlen("scope")))
+            if (0 == memcmp(repl->Line + 1, "scope", strlen("scope")))
             {
                 if (repl->SemanticState.CurrentScope)
                 {
@@ -885,7 +884,7 @@ LswitchMode:
                         metac_scope_table_slot_t slot = table->Slots[slotIdx];
                         if (slot.Hash)
                         {
-                            xprintf("Kind %s\n", MetaCNodeKind_toChars(slot.Node->Kind));
+                            MSGF("Kind %s\n", MetaCNodeKind_toChars(slot.Node->Kind));
                             MSGF("Member [%u] : %s\n", memberIdx++, MetaCPrinter_PrintSemaNode(&repl->Printer, &repl->SemanticState, slot.Node));
                         }
                     }
@@ -901,7 +900,7 @@ LswitchMode:
                         metac_scope_table_slot_t slot = table->Slots[slotIdx];
                         if (slot.Hash)
                         {
-                            xprintf("Kind %s\n", MetaCNodeKind_toChars(slot.Node->Kind));
+                            MSGF("Kind %s\n", MetaCNodeKind_toChars(slot.Node->Kind));
                             MSGF("Member [%u] : %s\n", memberIdx++, MetaCPrinter_PrintSemaNode(&repl->Printer, &repl->SemanticState, slot.Node));
                         }
                     }

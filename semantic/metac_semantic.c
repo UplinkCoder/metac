@@ -886,7 +886,12 @@ scope_insert_error_t MetaCSemantic_RegisterInScope(metac_sema_state_t* self,
     if (self->CurrentScope != 0)
     {
         result = MetaCScope_RegisterIdentifier(self->CurrentScope, idPtr, node);
-        assert(result == success);
+        if (result != success)
+        {
+            xprintf("Registering Identifier '%s' failed with '%s'\n",
+                    idChars, ScopeInsertError_toChars(result));
+            assert(!"Insertion failed\n");
+        }
     }
     else
     {

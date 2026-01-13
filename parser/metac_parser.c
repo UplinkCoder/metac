@@ -179,38 +179,6 @@ metac_identifier_ptr_t RegisterString(metac_parser_t* self,
         return GetOrAddIdentifier(&self->StringTable,
                                   stringKey, string);
 }
-/*
-void AddDefine(metac_parser_t* self, metac_token_t* token, uint32_t nParameters)
-{
-    metac_define_t define;
-
-    assert(token->TokenType == tok_identifier);
-
-    define.NumberOfParameters = nParameters;
-    define.IdentifierPtr = RegisterIdentifier(self, token);
-    define.TokenPosition = token->Position;
-    define.SourceId = self->LexerState->SourceId;
-    define.IdentifierKey = token->IdentifierKey;
-
-    assert(self->DefineCount < self->DefineCapacity);
-    self->Defines[self->DefineCount++] = define;
-
-    if (self->DefineCapacity >= self->DefineCount)
-    {
-        bool wasInline = (self->Defines == self->inlineDefines);
-        if (wasInline)
-        {
-            self->Defines = (metac_define_t*)malloc(32 * sizeof(metac_define_t));
-            self->DefineCapacity = 32;
-            memcpy(self->Defines, self->inlineDefines,
-                sizeof(metac_define_t) * ARRAY_SIZE(self->inlineDefines));
-            return ;
-        }
-        _newMemRealloc((void**)&self->Defines, &self->DefineCapacity, sizeof(metac_define_t));
-
-    }
-}
-*/
 
 /// checks if the next token is expectedType
 /// returns true if it is

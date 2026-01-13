@@ -89,7 +89,7 @@ MetalNode {
         }
 
         EjectExpr {
-            "eject", Expr ee
+            "eject", "{", Expr ee, "}"
         }
 
         AssertExpr {

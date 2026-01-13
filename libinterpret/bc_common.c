@@ -543,7 +543,6 @@ EXTERN_C bool BCValue_isStackValueOrParameter(const BCValue* val)
          || val->vType == BCValueType_External);
 }
 /*
-/*
 + ADDRESS RANGE           | SIZE    | SEGMENT NAME    | BITMASK (Top 7)  | PURPOSE / NOTES
 +-------------------------|---------|-----------------|------------------|---------------------------------------
 + 0x00000000 - 0x00001FFF | 8 KB    | NULL TRAP       | 0000000          | Catch NULL derefs (up to 8KB offset)
