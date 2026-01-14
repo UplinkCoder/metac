@@ -229,7 +229,7 @@ static inline void PrintFunctionTypeWithIdentifier(metac_printer_t* self,
         (decl_type_functiontype_t*) type;
 
     assert(type->Kind == decl_type_functiontype);
-
+/*
     if (METAC_NODE(funcType->YieldType) != emptyNode)
     {
         PrintKeyword(self, tok_kw__yield);
@@ -238,7 +238,7 @@ static inline void PrintFunctionTypeWithIdentifier(metac_printer_t* self,
         PrintChar(self, ')');
         PrintSpace(self);
     }
-
+*/
     PrintType(self, funcType->ReturnType);
     PrintSpace(self);
     PrintChar(self, '(');

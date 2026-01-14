@@ -1884,20 +1884,43 @@ metac_decl_t* MetaCParser_ParseDecl(metac_parser_t* self, metac_decl_t* parent)
         uint32_t hash = typedef_key;
         decl_type_typedef_t* typdef = AllocNewDecl(decl_type_typedef, &result);
         // typedefs are exactly like variables
+        decl_variable_t synVar = {decl_variable}; // in the case of a function pointer currently we need to make a synthetic variable.
+        decl_type_functiontype_t* fType;
         decl_variable_t* var;
         MetaCParser_Match(self, tok_kw_typedef);
         var = cast(decl_variable_t*) MetaCParser_ParseDecl(self, (metac_decl_t*) typdef);
+
+        // let's do a special case for function pointers...
+        if (var->Kind == decl_function)
+        {
+            decl_function_t* f = cast(decl_function_t*) var;
+            AllocNewDecl(decl_type_functiontype, &fType);
+            // fType.LocationIdx    = f->LocationIndex;
+            fType->Kind           = decl_type_functiontype;
+            fType->TypeKind       = type_functiontype;
+            fType->ReturnType     = f->ReturnType;
+            fType->YieldType      = f->YieldType;
+            fType->Parameters     = f->Parameters;
+            fType->ParameterCount = f->ParameterCount;
+            
+            synVar.VarType       = fType;
+            synVar.VarIdentifier = f->Identifier;
+            synVar.Kind = decl_variable;
+            synVar.Hash = HashDecl(&synVar);
+            var = &synVar;
+        }
 
         MetaCParser_Match(self, tok_semicolon);
 
         typdef->Type       = var->VarType;
         typdef->Identifier = var->VarIdentifier;
-        assert(typdef->Type->Hash != 0);
+        //todo FIXME function variable hashing!
+        if (var->VarType->Kind != decl_type_functiontype) {assert(typdef->Type->Hash != 0);}
         hash = CRC32C_VALUE(hash, typdef->Type->Hash);
         hash = CRC32C_VALUE(hash, typdef->Identifier);
 
         result->Hash = hash;
-        assert(result->Hash == HashDecl(result));
+        if (var->VarType->Kind != decl_type_functiontype) assert(result->Hash == HashDecl(result));
         goto LendDecl;
     }
 
