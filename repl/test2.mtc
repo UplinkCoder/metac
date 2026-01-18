@@ -11,9 +11,11 @@ const char* EnumToString(auto enumValue)
             metac_enum_members_t* members = .Compiler->GetEnumMembers(.Compiler, enumType);
             for(uint32_t i = 0; i < members->Count; i++)
             {
-                eject case $(members->Array[i].Identifier):
-                    result = #$(members->Array[i].Identifier);
-                eject break;
+                eject { 
+                    case $(members->Array[i].Identifier):
+                        result = #$(members->Array[i].Identifier);
+                    break; 
+                }
             }
         };
     }

@@ -20,7 +20,7 @@ void Print(auto Value, const char* name, uint32_t indent)
                 for(uint32_t i = 0; i < memberCount; i++)
                 {
                     metac_aggregate_member_t member = members->Members[i];
-                    eject Print(Value.$(member.name), #$(member.name), indent + 1);
+                    eject { Print(Value.$(member.name), #$(member.name), indent + 1); }
                 }
             }  break;
             default:
