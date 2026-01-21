@@ -139,11 +139,11 @@ static void PrintKeyword(metac_printer_t* self,
     PrintString(self, str, (uint32_t)strlen(str));
 }
 
-static inline void PrintToken(metac_printer_t* self,
-                              metac_token_enum_t tokenType)
+static inline void PrintTokenType(metac_printer_t* self,
+                                  metac_token_enum_t tokenType)
 {
 #define CASE_(KW) \
-    case KW :
+    case KW : PrintKeyword(self, KW); break;
 
     switch(tokenType)
     {
@@ -180,9 +180,26 @@ static inline void PrintToken(metac_printer_t* self,
             PrintChar(self, '=');
         break;
 
-       case tok_bang:
+        case tok_comma:
+            PrintChar(self, ',');
+        break;
+        case tok_bang:
             PrintChar(self, '!');
         break;
+        case tok_colon:
+            PrintChar(self, ':');
+        break;
+        case tok_dollar:
+            PrintChar(self, '$');
+        break;
+        case tok_hash:
+            PrintChar(self, '#');
+        break;
+        case tok_identifier:
+            PrintString(self, "Identifier", sizeof("Identifier") - 1);
+        break;
+
+        FOREACH_KEYWORD_TOKEN(CASE_);
       }
 }
 #undef CASE_
@@ -217,6 +234,186 @@ static inline void PrintF23(metac_printer_t* self, float value)
 }
 
 
+#if 1
+
+static inline void PrintStringLiteral(metac_printer_t* self,
+                                      metac_identifier_ptr_t strPtr)
+{
+    const char* str = IdentifierPtrToCharPtr(self->StringTable, strPtr); // Annahme: StringTable
+    uint32_t length = (uint32_t)strlen(str);
+
+    PrintChar(self, '"');
+    // Hier würde man normalerweise durch den String iterieren und Zeichen wie \n, \t, \" escapen.
+    // Aus Gründen der Einfachheit drucken wir den rohen String.
+    PrintString(self, str, length);
+    PrintChar(self, '"');
+}
+
+// Helfer zum Drucken eines Character-Literals mit Anführungszeichen
+static inline void PrintCharLiteral(metac_printer_t* self, const char* chars, uint32_t length)
+{
+    PrintChar(self, '\'');
+    // Auch hier wäre Escaping für spezielle Zeichen wie \' oder \\ notwendig.
+    PrintString(self, chars, length);
+    PrintChar(self, '\'');
+}
+
+// Helfer zum Drucken einer Zahl basierend auf den Flags im Token
+static inline void PrintNumber(metac_printer_t* self, const metac_token_t* token)
+{
+    parse_number_flag_t flags = token->NumberFlags;
+
+    if (flags & parse_number_flag_float)
+    {
+        //TODO use dedicated thingy for double.
+        PrintF23(self, token->ValueF23);
+    }
+    else // Integer-Typen
+    {
+        if (flags & parse_number_flag_unsigned)
+        {
+            PrintU64(self, token->ValueU64);
+        }
+        else
+        {
+            PrintI64(self, token->ValueI64);
+        }
+
+        // Suffixe hinzufügen
+        if ((flags & parse_number_flag_unsigned) && (flags & parse_number_flag_long_long))
+             PrintString(self, "ULL", 3);
+        else if (flags & parse_number_flag_long_long)
+             PrintString(self, "LL", 2);
+        else if ((flags & parse_number_flag_unsigned) && (flags & parse_number_flag_long))
+             PrintString(self, "UL", 2);
+        else if (flags & parse_number_flag_long)
+             PrintChar(self, 'L');
+        else if (flags & parse_number_flag_unsigned)
+             PrintChar(self, 'U');
+    }
+}
+
+static inline void PrintToken(metac_printer_t* self,
+                              const metac_token_t* token)
+{
+#define CASE_KEYWORD(KW) \
+    case KW:
+
+#define CASE_STATIC_TOKEN(SYM, STR) \
+    case SYM: PrintString(self, STR, sizeof(STR) - 1); break;
+
+    switch(token->TokenType)
+    {
+        // Dynamische Tokens, die den Inhalt der Union benötigen
+        case tok_identifier:
+            PrintIdentifier(self, token->IdentifierPtr);
+            break;
+
+        case tok_uint:
+        case tok_float:
+        case tok_double:
+            PrintNumber(self, token);
+            break;
+
+        case tok_string:
+            PrintStringLiteral(self, token->StringPtr);
+            break;
+
+        case tok_char:
+        case tok_char_uni:
+            PrintCharLiteral(self, token->chars, token->charLength);
+            break;
+
+        case tok_macro_parameter:
+            PrintString(self, "__macro_param[", sizeof("__macro_param[")-1);
+            PrintU64(self, (uint64_t)token->MacroParameterIndex);
+            PrintChar(self, ']');
+            break;
+
+        case tok_eject_parameter:
+            PrintString(self, "__eject_param[", sizeof("__eject_param[")-1);
+            PrintU64(self, (uint64_t)token->EjectParameterIndex);
+            PrintChar(self, ']');
+            break;
+
+        CASE_STATIC_TOKEN(tok_semicolon,    ";")
+        CASE_STATIC_TOKEN(tok_lBrace,       "{")
+        CASE_STATIC_TOKEN(tok_rBrace,       "}")
+        CASE_STATIC_TOKEN(tok_lParen,       "(")
+        CASE_STATIC_TOKEN(tok_rParen,       ")")
+        CASE_STATIC_TOKEN(tok_lBracket,     "[")
+        CASE_STATIC_TOKEN(tok_rBracket,     "]")
+        CASE_STATIC_TOKEN(tok_assign,       "=")
+        CASE_STATIC_TOKEN(tok_comma,        ",")
+        CASE_STATIC_TOKEN(tok_bang,         "!")
+        CASE_STATIC_TOKEN(tok_colon,        ":")
+        CASE_STATIC_TOKEN(tok_dollar,       "$")
+        CASE_STATIC_TOKEN(tok_hash,         "#")
+        CASE_STATIC_TOKEN(tok_plus,         "+")
+        CASE_STATIC_TOKEN(tok_minus,        "-")
+        CASE_STATIC_TOKEN(tok_star,         "*")
+        CASE_STATIC_TOKEN(tok_div,          "/")
+        CASE_STATIC_TOKEN(tok_rem,          "%")
+        CASE_STATIC_TOKEN(tok_xor,          "^")
+        CASE_STATIC_TOKEN(tok_or,           "|")
+        CASE_STATIC_TOKEN(tok_and,          "&")
+        CASE_STATIC_TOKEN(tok_lsh,          "<<")
+        CASE_STATIC_TOKEN(tok_rsh,          ">>")
+        CASE_STATIC_TOKEN(tok_oror,         "||")
+        CASE_STATIC_TOKEN(tok_andand,       "&&")
+        CASE_STATIC_TOKEN(tok_arrow,        "->")
+        CASE_STATIC_TOKEN(tok_dot,          ".")
+        CASE_STATIC_TOKEN(tok_dotdot,       "..")
+        CASE_STATIC_TOKEN(tok_dotdotdot,    "...")
+        CASE_STATIC_TOKEN(tok_add_ass,      "+=")
+        CASE_STATIC_TOKEN(tok_sub_ass,      "-=")
+        CASE_STATIC_TOKEN(tok_mul_ass,      "*=")
+        CASE_STATIC_TOKEN(tok_div_ass,      "/=")
+        CASE_STATIC_TOKEN(tok_rem_ass,      "%=")
+        CASE_STATIC_TOKEN(tok_xor_ass,      "^=")
+        CASE_STATIC_TOKEN(tok_or_ass,       "|=")
+        CASE_STATIC_TOKEN(tok_and_ass,      "&=")
+        CASE_STATIC_TOKEN(tok_lsh_ass,      "<<=")
+        CASE_STATIC_TOKEN(tok_rsh_ass,      ">>=")
+        CASE_STATIC_TOKEN(tok_equals_equals,"==")
+        CASE_STATIC_TOKEN(tok_not_equal,    "!=")
+        CASE_STATIC_TOKEN(tok_lt,           "<")
+        CASE_STATIC_TOKEN(tok_le,           "<=")
+        CASE_STATIC_TOKEN(tok_gt,           ">")
+        CASE_STATIC_TOKEN(tok_ge,           ">=")
+        CASE_STATIC_TOKEN(tok_spaceship,    "<=>")
+        CASE_STATIC_TOKEN(tok_plusplus,     "++")
+        CASE_STATIC_TOKEN(tok_minusminus,   "--")
+        CASE_STATIC_TOKEN(tok_tilde,        "~")
+        CASE_STATIC_TOKEN(tok_question,     "?")
+        CASE_STATIC_TOKEN(tok_at,           "@")
+        CASE_STATIC_TOKEN(tok_hashhash,     "##")
+
+        // Statische Keywords
+        FOREACH_KEYWORD_TOKEN(CASE_KEYWORD)
+            PrintKeyword(self, token->TokenType);
+        break;
+
+        case tok_comment_single:
+        case tok_comment_multi:
+        case tok_newline:
+        case tok_eof:
+            break;
+
+        default:
+            assert(0 && "Unhandled token type in PrintToken");
+        case tok_invalid:
+        case tok_error:
+            PrintString(self, "/*<ERROR>*/", sizeof("/*<ERROR>*/")-1);
+            break;
+    }
+}
+#undef CASE_KEYWORD
+#undef CASE_STATIC_TOKEN
+
+#endif
+
+
 static inline void PrintType(metac_printer_t* self, decl_type_t* type);
 static inline void PrintParameterList(metac_printer_t* self,
                                       decl_parameter_t* Parameters);
@@ -229,8 +426,8 @@ static inline void PrintFunctionTypeWithIdentifier(metac_printer_t* self,
         (decl_type_functiontype_t*) type;
 
     assert(type->Kind == decl_type_functiontype);
-/*
-    if (METAC_NODE(funcType->YieldType) != emptyNode)
+    //FIXME: checking for null here is a hack
+    if (funcType->YieldType && METAC_NODE(funcType->YieldType) != emptyNode)
     {
         PrintKeyword(self, tok_kw__yield);
         PrintChar(self, '(');
@@ -238,7 +435,7 @@ static inline void PrintFunctionTypeWithIdentifier(metac_printer_t* self,
         PrintChar(self, ')');
         PrintSpace(self);
     }
-*/
+
     PrintType(self, funcType->ReturnType);
     PrintSpace(self);
     PrintChar(self, '(');
@@ -272,7 +469,7 @@ static inline void PrintVariable(metac_printer_t* self,
     if (variable->VarInitExpr != emptyPointer)
     {
         PrintSpace(self);
-        PrintToken(self, tok_assign);
+        PrintTokenType(self, tok_assign);
         PrintSpace(self);
         PrintExpr(self, variable->VarInitExpr);
     }
@@ -300,7 +497,7 @@ static inline void PrintField(metac_printer_t* self,
 static inline void PrintParameterList(metac_printer_t* self,
                                       decl_parameter_t* Parameters)
 {
-    PrintToken(self, tok_lParen);
+    PrintTokenType(self, tok_lParen);
 
     for(decl_parameter_t* param = Parameters;
         param != emptyPointer;
@@ -318,7 +515,7 @@ static inline void PrintParameterList(metac_printer_t* self,
                 PrintString(self, ", ", 2);
     }
 
-    PrintToken(self, tok_rParen);
+    PrintTokenType(self, tok_rParen);
 }
 
 
@@ -452,8 +649,8 @@ static inline void PrintType(metac_printer_t* self, decl_type_t* type)
             const int32_t argumentCount = cast(int32_t)tinst->ArgumentCount;
             expr_argument_t* arg = tinst->Arguments;
             PrintIdentifier(self, tinst->Identifier);
-            PrintToken(self, tok_bang);
-            PrintToken(self, tok_lParen);
+            PrintTokenType(self, tok_bang);
+            PrintTokenType(self, tok_lParen);
 
             for(int32_t i = 0; i < argumentCount - 1; i++)
             {
@@ -466,7 +663,7 @@ static inline void PrintType(metac_printer_t* self, decl_type_t* type)
                 PrintExpr(self, arg->Expr);
                 assert(METAC_NODE(arg->Next) == emptyNode);
             }
-            PrintToken(self, tok_rParen);
+            PrintTokenType(self, tok_rParen);
         } break;
 
         case decl_type_struct :
@@ -555,7 +752,7 @@ static inline void PrintStmt(metac_printer_t* self, metac_stmt_t* stmt)
             PrintSpace(self);
             if (stmt_return->ReturnExp != emptyPointer)
                 PrintExpr(self, stmt_return->ReturnExp);
-            PrintToken(self, tok_semicolon);
+            PrintTokenType(self, tok_semicolon);
         } break;
         case stmt_yield :
         {
@@ -565,14 +762,14 @@ static inline void PrintStmt(metac_printer_t* self, metac_stmt_t* stmt)
             PrintSpace(self);
             if (stmt_yield->YieldExp != emptyPointer)
                 PrintExpr(self, stmt_yield->YieldExp);
-            PrintToken(self, tok_semicolon);
+            PrintTokenType(self, tok_semicolon);
         } break;
         case stmt_block :
         {
             stmt_block_t* stmt_block = cast(stmt_block_t*) stmt;
             metac_stmt_t* nextStmt = stmt_block->Body;
 
-            PrintToken(self, tok_lBrace);
+            PrintTokenType(self, tok_lBrace);
             ++self->IndentLevel;
 
             if (nextStmt != emptyPointer)
@@ -596,7 +793,7 @@ static inline void PrintStmt(metac_printer_t* self, metac_stmt_t* stmt)
             --self->IndentLevel;
             PrintNewline(self);
             PrintIndent(self);
-            PrintToken(self, tok_rBrace);
+            PrintTokenType(self, tok_rBrace);
         } break;
         case stmt_if :
         {
@@ -659,7 +856,7 @@ static inline void PrintStmt(metac_printer_t* self, metac_stmt_t* stmt)
         {
             stmt_expr_t* expr_stmt = cast(stmt_expr_t*) stmt;
             PrintExpr(self, expr_stmt->Expr);
-            PrintToken(self, tok_semicolon);
+            PrintTokenType(self, tok_semicolon);
         } break;
         case stmt_decl:
         {
@@ -677,7 +874,7 @@ static inline void PrintStmt(metac_printer_t* self, metac_stmt_t* stmt)
                 if (IsExprNode(stmt_for->ForInit->Kind))
                 {
                     PrintExpr(self, (metac_expr_t*)stmt_for->ForInit);
-                    PrintToken(self, tok_semicolon);
+                    PrintTokenType(self, tok_semicolon);
                     PrintSpace(self);
                 }
                 else
@@ -690,7 +887,7 @@ static inline void PrintStmt(metac_printer_t* self, metac_stmt_t* stmt)
             }
             else
             {
-                PrintToken(self, tok_semicolon);
+                PrintTokenType(self, tok_semicolon);
             }
 
             if (stmt_for->ForCond != cast(metac_expr_t*) emptyPointer)
@@ -698,7 +895,7 @@ static inline void PrintStmt(metac_printer_t* self, metac_stmt_t* stmt)
                 PrintExpr(self, stmt_for->ForCond);
             }
 
-            PrintToken(self, tok_semicolon);
+            PrintTokenType(self, tok_semicolon);
             if (stmt_for->ForCond != cast(metac_expr_t*) emptyPointer)
             {
                 PrintSpace(self);
@@ -720,13 +917,13 @@ static inline void PrintStmt(metac_printer_t* self, metac_stmt_t* stmt)
         {
             // stmt_break_t* stmt_break = cast(stmt_break_t*) stmt;
             PrintKeyword(self, tok_kw_break);
-            PrintToken(self, tok_semicolon);
+            PrintTokenType(self, tok_semicolon);
         } break;
         case stmt_continue:
         {
             // stmt_continue_t* stmt_continue = cast(stmt_continue_t*) stmt;
             PrintKeyword(self, tok_kw_continue);
-            PrintToken(self, tok_semicolon);
+            PrintTokenType(self, tok_semicolon);
         } break;
         case stmt_case:
         {
@@ -789,7 +986,7 @@ static inline void PrintStmt(metac_printer_t* self, metac_stmt_t* stmt)
             PrintKeyword(self, tok_kw_goto);
             PrintSpace(self);
             PrintIdentifier(self, stmt_goto->GotoLabel);
-            PrintToken(self, tok_semicolon);
+            PrintTokenType(self, tok_semicolon);
         } break;
         case stmt_switch:
         {
@@ -806,9 +1003,40 @@ static inline void PrintStmt(metac_printer_t* self, metac_stmt_t* stmt)
         case stmt_run:
         {
             stmt_run_t* stmt_run = (stmt_run_t*)stmt;
-            PrintString(self, "@run", sizeof("@run")-1);
+            PrintString(self, "@run", sizeof("@run") - 1);
             PrintSpace(self);
             PrintStmt(self, stmt_run->RunBody);
+        } break;
+        case stmt_eject:
+        {
+            stmt_eject_t* stmt_eject = (stmt_eject_t*)stmt;
+            PrintKeyword(self, tok_kw_eject);
+            PrintSpace(self);
+            PrintTokenType(self, tok_lBrace);
+            PrintNewline(self);
+            self->IndentLevel++;
+            PrintIndent(self);
+            for (int i = 0; i < stmt_eject->EjectTokensCount; i++)
+            {
+                metac_token_t tok = stmt_eject->EjectTokens[i];
+                if (tok.TokenType == tok_eject_parameter)
+                {
+                    PrintString(self, "$(", sizeof("$(") - 1);
+                    PrintExpr(self, stmt_eject->EjectExpressions[tok.EjectParameterIndex]);
+                    PrintChar(self, ')');
+                }
+                else
+                {
+                    PrintToken(self, &tok);
+                }
+                PrintSpace(self);
+            }
+            // print eject content
+            PrintNewline(self);
+            --self->IndentLevel;
+            PrintIndent(self);
+
+            PrintTokenType(self, tok_rBrace);
         } break;
         case stmt_while:
         {
@@ -907,7 +1135,7 @@ static inline void PrintDecl(metac_printer_t* self,
                 PrintSpace(self);
             }
             PrintSpace(self);
-            PrintToken(self, tok_lBrace);
+            PrintTokenType(self, tok_lBrace);
             ++level;
             ++self->IndentLevel;
             decl_enum_member_t* member = enum_->Members;
@@ -944,7 +1172,7 @@ static inline void PrintDecl(metac_printer_t* self,
             --level;
             PrintIndent(self);
             PrintNewline(self);
-            PrintToken(self, tok_rBrace);
+            PrintTokenType(self, tok_rBrace);
         } break;
 
         case decl_type_typedef:
@@ -989,7 +1217,7 @@ static inline void PrintDecl(metac_printer_t* self,
 
             if (struct_->Parameters != 0)
             {
-                PrintToken(self, tok_bang);
+                PrintTokenType(self, tok_bang);
                 PrintParameterList(self, struct_->Parameters);
             }
 
@@ -999,7 +1227,7 @@ static inline void PrintDecl(metac_printer_t* self,
             }
 
             PrintSpace(self);
-            PrintToken(self, tok_lBrace);
+            PrintTokenType(self, tok_lBrace);
             ++level;
             ++self->IndentLevel;
             PrintNewline(self);
@@ -1018,7 +1246,7 @@ static inline void PrintDecl(metac_printer_t* self,
             --level;
             //PrintNewline(self);
             PrintIndent(self);
-            PrintToken(self, tok_rBrace);
+            PrintTokenType(self, tok_rBrace);
             if (self->IndentLevel && (self->ForAnonymousField == 0))
                 PrintNewline(self);
             else
@@ -1083,7 +1311,7 @@ static inline void PrintDecl(metac_printer_t* self,
 
     if ((!!printSemicolon) & (!printingTypedef))
     {
-        PrintToken(self, tok_semicolon);
+        PrintTokenType(self, tok_semicolon);
     }
     if (self->SuppressNewlineAfterDecl || printingTypedef)
     {
@@ -1221,9 +1449,9 @@ static inline void PrintExpr(metac_printer_t* self, metac_expr_t* expr)
     else if (expr->Kind == expr_index)
     {
         PrintExpr(self, expr->E1);
-        PrintToken(self, tok_lBracket);
+        PrintTokenType(self, tok_lBracket);
         PrintExpr(self, expr->E2);
-        PrintToken(self, tok_rBracket);
+        PrintTokenType(self, tok_rBracket);
     }
     else if (expr->Kind == expr_call)
     {
@@ -1287,9 +1515,9 @@ static inline void PrintExpr(metac_printer_t* self, metac_expr_t* expr)
     else if (expr->Kind == expr_sizeof)
     {
         PrintKeyword(self, tok_kw_sizeof);
-        PrintToken(self, tok_lParen);
+        PrintTokenType(self, tok_lParen);
         PrintExpr(self, expr->E1);
-        PrintToken(self, tok_rParen);
+        PrintTokenType(self, tok_rParen);
     }
     else if (expr->Kind == expr_addr || expr->Kind == expr_deref
           || expr->Kind == expr_not  || expr->Kind == expr_compl
@@ -1419,10 +1647,21 @@ static inline void PrintExpr(metac_printer_t* self, metac_expr_t* expr)
 #ifndef NO_SEMANTIC
 
 #include "../semantic/metac_semantic.h"
+static inline void PrintSemaIdentifier(metac_printer_t* self,
+                                       metac_sema_state_t* sema,
+                                       metac_identifier_ptr_t idPtr)
+{
+    const char* ident = IdentifierPtrToCharPtr(&sema->SemanticIdentifierTable, idPtr);
+
+    if (idPtr.v == empty_identifier.v)
+        assert(0); // One is not supposed to print the empty identifier
+
+    PrintString(self, ident, (uint32_t)strlen(ident));
+}
 
 static inline void PrintSemaStmt(metac_printer_t* self,
-                                      metac_sema_state_t* sema,
-                                      metac_sema_stmt_t* stmt);
+                                 metac_sema_state_t* sema,
+                                 metac_sema_stmt_t* stmt);
 
 static inline void PrintSemaType(metac_printer_t* self,
                                  metac_sema_state_t* sema,
@@ -1439,7 +1678,7 @@ static inline void PrintSemaFunctionType(metac_printer_t* self,
     PrintChar(self, '*');
     if (optId.v != 0)
     {
-        PrintIdentifier(self, optId);
+        PrintSemaIdentifier(self, sema, optId);
     }
     PrintChar(self, ')');
     PrintSpace(self);
@@ -1490,7 +1729,7 @@ static inline void PrintSemaType(metac_printer_t* self,
             PrintString(self, "struct ", sizeof("struct"));
             if (structName.v != empty_identifier.v)
             {
-                PrintIdentifier(self, structName);
+                PrintSemaIdentifier(self, sema, structName);
             }
         } break;
         case type_index_union:
@@ -1501,7 +1740,7 @@ static inline void PrintSemaType(metac_printer_t* self,
             PrintString(self, "union ", sizeof("union"));
             if (unionName.v != empty_identifier.v)
             {
-                PrintIdentifier(self, unionName);
+                PrintSemaIdentifier(self, sema, unionName);
             }
         } break;
         case type_index_tuple:
@@ -1529,7 +1768,7 @@ static inline void PrintSemaType(metac_printer_t* self,
             PrintString(self, "enum ", sizeof("enum"));
             if (enumName.v != empty_identifier.v)
             {
-                PrintIdentifier(self, enumName);
+                PrintSemaIdentifier(self, sema, enumName);
             }
         } break;
         case type_index_ptr:
@@ -1549,7 +1788,7 @@ static inline void PrintSemaType(metac_printer_t* self,
             PrintString(self, "typedef ", sizeof("typedef ") - 1);
             PrintSemaType(self, sema, typedefType->Type);
             PrintString(self, " ", sizeof(" ") - 1);
-            PrintIdentifier(self, typedefType->Identifier);
+            PrintSemaIdentifier(self, sema, typedefType->Identifier);
         } break;
         case type_index_functiontype:
         {
@@ -1602,14 +1841,14 @@ static inline void PrintSemaVariable(metac_printer_t* self,
     {
         PrintSemaType(self, sema, variable->TypeIndex);
         PrintSpace(self);
-        PrintIdentifier(self, variable->VarIdentifier);
+        PrintSemaIdentifier(self, sema, variable->VarIdentifier);
 
        if (variable->VarInitExpr != emptyPointer)
         {
             assert(variable->VarInitExpr);
 
             PrintSpace(self);
-            PrintToken(self, tok_assign);
+            PrintTokenType(self, tok_assign);
             PrintSpace(self);
             PrintSemaExpr(self, sema, variable->VarInitExpr);
         }
@@ -1630,7 +1869,7 @@ static inline void PrintSemaDecl(metac_printer_t* self,
     {
         case decl_type_enum:
         {
-            PrintIdentifier(self, semaDecl->sema_decl_type_enum.Identifier);
+            PrintSemaIdentifier(self, sema, semaDecl->sema_decl_type_enum.Identifier);
         } break;
         case decl_type_typedef:
         {
@@ -1643,7 +1882,7 @@ static inline void PrintSemaDecl(metac_printer_t* self,
                 if (typdef->Identifier.v != empty_identifier.v)
                 {
                     PrintSpace(self);
-                    PrintIdentifier(self, typdef->Identifier);
+                    PrintSemaIdentifier(self, sema, typdef->Identifier);
                 }
             }
             level--;
@@ -1663,10 +1902,10 @@ static inline void PrintSemaDecl(metac_printer_t* self,
             if (struct_->Identifier.v != empty_identifier.v)
             {
                 PrintSpace(self);
-                PrintIdentifier(self, struct_->Identifier);
+                PrintSemaIdentifier(self, sema, struct_->Identifier);
             }
             PrintSpace(self);
-            PrintToken(self, tok_lBrace);
+            PrintTokenType(self, tok_lBrace);
             ++level;
             ++self->IndentLevel;
             PrintNewline(self);
@@ -1694,7 +1933,7 @@ static inline void PrintSemaDecl(metac_printer_t* self,
             --level;
             //PrintNewline(self);
             PrintIndent(self);
-            PrintToken(self, tok_rBrace);
+            PrintTokenType(self, tok_rBrace);
             if (self->IndentLevel)
                 PrintNewline(self);
             else
@@ -1709,7 +1948,7 @@ static inline void PrintSemaDecl(metac_printer_t* self,
         {
             metac_type_aggregate_field_t* field =
                 cast(metac_type_aggregate_field_t*) semaDecl;
-            PrintIdentifier(self, field->Identifier);
+            PrintSemaIdentifier(self, sema, field->Identifier);
             //PrintVariable(self, field->Field);
             // assert(0);
         } break;
@@ -1726,7 +1965,7 @@ static inline void PrintSemaDecl(metac_printer_t* self,
 
             PrintSemaType(self, sema, functionType->ReturnType);
             PrintSpace(self);
-            PrintIdentifier(self, function_->Identifier);
+            PrintSemaIdentifier(self, sema, function_->Identifier);
 
             PrintChar(self, '(');
             const uint32_t paramCount = functionType->ParameterTypeCount;
@@ -1754,7 +1993,7 @@ static inline void PrintSemaDecl(metac_printer_t* self,
 
     if (!self->AsType)
     {
-        if (!!printSemicolon) PrintToken(self, tok_semicolon);
+        if (!!printSemicolon) PrintTokenType(self, tok_semicolon);
         if (!self->SuppressNewlineAfterDecl) PrintNewline(self);
     }
 }
@@ -1776,7 +2015,7 @@ static inline void PrintSemaExpr(metac_printer_t* self,
     else if (semaExpr->Kind == expr_variable)
     {
         // printf("Don't know how to print expr_variable\n");
-        PrintIdentifier(self, semaExpr->Variable->VarIdentifier);
+        PrintSemaIdentifier(self, sema, semaExpr->Variable->VarIdentifier);
     }
     else if (semaExpr->Kind == expr_tuple)
     {
@@ -1806,7 +2045,7 @@ static inline void PrintSemaExpr(metac_printer_t* self,
     }
     else if (semaExpr->Kind == expr_identifier || semaExpr->Kind == expr_variable)
     {
-        PrintIdentifier(self, semaExpr->IdentifierPtr);
+        PrintSemaIdentifier(self, sema, semaExpr->IdentifierPtr);
     }
     else if (semaExpr->Kind == expr_string)
     {
@@ -1875,16 +2114,16 @@ static inline void PrintSemaExpr(metac_printer_t* self,
     else if (semaExpr->Kind == expr_index)
     {
         PrintSemaExpr(self, sema,  semaExpr->E1);
-        PrintToken(self, tok_lBracket);
+        PrintTokenType(self, tok_lBracket);
         PrintSemaExpr(self, sema,  semaExpr->E2);
-        PrintToken(self, tok_rBracket);
+        PrintTokenType(self, tok_rBracket);
     }
     else if (semaExpr->Kind == expr_sizeof)
     {
         PrintKeyword(self, tok_kw_sizeof);
-        PrintToken(self, tok_lParen);
+        PrintTokenType(self, tok_lParen);
         PrintSemaExpr(self, sema,  semaExpr->E1);
-        PrintToken(self, tok_rParen);
+        PrintTokenType(self, tok_rParen);
     }
     else if (semaExpr->Kind == expr_addr || semaExpr->Kind == expr_deref
           || semaExpr->Kind == expr_not  || semaExpr->Kind == expr_compl
@@ -1986,7 +2225,7 @@ static inline void PrintSemaExpr(metac_printer_t* self,
     {
         metac_enum_member_t* enumMember = cast(metac_enum_member_t*) semaExpr;
         //PrintSemaDecl(self, sema, enumMember, self->IndentLevel);
-        PrintIdentifier(self, enumMember->Identifier);
+        PrintSemaIdentifier(self, sema, enumMember->Identifier);
     }
     else
     {
@@ -2025,7 +2264,7 @@ static inline void PrintSemaStmt(metac_printer_t* self, metac_sema_state_t* sema
             PrintSpace(self);
             if (stmt_return->ReturnExp != emptyPointer)
                 PrintSemaExpr(self, sema, stmt_return->ReturnExp);
-            PrintToken(self, tok_semicolon);
+            PrintTokenType(self, tok_semicolon);
         } break;
         case stmt_yield :
         {
@@ -2035,14 +2274,14 @@ static inline void PrintSemaStmt(metac_printer_t* self, metac_sema_state_t* sema
             PrintSpace(self);
             if (stmt_yield->YieldExp != emptyPointer)
                 PrintSemaExpr(self, sema, stmt_yield->YieldExp);
-            PrintToken(self, tok_semicolon);
+            PrintTokenType(self, tok_semicolon);
         } break;
         case stmt_block :
         {
             sema_stmt_block_t* blockStmt
                 = cast(sema_stmt_block_t*) stmt;
 
-            PrintToken(self, tok_lBrace);
+            PrintTokenType(self, tok_lBrace);
             ++self->IndentLevel;
             PrintNewline(self);
             PrintIndent(self);
@@ -2064,7 +2303,7 @@ static inline void PrintSemaStmt(metac_printer_t* self, metac_sema_state_t* sema
             --self->IndentLevel;
             PrintNewline(self);
             PrintIndent(self);
-            PrintToken(self, tok_rBrace);
+            PrintTokenType(self, tok_rBrace);
         } break;
         case stmt_if :
         {
@@ -2120,7 +2359,7 @@ static inline void PrintSemaStmt(metac_printer_t* self, metac_sema_state_t* sema
         {
             sema_stmt_expr_t* expr_stmt = cast(sema_stmt_expr_t*) stmt;
             PrintSemaExpr(self, sema, expr_stmt->Expr);
-            PrintToken(self, tok_semicolon);
+            PrintTokenType(self, tok_semicolon);
         } break;
         case stmt_decl:
         {
@@ -2137,7 +2376,7 @@ static inline void PrintSemaStmt(metac_printer_t* self, metac_sema_state_t* sema
                 if (IsExprNode(stmt_for->ForInit->Kind))
                 {
                     PrintSemaExpr(self, sema, (cast(metac_sema_expr_t*)stmt_for->ForInit));
-                    PrintToken(self, tok_semicolon);
+                    PrintTokenType(self, tok_semicolon);
                     PrintSpace(self);
                 }
                 else
@@ -2151,7 +2390,7 @@ static inline void PrintSemaStmt(metac_printer_t* self, metac_sema_state_t* sema
             }
             else
             {
-                PrintToken(self, tok_semicolon);
+                PrintTokenType(self, tok_semicolon);
             }
 
             if (stmt_for->ForCond != cast(metac_sema_expr_t*) emptyPointer)
@@ -2159,7 +2398,7 @@ static inline void PrintSemaStmt(metac_printer_t* self, metac_sema_state_t* sema
                 PrintSemaExpr(self, sema, stmt_for->ForCond);
             }
 
-            PrintToken(self, tok_semicolon);
+            PrintTokenType(self, tok_semicolon);
             if (stmt_for->ForCond != cast(metac_sema_expr_t*) emptyPointer)
             {
                 PrintSpace(self);
@@ -2178,13 +2417,13 @@ static inline void PrintSemaStmt(metac_printer_t* self, metac_sema_state_t* sema
         {
             sema_stmt_break_t* stmt_break = cast(sema_stmt_break_t*) stmt;
             PrintKeyword(self, tok_kw_break);
-            PrintToken(self, tok_semicolon);
+            PrintTokenType(self, tok_semicolon);
         } break;
         case stmt_continue:
         {
             sema_stmt_continue_t* stmt_continue = cast(sema_stmt_continue_t*) stmt;
             PrintKeyword(self, tok_kw_continue);
-            PrintToken(self, tok_semicolon);
+            PrintTokenType(self, tok_semicolon);
         } break;
         case stmt_case:
         {
@@ -2253,7 +2492,7 @@ static inline void PrintSemaStmt(metac_printer_t* self, metac_sema_state_t* sema
         case stmt_label:
         {
             sema_stmt_label_t* stmt_label = cast(sema_stmt_label_t*) stmt;
-            PrintIdentifier(self, stmt_label->Label);
+            PrintSemaIdentifier(self, sema, stmt_label->Label);
             PrintChar(self, ':');
         } break;
         case stmt_goto:
@@ -2261,8 +2500,8 @@ static inline void PrintSemaStmt(metac_printer_t* self, metac_sema_state_t* sema
             sema_stmt_goto_t* stmt_goto = cast(sema_stmt_goto_t*) stmt;
             PrintKeyword(self, tok_kw_goto);
             PrintSpace(self);
-            PrintIdentifier(self, stmt_goto->GotoLabel);
-            PrintToken(self, tok_semicolon);
+            PrintSemaIdentifier(self, sema, stmt_goto->GotoLabel);
+            PrintTokenType(self, tok_semicolon);
         } break;
         case stmt_switch:
         {
@@ -2288,6 +2527,44 @@ static inline void PrintSemaStmt(metac_printer_t* self, metac_sema_state_t* sema
             PrintIndent(self);
             PrintSemaStmt(self, sema, stmt_while->WhileBody);
         } break;
+        case stmt_run:
+        {
+            sema_stmt_run_t* stmt_run = (sema_stmt_run_t*)stmt;
+            PrintString(self, "@run", sizeof("@run") - 1);
+            PrintSpace(self);
+            PrintSemaStmt(self, sema, stmt_run->RunBody);
+        } break;
+        case stmt_eject:
+        {
+            sema_stmt_eject_t* stmt_eject = (sema_stmt_eject_t*)stmt;
+            PrintKeyword(self, tok_kw_eject);
+            PrintSpace(self);
+            PrintTokenType(self, tok_lBrace);
+            PrintNewline(self);
+            self->IndentLevel++;
+            PrintIndent(self);
+            for (int i = 0; i < stmt_eject->EjectTokensCount; i++)
+            {
+                metac_token_t tok = stmt_eject->EjectTokens[i];
+                if (tok.TokenType == tok_eject_parameter)
+                {
+                    PrintString(self, "$(", sizeof("$(") - 1);
+                    PrintSemaExpr(self, sema, stmt_eject->EjectExpressions[tok.EjectParameterIndex]);
+                    PrintChar(self, ')');
+                }
+                else
+                {
+                    PrintToken(self, &tok);
+                }
+                PrintSpace(self);
+            }
+            PrintNewline(self);
+            --self->IndentLevel;
+            PrintIndent(self);
+
+            PrintTokenType(self, tok_rBrace);
+        } break;
+
         case stmt_comment:
         {
             stmt_comment_t* comment = (stmt_comment_t*)stmt;
