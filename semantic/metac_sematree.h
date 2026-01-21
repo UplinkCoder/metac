@@ -312,6 +312,21 @@ typedef struct sema_stmt_do_while_t
     struct metac_sema_stmt_t* DoWhileBody;
 } sema_stmt_do_while_t;
 
+typedef struct sema_stmt_eject_t
+{
+    SEMA_STMT_HEADER
+
+    ARENA_ARRAY(metac_token_t, EjectTokens);
+    ARENA_ARRAY(metac_sema_expr_t*, EjectExpressions);
+} sema_stmt_eject_t;
+
+typedef struct sema_stmt_run_t
+{
+    SEMA_STMT_HEADER
+
+    struct metac_sema_stmt_t* RunBody;
+} sema_stmt_run_t;
+
 typedef struct metac_sema_stmt_t
 {
     union // switch(Kind)

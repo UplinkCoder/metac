@@ -473,9 +473,19 @@ metac_sema_stmt_t* MetaCSemantic_doStmtSemantic_(metac_sema_state_t* self,
             }
         } break;
 
+        case stmt_run:
+        {
+            stmt_run_t* runStmt = cast(stmt_run_t*) stmt;
+            sema_stmt_run_t *semaRunStmt =
+                AllocNewSemaStmt(self, stmt_run, &result);
+
+            semaRunStmt->RunBody =
+                MetaCSemantic_doStmtSemantic(self, runStmt->RunBody);
+        } break;
+
         case stmt_expr:
         {
-            stmt_expr_t* exprStmt = (stmt_expr_t*) stmt;
+            stmt_expr_t* exprStmt = cast(stmt_expr_t*) stmt;
             sema_stmt_expr_t* sse = AllocNewSemaStmt(self, stmt_expr, cast(void**)&result);
             hash ^= stmt_expr;
             sse->Expr =
@@ -483,6 +493,29 @@ metac_sema_stmt_t* MetaCSemantic_doStmtSemantic_(metac_sema_state_t* self,
             hash = CRC32C_VALUE(hash, sse->Hash);
         } break;
 
+        case stmt_eject :
+        {
+            stmt_eject_t* ejectStmt = cast(stmt_eject_t*) stmt;
+            sema_stmt_eject_t* semaEjectStmt = AllocNewSemaStmt(self, stmt_eject, &result);
+            const uint32_t exprCount = ejectStmt->EjectExpressionsCount;
+            ARENA_ARRAY_INIT_SZ(metac_sema_expr_t*, semaEjectStmt->EjectExpressions, &self->Allocator, exprCount);
+            hash ^= eject_key;
+
+            for(int i = 0; i < exprCount; i++)
+            {
+                semaEjectStmt->EjectExpressions[i] = MetaCSemantic_doExprSemantic(self, ejectStmt->EjectExpressions[i], 0);
+                hash = CRC32C_VALUE(hash, semaEjectStmt->EjectExpressions[i]->Hash);
+            }
+            semaEjectStmt->EjectExpressionsCount = exprCount;
+            // copy the tokens .... sigh!
+            // TODO maybe we can transfer the array in one go ?
+            ARENA_ARRAY_INIT_SZ(metac_sema_expr_t*, semaEjectStmt->EjectTokens, &self->Allocator, ejectStmt->EjectTokensCount);
+            for(int i = 0; i < ejectStmt->EjectTokensCount; i++)
+            {
+                semaEjectStmt->EjectTokens[i] = ejectStmt->EjectTokens[i];
+            }
+            semaEjectStmt->EjectTokensCount = ejectStmt->EjectTokensCount;
+        } break;
         case stmt_comment:
         {
             hash ^= stmt_comment;
@@ -1029,10 +1062,11 @@ sema_decl_function_t* MetaCSemantic_doFunctionSemantic(metac_sema_state_t* self,
 
     metac_type_index_t returnType = MetaCSemantic_doTypeSemantic(self, func->ReturnType);
     // TODO set yieldType properly.
-    // metac_type_index_t yieldType = ((METAC_NODE(func->YieldType) != emptyNode) ? MetaCSemantic_doTypeSemantic(self, func->YieldType) : (metac_type_index_t){0});
+    metac_type_index_t yieldType = ((METAC_NODE(func->YieldType) != emptyNode) ? MetaCSemantic_doTypeSemantic(self, func->YieldType) : (metac_type_index_t){0});
     // synthesize function type
     decl_type_functiontype_t fType = {};
     fType.Kind = decl_type_functiontype;
+    fType.YieldType = func->YieldType;
     fType.ReturnType = func->ReturnType;
     fType.Parameters = func->Parameters;
     fType.ParameterCount = func->ParameterCount;
