@@ -7,14 +7,14 @@ const char* EnumToString(auto enumValue)
     switch(enumValue)
     {
         @run {
-            type enumType = .Compiler->GetType(.Compiler, enumValue);
+            type enumType = typeof(enumValue);
             metac_enum_members_t* members = .Compiler->GetEnumMembers(.Compiler, enumType);
             for(uint32_t i = 0; i < members->Count; i++)
             {
-                eject { 
+                eject {
                     case $(members->Array[i].Identifier):
                         result = #$(members->Array[i].Identifier);
-                    break; 
+                    break;
                 }
             }
         };

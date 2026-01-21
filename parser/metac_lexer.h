@@ -199,6 +199,7 @@ typedef struct metac_lexer_state_t
     M(tok_comment_multi) \
     \
     M(tok_macro_parameter) \
+    M(tok_eject_parameter) \
     \
     FOREACH_STATIC_TOKEN(M) \
     \
@@ -283,6 +284,8 @@ typedef struct metac_token_t {
         };
         // case tok_macro_parameter:
         uint32_t MacroParameterIndex;
+		// case tok_eject_parameter:
+		uint32_t EjectParameterIndex;
     };
 } metac_token_t;
 

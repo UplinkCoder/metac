@@ -253,6 +253,13 @@ typedef struct stmt_run_t
     struct metac_stmt_t* RunBody;
 } stmt_run_t;
 
+typedef struct stmt_eject_t
+{
+    STMT_HEADER
+
+    ARENA_ARRAY(metac_token_t, EjectTokens);
+    ARENA_ARRAY(metac_expr_t*, EjectExpressions);
+} stmt_eject_t;
 
 typedef struct stmt_case_t
 {

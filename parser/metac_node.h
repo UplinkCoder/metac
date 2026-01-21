@@ -194,6 +194,7 @@
     M(stmt_goto) \
     M(stmt_return) \
     M(stmt_run) \
+    M(stmt_eject) \
     \
     M(stmt_empty) \
     \

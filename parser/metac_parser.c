@@ -1898,7 +1898,7 @@ metac_decl_t* MetaCParser_ParseDecl(metac_parser_t* self, metac_decl_t* parent)
             fType->YieldType      = f->YieldType;
             fType->Parameters     = f->Parameters;
             fType->ParameterCount = f->ParameterCount;
-            
+
             synVar.VarType       = fType;
             synVar.VarIdentifier = f->Identifier;
             synVar.Kind = decl_variable;
@@ -2074,6 +2074,104 @@ static decl_type_array_t* ParseArraySuffix(metac_parser_t* self, decl_type_t* ty
     return arrayType;
 }
 
+stmt_eject_t* ParseEjectStmt(metac_parser_t* self, metac_stmt_t** resultP)
+{
+    int peekN = 2; // start at eject {
+    metac_token_t* peekToken = MetaCParser_PeekToken(self, peekN);
+    int depth = 1;
+    int exprCount = 0;
+    metac_location_t loc;
+    uint32_t hash;
+    stmt_eject_t* eject_stmt = 0;
+    if (!peekToken || peekToken->TokenType != tok_lBrace)
+    {
+        ParseError(loc, " eject has to be followed by '{'");
+        // todo return error statement
+    }
+    peekN++;
+
+    // scan for rBrace and terminate if we are on depth 0
+    while (depth > 0 && (peekToken = MetaCParser_PeekToken(self, peekN)) && peekToken->TokenType != tok_eof) {
+        if (peekToken->TokenType == tok_lBrace) {
+            depth++;
+        } else if (peekToken->TokenType == tok_rBrace) {
+            depth--;
+            if (depth == 0) break; // found a match
+        } else if (peekToken->TokenType == tok_dollar) {
+            // Peek ahead to see if it's a $(
+            metac_token_t* next = MetaCParser_PeekToken(self, peekN + 1);
+            if (next && next->TokenType == tok_lParen) {
+                exprCount++;
+            }
+        }
+        peekN++;
+    }
+
+    if (!peekToken)
+    {
+        peekToken = MetaCParser_PeekToken(self, --peekN);
+    }
+
+    if (depth == 0) {
+        int consumedTokensN = peekN - 3;
+
+        // we have a valid closing } let's advance our parser.
+        MetaCParser_Match(self, tok_kw_eject);
+        MetaCParser_Match(self, tok_lBrace);
+        eject_stmt = AllocNewStmt(stmt_eject, resultP);
+        ARENA_ARRAY_INIT(metac_token_t, eject_stmt->EjectTokens, &self->Allocator);
+        // exprCount * 3 is the minmum of tokens we can remove per $()
+        ARENA_ARRAY_ENSURE_SIZE(eject_stmt->EjectTokens, consumedTokensN - (exprCount * 3));
+
+        if (exprCount > 0)
+        {
+            ARENA_ARRAY_INIT(metac_expr_t*, eject_stmt->EjectExpressions, &self->Allocator);
+            ARENA_ARRAY_ENSURE_SIZE(eject_stmt->EjectExpressions, exprCount);
+        }
+
+        depth = 1;
+        while(depth != 0)
+        {
+            metac_token_t* tokenToConsume = MetaCParser_PeekToken(self, 1);
+            metac_token_t* peek2 = MetaCParser_PeekToken(self, 2);
+            switch (tokenToConsume->TokenType)
+            {
+                case tok_lBrace:  depth++; goto Ldefault;
+                case tok_rBrace:  if (--depth == 0) { break; } else { goto Ldefault; }
+                case tok_dollar:
+                    if (peek2 && peek2->TokenType == tok_lParen)
+                    {
+                        metac_token_t spliceToken = {tok_eject_parameter};
+                        spliceToken.EjectParameterIndex = eject_stmt->EjectExpressionsCount;
+                        spliceToken.LocationId = tokenToConsume->LocationId;
+                        spliceToken.Position = tokenToConsume->Position;
+                        ARENA_ARRAY_ADD(eject_stmt->EjectTokens, spliceToken);
+
+                        MetaCParser_Match(self, tok_dollar);
+                        MetaCParser_Match(self, tok_lParen);
+
+                        ARENA_ARRAY_ADD(eject_stmt->EjectExpressions, MetaCParser_ParseExpr(self, expr_flags_none, 0));
+                        MetaCParser_Match(self, tok_rParen);
+                        break;
+                    }
+                default:
+Ldefault:
+                {
+                    ARENA_ARRAY_ADD(eject_stmt->EjectTokens, *MetaCParser_Match(self, tokenToConsume->TokenType));
+                }
+            }
+        }
+        // now consume closing }
+        MetaCParser_Match(self, tok_rBrace);
+    } else {
+        metac_token_t* tokens =  self->Lexer->Tokens ? self->Lexer->Tokens : self->Lexer->inlineTokens;
+        // FIXME this assumes tokens are contiguously allocated, which may not be the case
+        loc = LocationFromToken(self, peekToken);
+        ParseError(loc, "Unexpected EOF while parsing eject block");
+    }
+
+    return eject_stmt;
+}
 
 #define ErrorStmt() \
     (metac_stmt_t*)0
@@ -2175,19 +2273,22 @@ metac_stmt_t* MetaCParser_ParseStmt(metac_parser_t* self,
             result->Hash = hash;
         }
     }
+    else if (tokenType == tok_kw_eject)
+    {
+        stmt_eject_t* eject_stmt = ParseEjectStmt(self, &result);
+    }
     else if (tokenType == tok_kw_while)
     {
-        stmt_while_t * while_stmt = AllocNewStmt(stmt_while, &result);
+        stmt_while_t* while_stmt;
         MetaCParser_Match(self, tok_kw_while);
         MetaCParser_Match(self, tok_lParen);
+        while_stmt = AllocNewStmt(stmt_while, &result);
+
         while_stmt->WhileExp =
-#ifdef OLD_PARSER
             MetaCParser_ParseExpr(self, expr_flags_none, 0);
-#else
-            MetaCParser_ParseExpr2(self, expr_flags_none);
-#endif
         hash = CRC32C_VALUE(hash, while_stmt->WhileExp->Hash);
         MetaCParser_Match(self, tok_rParen);
+
         while_stmt->WhileBody =
             MetaCParser_ParseStmt(self, (metac_stmt_t*)while_stmt, 0);
         hash = CRC32C_VALUE(hash, while_stmt->WhileBody->Hash);
@@ -2526,7 +2627,7 @@ static stmt_block_t* MetaCParser_ParseBlockStmt(metac_parser_t* self,
             nextStmt = firstStmt;
             if (nextStmt)
             {
-                assert(nextStmt->Hash);
+                assert(nextStmt->Kind == stmt_eject || nextStmt->Hash);
                 hash = CRC32C_VALUE(hash, nextStmt->Hash);
             }
             else

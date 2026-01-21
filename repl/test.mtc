@@ -7,7 +7,7 @@ void Print(auto Value, const char* name, uint32_t indent)
     printf("%s:", name ? name : "");
 
     @run {
-        type valueType = .Compiler->GetType(.Compiler, Value);
+        type valueType = typeof(Value);
         switch(.Compiler->GetTypeKind(.Compiler, valueType))
         {
             case metac_type_kind_struct:
