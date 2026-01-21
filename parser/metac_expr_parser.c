@@ -326,9 +326,7 @@ static inline uint32_t OpToPrecedence(metac_expr_kind_t exp)
           || exp == expr_index
           || exp == expr_compl
           || exp == expr_assert
-          || exp == expr_template_instance
-          || exp == expr_inject
-          || exp == expr_eject)
+          || exp == expr_template_instance)
     {
         return 30;
     }
@@ -1211,34 +1209,6 @@ metac_expr_t* MetaCParser_ParseUnaryExpr(metac_parser_t* self)
     {
         MetaCParser_Match(self, tok_dot);
         result = ParseUnaryDotExpr(self);
-    }
-    else if (tokenType == tok_kw_eject)
-    {
-        MetaCParser_Match(self, tok_kw_eject);
-        result = AllocNewExpr(expr_eject);
-        //PushOperator(expr_eject);
-
-        if (NextIsStmt(self, 1))
-        {
-            result->EjectedStmt = MetaCParser_ParseStmt(self, 0, 0);
-        }
-        else
-        {
-            result->E1 = MetaCParser_ParseExpr(self, expr_flags_none, 0);
-            result->Hash = CRC32C_VALUE(eject_key, result->E1->Hash);
-        }
-        //PushOperand(result);
-        //PopOperator(expr_eject);
-    }
-    else if (tokenType == tok_kw_inject)
-    {
-        MetaCParser_Match(self, tok_kw_inject);
-        result = AllocNewExpr(expr_inject);
-        //PushOperator(expr_inject);
-        result->E1 = MetaCParser_ParseExpr(self, expr_flags_none, 0);
-        result->Hash = CRC32C_VALUE(inject_key, result->E1->Hash);
-        //PushOperand(result);
-        //PopOperator(expr_inject);
     }
     else if (tokenType == tok_kw_typeof)
     {
