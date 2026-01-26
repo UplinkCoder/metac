@@ -5,8 +5,7 @@
 #  include <intrin.h>
 #  define POPCNT(X) __popcnt(X)
 #elif ((defined(__GNUC__) || defined(__clang__)) && !defined(__TINYC__))
-#  define POPCNT(X) \
-    (__builtin_clz(X) ^ 31)
+#  define POPCNT(X) __builtin_popcount(X)
 #else
 #  include "../3rd_party/popcnt.c"
 #endif
