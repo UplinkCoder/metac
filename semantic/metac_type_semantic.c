@@ -1182,7 +1182,10 @@ metac_type_index_t MetaCSemantic_TypeSemantic(metac_sema_state_t* self,
         ARENA_ARRAY_ENSURE_SIZE(tmpFields, agg->FieldCount);
 
         tmpSemaAgg->Header.Kind = agg->Kind;
-        tmpSemaAgg->Identifier = agg->Identifier;
+        tmpSemaAgg->Identifier =
+            MetaCIdentifierTable_CopyIdentifier(self->ParserIdentifierTable,
+                                                &self->SemanticIdentifierTable,
+                                                agg->Identifier);
         tmpSemaAgg->Fields = tmpFields;
         tmpSemaAgg->FieldCount = agg->FieldCount;
 
