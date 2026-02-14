@@ -2759,7 +2759,7 @@ void TestParseExprssion(void)
 //    TEST_STR_EQ(MetaCPrinter_PrintExpr(&printer, expr), "((a)++ + (b -> c)++)");
 
     expr = MetaCLPP_ParseExpr2FromString(&LPP,          "f(g(), (h() + 12), j(), l(k(1, 2, 3)))");
-    TEST_STR_EQ(MetaCPrinter_PrintExpr(&printer, expr), "f(g(), (h() + 12), j(), l(k(1, 2, 3)))");
+    TEST_STR_EQ(MetaCPrinter_PrintExpr(&printer, expr), "f(g(), ((h() + 12)), j(), l(k(1, 2, 3)))");
 
     expr = MetaCLPP_ParseExpr2FromString(&LPP,          "typeof(*.Compiler)");
     TEST_STR_EQ(MetaCPrinter_PrintExpr(&printer, expr), "typeof (*(.(Compiler)))");
