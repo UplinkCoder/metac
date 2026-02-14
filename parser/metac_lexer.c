@@ -423,7 +423,7 @@ uint32_t MetaCTokenLength(metac_token_t token)
     }
     else
     {
-        if (token.TokenType == tok_uint)
+        if (token.TokenType == tok_uint || token.TokenType == tok_float)
         {
             return token.ValueLength;
         }
@@ -605,8 +605,8 @@ static inline char UnescapedChar(char c)
     return 'E';
 }
 
-static void MetaCLexerMatchKeywordIdentifier(metac_token_t* tok,
-                                             const char* identifier)
+static inline void MetaCLexerMatchKeywordIdentifier(metac_token_t* tok,
+                                                    const char* identifier)
 {
 #include "../generated/metac_match_keyword.inl"
 }
@@ -963,8 +963,7 @@ LcontinueLexing:
 
                 if(token.TokenType == tok_identifier)
                 {
-                    token.IdentifierPtr =
-                        GetOrAddIdentifier(&self->IdentifierTable, token.IdentifierKey, identifierBegin);
+                    token.IdentifierPtr = GetOrAddIdentifier(&self->IdentifierTable, token.IdentifierKey, identifierBegin);
 #if !defined(NO_PREPROCESSOR)
                     if (token.IdentifierKey == define_key)
                     {

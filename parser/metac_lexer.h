@@ -279,13 +279,13 @@ typedef struct metac_token_t {
                 float ValueF23;
                 double ValueF52;
             };
-            uint32_t ValueLength            : 32 - 8;
+            uint32_t ValueLength       : 32 - 8;
             parse_number_flag_t NumberFlags : 8;
         };
         // case tok_macro_parameter:
         uint32_t MacroParameterIndex;
-		// case tok_eject_parameter:
-		uint32_t EjectParameterIndex;
+        // case tok_eject_parameter:
+        uint32_t EjectParameterIndex;
     };
 } metac_token_t;
 

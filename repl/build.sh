@@ -14,10 +14,12 @@ if [ -z $ACCEL ]; then
 fi
 
 $CC $CFLAGS linenoise_repl.c \
-    -DACOSW_EXTERNAL_ASM ../3rd_party/libaco/acosw.S \
     -I.. -DACCEL=$ACCEL \
     -mtune=core2 -march=core2 -mstackrealign \
     -lm -lpthread \
-    -o repl $@
+    -o repl \
+     $@
 #-march=native -mtune=native \
 #    -g3 -O0 \
+
+#    -DACOSW_EXTERNAL_ASM ../3rd_party/libaco/acosw.S \

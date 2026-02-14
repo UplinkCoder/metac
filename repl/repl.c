@@ -29,6 +29,17 @@ const char* MetaCTokenEnum_toChars(metac_token_enum_t tok);
 #define ERRORMSGF(FMT, ...) uiInterface.ErrorMessage(uiState, FMT, __VA_ARGS__)
 #define ERRORMSG(STR) ERRORMSGF(STR, 0)
 
+uint64_t beginTs;
+uint64_t endTs;
+
+uint64_t get_timestamp_micros() {
+    struct timespec ts;
+    // CLOCK_MONOTONIC ist am besten für Intervalle
+    // CLOCK_MONOTONIC_RAW kann noch präziser sein, aber manchmal teurer abzufragen
+    clock_gettime(CLOCK_MONOTONIC, &ts); 
+    return (uint64_t)ts.tv_sec * 1000000 + ts.tv_nsec / 1000;
+}
+
 void HelpMessage(ui_interface_t uiInterface, struct ui_state_t* uiState)
 {
     MSG(
@@ -603,6 +614,7 @@ static void Repl_doDeclSemantic_cont(MetaCSemantic_doDeclSemantic_task_context_t
 //    ARENA_ARRAY_ADD(ctx->Sema->Globals, ctx->Result);
 }
 #endif
+static int tokenKindFreq[tok_max] = {0};
 
 /// returns false if the repl is done running
 bool Repl_Loop(repl_state_t* repl, repl_ui_context_t* context)
@@ -697,7 +709,7 @@ LswitchMode:
                     fseek(fd, 0, SEEK_END);
                     int32_t sz = cast(int32_t) ftell(fd);
                     fseek(fd, 0, SEEK_SET);
-
+                    
                     uint32_t estimatedTokenCount = (((sz / 4) + 128) & ~127);
                     if (fileLexer->TokenCapacity < estimatedTokenCount)
                     {
@@ -723,6 +735,7 @@ LswitchMode:
                     fileLexerState.Line = 1;
                     fileLexerState.Column = 1;
                     fileLexerState.Size = sz;
+                    beginTs = get_timestamp_micros();
                 }
                 break;
             }
@@ -1022,13 +1035,8 @@ LswitchMode:
 
             case repl_mode_es:
             {
-#ifdef OLD_PARSER
                  exp =
                     MetaCLPP_ParseExprFromString(&repl->LPP, repl->Line);
-#else
-                 exp =
-                    MetaCLPP_ParseExpr2FromString(&repl->LPP, repl->Line);
-#endif
 
                 const char* str = MetaCPrinter_PrintExpr(&repl->Printer, exp);
                 metac_sema_expr_t* result =
@@ -1089,13 +1097,8 @@ LswitchMode:
                 }
                 else
                 {
-#ifdef OLD_PARSER
                  metac_expr_t* assignExp =
                     MetaCLPP_ParseExprFromString(&repl->LPP, repl->Line);
-#else
-                 metac_expr_t* assignExp =
-                    MetaCLPP_ParseExpr2FromString(&repl->LPP, repl->Line);
-#endif
 
                     if (assignExp)
                     {
@@ -1224,14 +1227,14 @@ LswitchMode:
             case repl_mode_lex_file :
                 goto LlexSrcBuffer;
             case repl_mode_token :
-
 LlexSrcBuffer: {}
 #if 1
                 token = *MetaCLexerLexNextToken(&repl->LPP.Lexer, &repl->LPP.LexerState, repl->SrcBuffer, repl->SrcBufferLength);
 
                 uint32_t eaten_chars = repl->LPP.LexerState.Position - initalPosition;
                 const uint32_t token_length = MetaCTokenLength(token);
-#if 1
+                tokenKindFreq[token.TokenType] += 1;
+#if 0
                 const metac_location_ptr_t locPtr = token.LocationId;
                 const static metac_location_t zeroLoc = {0};
                 const metac_location_t loc = locPtr.v ? repl->LPP.Lexer.LocationStorage.Locations[locPtr.v - 4] : zeroLoc;
@@ -1268,12 +1271,45 @@ LlexSrcBuffer: {}
 
                 repl->SrcBufferLength -= eaten_chars;
                 repl->SrcBuffer += eaten_chars;
-                MSGF("eaten_chars: %d\n", eaten_chars);
+                //  MSGF("eaten_chars: %d\n", eaten_chars);
                 if (!token_length)
                     break;
             }
         }
-
+        if (repl->ParseMode == repl_mode_lex_file)
+        {
+            endTs = get_timestamp_micros();
+            long long elapsedMicroseconds = endTs - beginTs;
+            long long n_tokens = 0;
+            for(int i = 1; i < tok_max; i++)
+            {
+                n_tokens += tokenKindFreq[i];
+            }
+            float f_elus = cast(float) elapsedMicroseconds;
+            printf("lexing %lld tokens Took %g micros (%g t/us)\n", n_tokens, f_elus, (n_tokens / f_elus));
+            
+            for(int i = 1; i < tok_max; i++)
+            {
+                // qsort(tokenKindFreq, tok_max, sizeof(metac_token_enum_t), cmpInt);
+                if (tokenKindFreq[i] >= 1)
+                {
+                    MSGF("%03d: %s\n", tokenKindFreq[i],  MetaCTokenEnum_toChars(i));
+                    tokenKindFreq[i] = 0;
+                }
+            }
+            uint32_t slotsSeen = 0;
+            FILE* id_file = fopen("id.txt", "w");
+            for(uint32_t i = 0; slotsSeen < repl->LPP.Lexer.IdentifierTable.SlotsUsed; i++)
+            {
+                metac_identifier_table_slot_t slot = repl->LPP.Lexer.IdentifierTable.Slots[i];
+                if (slot.HashKey)
+                {
+                    fprintf(id_file, "%s\n", IdentifierPtrToCharPtr(&repl->LPP.Lexer.IdentifierTable, slot.Ptr));
+                    slotsSeen++;
+                }
+            }
+            fclose(id_file);
+        }
         if (repl->FreePtr)
         {
             free(repl->FreePtr);

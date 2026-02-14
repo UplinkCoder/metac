@@ -123,6 +123,10 @@ typedef struct debug_server_t
     uint32_t GraphsCount;
     uint32_t GraphsCapacity;
 
+    metac_identifier_table_t* IdentifierTables;
+    uint32_t IdentifierTableCount;
+    uint32_t IdentifierTableCapacity;
+
     debug_message_t* Messages;
     uint32_t MessagesCount;
     uint32_t MessagesCapacity;

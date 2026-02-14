@@ -660,6 +660,7 @@ void debug_init_routes(debug_server_t* debugServer)
     DebugServer_AddRoute(debugServer, "/graph.js", handleGraphJs);
     DebugServer_AddRoute(debugServer, "/lc", handleLc);
     DebugServer_AddRoute(debugServer, "/data.json", handleDataJson);
+    // DebugServer_AddRoute(debugServer, "/identifier_tables", handleIdentifierTables);
     DebugServer_AddRoute(debugServer, "/parser", handleParser);
     DebugServer_AddRoute(debugServer, "/history", handleHistory);
     DebugServer_AddRoute(debugServer, "/logs", handleLogs);
@@ -673,6 +674,7 @@ int Debug_Init(debug_server_t* debugServer, unsigned short port) {
     uint32_t allocationCapa = 256;
     uint32_t graphCapa = 16;
     uint32_t tokenCapa = 128;
+    uint32_t identifierTableCapa = 16;
 
 #ifdef WIN32
     WSADATA wd;
@@ -711,6 +713,11 @@ int Debug_Init(debug_server_t* debugServer, unsigned short port) {
         malloc(sizeof(debug_graph_t) * graphCapa);
     debugServer->GraphsCount = 0;
     debugServer->GraphsCapacity = graphCapa;
+
+    debugServer->IdentifierTables = (metac_identifier_table_t*)
+        malloc(sizeof(metac_identifier_table_t) * identifierTableCapa);
+    debugServer->IdentifierTableCount = 0;
+    debugServer->IdentifierTableCapacity = identifierTableCapa;
 
     debugServer->TokenStream = (metac_token_t*)
         malloc(sizeof(metac_token_t) * tokenCapa);

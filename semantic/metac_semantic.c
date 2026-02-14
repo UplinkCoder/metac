@@ -509,7 +509,7 @@ metac_sema_stmt_t* MetaCSemantic_doStmtSemantic_(metac_sema_state_t* self,
             semaEjectStmt->EjectExpressionsCount = exprCount;
             // copy the tokens .... sigh!
             // TODO maybe we can transfer the array in one go ?
-            ARENA_ARRAY_INIT_SZ(metac_sema_expr_t*, semaEjectStmt->EjectTokens, &self->Allocator, ejectStmt->EjectTokensCount);
+            ARENA_ARRAY_INIT_SZ(metac_token_t, semaEjectStmt->EjectTokens, &self->Allocator, ejectStmt->EjectTokensCount);
             for(int i = 0; i < ejectStmt->EjectTokensCount; i++)
             {
                 semaEjectStmt->EjectTokens[i] = ejectStmt->EjectTokens[i];

@@ -2666,6 +2666,7 @@ void MetaCPrinter_Free(metac_printer_t* self)
     {
         Allocator_FreeArena(&self->Allocator, self->StringMemoryArenaPtr);
     }
+    Debug_RemoveAllocator(g_DebugServer, &self->Allocator);
 }
 
 void MetacPrinter_PrintStringLiteral(metac_printer_t* self, const char* str)
