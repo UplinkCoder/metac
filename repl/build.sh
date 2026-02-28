@@ -18,6 +18,7 @@ $CC $CFLAGS linenoise_repl.c \
     -mtune=core2 -march=core2 -mstackrealign \
     -lm -lpthread \
     -o repl \
+    -Wno-incompatible-pointer-types \
      $@
 #-march=native -mtune=native \
 #    -g3 -O0 \
