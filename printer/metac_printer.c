@@ -1283,8 +1283,13 @@ static inline void PrintDecl(metac_printer_t* self,
             PrintType(self, function_->ReturnType);
             PrintSpace(self);
             PrintIdentifier(self, function_->Identifier);
+            if (function_->TemplateParameterCount)
+            {
+                PrintTokenType(self, tok_bang);
+                PrintParameterList(self, function_->TemplateParameters);
+            }
             PrintSpace(self);
-            PrintParameterList(self, function_->Parameters);
+            PrintParameterList(self, function_->FunctionParameters);
 
             if (function_->FunctionBody != emptyPointer)
             {

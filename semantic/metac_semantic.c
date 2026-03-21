@@ -1045,10 +1045,10 @@ sema_decl_function_t* MetaCSemantic_doFunctionSemantic(metac_sema_state_t* self,
     // let's first do the parameters
     sema_decl_variable_t* params =
         f->Parameters =
-            AllocFunctionParameters(self, f, func->ParameterCount);
+            AllocFunctionParameters(self, f, func->FunctionParameterCount);
 
 
-    doParameterSemantic(self, func->Parameters, f->Parameters, func->ParameterCount);
+    doParameterSemantic(self, func->FunctionParameters, f->Parameters, func->FunctionParameterCount);
 
     metac_scope_owner_t Parent = {SCOPE_OWNER_V(scope_owner_function, FunctionIndex(self, f))};
 
@@ -1068,8 +1068,8 @@ sema_decl_function_t* MetaCSemantic_doFunctionSemantic(metac_sema_state_t* self,
     fType.Kind = decl_type_functiontype;
     fType.YieldType = func->YieldType;
     fType.ReturnType = func->ReturnType;
-    fType.Parameters = func->Parameters;
-    fType.ParameterCount = func->ParameterCount;
+    fType.Parameters = func->FunctionParameters;
+    fType.ParameterCount = func->FunctionParameterCount;
 
     metac_type_index_t fTypeIndex = MetaCSemantic_doTypeSemantic(self, &fType);
     f->TypeIndex = fTypeIndex;
@@ -1093,7 +1093,7 @@ sema_decl_function_t* MetaCSemantic_doFunctionSemantic(metac_sema_state_t* self,
     }
 #endif
     for(uint32_t i = 0;
-        i < func->ParameterCount;
+        i < func->FunctionParameterCount;
         i++)
     {
         sema_decl_variable_t* var = (f->Parameters + i);

@@ -133,7 +133,7 @@ const struct ui_interface_t LinenoiseUiInterface =
     Linenoise_GetFilesystem,
 } ;
 
-void doUiMessage(const char* msg, void* context)
+void doUiMessage(metac_compiler_t* compiler, const char* msg, void* context)
 {
     g_uiContext->UiInterface->Message(g_uiContext->UiState, msg);
 }

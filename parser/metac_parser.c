@@ -1116,7 +1116,7 @@ decl_type_t* MetaCParser_ParseTypeDecl(metac_parser_t* self, metac_decl_t* paren
         {
             MetaCParser_Match(self, tokenType);
 
-            type->TypeKind = (metac_type_kind_t)(type_auto + (tokenType - tok_kw_auto));
+            type->TypeKind = cast(metac_type_kind_t)(type_auto + (tokenType - tok_kw_auto));
             U32(type->TypeModifiers) |= typeModifiers;
             if (tokenType == tok_kw_long)
             {
@@ -1486,13 +1486,11 @@ static void EatAttributes(metac_parser_t* self)
 }
 static metac_storageclasses_t ParseStorageClasses(metac_parser_t* self);
 
-decl_function_t* ParseFunctionDecl(metac_parser_t* self, decl_type_t* type)
+decl_function_t* ParseFunctionDecl(metac_parser_t* self,
+                                   decl_type_t* type,
+                                   metac_identifier_ptr_t identifier)
 {
     decl_function_t result;
-
-    metac_token_t* id = MetaCParser_Match(self, tok_identifier);
-    metac_location_t loc = LocationFromToken(self, id);
-    metac_identifier_ptr_t identifier = RegisterIdentifier(self, id);
 
     decl_function_t* funcDecl = AllocNewDecl(decl_function, &result);
     funcDecl->ReturnType = type;
@@ -1500,8 +1498,8 @@ decl_function_t* ParseFunctionDecl(metac_parser_t* self, decl_type_t* type)
 
     funcDecl->FunctionBody = (stmt_block_t*) _emptyPointer;
     decl_parameter_list_t parameterList = ParseParameterList(self, funcDecl);
-    funcDecl->Parameters = parameterList.List;
-    funcDecl->ParameterCount = parameterList.ParameterCount;
+    funcDecl->FunctionParameters = parameterList.List;
+    funcDecl->FunctionParameterCount = parameterList.ParameterCount;
 
     // eat attributes here
     EatAttributes(self);
@@ -1896,8 +1894,8 @@ metac_decl_t* MetaCParser_ParseDecl(metac_parser_t* self, metac_decl_t* parent)
             fType->TypeKind       = type_functiontype;
             fType->ReturnType     = f->ReturnType;
             fType->YieldType      = f->YieldType;
-            fType->Parameters     = f->Parameters;
-            fType->ParameterCount = f->ParameterCount;
+            fType->Parameters     = f->FunctionParameters;
+            fType->ParameterCount = f->FunctionParameterCount;
 
             synVar.VarType       = fType;
             synVar.VarIdentifier = f->Identifier;
@@ -1924,6 +1922,8 @@ metac_decl_t* MetaCParser_ParseDecl(metac_parser_t* self, metac_decl_t* parent)
 
     if (type)
     {
+        REFRESH_TOKEN();
+
         if (MetaCParser_PeekMatch(self, tok_lParen, 1))
         {
             // this might be a function pointer
@@ -1979,18 +1979,48 @@ metac_decl_t* MetaCParser_ParseDecl(metac_parser_t* self, metac_decl_t* parent)
         }
         else if (MetaCParser_PeekMatch(self, tok_identifier, 1))
         {
-            metac_token_t* afterId = MetaCParser_PeekToken(self, 2);
+            metac_token_t* idToken = MetaCParser_Match(self, tok_identifier);
+            metac_identifier_ptr_t identifier = RegisterIdentifier(self, idToken);
+
+            metac_token_t* afterId = MetaCParser_PeekToken(self, 1);
+            decl_parameter_list_t templateParams = {0};
+            if (MetaCParser_PeekMatch(self, tok_bang, 1))
+            {
+                MetaCParser_Match(self, tok_bang);
+                templateParams = ParseParameterList(self, 0);
+                afterId = MetaCParser_PeekToken(self, 1);
+            }
+            if (afterId && afterId->TokenType == tok_at)
+            {
+                metac_token_t* maybeRun = MetaCParser_PeekToken(self, 2);
+                if (maybeRun && maybeRun->TokenType == tok_identifier && maybeRun->IdentifierKey == run_key)
+                {
+                    decl_function_t* runFunc = AllocNewDecl(decl_function, &result);
+                    runFunc->Hash = run_key;
+                    // this is a @run function so we parse the function body immedidately.
+                    MetaCParser_Match(self, tok_at);
+                    MetaCParser_Match(self, tok_identifier);
+                    afterId = MetaCParser_PeekToken(self, 1);
+                    runFunc->ReturnType = type;
+                    runFunc->Identifier = identifier;
+                    runFunc->TemplateParameters = templateParams.List;
+                    runFunc->TemplateParameterCount = templateParams.ParameterCount;
+                    METAC_NODE(runFunc->FunctionParameters) = emptyNode;
+
+                    runFunc->FunctionBody = MetaCParser_ParseBlockStmt(self, 0, 0);
+                    goto LendDecl;
+                }
+            }
+
             if (afterId && afterId->TokenType == tok_lParen)
             {
-                decl_function_t* funcDecl = ParseFunctionDecl(self, type);
+                decl_function_t* funcDecl = ParseFunctionDecl(self, type, identifier);
                 funcDecl->YieldType = yieldType;
                 result = (metac_decl_t*) funcDecl;
             }
             else
             {
                 decl_variable_t* varDecl = AllocNewDecl(decl_variable, &result);
-                metac_token_t* idToken = MetaCParser_Match(self, tok_identifier);
-                metac_identifier_ptr_t identifier = RegisterIdentifier(self, idToken);
 //            varDecl.LocationIdx =
 //                MetaCLocationStorage_StartLoc(&parser.locationStorage,
 //                    MetaCLocationStorage_StartLine(&parser.lexer.locationStorage, type.LocationIdx));

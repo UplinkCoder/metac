@@ -165,8 +165,8 @@ int MetaCNode_TreeWalk_Real(metac_node_t node, walker_function_t walker_fn, void
                 result = MetaCNode_TreeWalk_Real(decl_function->ReturnType, walker_fn, ctx);
             if(result)
                  return result;
-            if ((metac_node_t)decl_function->Parameters != emptyNode)
-                result = MetaCNode_TreeWalk_Real(decl_function->Parameters, walker_fn, ctx);
+            if ((metac_node_t)decl_function->FunctionParameters != emptyNode)
+                result = MetaCNode_TreeWalk_Real(decl_function->FunctionParameters, walker_fn, ctx);
             if(result)
                  return result;
             if ((metac_node_t)decl_function->FunctionBody != emptyNode)

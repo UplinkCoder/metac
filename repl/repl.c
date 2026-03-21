@@ -746,6 +746,7 @@ LswitchMode:
                 if (0 == strcmp("ate", repl->Line + 2))
                 {
                     MSG("Build on " __DATE__ " " __TIME__ "\n");
+                    goto LswitchMode;
                 }
                 else switch (repl->Line[2])
                 {

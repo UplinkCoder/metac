@@ -550,9 +550,12 @@ typedef struct decl_function_t
 
     decl_type_t* ReturnType;
 
-    decl_parameter_t* Parameters;
+    AT(maybeEmpty) decl_parameter_t* TemplateParameters;
+    AT(maybeEmpty) decl_parameter_t* FunctionParameters;
 
-    uint32_t ParameterCount;
+    uint32_t TemplateParameterCount;
+    uint32_t FunctionParameterCount;
+
     metac_identifier_ptr_t Identifier;
 
     stmt_block_t* FunctionBody;
