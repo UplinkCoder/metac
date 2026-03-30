@@ -2001,6 +2001,7 @@ metac_decl_t* MetaCParser_ParseDecl(metac_parser_t* self, metac_decl_t* parent)
                     MetaCParser_Match(self, tok_at);
                     MetaCParser_Match(self, tok_identifier);
                     afterId = MetaCParser_PeekToken(self, 1);
+                    runFunc->Flags |= FuncFlag_Run;
                     runFunc->ReturnType = type;
                     runFunc->Identifier = identifier;
                     runFunc->TemplateParameters = templateParams.List;

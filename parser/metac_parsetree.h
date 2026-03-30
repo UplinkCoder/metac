@@ -29,6 +29,12 @@ typedef enum number_flags_t
     number_flag_long_long = (1 << 5)
 } number_flags_t;
 
+typedef enum {
+    FuncFlag_None = 0,
+    FuncFlag_Inline = (1 << 0),
+    FuncFlag_Run = (1 << 0),
+} funcflags_t;
+
 #define EXPR_HEADER \
     metac_expr_kind_t Kind; \
     metac_location_ptr_t LocationIdx; \
@@ -147,6 +153,13 @@ typedef struct metac_expr_t
             char Chars[8];
         };
 
+        // case expr_function:
+        struct {
+            struct decl_parameter_t* FuncParameters;
+            uint32_t FuncParameterCount;
+            struct metac_stmt_t* FuncBody;
+        };
+
         struct {
             union {
                 // case expr_signed_integer :
@@ -160,7 +173,6 @@ typedef struct metac_expr_t
             };
             number_flags_t NumberFlags;
         };
-        expr_function_t FunctionExp;
     };
 } metac_expr_t;
 
@@ -559,6 +571,7 @@ typedef struct decl_function_t
     metac_identifier_ptr_t Identifier;
 
     stmt_block_t* FunctionBody;
+    funcflags_t Flags;
 } decl_function_t;
 
 typedef struct decl_type_ptr_t

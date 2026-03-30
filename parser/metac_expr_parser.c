@@ -690,22 +690,24 @@ metac_expr_t* MetaCParser_ParsePrimaryExpr(metac_parser_t* self, parse_expr_flag
             {
                 MetaCParser_Match(self, tok_lParen);
                 MetaCParser_Match(self, tok_rParen);
-                METAC_NODE(result->FunctionExp.Parameters) = emptyNode;
-                result->FunctionExp.ParameterCount = 0;
+                METAC_NODE(result->FuncParameters) = emptyNode;
+                result->FuncParameterCount = 0;
                 hash ^= CRC32C_PARENSTARPAREN;
             }
             else
             {
                 decl_parameter_list_t paramList;
                 paramList = ParseParameterList(self, result);
-                result->FunctionExp.ParameterCount = paramList.ParameterCount;
-                result->FunctionExp.Parameters = paramList.List;
+                result->FuncParameterCount = paramList.ParameterCount;
+                result->FuncParameters = paramList.List;
                 hash ^= paramList.Hash;
             }
+
+            EatAttributes(self);
             
             // Parse mandatory '{ ... }' block
-            result->FunctionExp.Body = MetaCParser_ParseStmt(self, 0, 0);
-            hash = CRC32C_VALUE(hash, result->FunctionExp.Body->Hash);
+            result->FuncBody = MetaCParser_ParseStmt(self, 0, 0);
+            hash = CRC32C_VALUE(hash, result->FuncBody->Hash);
             MetaCLocation_Expand(&loc, LocationFromToken(self, MetaCParser_PeekToken(self, 0)));
  
             result->Hash = hash;

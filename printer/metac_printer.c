@@ -643,7 +643,7 @@ static inline void PrintType(metac_printer_t* self, decl_type_t* type)
             PrintString(self, "}", 1);
         } break;
         case decl_type_template_instance:
-        LprintTemplateInstance:
+    LprintTemplateInstance:
         {
             decl_type_template_instance_t* tinst = cast(decl_type_template_instance_t*) type;
             const int32_t argumentCount = cast(int32_t)tinst->ArgumentCount;
@@ -1457,6 +1457,11 @@ static inline void PrintExpr(metac_printer_t* self, metac_expr_t* expr)
         PrintTokenType(self, tok_lBracket);
         PrintExpr(self, expr->E2);
         PrintTokenType(self, tok_rBracket);
+    }
+    else if (expr->Kind == expr_function)
+    {
+        PrintParameterList(self, expr->FuncParameters);
+        PrintStmt(self, expr->FuncBody);
     }
     else if (expr->Kind == expr_call)
     {

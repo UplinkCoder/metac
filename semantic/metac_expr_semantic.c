@@ -1124,6 +1124,10 @@ LswitchIdKey:
             }
         }
         break;
+        case expr_function:
+        {
+            result->TypeIndex.v = TYPE_INDEX_V(type_index_basic, type_functiontype);
+        } break;
         case expr_inject:
         {
             result->TypeIndex.v = TYPE_INDEX_V(type_index_basic, type_code);
