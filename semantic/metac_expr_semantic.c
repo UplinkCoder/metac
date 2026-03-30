@@ -916,6 +916,7 @@ LswitchIdKey:
         case expr_compl:
         case expr_not:
         case expr_umin:
+        case expr_uplus:
         case expr_paren:
         {
             metac_sema_expr_t* E1 =

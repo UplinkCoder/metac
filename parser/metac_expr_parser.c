@@ -397,7 +397,8 @@ static inline bool IsPunctuationToken(metac_token_enum_t tok)
     return (
         (IsBinaryOperator(tok, expr_flags_none)
             && tok != tok_star && tok != tok_lParen
-            && tok != tok_lBracket && tok != tok_and)
+            && tok != tok_lBracket && tok != tok_and
+            && tok != tok_plus && tok != tok_minus)
         ||  tok == tok_dotdot
         ||  tok == tok_comma
 /*
@@ -1297,6 +1298,15 @@ metac_expr_t* MetaCParser_ParseUnaryExpr(metac_parser_t* self)
         result->E1 = MetaCParser_ParseExpr(self,
             cast(parse_expr_flags_t)(expr_flags_unary | (eflags & expr_flags_pp)), 0);
         result->Hash = CRC32C_VALUE(CRC32C_MINUSMINUS, result->E1->Hash);
+    }
+    else if (tokenType == tok_plus)
+    {
+        MetaCParser_Match(self, tok_plus);
+        result = AllocNewExpr(expr_uplus);
+        //PushOperator(expr_addr);
+        result->E1 = MetaCParser_ParseExpr(self,
+            cast(parse_expr_flags_t)(expr_flags_unary | (eflags & expr_flags_pp)), 0);
+        result->Hash = CRC32C_VALUE(CRC32C_PLUS, result->E1->Hash);
     }
     else if (tokenType == tok_plusplus)
     {

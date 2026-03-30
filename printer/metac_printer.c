@@ -1526,7 +1526,7 @@ static inline void PrintExpr(metac_printer_t* self, metac_expr_t* expr)
     }
     else if (expr->Kind == expr_addr || expr->Kind == expr_deref
           || expr->Kind == expr_not  || expr->Kind == expr_compl
-          || expr->Kind == expr_umin)
+          || expr->Kind == expr_umin || expr->Kind == expr_uplus )
     {
         {
             const char* op = 0;
@@ -1540,6 +1540,8 @@ static inline void PrintExpr(metac_printer_t* self, metac_expr_t* expr)
                 op = "~";
             else if (expr->Kind == expr_umin)
                 op = "-";
+            else if (expr->Kind == expr_uplus)
+                op = "+";
 
             PrintString(self, op, (uint32_t)strlen(op));
         }

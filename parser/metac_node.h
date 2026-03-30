@@ -122,6 +122,7 @@
     M(expr_deref) \
     M(expr_not) \
     M(expr_compl) \
+    M(expr_uplus) \
     M(expr_umin)
 
 #define FOREACH_PRIMARY_EXP(M) \
