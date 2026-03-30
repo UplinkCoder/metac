@@ -1590,7 +1590,7 @@ BCValue BCGen_interpret(BCGen* self, uint32_t fnIdx, BCValue* args, uint32_t n_a
             break;
         case LongInst_FNeq64 :
             {
-               cond = (dlhs < drhs);
+               cond = (dlhs != drhs);
             }
             break;
         case LongInst_FLt64 :
