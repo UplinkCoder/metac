@@ -24,40 +24,25 @@ typedef struct metac_compiler_t
 {
     void* semanticState;
 
-    uint32_t StartTimeStamp;
-    void (*CurrentTimeStamp) (uint32_t* outResult);
-    void (*BuiltinCount) (uint32_t* outResult);
-
-    const char* (*PrintType) (struct metac_compiler_t* compilerP, type* T);
-
-    const char** (*FieldNames) (type* T);
-
-    const char* (*BuiltinName) (uint32_t* builtinNumber);
+    uint32_t (*CurrentTimeStamp) ();
+   
     const char* (*Help) ();
 
     void (*Message) (struct metac_compiler_t* compilerP,
-                     const char* str,
-                     void* context);
+                     const char* str);
 
     void (*Error) (struct metac_compiler_t* compilerP,
-                   const char* str,
-                   void* context);
+                   const char* str);
 
-    type_kind_t* (*GetTypeKind) (struct metac_compiler_t* compilerP, type* T);
+    type_kind_t (*GetTypeKind) (struct metac_compiler_t* compilerP, uint32_t T);
 
-    void (*RegisterLogCallback) (struct metac_compiler_t* compilerP,
-                                 void (*LogCb)(const char* msg, void* context),
-                                 void* context);
+    void (*PrintInt) (int32_t value);
 
-    void (*RegisterIdentifierCallback) (struct metac_compiler_t* compilerP,
-                                        void (*IdentfierCb)(const char* idChars, uint32_t idKey, void* context),
-                                        void* context);
-    void (*PrintInt) (int32_t* value);
-
-    metac_enum_members_t* (*GetEnumMembers) (struct metac_compiler_t* compilerP, type* T);
+    metac_enum_members_t* (*GetEnumMembers) (struct metac_compiler_t* compilerP, uint32_t T);
 
     metac_node_t (*ResolveNode)(struct metac_compiler_t* compilerP, const char* name);
-
+    
+    const char* Version;
 } metac_compiler_t;
 
 /* Proposed Interface:

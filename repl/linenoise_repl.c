@@ -133,7 +133,7 @@ const struct ui_interface_t LinenoiseUiInterface =
     Linenoise_GetFilesystem,
 } ;
 
-void doUiMessage(metac_compiler_t* compiler, const char* msg, void* context)
+void doUiMessage(metac_compiler_t* compiler, const char* msg)
 {
     g_uiContext->UiInterface->Message(g_uiContext->UiState, msg);
 }
@@ -158,7 +158,6 @@ int main(int argc, const char* argv[])
     linenoiseHistoryLoad(".repl_history");
 
 #ifdef METAC_COMPILER_INTERFACE
-    OS.GetTimeStamp(&compiler.StartTimeStamp);
     compiler.Message = doUiMessage;
 #endif
     g_uiContext = &ctx;

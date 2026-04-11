@@ -1,16 +1,12 @@
-#ifndef _METAC_TYPE_H_
-#define _METAC_TYPE_H_
+#define TYPE_INDEX_INDEX(TYPE_INDEX) \
+    ((TYPE_INDEX).v & 0x0FFFFFFF)
 
-#include "../os/compat.h"
-#include "../parser/metac_identifier_table.h"
-#include "../semantic/metac_scope.h"
-#include "../parser/metac_lexer.h" // for location
-#include "../parser/metac_parsetree.h"
-#include "../parser/metac_node.h"
+#define TYPE_INDEX_KIND(TYPE_INDEX) \
+    ((metac_type_index_kind_t)((TYPE_INDEX).v >> 28))
 
-#ifndef AT
-#define AT(...)
-#endif
+#define TYPE_INDEX_V(KIND, INDEX) \
+    (((KIND) << 28) | (INDEX))
+
 
 #define FOREACH_TYPE_INDEX_KIND(M) \
     M(type_index_unknown       , 0x0) \
@@ -30,6 +26,21 @@
     M(type_index_unresolved    , 0xD) \
     M(type_index_extended      , 0xE) \
     M(type_index_invalid       , 0xF)
+
+
+#ifndef _METAC_TYPE_H_
+#define _METAC_TYPE_H_
+
+#include "../os/compat.h"
+#include "../parser/metac_identifier_table.h"
+#include "../semantic/metac_scope.h"
+#include "../parser/metac_lexer.h" // for location
+#include "../parser/metac_parsetree.h"
+#include "../parser/metac_node.h"
+
+#ifndef AT
+#define AT(...)
+#endif
 
 
 #define TYPE_INDEX_MEMBER(KIND, VALUE) \
@@ -54,14 +65,6 @@ typedef struct metac_type_index_t
     };
 } metac_type_index_t;
 
-#define TYPE_INDEX_INDEX(TYPE_INDEX) \
-    ((TYPE_INDEX).v & 0x0FFFFFFF)
-
-#define TYPE_INDEX_KIND(TYPE_INDEX) \
-    ((metac_type_index_kind_t)((TYPE_INDEX).v >> 28))
-
-#define TYPE_INDEX_V(KIND, INDEX) \
-    (((KIND) << 28) | (INDEX))
 
 #define ERROR_TYPE_INDEX_V -1
 

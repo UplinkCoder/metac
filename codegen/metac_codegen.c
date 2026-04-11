@@ -500,7 +500,6 @@ void MetaCCodegen_Init(metac_bytecode_ctx_t* self, metac_alloc_t* parentAlloc)
     extCompP->externalAddress = &compiler;
     extCompP->externalSize = sizeof(compiler);
     self->ExternalsCount = 1;
-    compiler.Help = compiler_help;
 #endif
 }
 
@@ -1135,7 +1134,7 @@ static void MetaCCodegen_doExpr(metac_bytecode_ctx_t* ctx,
             bool opIsPostIncDec =
                 (op == expr_post_decrement || op == expr_post_increment);
             lhs = gen.GenTemporary(c, expType);
-            MetaCCodegen_doExpr(ctx, exp->E1, &lhs, (opIsPostIncDec ? _Lvalue : _Rvalue));
+            // MetaCCodegen_doExpr(ctx, exp->E1, &lhs, (opIsPostIncDec ? _Lvalue : _Rvalue));
         }
     }
     else if (IsBinaryExp(op) && op != expr_comma && op != expr_call)
