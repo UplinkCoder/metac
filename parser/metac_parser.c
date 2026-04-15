@@ -1228,12 +1228,14 @@ decl_type_t* MetaCParser_ParseTypeDecl(metac_parser_t* self, metac_decl_t* paren
                 isPredeclated = false;
                 while(!MetaCParser_PeekMatch(self, tok_rBrace, 1))
                 {
+                    metac_decl_t* parent = cast(metac_decl_t*)struct_;
+
                     decl_field_t* field =
-                        AllocNewDecl(decl_field, (metac_decl_t**)
+                        AllocNewDecl(decl_field, cast(metac_decl_t**)
                                             nextMemberPtr);
-                    field->Next = (decl_field_t*)_emptyPointer;
-                    metac_decl_t *decl =
-                        (metac_decl_t*)MetaCParser_ParseDecl(self, (metac_decl_t*)struct_);
+                    field->Next = cast(decl_field_t*) _emptyPointer;
+                    metac_decl_t *decl = cast(metac_decl_t*) 
+                        MetaCParser_ParseDecl(self, parent);
 
                     assert(decl->Hash != 0);
                     hash = CRC32C_VALUE(hash, decl->Hash);

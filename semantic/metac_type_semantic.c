@@ -1287,13 +1287,15 @@ metac_type_index_t MetaCSemantic_TypeSemantic(metac_sema_state_t* self,
         decl_type_functiontype_t* functionType =
             (decl_type_functiontype_t*) type;
 
-        metac_type_index_t yieldType =
-            MetaCSemantic_doTypeSemantic(self,
-                functionType->YieldType);
-
         metac_type_index_t returnType =
             MetaCSemantic_doTypeSemantic(self,
                 functionType->ReturnType);
+
+        metac_type_index_t yieldType = (
+            METAC_NODE(functionType->YieldType) != emptyNode
+              ?  MetaCSemantic_doTypeSemantic(self, functionType->YieldType)
+              : (metac_type_index_t){0}
+        );
 
         uint32_t hash = crc32c_nozero(~0, &returnType, sizeof(returnType));
         decl_parameter_t* currentParam = functionType->Parameters;
