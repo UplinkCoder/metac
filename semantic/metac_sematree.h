@@ -125,7 +125,10 @@ typedef struct metac_sema_expr_t
         struct sema_expr_call_t Call;
 
         // case unknown_value_exp:
-        metac_expr_t* Expr;
+        struct {
+            metac_expr_t* UnkownValueOrigin;
+            metac_identifier_ptr_t UnknownValueSemaIdentifier;
+        };
         // case variable_exp:
         struct sema_decl_variable_t* Variable;
         // case field_exp:

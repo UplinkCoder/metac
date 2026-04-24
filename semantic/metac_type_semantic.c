@@ -767,12 +767,14 @@ void MetaCSemantic_ComputeEnumValues(metac_sema_state_t* self,
         {
             metac_sema_expr_t* placeHolder = memberPlaceholders + memberIdx;
 
+            metac_identifier_ptr_t semaId = 
+                MetaCIdentifierTable_CopyIdentifier(self->ParserIdentifierTable, &self->SemanticIdentifierTable, member->Identifier);
+
             placeHolder->Kind = expr_unknown_value;
             placeHolder->TypeIndex = semaEnum->BaseType;
-            placeHolder->Expr = member->Value;
-
-            MetaCSemantic_RegisterInScope(self, member->Identifier,
-                                          METAC_NODE(placeHolder));
+            placeHolder->UnkownValueOrigin = member->Value;
+            placeHolder->UnknownValueSemaIdentifier = semaId;
+            MetaCSemantic_RegisterInScope(self, semaId, METAC_NODE(placeHolder));
         }
     }
 
@@ -812,7 +814,7 @@ void MetaCSemantic_ComputeEnumValues(metac_sema_state_t* self,
                     else
                     {
                         metac_enum_member_t* semaMember = semaEnum->Members + memberIdx;
-                        MetaCSemantic_RegisterInScope(self, member->Identifier, METAC_NODE(semaMember));
+                        MetaCSemantic_RegisterInScope(self, memberPlaceholders[memberIdx].UnknownValueSemaIdentifier, METAC_NODE(semaMember));
                     }
                 }
             }
@@ -1141,7 +1143,7 @@ metac_type_index_t MetaCSemantic_TypeSemantic(metac_sema_state_t* self,
         //semaTypedef->Type = elementTypeIndex;
 
         scope_insert_error_t scopeInsertError =
-            MetaCSemantic_RegisterInScope(self, typedef_->Identifier, (metac_node_t)semaTypedef);
+            MetaCSemantic_RegisterInScope(self, semaId, (metac_node_t)semaTypedef);
     }
     else if (type->Kind == decl_type_typeof)
     {
@@ -1213,7 +1215,7 @@ metac_type_index_t MetaCSemantic_TypeSemantic(metac_sema_state_t* self,
                 
                 placeholder->Kind = expr_unknown_value;
                 placeholder->TypeIndex = MetaCSemantic_TypeSemantic(self, param->Parameter->VarType);
-                METAC_NODE(placeholder->Expr) = emptyNode;
+                METAC_NODE(placeholder->UnkownValueOrigin) = emptyNode;
                 placeholder->LocationIdx = locIdx;
 
                 inserted = MetaCSemantic_RegisterInScope(self, semaId, METAC_NODE(placeholder));

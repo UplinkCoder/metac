@@ -1329,7 +1329,7 @@ LswitchIdKey:
             metac_node_t node = MetaCSemantic_LookupIdentifier(self, semaIdentifier);
             if (node == emptyPointer)
             {
-                xfprintf(stderr, "Identifier lookup failed\n");
+                xfprintf(stderr, "'%s' Identifier lookup failed\n",  IdentifierPtrToCharPtr(&self->SemanticIdentifierTable, result->IdentifierPtr));
                 hash = expr->IdentifierPtr.v;
             }
             else
