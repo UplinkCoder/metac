@@ -818,6 +818,7 @@ void MetaCSemantic_ComputeEnumValues(metac_sema_state_t* self,
                     }
                 }
             }
+            assert(unresolvedMembers <= memberCount);
             assert(METAC_NODE(member) == emptyNode);
             MetaCSemantic_PopOnResolveFail(self);
 
@@ -1048,7 +1049,11 @@ metac_type_index_t TypeEnumSemantic(metac_sema_state_t* self,
         result = MetaCTypeTable_AddEnumType(&self->EnumTypeTable, &tmpSemaEnum);
 
         keepEnumScope = true;
-        MetaCSemantic_RegisterInScope(self, tmpSemaEnum.Identifier, cast(metac_node_t)EnumTypePtr(self, result.Index));
+        // TODO: not sure if this is the right place to register tag scope
+        // MetaCSemantic_MountScope(self, self->EnumTagScope);
+        // MetaCSemantic_RegisterInScope(self, tmpSemaEnum.Identifier,
+        //                               cast(metac_node_t) EnumTypePtr(self, result.Index));
+        // MetaCSemantic_UnmountScope(self);
         for(uint32_t i = 0; i < semaMembersCount; i++)
         {
             semaMembers[i].Value->TypeIndex.v = result.v;

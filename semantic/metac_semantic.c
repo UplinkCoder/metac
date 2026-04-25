@@ -147,6 +147,9 @@ void MetaCSemantic_Init(metac_sema_state_t* self, metac_parser_t* parser,
     self->UnionTagScope =
         MetaCScope_PushNewScope(self, 0, globalOwner);
 
+    self->EnumTagScope =
+        MetaCScope_PushNewScope(self, 0, globalOwner);
+
     self->ExprStackCapacity = 64;
     self->ExprStackSize = 0;
     self->ExprStack = (metac_sema_expr_t*)
@@ -1333,6 +1336,7 @@ metac_sema_decl_t* MetaCSemantic_declSemantic(metac_sema_state_t* self,
         case decl_type_enum:
             (cast(decl_type_t*)decl)->TypeKind = type_enum;
             declId = ((decl_type_enum_t*) decl)->Identifier;
+            tagScope = self->EnumTagScope;
             goto LdoTypeSemantic;
         case decl_type_struct:
             (cast(decl_type_t*)decl)->TypeKind = type_struct;

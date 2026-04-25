@@ -118,6 +118,7 @@ typedef struct metac_sema_state_t
 
     metac_scope_t* StructTagScope;
     metac_scope_t* UnionTagScope;
+    metac_scope_t* EnumTagScope;
 
     // has state such as the current stack offset and the like
     // to layout variables
