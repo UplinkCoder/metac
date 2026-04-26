@@ -266,7 +266,6 @@ static inline void Printer_PrintBCValue(Printer* self, const BCValue* val)
                     Printer_PutStr(self, "(Imm32){");
                     Printer_PutU32(self, val_imm32);
                     Printer_PutStr(self, "} // i8");
-                    Printer_PutNewline(self);
                 } break;
             case BCTypeEnum_u32:
                 {
