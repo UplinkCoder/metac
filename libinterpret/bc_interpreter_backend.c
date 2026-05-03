@@ -1949,7 +1949,7 @@ BCValue BCGen_interpret(BCGen* self, uint32_t fnIdx, BCValue* args, uint32_t n_a
 
                 external.size = mapSize;
                 external.addr = (void*) addrInt;
-                external.mapAddr = state.mapPtr | externalAddrMask;
+                external.mapAddr = AddressFrom(AddressKind_External, state.mapPtr);
                 state.mapPtr += align4(external.size);
 
                 state.externals[state.externalsCount++] = external;

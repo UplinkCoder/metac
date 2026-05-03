@@ -1135,7 +1135,7 @@ metac_type_index_t MetaCSemantic_TypeSemantic(metac_sema_state_t* self,
 
         metac_type_typedef_t key = {
             {decl_type_typedef, 0, hash},
-            zeroIdx, elementTypeIndex, typedef_->Identifier
+            zeroIdx, elementTypeIndex, semaId
         };
 
         result =

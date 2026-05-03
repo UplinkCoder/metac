@@ -589,6 +589,30 @@ EXTERN_C bool BCValue_isStackValueOrParameter(const BCValue* val)
 #define VM_SIZE_RO_METADATA       (256 * 1024 * 1024)
 #define VM_LIMIT_RECURSION        2000
 
+uint32_t AddressFrom(address_kind_t kind, uint32_t offset)
+{
+    uint32_t result = 0;
+    switch (kind)
+    {
+        case AddressKind_Heap: {
+            result = VM_ADDR_HEAP_START + offset;
+        } break;
+        case AddressKind_Stack: {
+            result = VM_ADDR_STACK_START + offset;
+        } break;
+        case AddressKind_Register: {
+            result = VM_ADDR_REG_PAGE + offset;
+        } break;
+        case AddressKind_ROMetadata: {
+            result = VM_ADDR_RO_METADATA + offset;
+        } break;
+        case AddressKind_External: {
+            result = VM_ADDR_EXTERNAL_START + offset;
+        } break;
+        default : assert(0);
+    }
+    return result;
+}
 
 address_kind_t ClassifyAddress(uint32_t addr, uint32_t* out_offset)
 {
@@ -607,7 +631,7 @@ address_kind_t ClassifyAddress(uint32_t addr, uint32_t* out_offset)
     else if (top == 0)
     {
         // Stack grows up, starts at 0x4000
-        if (addr >= VM_ADDR_STACK_START) 
+        if (addr >= VM_ADDR_STACK_START)
         {
             kind   = AddressKind_Stack;
             offset = addr - VM_ADDR_STACK_START;
@@ -618,10 +642,10 @@ address_kind_t ClassifyAddress(uint32_t addr, uint32_t* out_offset)
              // kind = AddressKind_Invalid; // Guard Hit
         }
         // 4KB Register Page (0x2000 - 0x2FFF)
-        else if (addr >= 0x2000)
+        else if (addr >= VM_ADDR_REG_PAGE)
         {
             kind   = AddressKind_Register;
-            offset = addr - 0x2000;
+            offset = addr - VM_ADDR_REG_PAGE;
         }
         // 8KB NULL trap (0x0000 - 0x1FFF)
         else
@@ -635,7 +659,7 @@ address_kind_t ClassifyAddress(uint32_t addr, uint32_t* out_offset)
     {
         // Shadow Return Stack (dedicated for 32-bit return addresses)
         // this is address invalid
-        if (addr < VM_ADDR_RETURN_STACK) 
+        if (addr < VM_ADDR_RETURN_STACK)
         {
             // kind   = AddressKind_ReturnStack;
             // offset = addr - VM_ADDR_RETURN_STACK;
@@ -658,7 +682,7 @@ address_kind_t ClassifyAddress(uint32_t addr, uint32_t* out_offset)
     else if (top <= 32)
     {
         kind   = AddressKind_External;
-        offset = VM_ADDR_EXTERNAL_START;
+        offset = addr - VM_ADDR_EXTERNAL_START;
     }
 
     *out_offset = offset;

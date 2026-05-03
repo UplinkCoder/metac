@@ -306,6 +306,7 @@ void Presemantic_(repl_state_t* self)
     {
         metac_lpp_t tmpLpp;
         decl_array_t decls = {0};
+        AddIdentifierToCompletion(self, "Compiler");
         {
             MetaCLPP_Init(&tmpLpp, &PresemanticAlloc, 0);
 #if 1

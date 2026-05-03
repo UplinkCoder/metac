@@ -896,9 +896,10 @@ void MetaCCodegen_doDeref(metac_bytecode_ctx_t* ctx,
                           metac_type_index_t varType,
                           BCValue* result)
 {
-    {
-        assert(!"doDeref not implemented right now");
-    }
+    BackendInterface gen = *ctx->gen;
+    void* c = ctx->c;
+    // this only works for pointers to 32bit basic types
+    gen.Load32(c, result, addr);
 }
 
 static void MetaCCodegen_doCastExpr(metac_bytecode_ctx_t* ctx,
@@ -1011,7 +1012,7 @@ static void MetaCCodegen_doArrowExpr(metac_bytecode_ctx_t* ctx,
     metac_type_index_kind_t aggKind = type_index_invalid;
     metac_type_aggregate_field_t* field = 0;
     metac_type_index_t aggTypeIndex;
-    BCType addrType = {BCTypeEnum_Ptr};
+    BCType addrType = {BCTypeEnum_i32};
     BCValue addr;
     BCValue e1Value = {BCValueType_Unknown};
     BCValue offsetVal = {BCValueType_Unknown};

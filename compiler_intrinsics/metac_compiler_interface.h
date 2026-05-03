@@ -5,6 +5,9 @@
   typedef void* type;
 #  endif
 
+typedef unsigned int uint32_t;
+typedef int int32_t;
+
 typedef enum type_kind_t
 {
     TypeKind_Invalid,
@@ -43,7 +46,9 @@ typedef struct metac_compiler_t
     metac_node_t (*ResolveNode)(struct metac_compiler_t* compilerP, const char* name);
     
     const char* Version;
+    unsigned int IntVersion;
 } metac_compiler_t;
+//    uint32_t ;
 
 /* Proposed Interface:
 typedef struct {

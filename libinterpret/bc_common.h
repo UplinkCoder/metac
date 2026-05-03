@@ -219,18 +219,6 @@ typedef struct CndJmpBegin
     bool ifTrue;
 } CndJmpBegin;
 
-// heap address 00 - 10
-// external address 10
-// stack address 11
-
-
-#define AddrMask  ((1U << 31) | \
-                   (1U << 30))
-
-#define stackAddrMask  ((1U << 31) | (1U << 30))
-#define externalAddrMask (1U << 31 | 0U << 30)
-#define heapAddrMask (0U << 31 | 0U << 30)
-
 typedef enum address_kind_t
 {
     AddressKind_Invalid,

@@ -456,7 +456,6 @@ void CompletionTrie_Add(completion_trie_root_t* root, const char* word, uint32_t
     completion_trie_node_t* parentNode =
         CompletionTrie_FindLongestMatchingPrefix(root, word, &remaining_length);
 
-
     if (remaining_length)
     {
         int posWord = length - remaining_length;

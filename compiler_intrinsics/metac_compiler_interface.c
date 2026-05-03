@@ -75,25 +75,6 @@ metac_node_t compiler_ResolveNode(struct metac_compiler_t* compilerP, const char
 
 
 
-    uint32_t (*CurrentTimeStamp) ();
-   
-    const char* (*Help) ();
-
-    void (*Message) (struct metac_compiler_t* compilerP,
-                     const char* str);
-
-    void (*Error) (struct metac_compiler_t* compilerP,
-                   const char* str);
-
-    type_kind_t (*GetTypeKind) (struct metac_compiler_t* compilerP, type* T);
-
-    void (*PrintInt) (int32_t value);
-
-    metac_enum_members_t* (*GetEnumMembers) (struct metac_compiler_t* compilerP, type* T);
-
-    metac_node_t (*ResolveNode)(struct metac_compiler_t* compilerP, const char* name);
-
-
 metac_compiler_t compiler = {
     0,
 
@@ -112,5 +93,6 @@ metac_compiler_t compiler = {
     compiler_ResolveNode,
     
      "v0.1",
+     20260205,
 };
 
