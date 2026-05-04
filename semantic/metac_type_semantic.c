@@ -767,7 +767,7 @@ void MetaCSemantic_ComputeEnumValues(metac_sema_state_t* self,
         {
             metac_sema_expr_t* placeHolder = memberPlaceholders + memberIdx;
 
-            metac_identifier_ptr_t semaId = 
+            metac_identifier_ptr_t semaId =
                 MetaCIdentifierTable_CopyIdentifier(self->ParserIdentifierTable, &self->SemanticIdentifierTable, member->Identifier);
 
             placeHolder->Kind = expr_unknown_value;
@@ -1122,7 +1122,7 @@ metac_type_index_t MetaCSemantic_TypeSemantic(metac_sema_state_t* self,
     else if (type->Kind == decl_type_typedef)
     {
         decl_type_typedef_t* typedef_ = cast(decl_type_typedef_t*) type;
-        metac_identifier_ptr_t semaId = 
+        metac_identifier_ptr_t semaId =
             MetaCIdentifierTable_CopyIdentifier(self->ParserIdentifierTable,
                                                 &self->SemanticIdentifierTable,
                                                 typedef_->Identifier);
@@ -1185,7 +1185,7 @@ metac_type_index_t MetaCSemantic_TypeSemantic(metac_sema_state_t* self,
         {
             assert(0);
         }
-        
+
         ARENA_ARRAY_ENSURE_SIZE(tmpFields, agg->FieldCount);
 
         tmpSemaAgg->Header.Kind = agg->Kind;
@@ -1215,9 +1215,9 @@ metac_type_index_t MetaCSemantic_TypeSemantic(metac_sema_state_t* self,
                 metac_expr_t placeholderExpr;
                 metac_sema_expr_t* placeholder = AllocNewSemaExpr(self, &placeholderExpr);
                 // we need to register the parser Identifier in the semantic table for resolution.
-                metac_identifier_ptr_t semaId = 
-                    MetaCIdentifierTable_CopyIdentifier(self->ParserIdentifierTable, &self->SemanticIdentifierTable, paramIdent); 
-                
+                metac_identifier_ptr_t semaId =
+                    MetaCIdentifierTable_CopyIdentifier(self->ParserIdentifierTable, &self->SemanticIdentifierTable, paramIdent);
+
                 placeholder->Kind = expr_unknown_value;
                 placeholder->TypeIndex = MetaCSemantic_TypeSemantic(self, param->Parameter->VarType);
                 METAC_NODE(placeholder->UnkownValueOrigin) = emptyNode;
@@ -1228,7 +1228,7 @@ metac_type_index_t MetaCSemantic_TypeSemantic(metac_sema_state_t* self,
                 param = param->Next;
             }
         }
-        
+
         PopulateTemporaryAggregateScope(self, tmpSemaAgg, agg);
         MetaCSemantic_MountScope(self, tmpSemaAgg->Scope);
 
@@ -1278,13 +1278,18 @@ metac_type_index_t MetaCSemantic_TypeSemantic(metac_sema_state_t* self,
     {
         metac_type_index_t elementTypeIndex = {0};
         decl_type_ptr_t* typePtr = (decl_type_ptr_t*) type;
+        const char* elTypeStr = "<cannot print>";
+        if (typePtr->ElementType->TypeKind == type_identifier)
+        {
+            elTypeStr = IdentifierPtrToCharPtr(self->ParserIdentifierTable, typePtr->ElementType->TypeIdentifier);
+        }
         elementTypeIndex =
             MetaCSemantic_doTypeSemantic(self, typePtr->ElementType);
 
         if (elementTypeIndex.v == 0 || elementTypeIndex.v == -1)
         {
             metac_location_t currentLoc = {0};
-            SemanticError(currentLoc, "Cannot resolve ptr element type {%s}", "");
+            SemanticError(currentLoc, "Cannot resolve ptr element type {%s}", elTypeStr);
             return result;
         }
         result = MetaCSemantic_GetPtrTypeOf(self, elementTypeIndex);
@@ -1399,15 +1404,22 @@ metac_type_index_t MetaCSemantic_TypeSemantic(metac_sema_state_t* self,
     }
     else if (type->Kind == decl_type)
     {
+        metac_identifier_ptr_t semaId = {0};
+        metac_node_t node = 0;
+
         if ((type->TypeKind != type_identifier) && (type->TypeKind != type_template_instance))
         {
             assert(!"Only identifier types and template types are expected to be resovled here");
         }
         // xprintf("MetaCNodeKind_toChars: %s\n", MetaCNodeKind_toChars((metac_node_kind_t)type->Kind));
         // xprintf("TypeIdentifier: %s\n", IdentifierPtrToCharPtr(self->ParserIdentifierTable, type->TypeIdentifier));
+        semaId = MetaCIdentifierTable_CopyIdentifier(
+            self->ParserIdentifierTable,
+            &self->SemanticIdentifierTable,
+            type->TypeIdentifier
+        );
 LtryAgian: {}
-        metac_node_t node =
-            MetaCSemantic_LookupIdentifier(self, type->TypeIdentifier);
+        node = MetaCSemantic_LookupIdentifier(self, semaId);
         {
             const char* idChars =
                 IdentifierPtrToCharPtr(self->ParserIdentifierTable, type->TypeIdentifier);
@@ -1694,7 +1706,7 @@ bool MetaCSemantic_ComputeStructLayout(metac_sema_state_t* self,
         semaField < onePastLast;
         semaField++)
     {
-        semaField->Identifier  = 
+        semaField->Identifier  =
             MetaCIdentifierTable_CopyIdentifier(
                 self->ParserIdentifierTable, &self->SemanticIdentifierTable, declField->Field->VarIdentifier);
         semaField->Header.Kind = node_decl_field;

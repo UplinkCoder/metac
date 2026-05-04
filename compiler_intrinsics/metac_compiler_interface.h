@@ -46,7 +46,7 @@ typedef struct metac_compiler_t
     metac_node_t (*ResolveNode)(struct metac_compiler_t* compilerP, const char* name);
     
     const char* Version;
-    unsigned int IntVersion;
+    uint32_t IntVersion;
 } metac_compiler_t;
 //    uint32_t ;
 
