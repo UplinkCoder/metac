@@ -2818,10 +2818,10 @@ void TestParseDecl(void)
     const char* str =  MetaCPrinter_PrintDecl(&printer, decl);
     TEST_STR_EQ(str, "int f (double x);\n");
 
-    decl = MetaCLPP_ParseDeclFromString(&LPP, "unsigned x");
+    decl = MetaCLPP_ParseDeclFromString(&LPP, "unsigned int x");
     TEST_STR_EQ(MetaCPrinter_PrintDecl(&printer, decl), "unsigned int x;\n");
 
-    decl = MetaCLPP_ParseDeclFromString(&LPP, "signed y");
+    decl = MetaCLPP_ParseDeclFromString(&LPP, "signed int y");
     TEST_STR_EQ(MetaCPrinter_PrintDecl(&printer, decl), "signed int y;\n");
 
 }

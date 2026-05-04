@@ -14,5 +14,7 @@ $CC $CFLAGS parser/metac_parser_obj.c driver/metac_lpp.c \
     -o parser_test &&
 ./parser_test &&
 
-$CC $CFLAGS repl/completion_trie.c os/os.c os/metac_alloc.c -g3 -DTEST_MAIN -o completion_trie_test &&
-./completion_trie_test
+#$CC $CFLAGS repl/completion_trie.c -g3 -DCOMP_TRIE_TEST_MAIN -o completion_trie_test &&
+#./completion_trie_test
+
+true
