@@ -1,0 +1,3 @@
+- change allocator from 'first fit' to 'smallest fit'
+where we search through areans until we find one that fits it perfectly.
+because we are not guranteed a perfect fit, we keep track of the smallest fit along the seach
