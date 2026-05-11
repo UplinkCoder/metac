@@ -719,17 +719,17 @@ metac_bytecode_function_t MetaCCodegen_GenerateFunction(metac_bytecode_ctx_t* ct
 #endif
 
     ctx->Locals = locals;
-    ctx->LocalsArena = localsArena;
+    ctx->LocalsArenaPtr = localsArenaPtr;
     ctx->LocalsAlloc = localsAlloc;
     ctx->LocalsCount = localsCount;
 
     ctx->Parameters = parameters;
-    ctx->ParametersArena = parametersArena;
+    ctx->ParametersArenaPtr = parametersArenaPtr;
     ctx->ParametersAlloc = parametersAlloc;
     ctx->ParametersCount = parametersCount;
 
     ctx->Breaks = breaks;
-    ctx->BreaksArena = breaksArena;
+    ctx->BreaksArenaPtr = breaksArenaPtr;
     ctx->BreaksAlloc = breaksAlloc;
     ctx->BreaksCount = breaksCount;
 
@@ -884,7 +884,8 @@ static void MetaCCodegen_ComputeAddress(metac_bytecode_ctx_t* ctx,
         } break;
         case storage_global:
         {
-            *result = PtrValue(ctx, (char*)ctx->GlobalsArena.Memory + var->Storage.Offset);
+            tagged_arena_t globalsArena = ctx->GlobalsAlloc->Arenas[ctx->GlobalsArenaPtr.Index];
+            *result = PtrValue(ctx, (char*)globalsArena.Memory + var->Storage.Offset);
         } break;
         default: assert(!"this type of storage is not supported");
     }

@@ -74,7 +74,6 @@ arena_ptr_t ReallocArenaArray(tagged_arena_t* arena, metac_alloc_t* alloc, uint3
     TYPE* NAME; \
     uint32_t NAME##Count; \
     metac_alloc_t* NAME##Alloc; \
-    tagged_arena_t NAME##Arena; \
     arena_ptr_t NAME##ArenaPtr;
 
 #define ARENA_ARRAY_INIT_SZ(TYPE, NAME, ALLOC, COUNT) do { \
@@ -82,9 +81,9 @@ arena_ptr_t ReallocArenaArray(tagged_arena_t* arena, metac_alloc_t* alloc, uint3
         (NAME##Count) = 0; \
         (NAME##Alloc) = (ALLOC); \
         (NAME##ArenaPtr) = AllocateArena(ALLOC, (sizeof(TYPE) * (COUNT))); \
-        (NAME##Arena) = (ALLOC)->Arenas[(NAME##ArenaPtr).Index]; \
-        (NAME##Arena).Flags |= arena_flag_inUse; \
-        (NAME) = cast(TYPE*) (NAME##Arena).Memory; \
+        tagged_arena_t* arena = &((ALLOC)->Arenas[(NAME##ArenaPtr).Index]); \
+        arena->Flags |= arena_flag_inUse; \
+        (NAME) = cast(TYPE*) arena->Memory; \
 } while(0)
 
 #define ARENA_ARRAY_INIT(TYPE, NAME, ALLOC) \
@@ -97,7 +96,7 @@ arena_ptr_t ReallocArenaArray(tagged_arena_t* arena, metac_alloc_t* alloc, uint3
     metac_alloc_t* NAME##Alloc = (ALLOC); \
     bool NAME##FreeMemory = true; \
     arena_ptr_t NAME##ArenaPtr = {-1}; \
-    tagged_arena_t NAME##Arena = { \
+    tagged_arena_t* NAME##Arena = &(tagged_arena_t) { \
         cast(void*) NAME##Stack, 0, sizeof(NAME##Stack), \
         0, __FILE__, __LINE__, 0, sizeof(NAME##Stack) \
     }; \
@@ -107,53 +106,57 @@ arena_ptr_t ReallocArenaArray(tagged_arena_t* arena, metac_alloc_t* alloc, uint3
     (DST) = (SRC); \
     (DST##Count) = (SRC##Count); \
     (DST##Alloc) = (SRC##Alloc); \
-    (DST##Arena) = (SRC##Arena); \
     (DST##ArenaPtr) = (SRC##ArenaPtr); \
 } while (0)
 
 #define ARENA_ARRAY_ENSURE_SIZE(NAME, COUNT) do { \
-    /* assert((NAME##Arena).Offset == 0); */ \
+    /* assert(arena.Offset == 0); */ \
     uint32_t newCapa = (COUNT) * sizeof(*NAME); \
-    if ((NAME##Arena).SizeLeft < newCapa) \
+    tagged_arena_t* arena = &((NAME##Alloc)->Arenas[(NAME##ArenaPtr).Index]); \
+    \
+    if (arena->SizeLeft < newCapa) \
     { \
-        arena_ptr_t arena = \
+        arena_ptr_t arenaPtr = \
             Allocate_((NAME##Alloc), newCapa, __FILE__, __LINE__, false); \
-        (NAME##Arena) = ((NAME##Alloc)->Arenas[arena.Index]); \
-        (*cast(void**)(&NAME)) = NAME##Arena.Memory; \
+        (NAME##ArenaPtr) = arenaPtr; \
+        arena = &((NAME##Alloc)->Arenas[(NAME##ArenaPtr).Index]); \
+        (*cast(void**)(&NAME)) = arena->Memory; \
     } \
 } while(0)
 
-#define ARENA_ARRAY_CAPACITY(NAME) \
-    (NAME##Arena.SizeLeft / sizeof(*NAME))
+// #define ARENA_ARRAY_CAPACITY(NAME) \
+//    (arena.SizeLeft / sizeof(*NAME))
 
 #define ARENA_ARRAY_ADD(NAME, VALUE) do { \
-    if (NAME##Arena.SizeLeft < sizeof(*NAME)) \
+    tagged_arena_t* arena = &((NAME##Alloc)->Arenas[(NAME##ArenaPtr).Index]); \
+    if (arena->SizeLeft < sizeof(*NAME)) \
     { \
         NAME##ArenaPtr = ReallocArenaArray( \
-            &(NAME##Arena), (NAME##Alloc), \
+            arena, (NAME##Alloc), \
             sizeof(*(NAME)), __FILE__, __LINE__); \
-        (NAME##Arena) = ((NAME##Alloc)->Arenas[(NAME##ArenaPtr).Index]); \
-        *(cast(void**)&NAME) = (NAME##Arena).Memory; \
+        *(cast(void**)&NAME) = arena->Memory; \
     } \
     NAME[NAME##Count++] = (VALUE); \
-    NAME##Arena.SizeLeft -= sizeof(*NAME); \
-    NAME##Arena.Offset   += sizeof(*NAME); \
+    arena->SizeLeft -= sizeof(*NAME); \
+    arena->Offset   += sizeof(*NAME); \
 } while(0)
 
 #define ARENA_ARRAY_ADD_N(NAME, PTR, COUNT) do { \
     size_t size_n = sizeof(*NAME) * (COUNT); \
-    if (NAME##Arena.SizeLeft < size_n) \
+    tagged_arena_t* arena = \
+        &((NAME##Alloc)->Arenas[(NAME##ArenaPtr).Index]); \
+    if (arena->SizeLeft < size_n) \
     { \
         NAME##ArenaPtr = ReallocArenaArray( \
-            &(NAME##Arena), (NAME##Alloc), \
+            arena, (NAME##Alloc), \
             size_n, __FILE__, __LINE__); \
-        (NAME##Arena) = ((NAME##Alloc)->Arenas[(NAME##ArenaPtr).Index]); \
-        *(cast(void**)&NAME) = (NAME##Arena).Memory; \
+        arena = &((NAME##Alloc)->Arenas[(NAME##ArenaPtr).Index]); \
+        *(cast(void**)&NAME) = arena->Memory; \
     } \
     memcpy((NAME) + (NAME##Count), PTR, size_n); \
     NAME##Count += (COUNT); \
-    NAME##Arena.SizeLeft -= size_n; \
-    NAME##Arena.Offset   += size_n; \
+    arena->SizeLeft -= size_n; \
+    arena->Offset   += size_n; \
 } while(0)
 
 
