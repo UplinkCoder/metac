@@ -112,6 +112,7 @@ typedef enum BCTypeEnum
     BCTypeEnum_Array,
     BCTypeEnum_Struct,
     BCTypeEnum_Ptr,
+    BCTypeEnum_ExternalPtr,
 
     BCTypeEnum_Tuple,
     BCTypeEnum_Class,

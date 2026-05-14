@@ -214,6 +214,9 @@ metac_type_index_t MetaCSemantic_doTypeSemantic_(metac_sema_state_t* self,
                                                 decl_type_t* type,
                                                 const char* callFile, uint32_t callLine);
 
+sema_decl_function_t* MetaCSemantic_doFunctionSemantic(metac_sema_state_t* self,
+                                                       decl_function_t* func);
+
 /// Returns _emptyNode to signifiy it could not be found
 /// a valid node otherwise
 metac_node_header_t* MetaCSemantic_LookupIdentifier(metac_sema_state_t* self,

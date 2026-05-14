@@ -1028,8 +1028,15 @@ static void MetaCCodegen_doArrowExpr(metac_bytecode_ctx_t* ctx,
         addrType = type_;
     }
 
-    addr = gen.GenTemporary(c, addrType);
     MetaCCodegen_doExpr(ctx, e1, &e1Value, _Rvalue);
+    addr = gen.GenTemporary(c, addrType);
+
+    if (e1Value.vType == BCValueType_External)
+    {
+        addr.vType = BCValueType_External;
+        gen.Comment(c, "address determined to be external");
+    }
+
 
     field = e2->Field;
     offsetVal = imm32(field->Offset);
@@ -1038,9 +1045,11 @@ static void MetaCCodegen_doArrowExpr(metac_bytecode_ctx_t* ctx,
         || e1Value.vType == BCValueType_Parameter
         || e1Value.vType == BCValueType_HeapValue
         || e1Value.vType == BCValueType_External);
-    gen.Add3(c, &addr, &e1Value, &offsetVal);
 
+    gen.Add3(c, &addr, &e1Value, &offsetVal);
+    gen.Comment(c, "Address pointer was just generated as the result of an Add3");
     MetaCCodegen_doDeref(ctx, &addr, field->Type, result);
+    gen.Comment(c, "doDref was executed ... ");
 }
 
 static void MetaCCodegen_doExpr(metac_bytecode_ctx_t* ctx,

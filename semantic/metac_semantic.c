@@ -1039,9 +1039,9 @@ sema_decl_function_t* MetaCSemantic_doFunctionSemantic(metac_sema_state_t* self,
 
     sema_decl_function_t* f = AllocNewSemaFunction(self, func);
     // for now we don't nest functions.
-    metac_identifier_ptr_t semaIdentifier =
+    metac_identifier_ptr_t semaIdentifier = (func->Identifier.v == empty_identifier.v ? empty_identifier :
         MetaCIdentifierTable_CopyIdentifier(self->ParserIdentifierTable,
-                                            &self->SemanticIdentifierTable, func->Identifier);
+                                            &self->SemanticIdentifierTable, func->Identifier));
     f->Identifier = semaIdentifier;
     // printf("doing Function: %s\n", IdentifierPtrToCharPtr(&self->SemanticIdentifierTable, func->Identifier));
 

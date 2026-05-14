@@ -118,6 +118,9 @@ const char*  BCTypeEnum_toChars(const BCTypeEnum* self)
     case BCTypeEnum_Ptr:
         return "BCTypeEnum_Ptr";
 
+    case BCTypeEnum_ExternalPtr:
+        return "BCTypeEnum_ExternalPtr";
+
     case BCTypeEnum_Slice:
         return "BCTypeEnum_Slice";
 

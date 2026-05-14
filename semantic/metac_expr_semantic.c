@@ -1126,7 +1126,19 @@ LswitchIdKey:
         break;
         case expr_function:
         {
+            decl_function_t dFunc = {0};
+            expr_function_t* eFunc = cast(expr_function_t*) expr;
+            METAC_COPY_HEADER(eFunc, &dFunc);
+            dFunc.FunctionParameters = eFunc->Parameters;
+            dFunc.FunctionParameterCount = eFunc->ParameterCount;
+            dFunc.FunctionBody = eFunc->Body;
+            dFunc.Identifier = empty_identifier;
+            METAC_NODE(dFunc.ReturnType) = emptyNode; // TODO put a decl_type auto in
+            
             result->TypeIndex.v = TYPE_INDEX_V(type_index_basic, type_functiontype);
+            
+            result->Function = MetaCSemantic_doFunctionSemantic(self, &dFunc);
+            __asm ( "int $3;" ); 
         } break;
         case expr_inject:
         {
