@@ -1017,6 +1017,7 @@ static void MetaCCodegen_doArrowExpr(metac_bytecode_ctx_t* ctx,
     BCValue addr;
     BCValue e1Value = {BCValueType_Unknown};
     BCValue offsetVal = {BCValueType_Unknown};
+    bool isExternal = false;
 
     assert(idxKind == type_index_ptr);
     assert(exp->Kind == expr_arrow || exp->Kind == expr_dot);
@@ -1028,7 +1029,10 @@ static void MetaCCodegen_doArrowExpr(metac_bytecode_ctx_t* ctx,
         addrType = type_;
     }
 
+
     MetaCCodegen_doExpr(ctx, e1, &e1Value, _Rvalue);
+    isExternal = (e1Value.vType == BCValueType_External);
+
     addr = gen.GenTemporary(c, addrType);
 
     if (e1Value.vType == BCValueType_External)

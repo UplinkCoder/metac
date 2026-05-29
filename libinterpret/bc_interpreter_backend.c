@@ -1386,7 +1386,7 @@ BCValue BCGen_interpret(BCGen* self, uint32_t fnIdx, BCValue* args, uint32_t n_a
 
         case LongInst_ImmUlt:
             {
-               cond = (((int64_t)(*opRef)) < cast(uint32_t)hi);
+               cond = (((uint64_t)(*opRef)) < cast(uint32_t)hi);
             }
             break;
         case LongInst_ImmUgt:

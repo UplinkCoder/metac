@@ -60,6 +60,13 @@ void IdentifierTable_Free(metac_identifier_table_t* table)
     static const metac_identifier_table_t zeroTable = {0};
     (*table) = zeroTable;
 }
+
+bool MetaCIdentifierTable_Grow(metac_identifier_table_t* self, uint32_t nSlots)
+{
+    uint32_t log2Slots = LOG2(nSlots);
+    uint32_t slots2Allocate = (1 << log2Slots);
+}
+
 #define ALIGN4(N) (((N) + 3) & ~3)
 metac_identifier_ptr_t GetOrAddIdentifier(metac_identifier_table_t* table,
                                           uint32_t identifierKey,
@@ -74,6 +81,10 @@ metac_identifier_ptr_t GetOrAddIdentifier(metac_identifier_table_t* table,
     const uint32_t initialSlotIndex = (identifierKey & slotIndexMask);
     // TracyCPlot("TargetIndex", initialSlotIndex);
     uint32_t displacement = 0;
+    if (table->SlotsUsed > (slotIndexMask - (1 << (table->SlotCount_Log2 -1))) )
+    {
+        // we should grow the table here.
+    }
     for(
         uint32_t slotIndex = initialSlotIndex;
         (++slotIndex & slotIndexMask) != initialSlotIndex;
@@ -326,6 +337,13 @@ bool IsInTable(metac_identifier_table_t* table,
                uint32_t key, metac_identifier_ptr_t value)
 {
     return IdentifierTableLookup(table, key, value) != 0;
+}
+
+static inline float MetaCIdentifierTable_LoadFactor(
+    metac_identifier_table_t* self)
+{
+    uint32_t slotCount = ((1 << self->SlotCount_Log2) - 1);
+    return ((float)self->SlotsUsed / (float)slotCount); 
 }
 
 #ifdef WRITE_TABLE
