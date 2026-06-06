@@ -14,6 +14,13 @@ extern metac_identifier_table_t g_filenames;
 
 static inline metac_identifier_ptr_t Add_Filename(const char* file);
 
+#define Allocator_IDX2PTR(ALLOC, IDX) \
+    ((IDX) < 0 ? \
+        &((ALLOC)->Arenas[(ALLOC)->ArenasCapacity + (IDX)]) : \
+     (IDX) > 0 ? \
+        &((ALLOC)->Arenas[(IDX) - 1]) : \
+        (cast(tagged_arena_t*)0))
+
 typedef struct arena_ptr_t
 {
     int32_t Index;
@@ -82,7 +89,7 @@ arena_ptr_t ReallocArenaArray(const tagged_arena_t const * arena, metac_alloc_t*
         (NAME##Count) = 0; \
         (NAME##Alloc) = (ALLOC); \
         (NAME##ArenaPtr) = AllocateArena(ALLOC, (sizeof(TYPE) * (COUNT))); \
-        tagged_arena_t* arena = &((ALLOC)->Arenas[(NAME##ArenaPtr).Index]); \
+        tagged_arena_t* arena = Allocator_IDX2PTR((NAME##Alloc), (NAME##ArenaPtr).Index); \
         arena->Flags |= arena_flag_inUse; \
         (NAME) = cast(TYPE*) arena->Memory; \
 } while(0)
@@ -113,15 +120,15 @@ arena_ptr_t ReallocArenaArray(const tagged_arena_t const * arena, metac_alloc_t*
 #define ARENA_ARRAY_ENSURE_SIZE(NAME, COUNT) do { \
     /* assert(arena.Offset == 0); */ \
     uint32_t newCapa = (COUNT) * sizeof(*NAME); \
-    tagged_arena_t* arena = &((NAME##Alloc)->Arenas[(NAME##ArenaPtr).Index]); \
+    tagged_arena_t* arena = Allocator_IDX2PTR((NAME##Alloc), (NAME##ArenaPtr).Index); \
     \
     if (arena->SizeLeft < newCapa) \
     { \
         arena_ptr_t arenaPtr = \
             Allocate_((NAME##Alloc), newCapa, __FILE__, __LINE__, false); \
         (NAME##ArenaPtr) = arenaPtr; \
-        arena = &((NAME##Alloc)->Arenas[(NAME##ArenaPtr).Index]); \
-        (*cast(void**)(&NAME)) = arena->Memory; \
+        arena = Allocator_IDX2PTR((NAME##Alloc), (NAME##ArenaPtr).Index); \
+        NAME = arena->Memory; \
     } \
 } while(0)
 
@@ -129,13 +136,14 @@ arena_ptr_t ReallocArenaArray(const tagged_arena_t const * arena, metac_alloc_t*
 //    (arena.SizeLeft / sizeof(*NAME))
 
 #define ARENA_ARRAY_ADD(NAME, VALUE) do { \
-    tagged_arena_t* arena = &((NAME##Alloc)->Arenas[(NAME##ArenaPtr).Index]); \
+    tagged_arena_t* arena = Allocator_IDX2PTR((NAME##Alloc), (NAME##ArenaPtr).Index); \
     if (arena->SizeLeft < sizeof(*NAME)) \
     { \
         NAME##ArenaPtr = ReallocArenaArray( \
             arena, (NAME##Alloc), \
             sizeof(*(NAME)), __FILE__, __LINE__); \
-        *(cast(void**)&NAME) = arena->Memory; \
+        arena = Allocator_IDX2PTR((NAME##Alloc), (NAME##ArenaPtr).Index); \
+        NAME = arena->Memory; \
     } \
     NAME[NAME##Count++] = (VALUE); \
     arena->SizeLeft -= sizeof(*NAME); \
@@ -145,14 +153,14 @@ arena_ptr_t ReallocArenaArray(const tagged_arena_t const * arena, metac_alloc_t*
 #define ARENA_ARRAY_ADD_N(NAME, PTR, COUNT) do { \
     size_t size_n = sizeof(*NAME) * (COUNT); \
     tagged_arena_t* arena = \
-        &((NAME##Alloc)->Arenas[(NAME##ArenaPtr).Index]); \
+        Allocator_IDX2PTR((NAME##Alloc), (NAME##ArenaPtr).Index); \
     if (arena->SizeLeft < size_n) \
     { \
         NAME##ArenaPtr = ReallocArenaArray( \
             arena, (NAME##Alloc), \
             size_n, __FILE__, __LINE__); \
-        arena = &((NAME##Alloc)->Arenas[(NAME##ArenaPtr).Index]); \
-        *(cast(void**)&NAME) = arena->Memory; \
+        arena = Allocator_IDX2PTR((NAME##Alloc), (NAME##ArenaPtr).Index); \
+        NAME = arena->Memory; \
     } \
     memcpy((NAME) + (NAME##Count), PTR, size_n); \
     NAME##Count += (COUNT); \
@@ -168,14 +176,14 @@ arena_ptr_t ReallocArenaArray(const tagged_arena_t const * arena, metac_alloc_t*
         tagged_arena_t* newArena = 0; \
         arena_ptr_t newArenaPtr = \
             AllocateArena((ALLOC), size); \
-        newArena = &((ALLOC)->Arenas[newArenaPtr.Index]); \
+        newArena = Allocator_IDX2PTR((ALLOC), (newArenaPtr).Index); \
         memcpy(newArena->Memory, (NAME), size); \
-        (*cast(void**)&(NAME)) = newArena->Memory; \
+        NAME = newArena->Memory; \
     } \
 } while(0)
 
 #define ARENA_ARRAY_FREE(NAME) do { \
-        if ((NAME##ArenaPtr).Index != -1) \
+        if ((NAME##ArenaPtr).Index != 0) \
             Allocator_FreeArena((NAME##Alloc), NAME##ArenaPtr); \
 } while(0)
 

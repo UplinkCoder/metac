@@ -87,7 +87,7 @@ void Allocator_Init_(metac_alloc_t* allocator, metac_alloc_t* parent,
 
 arena_ptr_t Allocator_AddArena(metac_alloc_t* allocator, tagged_arena_t* arena)
 {
-    arena_ptr_t result = {-1};
+    arena_ptr_t result = {0};
 
     tagged_arena_t* target = 0;
     if (allocator->ArenasCount < (allocator->ArenasCapacity - allocator->inuseArenasCount))
@@ -95,17 +95,19 @@ arena_ptr_t Allocator_AddArena(metac_alloc_t* allocator, tagged_arena_t* arena)
 LaddArena:
         if (arena->Flags & arena_flag_inUse)
         {
+            allocator->inuseArenasCount++;
             // Place the in-use arena towards the end
-            result.Index = (allocator->ArenasCapacity - ++allocator->inuseArenasCount);
+            result.Index = -allocator->inuseArenasCount;
+            target = Allocator_IDX2PTR(allocator, result.Index);
         }
         else
         {
             // Place the non-in-use arena at the current count position
-            result.Index = allocator->ArenasCount++;
+            result.Index = 1 + allocator->ArenasCount++;
+            target = Allocator_IDX2PTR(allocator, result.Index);
         }
 
-        assert(result.Index < allocator->ArenasCapacity);
-        target = &allocator->Arenas[result.Index];
+        assert(result.Index >= -allocator->inuseArenasCount && result.Index <= allocator->ArenasCount);
 
         (*target) = *arena;
     }
@@ -133,7 +135,6 @@ LaddArena:
         allocator->Arenas = newArenas;
         goto LaddArena;
     }
-
     return result;
 }
 #define ADD_PAGELIST(PAGE)
@@ -142,7 +143,7 @@ tagged_arena_t nullArena = {0};
 arena_ptr_t Allocate_(metac_alloc_t* allocator, uint32_t size,
                       const char* file, uint32_t line, bool forChild)
 {
-    arena_ptr_t result = {-1};
+    arena_ptr_t result = {0};
     if (!size)
         return result;
 
@@ -167,6 +168,7 @@ arena_ptr_t Allocate_(metac_alloc_t* allocator, uint32_t size,
 
     uint32_t ArenasCount = allocator->ArenasCount;
     tagged_arena_t* arenas = allocator->Arenas;
+
 LsearchArena:
     for(uint32_t arenaIdx = 0;
        arenaIdx < ArenasCount;
@@ -207,7 +209,7 @@ LsetResult:
         if (arenas && arenas == allocator->Freelist)
         {
             uint32_t freelistIdx = arena - arenas;
-            memmove(arena, arena + 1, --allocator->ArenasCount - freelistIdx);
+            memmove(arena, arena + 1, --allocator->FreelistCount - freelistIdx);
         }
         goto Lreturn;
     }
@@ -231,22 +233,22 @@ LsetResult:
             uint32_t allocated_size =  ALIGN_BLOCKSIZE(size);
             parentArenaPtr = Allocate_(allocator->Parent, allocated_size,
                                        file, line, true);
-            if (parentArenaPtr.Index == -1)
+            if (parentArenaPtr.Index == 0)
             {
                 goto LAllocNewPage;
             }
             else
             {
-                arena = &allocator->Parent->Arenas[parentArenaPtr.Index];
+                arena = Allocator_IDX2PTR(allocator->Parent, parentArenaPtr.Index);
                 goto LsetResult;
             }
         }
         else // We don't have a parent :-( we need to ask the OS for a block
     LAllocNewPage:
         {
+            tagged_arena_t newArena = {0};
             uint32_t allocatedSize;
             void* memory;
-            tagged_arena_t newArena = {0};
 
             OS.PageAlloc(size, &allocatedSize, &memory);
             ADD_PAGELIST(memory);
@@ -271,8 +273,9 @@ LsetResult:
         }
     }
 Lreturn:
+
     {
-        tagged_arena_t resultArena = allocator->Arenas[result.Index];
+        tagged_arena_t resultArena = *Allocator_IDX2PTR(allocator, result.Index);
         assert(resultArena.Offset == 0);
         assert((resultArena.Flags & arena_flag_inUse) == arena_flag_inUse);
         assert(resultArena.Offset + resultArena.SizeLeft == resultArena.MaxCapacity);
@@ -294,10 +297,11 @@ void* Allocator_Calloc_(metac_alloc_t* alloc, uint32_t elemSize, uint32_t elemCo
     tagged_arena_t* arena = 0;
     arena_ptr_t arenaPtr =
         Allocate_(alloc, elemSize * elemCount, file, line, false);
-    if (arenaPtr.Index == -1)
+    if (arenaPtr.Index == 0)
         return 0;
 
-    arena = &alloc->Arenas[arenaPtr.Index];
+    arena = Allocator_IDX2PTR(alloc, arenaPtr.Index);
+
     arena->Flags |= arena_flag_inUse;
     assert(arena->SizeLeft >= elemSize * elemCount);
     arena->Offset = elemSize * elemCount;
@@ -305,13 +309,16 @@ void* Allocator_Calloc_(metac_alloc_t* alloc, uint32_t elemSize, uint32_t elemCo
 
     memset(arena->Memory, 0, arena->Offset);
 
-    return arena->Memory;
+    void* result = arena->Memory;
+
+    return result;
 }
 
-bool Arena_ContainsMemoryP(tagged_arena_t* arena, void* memP)
+bool Arena_ContainsMemoryP(tagged_arena_t *arena, void* memP)
 {
     intptr_t memPi = (intptr_t) memP;
     intptr_t arenaMemPi = (intptr_t) arena->Memory;
+
     if (arenaMemPi <= memPi && memPi < (arenaMemPi + arena->Offset))
     {
         return true;
@@ -323,6 +330,7 @@ void* Allocator_Realloc_(metac_alloc_t* alloc, void* oldMem,
                          uint32_t elemSize, uint32_t elemCount,
                          const char* file, uint32_t line)
 {
+    void* result = 0;
     tagged_arena_t* oldArena = 0;
     arena_ptr_t oldArenaPtr = {-1};
 
@@ -372,7 +380,8 @@ void* Allocator_Realloc_(metac_alloc_t* alloc, void* oldMem,
         {
             return 0;
         }
-        return oldMem;
+
+        result = oldMem;
     }
 
     // lastly we have no choice but to allocate a new Arena
@@ -380,9 +389,9 @@ void* Allocator_Realloc_(metac_alloc_t* alloc, void* oldMem,
     {
          arena_ptr_t arenaPtr =
             Allocate_(alloc, requestedSize, file, line, false);
-        tagged_arena_t* arena = &alloc->Arenas[arenaPtr.Index];
+        tagged_arena_t* arena = Allocator_IDX2PTR(alloc, arenaPtr.Index);
 
-        if (arenaPtr.Index == -1)
+        if (arenaPtr.Index == 0)
             return 0;
 
         assert(arena->Offset == 0 && arena->SizeLeft >= requestedSize);
@@ -393,8 +402,10 @@ void* Allocator_Realloc_(metac_alloc_t* alloc, void* oldMem,
         memcpy(arena->Memory, oldArena->Memory, oldArena->Offset);
         Allocator_FreeArena(alloc, oldArenaPtr);
 
-        return arena->Memory;
+        result = arena->Memory;
     }
+
+    return result;
 }
 
 void Allocator_FreeArena (metac_alloc_t* alloc, arena_ptr_t arena)
@@ -402,17 +413,21 @@ void Allocator_FreeArena (metac_alloc_t* alloc, arena_ptr_t arena)
 
 }
 
-arena_ptr_t ReallocArenaArray(tagged_arena_t* arena, metac_alloc_t* alloc, uint32_t elemSize,
+arena_ptr_t ReallocArenaArray(const tagged_arena_t const * arena, metac_alloc_t* alloc, uint32_t elemSize,
                               const char* file, uint32_t line)
 {
     uint32_t newCapa = ALIGN16(cast(uint32_t)(arena->Offset + (arena->Offset / 4)) + elemSize);
-    tagged_arena_t* newArena;
+    tagged_arena_t *newArena;
     arena_ptr_t newArenaPtr = Allocate_(alloc, newCapa, file, line, false);
 
-    if (newArenaPtr.Index == -1)
+    if (newArenaPtr.Index == 0)
+    {
+        assert(0);
         return newArenaPtr;
+    }
 
-    newArena = &alloc->Arenas[newArenaPtr.Index];
+    newArena = Allocator_IDX2PTR(alloc, newArenaPtr.Index);
+
     memcpy(newArena->Memory, arena->Memory, arena->Offset);
     newArena->Offset = arena->Offset;
     newArena->SizeLeft -= arena->Offset;
@@ -431,7 +446,6 @@ arena_ptr_t ReallocArenaArray(tagged_arena_t* arena, metac_alloc_t* alloc, uint3
         }
 
     }
-    (*arena) = *newArena;
 
     return newArenaPtr;
 }
