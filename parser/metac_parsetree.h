@@ -80,7 +80,7 @@ typedef struct expr_tuple_t
     struct expr_tuple_t* Next;
 } expr_tuple_t;
 
-#define METAC_MAX_EXP_BODY_SIZE 24
+#define METAC_MAX_EXP_BODY_SIZE 32
 
 typedef struct _metac_exp_body_t
 {

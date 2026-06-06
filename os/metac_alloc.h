@@ -42,33 +42,34 @@ typedef struct tagged_arena_t
 typedef struct metac_alloc_t
 {
     tagged_arena_t* Arenas;
-    uint32_t ArenasCount;
-    uint32_t ArenasCapacity;
+    int32_t ArenasCount;
+    int32_t ArenasCapacity;
 
-    uint32_t inuseArenasCount;
-    uint32_t AllocatedBlocks;
+    int32_t inuseArenasCount;
+    int32_t AllocatedBlocks;
 
     struct metac_alloc_t* Parent;
 
     const char* File;
-    uint32_t Line;
+    int32_t Line;
 
     tagged_arena_t* Freelist;
-    uint32_t FreelistCount;
-    uint32_t FreelistCapacity;
+    int32_t FreelistCount;
+    int32_t FreelistCapacity;
 
     const char* Name;
+    int32_t Unprot;
 } metac_alloc_t;
 
 
 extern metac_alloc_t g_allocator;
 
-arena_ptr_t ReallocArenaArray(tagged_arena_t* arena, metac_alloc_t* alloc, uint32_t elemSize,
+arena_ptr_t ReallocArenaArray(const tagged_arena_t const * arena, metac_alloc_t* alloc, uint32_t elemSize,
                               const char* file, uint32_t line);
 
 #endif
 
-#define IsValidArenaPtr(ARENA_PTR) (ARENA_PTR.Index != 1)
+#define IsValidArenaPtr(ARENA_PTR) (ARENA_PTR.Index != 0)
 
 #define ARENA_ARRAY(TYPE, NAME) \
     TYPE* NAME; \

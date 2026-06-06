@@ -404,8 +404,6 @@ void MetaCCodegen_End(metac_bytecode_ctx_t* self)
 
 void* MetaCCodegen_AllocMemory(metac_bytecode_ctx_t* self, uint32_t size, sema_decl_function_t* func)
 {
-    tagged_arena_t* arena = 0;
-    arena_ptr_t arenaPtr;
     if (size == FREE_SIZE)
     {
         /*arena = MetaCCodegen_FindArena(self, cast(void*)func)*/
@@ -413,14 +411,7 @@ void* MetaCCodegen_AllocMemory(metac_bytecode_ctx_t* self, uint32_t size, sema_d
     else
     {
         // printf("Allocating for %s \n", (func ? "function" : "startup"));
-        arenaPtr = Allocate_(&self->Allocator, size, __FILE__, __LINE__, false);
-        if (arenaPtr.Index == -1)
-        {
-            return 0;
-        }
-
-        arena = &self->Allocator.Arenas[arenaPtr.Index];
-        return arena->Memory;
+        return Allocator_Calloc(&self->Allocator, char, size);
     }
 
     return 0;
@@ -443,7 +434,6 @@ void MetaCCodegen_Init(metac_bytecode_ctx_t* self, metac_alloc_t* parentAlloc)
 {
     //TODO we might want a cheaper initialisation?
     static const metac_bytecode_ctx_t initValue = {0};
-    tagged_arena_t* arena = 0;
 
     (*self) = initValue;
     //TODO take BC as a parameter
@@ -469,10 +459,7 @@ void MetaCCodegen_Init(metac_bytecode_ctx_t* self, metac_alloc_t* parentAlloc)
 
     Allocator_Init(&self->Allocator, parentAlloc, 0);
 
-    arena_ptr_t arenaPtr =
-        AllocateArena(&self->Allocator, gen.sizeof_instance());
-    arena = &self->Allocator.Arenas[arenaPtr.Index];
-    self->c = arena->Memory;
+    self->c = Allocator_Calloc(&self->Allocator, char, gen.sizeof_instance());
 
     if (gen.set_alloc_memory)
     {

@@ -571,10 +571,8 @@ scope_and_fields_t AllocateAggregateScopeAndFields(metac_alloc_t* alloc, uint32_
         ALIGN16(nFields * sizeof(metac_type_aggregate_field_t))
         + scopeTableSize;
 
-    arena_ptr_t arenaPtr = AllocateArena(alloc, aggregateMemorySize);
-    tagged_arena_t* aggregateArena = &alloc->Arenas[arenaPtr.Index];
     metac_type_aggregate_field_t* aggFields = cast(metac_type_aggregate_field_t*)
-        aggregateArena->Memory;
+       Allocator_Calloc(alloc, char, aggregateMemorySize);
 
     metac_scope_t* scope_ = cast(metac_scope_t*) (aggFields + nFields);
     metac_scope_table_slot_t* slots = cast(metac_scope_table_slot_t*) (scope_ + 1);
@@ -723,7 +721,7 @@ void MetaCSemantic_ComputeEnumValues(metac_sema_state_t* self,
 #if !DEBUG_MEMORY
     STACK_ARENA_ARRAY(metac_sema_expr_t, memberPlaceholders, 32, &self->TempAlloc)
 #else
-    metac_sema_expr_t* memberPlaceholders = (metac_sema_state_t*)
+    metac_sema_expr_t* memberPlaceholders = (metac_sema_expr_t*)
         calloc(memberCount, sizeof(metac_sema_expr_t));
     uint32_t memberPlaceholdersCount = 0;
 #endif

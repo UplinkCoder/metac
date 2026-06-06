@@ -2754,7 +2754,7 @@ const char* MetaCPrinter_PrintNode(metac_printer_t* self, metac_node_t node, uin
         assert(0);
 
     int advancement = self->StringMemoryCount - posBegin;
-    ARENA_ARRAY_ADD(self->StringMemory, '0');
+    ARENA_ARRAY_ADD(self->StringMemory, '\0');
 
     return result;
 }

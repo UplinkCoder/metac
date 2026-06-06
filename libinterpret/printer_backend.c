@@ -1045,6 +1045,15 @@ static inline void Printer_clear_instance(Printer* instance)
 
 static inline void Printer_init_instance(Printer* instance)
 {
+    static const Printer zeroPrinter = {0};
+    alloc_fn_t allocMemory = instance->allocMemory;
+    void *allocCtx = instance->allocCtx;
+
+    *instance = zeroPrinter;
+
+    instance->allocMemory = allocMemory;
+    instance->allocCtx = allocCtx;
+
     if (!instance->allocMemory)
     {
         instance->allocMemory = alloc_with_malloc;
