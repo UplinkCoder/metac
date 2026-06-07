@@ -861,7 +861,7 @@ metac_token_t* MetaCLexerLexNextToken(metac_lexer_t* self,
         }
         else
         {
-            newCapa = ALIGN4(cast(uint32_t)(self->TokenCapacity * 1.3f));
+            newCapa = ALIGN16(cast(uint32_t)(self->TokenCapacity * 1.7f));
             self->Tokens =
                 Allocator_Realloc(self->Allocator, self->Tokens, metac_token_t, newCapa);
             self->TokenCapacity = newCapa;

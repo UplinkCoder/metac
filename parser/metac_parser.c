@@ -1731,7 +1731,7 @@ metac_decl_t* MetaCParser_ParseDecl(metac_parser_t* self, metac_decl_t* parent)
     metac_decl_t* result = 0;
 
     decl_type_t* type = 0;
-    decl_type_t* yieldType = 0;
+    decl_type_t* yieldType = emptyPointer;
 
 #if !defined(NO_PREPROCESSOR)
     // decl_preproc_t* preProcDecl = AllocNewDecl(decl_preproc, &result);

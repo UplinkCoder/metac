@@ -284,7 +284,7 @@ Lreturn:
         // the memory at that point
         // TODO replace this 0x0 with an 0xf4 to see where we depend on arenas being zerod
         // I assume it's in the printer
-        memset(resultArena.Memory, 0x0, resultArena.SizeLeft);
+        // memset(resultArena.Memory, 0xcc, resultArena.SizeLeft);
     }
 
     return result;

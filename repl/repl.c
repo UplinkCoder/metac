@@ -176,7 +176,7 @@ static inline int TranslateIdentifiers(metac_node_t node, void* ctx)
 
         default:
         {
-#if 1
+#if 0
             xprintf("No Identifier got Translated for '%s'\n", MetaCNodeKind_toChars(node->Kind));
 #endif
         } break;
