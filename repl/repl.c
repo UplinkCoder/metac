@@ -718,8 +718,6 @@ LswitchMode:
                             malloc(sizeof(metac_token_t) * estimatedTokenCount);
                         fileLexer->TokenCount = 0;
                         fileLexer->TokenCapacity = estimatedTokenCount;
-                        fileLexer->Tokens = cast(metac_token_t*)
-                            malloc(sizeof(metac_token_t) * estimatedTokenCount);
 
                         fileLexer->LocationStorage.Locations = cast(metac_location_t*)
                             malloc(sizeof(metac_location_t) * estimatedTokenCount);
