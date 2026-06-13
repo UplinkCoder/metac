@@ -27,8 +27,6 @@
 #  define UINT32_MAX ((uint32_t)0xffffffff)
 #endif
 
-static const uint32_t skipFn = UINT32_MAX;
-
 #define CONSTEXPR
 
 typedef struct HeapAddr
@@ -284,21 +282,12 @@ EXTERN_C bool BCType_isBasicBCType(BCType bct);
 
 EXTERN_C bool BCValue_isStackValueOrParameter(const BCValue* val);
 
-static const int BCHeap_initHeapMax = (1 << 15);
-
 typedef struct BCHeap
 {
     uint32_t heapMax;// = initHeapMax;
     uint32_t heapSize;// = 4;
     uint8_t* heapData;
 } BCHeap;
-
-static const int heapSizeOffset = offsetof(BCHeap, heapSize);
-static const int heapMaxOffset = offsetof(BCHeap, heapMax);
-static const int heapDataOffset = offsetof(BCHeap, heapData);
-
-static const int heapDataPtrOffset    = offsetof(BCHeap, heapData) + sizeof(uint8_t*);
-static const int heapDataLengthOffset = offsetof(BCHeap, heapData) + sizeof(uint8_t*) + sizeof(void*);
 
 typedef struct BCLabel
 {
@@ -435,12 +424,13 @@ static const BCTypeEnum smallIntegerTypes[] = {BCTypeEnum_u16, BCTypeEnum_u8,
 #undef ARRAY_SIZE
 #define ARRAY_SIZE(A) (sizeof(A) / sizeof(A[0]))
 
+static const BCType BCType_i32;
+static const BCType BCType_u32;
+
+
 EXTERN_C BCTypeEnum BCTypeEnum_commonTypeEnum(BCTypeEnum lhs, BCTypeEnum rhs);
 static inline void AllocDefaultHeap(BCHeap* newHeap);
 
 #undef offsetof
-
-static const BCType BCType_i32 = {BCTypeEnum_i32};
-static const BCType BCType_u32 = {BCTypeEnum_u32};
 
 #endif

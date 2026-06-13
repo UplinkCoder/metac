@@ -2074,9 +2074,6 @@ BCValue BCGen_interpret(BCGen* self, uint32_t fnIdx, BCValue* args, uint32_t n_a
 
                 int64_t* newStack = state.sp;
 
-                if (fn == skipFn)
-                    continue;
-
                 if (!isExternal)
                 {
                     //foreach(size_t i,ref arg;call.args)

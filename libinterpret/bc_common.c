@@ -954,6 +954,10 @@ BCTypeEnum BCTypeEnum_commonTypeEnum(BCTypeEnum lhs, BCTypeEnum rhs)
     return commonType;
 }
 
+static const BCType BCType_i32 = {BCTypeEnum_i32};
+static const BCType BCType_u32 = {BCTypeEnum_u32};
+
+
 #undef offsetof
 
 #endif
