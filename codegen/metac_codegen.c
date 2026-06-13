@@ -1078,7 +1078,17 @@ static void MetaCCodegen_doExpr(metac_bytecode_ctx_t* ctx,
 
         if (op == expr_signed_integer)
         {
-            (*result) = imm32_(cast(int32_t)exp->ValueI64, true);
+            int32_t typeIndexIndex = TYPE_INDEX_INDEX(exp->TypeIndex);
+            bool isSigned = TypeIndex_isSigned(exp->TypeIndex);
+            if (typeIndexIndex == type_long_long
+             || typeIndexIndex == type_unsigned_long_long)
+            {
+                (*result) = imm64_(exp->ValueI64, isSigned);
+            }
+            else
+            {
+                (*result) = imm32_(cast(int32_t)exp->ValueI64, isSigned);
+            }
             goto Lret;
         }
         else if (op == expr_char)

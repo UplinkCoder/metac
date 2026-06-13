@@ -2070,6 +2070,7 @@ static inline void PrintSemaExpr(metac_printer_t* self,
     }
     else if (semaExpr->Kind == expr_signed_integer)
     {
+        //TODO sign extend ...
         PrintI64(self, semaExpr->ValueI64);
     }
     else if (semaExpr->Kind == expr_float)

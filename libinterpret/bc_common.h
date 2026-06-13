@@ -28,8 +28,6 @@
 #endif
 
 static const uint32_t skipFn = UINT32_MAX;
-static const uint32_t nodeFromName = UINT32_MAX - 1;
-static const uint32_t currentScope = UINT32_MAX - 2;
 
 #define CONSTEXPR
 
