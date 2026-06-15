@@ -429,6 +429,8 @@ static const BCType BCType_u32;
 
 
 EXTERN_C BCTypeEnum BCTypeEnum_commonTypeEnum(BCTypeEnum lhs, BCTypeEnum rhs);
+static inline BCValue BCValue_u32(const BCValue* v);
+
 static inline void AllocDefaultHeap(BCHeap* newHeap);
 
 #undef offsetof

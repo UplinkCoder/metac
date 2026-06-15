@@ -68,6 +68,7 @@ BCType MetaCCodegen_GetBCType(metac_bytecode_ctx_t* ctx, metac_type_index_t type
                 result.type = BCTypeEnum_i32;
             break;
             case type_long:
+            case type_long_long:
                 result.type = BCTypeEnum_i64;
             break;
             case type_size_t:
@@ -82,9 +83,6 @@ BCType MetaCCodegen_GetBCType(metac_bytecode_ctx_t* ctx, metac_type_index_t type
                 result.type = BCTypeEnum_f52;
             break;
 
-            case type_long_long:
-                result.type = BCTypeEnum_i64;
-            break;
             case type_long_double:
                 result.type = BCTypeEnum_f106;
             break;
@@ -99,8 +97,6 @@ BCType MetaCCodegen_GetBCType(metac_bytecode_ctx_t* ctx, metac_type_index_t type
                 result.type = BCTypeEnum_u32;
             break;
             case type_unsigned_long:
-                result.type = BCTypeEnum_u64;
-            break;
             case type_unsigned_long_long:
                 result.type = BCTypeEnum_u64;
             break;
@@ -622,7 +618,7 @@ metac_bytecode_function_t MetaCCodegen_GenerateFunctionFromExp(metac_bytecode_ct
 #ifdef PRINT_BYTECODE
     if (ctx->gen == &BCGen_interface)
     {
-        BCGen_PrintCode((BCGen*)c, 0, 48);
+        BCGen_PrintCode((BCGen*)c, 0, 128);
     }
 #endif
 
@@ -887,7 +883,21 @@ void MetaCCodegen_doDeref(metac_bytecode_ctx_t* ctx,
     BackendInterface gen = *ctx->gen;
     void* c = ctx->c;
     // this only works for pointers to 32bit basic types
-    gen.Load32(c, result, addr);
+    if (addr->vType == BCValueType_External)
+    {
+        if (sizeof(void*) == 4)
+        {
+            gen.Load32(c, result, addr);
+        }
+        else if (sizeof(void*) == 8)
+        {
+            gen.Load64(c, result, addr);
+        }
+    }
+    else
+    {
+        gen.Load32(c, result, addr);
+    }
 }
 
 static void MetaCCodegen_doCastExpr(metac_bytecode_ctx_t* ctx,
@@ -961,6 +971,8 @@ static void MetaCCodegen_doDotExpr(metac_bytecode_ctx_t* ctx,
     BCValue addr;
     BCValue e1Value = {BCValueType_Unknown};
     BCValue offsetVal = {BCValueType_Unknown};
+    BCValue addr_u32;
+    BCValue e1Value_u32;
 
     assert(exp->Kind == expr_dot);
     assert(idxKind == type_index_struct);
@@ -980,7 +992,9 @@ static void MetaCCodegen_doDotExpr(metac_bytecode_ctx_t* ctx,
 
     assert(e1Value.vType == BCValueType_StackValue);
 
-    gen.Add3(c, &addr, &e1Value, &offsetVal);
+    addr_u32    = BCValue_u32(&addr);
+    e1Value_u32 = BCValue_u32(&e1Value);
+    gen.Add3(c, &addr_u32, &e1Value_u32, &offsetVal);
 
     MetaCCodegen_doDeref(ctx, &addr, field->Type, result);
 }
@@ -1005,6 +1019,8 @@ static void MetaCCodegen_doArrowExpr(metac_bytecode_ctx_t* ctx,
     BCValue e1Value = {BCValueType_Unknown};
     BCValue offsetVal = {BCValueType_Unknown};
     bool isExternal = false;
+    BCValue e1Value_u32;
+    BCValue addr_u32;
 
     assert(idxKind == type_index_ptr);
     assert(exp->Kind == expr_arrow || exp->Kind == expr_dot);
@@ -1037,7 +1053,10 @@ static void MetaCCodegen_doArrowExpr(metac_bytecode_ctx_t* ctx,
         || e1Value.vType == BCValueType_HeapValue
         || e1Value.vType == BCValueType_External);
 
-    gen.Add3(c, &addr, &e1Value, &offsetVal);
+    addr_u32    = BCValue_u32(&addr);
+    e1Value_u32 = BCValue_u32(&e1Value);
+    gen.Add3(c, &addr_u32, &e1Value_u32, &offsetVal);
+
     gen.Comment(c, "Address pointer was just generated as the result of an Add3");
     MetaCCodegen_doDeref(ctx, &addr, field->Type, result);
     gen.Comment(c, "doDref was executed ... ");
@@ -1169,7 +1188,8 @@ static void MetaCCodegen_doExpr(metac_bytecode_ctx_t* ctx,
         if (exp->E2->Kind == expr_signed_integer
            && (exp->E2->ValueI64 >= INT32_MIN && exp->E2->ValueI64 <= INT32_MAX))
         {
-            rhs = imm32_(cast(int32_t)exp->E2->ValueI64, true);
+            bool isSigned = TypeIndex_isSigned(exp->E2->TypeIndex);
+            rhs = imm32_(cast(int32_t)exp->E2->ValueI64, isSigned);
         }
         else
         {

@@ -1021,7 +1021,7 @@ void BCGen_PrintCode(BCGen* self, uint32_t start, uint32_t end)
             {
                 printf("LongInst_Comment [length:%d]\n", hi);
                 uint32_t nWords = ((hi + 7) & ~7) / 4;
-                printf(" %.*s", (int) hi, (const char*) (codeP + ip));
+                printf(" %.*s\n", (int) hi, (const char*) (codeP + ip));
                 ip += nWords;
             }
             break;

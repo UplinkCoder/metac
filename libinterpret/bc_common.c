@@ -958,6 +958,13 @@ static const BCType BCType_i32 = {BCTypeEnum_i32};
 static const BCType BCType_u32 = {BCTypeEnum_u32};
 
 
+static inline BCValue BCValue_u32(const BCValue* v)
+{
+    BCValue result = *v;
+    result.type = BCType_u32;
+    return result;
+}
+
 #undef offsetof
 
 #endif
