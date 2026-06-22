@@ -3013,11 +3013,11 @@ static inline void BCGen_MemCpy(BCGen* self, BCValue *dst, const BCValue* src, c
     bool pushedDst = (dst->vType == BCValueType_Immediate);
     bool pushedSrc = (src->vType == BCValueType_Immediate);
 
-    BCValue newSize = BCGen_pushTemporary(self, size);
-    BCValue newSrc = BCGen_pushTemporary(self, src);
-    BCValue newDst = BCGen_pushTemporary(self, dst);
+    BCValue newSize = pushedSize ? BCGen_pushTemporary(self, size) : *size;
+    BCValue newSrc = pushedSrc ? BCGen_pushTemporary(self, src) : *src;
+    BCValue newDst = pushedDst ? BCGen_pushTemporary(self, dst) : *dst;
 
-    BCGen_emitLongInstSSS(self, LongInst_MemCpy, newSize.stackAddr, newSrc.stackAddr, newDst.stackAddr);
+    BCGen_emitLongInstSSS(self, LongInst_MemCpy, newSize.stackAddr, newDst.stackAddr, newSrc.stackAddr);
 
     if (pushedDst) BCGen_destroyTemporary(self, &newDst);
     if (pushedSrc) BCGen_destroyTemporary(self, &newSrc);
