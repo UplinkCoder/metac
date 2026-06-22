@@ -106,6 +106,7 @@ typedef struct metac_sema_state_t
     metac_alloc_t TempAlloc;
 
     metac_identifier_table_t SemanticIdentifierTable;
+    metac_identifier_table_t SemanticStringTable;
     metac_identifier_table_t* ParserIdentifierTable;
     metac_identifier_table_t* ParserStringTable;
     metac_location_t_array* ParserLocations;

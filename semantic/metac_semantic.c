@@ -167,6 +167,8 @@ void MetaCSemantic_Init(metac_sema_state_t* self, metac_parser_t* parser,
                 calloc(sizeof(*self->Waiters.Waiters), self->Waiters.WaiterCapacity);
 
     IdentifierTable_Init(&self->SemanticIdentifierTable, IDENTIFIER_LENGTH_SHIFT, 13, &self->Allocator);
+    IdentifierTable_Init(&self->SemanticStringTable,     STRING_LENGTH_SHIFT,     13, &self->Allocator);
+
     self->ParserIdentifierTable = &parser->IdentifierTable;
     self->ParserStringTable = &parser->StringTable;
     self->ParserLocations = &parser->LocationStorage;

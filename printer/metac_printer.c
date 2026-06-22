@@ -2064,7 +2064,7 @@ static inline void PrintSemaExpr(metac_printer_t* self,
         uint32_t stringLength = LENGTH_FROM_STRING_KEY(semaExpr->StringKey);
         PrintChar(self, '"');
         PrintString(self,
-            IdentifierPtrToCharPtr(self->StringTable, semaExpr->StringPtr),
+            IdentifierPtrToCharPtr(&sema->SemanticStringTable, semaExpr->StringPtr),
             stringLength);
         PrintChar(self, '"');
     }

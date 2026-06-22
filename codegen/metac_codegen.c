@@ -1331,7 +1331,7 @@ static void MetaCCodegen_doExpr(metac_bytecode_ctx_t* ctx,
                 gen.GenExternal(c, MetaCCodegen_GetBCType(ctx, exp->TypeIndex), str);
 
             uint32_t sz = LENGTH_FROM_STRING_KEY(exp->StringKey);
-            gen.MapExternal(c, &strPtr, cast(void*)str, sz);
+            gen.MapExternal(c, &strPtr, cast(void*)str, sz + 1);
 
             (*result) = strPtr;
 
@@ -1428,6 +1428,8 @@ static void MetaCCodegen_doExpr(metac_bytecode_ctx_t* ctx,
 
                     if (te.Kind == expr_signed_integer)
                     {
+                        //TODO this should be dependend on the size of the integer ...
+                        // we should really just do a memcpy
                         BCValue val = imm32(cast(int32_t)te.ValueI64);
                         gen.Store32(c, &address, &val);
                     }
@@ -1456,7 +1458,8 @@ static void MetaCCodegen_doExpr(metac_bytecode_ctx_t* ctx,
                         metac_type_array_t* arrayType = ArrayTypePtr(ctx->Sema, TYPE_INDEX_INDEX(te.TypeIndex));
                         uint32_t elemSize =
                             MetaCCodegen_GetStorageSize(ctx, MetaCCodegen_GetBCType(ctx,  arrayType->ElementType));
-                            // gen.MemCpy(c, MetaCCodegen_ComputeAddress(ctx, bcValues + i,l ))
+                        BCValue sz = imm32(arrayType->Dim * elemSize);
+                        gen.MemCpy(c, &address, bcValues + i, &sz);
                     }
                     else
                     {

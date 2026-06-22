@@ -985,6 +985,12 @@ LswitchIdKey:
             result->TypeIndex = MetaCSemantic_GetTypeIndex(self, type_char, (decl_type_t*)emptyPointer);
         break;
         case expr_string :
+            metac_identifier_ptr_t semaStringPtr =
+                MetaCIdentifierTable_CopyIdentifier(
+                    self->ParserStringTable, &self->SemanticStringTable, expr->StringPtr
+                );
+            result->StringKey = expr->StringKey;
+            result->StringPtr = semaStringPtr;
             result->TypeIndex = MetaCSemantic_GetArrayTypeOf(self,
                 MetaCSemantic_GetTypeIndex(self, type_char, (decl_type_t*)emptyPointer),
                 LENGTH_FROM_STRING_KEY(expr->StringKey) + 1);
