@@ -883,6 +883,7 @@ void MetaCCodegen_doDeref(metac_bytecode_ctx_t* ctx,
     BackendInterface gen = *ctx->gen;
     void* c = ctx->c;
     // this only works for pointers to 32bit basic types
+/*
     if (addr->vType == BCValueType_External)
     {
         if (sizeof(void*) == 4)
@@ -894,7 +895,7 @@ void MetaCCodegen_doDeref(metac_bytecode_ctx_t* ctx,
             gen.Load64(c, result, addr);
         }
     }
-    else
+    else */
     {
         gen.Load32(c, result, addr);
     }

@@ -8,14 +8,7 @@
 typedef unsigned int uint32_t;
 typedef int int32_t;
 
-typedef enum type_kind_t
-{
-    TypeKind_Invalid,
-    TypeKind_Enum,
-    TypeKind_Struct = 5,
-    TypeKind_Class = TypeKind_Struct + 2,
-    TypeKind_Max
-} type_kind_t;
+#include "metac_type_kind.h"
 
 typedef struct  metac_enum_members_t {
     const char** Names;
@@ -37,7 +30,8 @@ typedef struct metac_compiler_t
     void (*Error) (struct metac_compiler_t* compilerP,
                    const char* str);
 
-    type_kind_t (*GetTypeKind) (struct metac_compiler_t* compilerP, uint32_t T);
+    type_kind_t (*GetTypeKind) (uint32_t T);
+    const char* (*TypeKindString)(type_kind_t Kind);
 
     void (*PrintInt) (int32_t value);
 

@@ -41,13 +41,17 @@ void compiler_Error(struct metac_compiler_t* compilerP,
     
 }
 
-type_kind_t compiler_GetTypeKind (struct metac_compiler_t* compilerP, uint32_t T)
+type_kind_t compiler_GetTypeKind (uint32_t T)
 {
     metac_type_index_t typeIdx;
     typeIdx.v = T;
     return TYPE_INDEX_KIND(typeIdx);
 }
 
+const char* compiler_TypeKindString(type_kind_t T)
+{
+    
+}
 
 const char* compiler_Help ()
 {
@@ -84,7 +88,8 @@ metac_compiler_t compiler = {
     compiler_Message,
     compiler_Error,
 
-    compiler_GetTypeKind, // get type kind
+    compiler_GetTypeKind,
+    compiler_TypeKindString,
 
     compiler_PrintInt,
 
