@@ -209,7 +209,7 @@ static metac_type_index_t GetTypeIndex(BCType bcType)
         case BCTypeEnum_u16:
             result.v = TYPE_INDEX_V(type_index_basic, type_unsigned_short);
         break;
-        case BCTypeEnum_u64:
+        case BCTypeEnum_u32:
             result.v = TYPE_INDEX_V(type_index_basic, type_unsigned_int);
         break;
         case BCTypeEnum_u64:
