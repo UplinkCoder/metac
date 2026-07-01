@@ -1728,8 +1728,8 @@ static inline void PrintSemaType(metac_printer_t* self,
         {
             decl_type_t basicType = {(metac_decl_kind_t)0};
             basicType.Kind = decl_type;
-            metac_type_kind_t Kind =
-                cast(metac_type_kind_t) TYPE_INDEX_INDEX(typeIndex);
+            metac_parser_type_kind_t Kind =
+                cast(metac_parser_type_kind_t) TYPE_INDEX_INDEX(typeIndex);
             basicType.TypeKind = Kind;
             PrintType(self, &basicType);
         } break;

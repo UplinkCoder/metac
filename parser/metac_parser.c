@@ -1116,7 +1116,7 @@ decl_type_t* MetaCParser_ParseTypeDecl(metac_parser_t* self, metac_decl_t* paren
         {
             MetaCParser_Match(self, tokenType);
 
-            type->TypeKind = cast(metac_type_kind_t)(type_auto + (tokenType - tok_kw_auto));
+            type->TypeKind = cast(metac_parser_type_kind_t)(type_auto + (tokenType - tok_kw_auto));
             U32(type->TypeModifiers) |= typeModifiers;
             if (tokenType == tok_kw_long)
             {
@@ -2560,9 +2560,13 @@ metac_stmt_t* MetaCParser_ParseStmt(metac_parser_t* self,
                 *self = savedParser;
                 goto LparseAsExpr;
             }
-            else
+            else if (afterDecl)
             {
                 MetaCParser_Match(self, afterDecl->TokenType);
+            }
+            else
+            {
+                // no token after declaration ... that may be fine in the repl
             }
         }
     }

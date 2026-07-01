@@ -992,7 +992,7 @@ LswitchIdKey:
         case expr_signed_integer :
         {
             decl_type_t typeInfo = {(metac_decl_kind_t)0};
-            metac_type_kind_t baseType = type_int;
+            metac_parser_type_kind_t baseType = type_int;
 
             hash = CRC32C_VALUE(expr_signed_integer, expr->ValueU64);
             if (expr->NumberFlags & number_flag_unsigned)

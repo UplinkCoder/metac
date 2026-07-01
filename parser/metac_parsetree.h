@@ -405,7 +405,7 @@ typedef enum metac_storageclasses_t
     storageclass_scope    = (1 << 8),
 } metac_storageclasses_t;
 
-typedef enum metac_type_kind_t
+typedef enum metac_parser_type_kind_t
 {
     type_invalid,
 
@@ -458,11 +458,11 @@ typedef enum metac_type_kind_t
     type_code,
 
     type_max
-} metac_type_kind_t;
+} metac_parser_type_kind_t;
 
 
 #define TYPE_HEADER \
-    metac_type_kind_t TypeKind; \
+    metac_parser_type_kind_t TypeKind; \
     metac_type_modifiers TypeModifiers;
 
 

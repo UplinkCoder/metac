@@ -48,7 +48,7 @@ metac_type_index_t MetaCSemantic_GetPtrTypeOf(metac_sema_state_t* self,
     return result;
 }
 
-static inline bool isBasicType(metac_type_kind_t typeKind)
+static inline bool isBasicType(metac_parser_type_kind_t typeKind)
 {
     if ((typeKind >= type_void) & (typeKind <= type_unsigned_long_long))
     {
@@ -84,7 +84,7 @@ sema_decl_type_t* MetaCSemantic_GetTypeNode(metac_sema_state_t* self,
 }
 
 metac_type_index_t MetaCSemantic_GetTypeIndex(metac_sema_state_t* state,
-                                              metac_type_kind_t typeKind,
+                                              metac_parser_type_kind_t typeKind,
                                               decl_type_t* type)
 {
     metac_type_index_t result = {0};
@@ -142,7 +142,7 @@ static inline bool IsPointerType(metac_decl_kind_t declKind)
 static inline const char* BasicTypeToChars(metac_type_index_t typeIndex)
 {
     assert(TYPE_INDEX_KIND(typeIndex) == type_index_basic);
-    switch((metac_type_kind_t) TYPE_INDEX_INDEX(typeIndex))
+    switch((metac_parser_type_kind_t) TYPE_INDEX_INDEX(typeIndex))
     {
         case type_invalid :
             assert(0);
@@ -1095,7 +1095,7 @@ metac_type_index_t MetaCSemantic_TypeSemantic(metac_sema_state_t* self,
 {
     metac_type_index_t result = {0};
 
-    metac_type_kind_t typeKind = type->TypeKind;
+    metac_parser_type_kind_t typeKind = type->TypeKind;
 
     if (type->Kind == decl_type && isBasicType(typeKind))
     {

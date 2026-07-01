@@ -21,7 +21,7 @@ typedef struct metac_compiler_t
     void* semanticState;
 
     uint32_t (*CurrentTimeStamp) ();
-   
+
     const char* (*Help) ();
 
     void (*Message) (struct metac_compiler_t* compilerP,
@@ -30,15 +30,15 @@ typedef struct metac_compiler_t
     void (*Error) (struct metac_compiler_t* compilerP,
                    const char* str);
 
-    type_kind_t (*GetTypeKind) (uint32_t T);
-    const char* (*TypeKindString)(type_kind_t Kind);
+    metac_type_kind_t (*GetTypeKind) (uint32_t T);
+    const char* (*TypeKindString)(metac_type_kind_t Kind);
 
     void (*PrintInt) (int32_t value);
 
     metac_enum_members_t* (*GetEnumMembers) (struct metac_compiler_t* compilerP, uint32_t T);
 
     metac_node_t (*ResolveNode)(struct metac_compiler_t* compilerP, const char* name);
-    
+
     const char* Version;
     uint32_t IntVersion;
 } metac_compiler_t;
