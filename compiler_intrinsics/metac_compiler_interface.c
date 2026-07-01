@@ -1,4 +1,5 @@
-#include "../os/os.h"
+#include <stdio.h>
+#include "../os/os.c"
 #include "metac_compiler_interface.h"
 #include "../semantic/metac_type.h"
 #include "metac_type_kind.c"
@@ -54,10 +55,6 @@ metac_enum_members_t* compiler_GetEnumMembers (struct metac_compiler_t* compiler
 
 }
 
-metac_node_t compiler_ResolveNode(struct metac_compiler_t* compilerP, const char* name)
-{
-    return 0;
-}
 
 
 
@@ -76,8 +73,6 @@ metac_compiler_t compiler = {
     compiler_PrintInt,
 
     compiler_GetEnumMembers,
-
-    compiler_ResolveNode,
 
      "v0.1",
      20260205,

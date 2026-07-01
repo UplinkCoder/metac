@@ -37,8 +37,6 @@ typedef struct metac_compiler_t
 
     metac_enum_members_t* (*GetEnumMembers) (struct metac_compiler_t* compilerP, uint32_t T);
 
-    metac_node_t (*ResolveNode)(struct metac_compiler_t* compilerP, const char* name);
-
     const char* Version;
     uint32_t IntVersion;
 } metac_compiler_t;
