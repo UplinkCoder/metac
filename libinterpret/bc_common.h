@@ -426,10 +426,12 @@ static const BCTypeEnum smallIntegerTypes[] = {BCTypeEnum_u16, BCTypeEnum_u8,
 
 static const BCType BCType_i32;
 static const BCType BCType_u32;
+static const BCType BCType_u64;
 
 
 EXTERN_C BCTypeEnum BCTypeEnum_commonTypeEnum(BCTypeEnum lhs, BCTypeEnum rhs);
 static inline BCValue BCValue_u32(const BCValue* v);
+static inline BCValue BCValue_u64(const BCValue* v);
 
 static inline void AllocDefaultHeap(BCHeap* newHeap);
 

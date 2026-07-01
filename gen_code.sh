@@ -13,3 +13,9 @@ $CC $CFLAGS utils/gen_metac_keyword_keys.c -o gen_metac_keyword_keys
 
 $CC $CFLAGS utils/gen_metac_match_keyword.c -o gen_metac_match_keyword
 ./gen_metac_match_keyword > generated/metac_match_keyword.inl
+
+$CC $CFLAGS utils/gen_metac_type_kind.c -o gen_metac_type_kind -g3 \
+    -DHEADER_PATH=\"compiler_intrinsics/metac_type_kind.h\" \
+    -DCODE_PATH=\"compiler_intrinsics/metac_type_kind.c\"
+    
+./gen_metac_type_kind

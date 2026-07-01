@@ -209,7 +209,7 @@ static metac_type_index_t GetTypeIndex(BCType bcType)
         case BCTypeEnum_u16:
             result.v = TYPE_INDEX_V(type_index_basic, type_unsigned_short);
         break;
-        case BCTypeEnum_u32:
+        case BCTypeEnum_u64:
             result.v = TYPE_INDEX_V(type_index_basic, type_unsigned_int);
         break;
         case BCTypeEnum_u64:
@@ -477,13 +477,6 @@ void MetaCCodegen_Init(metac_bytecode_ctx_t* self, metac_alloc_t* parentAlloc)
     // ARENA_ARRAY_INIT(sema_decl_variable_t, self->Locals, &self->Allocator);
     ARENA_ARRAY_INIT(BCValue, self->Globals, &self->Allocator);
     self->GlobalMemoryOffset = 4;
-
-#if METAC_COMPILER_INTERFACE
-    metac_external_entry_t* extCompP = self->Externals + 0;
-    extCompP->externalAddress = &compiler;
-    extCompP->externalSize = sizeof(compiler);
-    self->ExternalsCount = 1;
-#endif
 }
 
 void MetaCCodegen_Free(metac_bytecode_ctx_t* self)
@@ -533,7 +526,7 @@ static void InitCompilerInterface(metac_bytecode_ctx_t* ctx)
             ctx->Sema->CompilerInterface->TypeIndex.Index;
 
         ctx->CompilerInterfaceValue = gen.GenExternal(c, compilerInterfaceType, ".compiler");
-        gen.MapExternal(c, &ctx->CompilerInterfaceValue, &compiler, sizeof(compiler));
+        // gen.MapExternal(c, &ctx->CompilerInterfaceValue, &compiler, sizeof(compiler));
         ctx->Externals[0].ExtValue = ctx->CompilerInterfaceValue;
         ctx->ExternalsCount += 1;
     }
@@ -695,7 +688,7 @@ metac_bytecode_function_t MetaCCodegen_GenerateFunction(metac_bytecode_ctx_t* ct
             ctx->Sema->CompilerInterface->TypeIndex.Index;
 
         ctx->CompilerInterfaceValue = gen.GenExternal(c, compilerInterfaceType, ".compiler");
-        gen.MapExternal(c, &ctx->CompilerInterfaceValue, &compiler, sizeof(compiler));
+//        gen.MapExternal(c, &ctx->CompilerInterfaceValue, &compiler, sizeof(compiler));
         ctx->Externals[0].ExtValue = ctx->CompilerInterfaceValue;
         frameSize += sizeof(void*);
     }
@@ -920,7 +913,10 @@ static void MetaCCodegen_doCastExpr(metac_bytecode_ctx_t* ctx,
 
     assert(exp->Kind == expr_cast);
 
-    if (TYPE_INDEX_KIND(castToType) == TYPE_INDEX_KIND(castFromType) && )
+    if (castToKind == castFromKind && castToKind == type_index_ptr)
+    {
+        
+    }
 
     if (castToType.v == TYPE_INDEX_V(type_index_basic, type_float))
     {
@@ -977,8 +973,8 @@ static void MetaCCodegen_doDotExpr(metac_bytecode_ctx_t* ctx,
     BCValue addr;
     BCValue e1Value = {BCValueType_Unknown};
     BCValue offsetVal = {BCValueType_Unknown};
-    BCValue addr_u32;
-    BCValue e1Value_u32;
+    BCValue addr_u64;
+    BCValue e1Value_u64;
 
     assert(exp->Kind == expr_dot);
     assert(idxKind == type_index_struct);
@@ -998,9 +994,9 @@ static void MetaCCodegen_doDotExpr(metac_bytecode_ctx_t* ctx,
 
     assert(e1Value.vType == BCValueType_StackValue);
 
-    addr_u32    = BCValue_u32(&addr);
-    e1Value_u32 = BCValue_u32(&e1Value);
-    gen.Add3(c, &addr_u32, &e1Value_u32, &offsetVal);
+    addr_u64    = BCValue_u64(&addr);
+    e1Value_u64 = BCValue_u64(&e1Value);
+    gen.Add3(c, &addr_u64, &e1Value_u64, &offsetVal);
 
     MetaCCodegen_doDeref(ctx, &addr, field->Type, result);
 }
@@ -1025,8 +1021,8 @@ static void MetaCCodegen_doArrowExpr(metac_bytecode_ctx_t* ctx,
     BCValue e1Value = {BCValueType_Unknown};
     BCValue offsetVal = {BCValueType_Unknown};
     bool isExternal = false;
-    BCValue e1Value_u32;
-    BCValue addr_u32;
+    BCValue e1Value_u64;
+    BCValue addr_u64;
 
     assert(idxKind == type_index_ptr);
     assert(exp->Kind == expr_arrow || exp->Kind == expr_dot);
@@ -1059,9 +1055,9 @@ static void MetaCCodegen_doArrowExpr(metac_bytecode_ctx_t* ctx,
         || e1Value.vType == BCValueType_HeapValue
         || e1Value.vType == BCValueType_External);
 
-    addr_u32    = BCValue_u32(&addr);
-    e1Value_u32 = BCValue_u32(&e1Value);
-    gen.Add3(c, &addr_u32, &e1Value_u32, &offsetVal);
+    addr_u64    = BCValue_u64(&addr);
+    e1Value_u64 = BCValue_u64(&e1Value);
+    gen.Add3(c, &addr_u64, &e1Value_u64, &offsetVal);
 
     gen.Comment(c, "Address pointer was just generated as the result of an Add3");
     MetaCCodegen_doDeref(ctx, &addr, field->Type, result);
@@ -1347,7 +1343,7 @@ static void MetaCCodegen_doExpr(metac_bytecode_ctx_t* ctx,
         {
             /*
             BCValue errVal = imm32(0);
-            BCValue cond = gen.GenTemporary(c, (BCType){BCTypeEnum_u32});
+            BCValue cond = gen.GenTemporary(c, (BCType){BCTypeEnum_u64});
             WalkTree(c, &cond, e->E1, vstore);
             gen.Assert(c, &cond, &errVal);
              */

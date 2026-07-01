@@ -957,11 +957,19 @@ BCTypeEnum BCTypeEnum_commonTypeEnum(BCTypeEnum lhs, BCTypeEnum rhs)
 static const BCType BCType_i32 = {BCTypeEnum_i32};
 static const BCType BCType_u32 = {BCTypeEnum_u32};
 
+static const BCType BCType_u64 = {BCTypeEnum_u64};
 
 static inline BCValue BCValue_u32(const BCValue* v)
 {
     BCValue result = *v;
     result.type = BCType_u32;
+    return result;
+}
+
+static inline BCValue BCValue_u64(const BCValue* v)
+{
+    BCValue result = *v;
+    result.type = BCType_u64;
     return result;
 }
 

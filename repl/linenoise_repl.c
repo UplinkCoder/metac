@@ -158,7 +158,7 @@ int main(int argc, const char* argv[])
     linenoiseHistoryLoad(".repl_history");
 
 #ifdef METAC_COMPILER_INTERFACE
-    compiler.Message = doUiMessage;
+//    compiler.Message = doUiMessage;
 #endif
     g_uiContext = &ctx;
 #if !defined(NO_FIBERS)

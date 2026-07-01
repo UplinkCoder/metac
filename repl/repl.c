@@ -8,7 +8,7 @@
 
 #include "../parser/metac_parser_obj.c"
 #include "../semantic/metac_semantic_obj.c"
-#include "../compiler_intrinsics/metac_compiler_interface.c"
+#include "../compiler_intrinsics/metac_compiler_interface.h"
 #include "../driver/metac_driver.c"
 #include "../os/bsr.h"
 #include "../hash/crc32c.h"
@@ -34,8 +34,6 @@ uint64_t endTs;
 
 uint64_t get_timestamp_micros() {
     struct timespec ts;
-    // CLOCK_MONOTONIC ist am besten für Intervalle
-    // CLOCK_MONOTONIC_RAW kann noch präziser sein, aber manchmal teurer abzufragen
     clock_gettime(CLOCK_MONOTONIC, &ts); 
     return (uint64_t)ts.tv_sec * 1000000 + ts.tv_nsec / 1000;
 }

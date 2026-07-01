@@ -44,7 +44,9 @@ int main(int argc, const char* argv[])
     typeKindNames = malloc(sizeof(char *) * typeKindCount);
 
     {
+#ifndef HEADER_PATH
 #define HEADER_PATH "../compiler_intrinsics/metac_type_kind.h"
+#endif
         FILE *header = fopen(HEADER_PATH ,"w+");
 
         fprintf(header, "#ifndef %s\n", INCLUDE_GUARD_NAME);
@@ -74,7 +76,10 @@ int main(int argc, const char* argv[])
     }
 
     {
-        FILE *code = fopen("../compiler_intrinsics/metac_type_kind.c","w+");
+#ifndef HEADER_PATH
+#define CODE_PATH "../compiler_intrinsics/metac_type_kind.c"
+#endif
+        FILE *code = fopen(CODE_PATH, "w+");
 
         fprintf(code, "#include \"" HEADER_PATH "\"\n");
         fprintf(code, "const char* MetaCTypeKind_toChars(%s value)\n", enumName);
