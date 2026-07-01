@@ -915,7 +915,12 @@ static void MetaCCodegen_doCastExpr(metac_bytecode_ctx_t* ctx,
     BCValue rhs = { BCValueType_Unknown };
     MetaCCodegen_doExpr(ctx, castExpr, &rhs, _Rvalue);
 
+    metac_type_index_kind_t castToKind   = TYPE_INDEX_KIND(castToType);
+    metac_type_index_kind_t castFromKind = TYPE_INDEX_KIND(castFromType);
+
     assert(exp->Kind == expr_cast);
+
+    if (TYPE_INDEX_KIND(castToType) == TYPE_INDEX_KIND(castFromType) && )
 
     if (castToType.v == TYPE_INDEX_V(type_index_basic, type_float))
     {
@@ -1417,7 +1422,7 @@ static void MetaCCodegen_doExpr(metac_bytecode_ctx_t* ctx,
                 }
                 sz = imm32(currentOffset);
 
-                BCValue address = gen.GenTemporary(c, BCType_i32);
+                BCValue address = gen.GenTemporary(c, BCType_u64);
                 gen.Alloc(c, &address, &sz);
                 gen.Set(c, result, &address);
                 for(uint32_t i = 0; i < exp->TupleExprCount; i++)
