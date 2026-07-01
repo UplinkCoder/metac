@@ -1,4 +1,6 @@
 /// Small platfrom abstraction
+#ifndef _OS_C_
+#define _OS_C_
 #include "compat.h"
 #include "os.h"
 #include <time.h>
@@ -125,3 +127,4 @@ const char* TimeStampToChars(uint32_t tsp)
         return (const char*) &buffer[0];
     }
 }
+#endif // _OS_C_
