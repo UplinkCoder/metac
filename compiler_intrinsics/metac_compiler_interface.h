@@ -40,8 +40,6 @@ typedef struct metac_compiler_t
 {
     void* semanticState;
 
-    uint32_t (*CurrentTimeStamp) ();
-
     const char* (*Help) ();
 
     void (*Message) (struct metac_compiler_t* compilerP,
@@ -52,8 +50,6 @@ typedef struct metac_compiler_t
 
     metac_type_kind_t (*GetTypeKind) (uint32_t T);
     const char* (*TypeKindString)(metac_type_kind_t Kind);
-
-    void (*PrintInt) (int32_t value);
 
     metac_enum_members_t* (*GetEnumMembers) (struct metac_compiler_t* compilerP, uint32_t T);
 
