@@ -8,8 +8,10 @@
 typedef unsigned int uint32_t;
 typedef int int32_t;
 
-// #include "metac_type_kind.h"
+#include "metac_type_kind.h"
 
+#ifndef _METAC_TYPE_KIND_H_
+#define _METAC_TYPE_KIND_H_
 typedef enum metac_type_kind_t {
     TypeKind_Unknown      = 0x0,
     TypeKind_Basic        = 0x1,
@@ -28,17 +30,25 @@ typedef enum metac_type_kind_t {
     TypeKind_Extended     = 0xE,
     TypeKind_Invalid      = 0xF,
 } metac_type_kind_t;
+#endif // _METAC_TYPE_KIND_H_
 
+typedef struct enum_member_t {
+	const char* Identifier;
+	int32_t Value;
+} enum_member_t;
 
 typedef struct  metac_enum_members_t {
-    const char** Names;
-    uint32_t* Values;
+    enum_member_t* Array;
     uint32_t Count;
 } metac_enum_members_t;
+
+
 
 typedef struct metac_compiler_t
 {
     void* semanticState;
+
+    void (*SetReturnAlloc)(struct metac_compiler_t* compilerP, void* ctx, void* (*alloc_fn)(uint32_t, void*) );
 
     const char* (*Help) ();
 

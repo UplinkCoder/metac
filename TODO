@@ -1,3 +1,4 @@
+- mixed operations float + int, emit proper conversions
 
 high prio: move preproc handling out of the parser completely and have it be done by the lexer
            or maybe even before lexing.

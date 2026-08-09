@@ -623,6 +623,25 @@ metac_expr_t* RewriteAndtoAddrIfNeeded(metac_sema_state_t* self, metac_expr_t* e
     return result;
 }
 
+metac_sema_expr_t* MetaCSemantic_PromoteIfNeeded(metac_sema_state_t *self,
+                                                 metac_expr_t* expr,
+                                                 metac_sema_expr_t* semaExpr,
+                                                 metac_type_index_t newType)
+{
+    metac_sema_expr_t* result = semaExpr;
+    if (newType.v != semaExpr->TypeIndex.v)
+    {
+        result = AllocNewSemaExpr(self, expr);
+
+        result->Kind        = expr_cast; 
+        result->LocationIdx = semaExpr->LocationIdx;
+        result->TypeIndex   = newType;
+        result->CastType    = newType;
+        result->E1          = semaExpr;
+    }
+    return result;
+}
+
 metac_sema_expr_t* MetaCSemantic_doExprSemantic_(metac_sema_state_t* self,
                                                  metac_expr_t* expr,
                                                  metac_sema_expr_t* result,
@@ -965,9 +984,10 @@ LswitchIdKey:
             {
                 result->Kind = expr_unknown_value;
             }
-
             result->TypeIndex =
                 MetaCSemantic_CommonSubtype(self, result->E1->TypeIndex, result->E2->TypeIndex);
+            result->E1 = MetaCSemantic_PromoteIfNeeded(self, expr->E1, result->E1, result->TypeIndex);
+            result->E2 = MetaCSemantic_PromoteIfNeeded(self, expr->E2, result->E2, result->TypeIndex);
         break;
 
         FOREACH_BIN_ARITH_ASSIGN_EXP(CASE)
@@ -984,7 +1004,7 @@ LswitchIdKey:
         case expr_char :
             result->TypeIndex = MetaCSemantic_GetTypeIndex(self, type_char, (decl_type_t*)emptyPointer);
         break;
-        case expr_string :
+        case expr_string : {
             metac_identifier_ptr_t semaStringPtr =
                 MetaCIdentifierTable_CopyIdentifier(
                     self->ParserStringTable, &self->SemanticStringTable, expr->StringPtr
@@ -994,7 +1014,7 @@ LswitchIdKey:
             result->TypeIndex = MetaCSemantic_GetArrayTypeOf(self,
                 MetaCSemantic_GetTypeIndex(self, type_char, (decl_type_t*)emptyPointer),
                 LENGTH_FROM_STRING_KEY(expr->StringKey) + 1);
-        break;
+        } break;
         case expr_signed_integer :
         {
             decl_type_t typeInfo = {(metac_decl_kind_t)0};
