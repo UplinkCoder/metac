@@ -949,7 +949,7 @@ LswitchIdKey:
 
             hash = CRC32C_VALUE(hash, E1->Hash);
 
-            if (result->E1->Kind == expr_unknown_value)
+            if (E1->Kind == expr_unknown_value)
             {
                 result->Kind = expr_unknown_value;
             }
