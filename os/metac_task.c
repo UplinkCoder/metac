@@ -323,9 +323,11 @@ void RunWorkerThread(worker_context_t* worker, void (*specialFunc)(),  void* spe
         // if we end up here we still have a free fiber
         if (TaskQueue_TasksInQueueFront(q))
         {
+            const uint32_t freeBitfield = *FreeBitfield; 
             // we have a free fiber
-            printf("Freebitfield %x\n", *FreeBitfield);
-            nextFiberIdx = BSF(*FreeBitfield);
+            if (freeBitfield == 0)
+                continue;
+            nextFiberIdx = BSF(freeBitfield);
             printf("Grabbing Fiber: %u\n", nextFiberIdx);
             (*FreeBitfield) &= (~(1 << (nextFiberIdx)));
             execFiber = fiberPool.MainCos + nextFiberIdx;
@@ -382,7 +384,7 @@ void RunWorkerThread(worker_context_t* worker, void (*specialFunc)(),  void* spe
                 // printf("Trying to finish started tasks %x\n", nextFiberBitfield);
             }
 
-            for(;;)
+            for(;nextFiberBitfield;)
             {
                 nextFiberIdx = BSF(nextFiberBitfield);
                 nextFiberBitfield &= ~(1 << nextFiberIdx);
@@ -417,7 +419,7 @@ void RunWorkerThread(worker_context_t* worker, void (*specialFunc)(),  void* spe
 
             nextFiberBitfield = (~CompletedTasks) & (~(*FreeBitfield));
             execFiber = 0;
-            for(;;)
+            for(;nextFiberBitfield;)
             {
                 nextFiberIdx = BSF(nextFiberBitfield);
                 nextFiberBitfield &= ~(1 << nextFiberIdx);
