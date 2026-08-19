@@ -17,6 +17,11 @@
     (*(uint32_t*)(&VAR))
 #endif
 
+#ifndef ALIGN16
+#define ALIGN16(N) \
+    (((N) + 15) & ~15)
+#endif
+
 static inline metac_token_enum_t MetaCLexFixedLengthToken(const char _chrs[3])
 {
     switch (_chrs[0])
@@ -645,7 +650,7 @@ bool static ParseFloat(const char** textP, int32_t* eatenCharsP, float* valueP)
 {
     char* endP = 0;
     const char* text = *textP;
-    (*valueP) = (float)strtod(text, &endP);
+    (*valueP) = strtod(text, &endP);
     int32_t eaten = endP - text;
 
     *textP = text + eaten;
@@ -1039,11 +1044,11 @@ LcontinueLexing:
                     text = text - (backwards + 1);
                     eatenChars -= backwards;
                     assert(eatenChars >= 0);
-                    float fValue;
+                    double fValue;
                     if (ParseFloat(&text, &eatenChars, &fValue))
                     {
                         (*(uint32_t*)&numberFlags) |= (uint32_t)parse_number_flag_float;
-                        token.ValueF23 = fValue;
+                        token.ValueF52 = fValue;
                         token.TokenType = tok_float;
                         c = *text;
                         if (c == 'f')
