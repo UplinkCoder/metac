@@ -77,7 +77,7 @@ void CompletionTrie_Init(completion_trie_root_t* self, metac_alloc_t* parentAllo
     }
 #endif
 }
-
+#if 1
 static int PrefixLen(const char prefix4[])
 {
          if (prefix4[0] == '\0')
@@ -91,7 +91,18 @@ static int PrefixLen(const char prefix4[])
     else
         return 4;
 }
-
+#else
+static int PrefixLen(const char prefix4[])
+{
+    uint32_t v = *(uint32_t*)prefix4;
+    // __builtin_memcpy(&v, prefix4, 4);
+    uint32_t zeroes = ((v - 0x01010101) & ~v & 0x80808080);
+    if (zeroes == 0)
+        return 4;
+    else
+        return BSF(zeros) >> 3;
+}
+#endif
 
 // calls the provided callback with all the completion suggestions
 // please note: the string passed into the callback will not be valid after the callback has returned
