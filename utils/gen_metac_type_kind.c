@@ -76,7 +76,7 @@ int main(int argc, const char* argv[])
     }
 
     {
-#ifndef HEADER_PATH
+#ifndef CODE_PATH
 #define CODE_PATH "../compiler_intrinsics/metac_type_kind.c"
 #endif
         FILE *code = fopen(CODE_PATH, "w+");
