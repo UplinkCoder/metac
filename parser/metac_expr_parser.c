@@ -810,9 +810,8 @@ metac_expr_t* MetaCParser_ParsePrimaryExpr(metac_parser_t* self, parse_expr_flag
     {
         MetaCParser_Match(self, tok_float);
         result = AllocNewExpr(expr_float);
-        result->ValueF23 = currentToken->ValueF23;
-        int32_t val32 = *(int32_t*)&currentToken->ValueF23;
-        result->Hash = CRC32C_VALUE(~0, val32);
+        result->ValueF52 = currentToken->ValueF52;
+        result->Hash = CRC32C_VALUE(~0, result->ValueF52);
     }
     else if (tokenType == tok_string)
     {
@@ -1102,17 +1101,17 @@ static inline metac_expr_t* ParseUnaryDotExpr(metac_parser_t* self)
     if (peek->TokenType == tok_uint)
     {
         MetaCParser_Match(self, tok_uint);
-        //bool static ParseFloat(const char** textP, int32_t* eatenCharsP, float* valueP)
         char vBuffer[32];
         const char* p = vBuffer;
         int32_t unused;
-        float value;
+        double value;
         snprintf(vBuffer, sizeof(vBuffer), "0.%u", peek->ValueU32);
         ParseFloat(&p, &unused, &value);
         result = AllocNewExpr(expr_float);
         result->LocationIdx = MetaCLocationStorage_Store(&self->LocationStorage,
                                                          LocationFromToken(self, peek));
-        result->ValueF23 = value;
+        result->ValueF52 = value;
+        result->Hash     = CRC32C_VALUE(~0, value);
         // result =
     }
 
@@ -1212,6 +1211,7 @@ metac_expr_t* MetaCParser_ParseUnaryExpr(metac_parser_t* self)
     {
         MetaCParser_Match(self, tok_dot);
         result = ParseUnaryDotExpr(self);
+        isPrimaryExp = (result->Kind == expr_float);
     }
     else if (tokenType == tok_kw_typeof)
     {

@@ -1,5 +1,4 @@
-// #include "../compiler_intrinsics/metac_type_kind.h"
-
+#include "compiler_intrinsics/metac_type_kind.h"
 const char* MetaCTypeKind_toChars(metac_type_kind_t value)
 {
   const char* result = 0;
@@ -23,4 +22,3 @@ const char* MetaCTypeKind_toChars(metac_type_kind_t value)
   }
   return result;
 }
-

@@ -646,7 +646,7 @@ bool static ParseOctal(const char** textP, int32_t* eatenCharsP, uint64_t* value
     return result;
 }
 
-bool static ParseFloat(const char** textP, int32_t* eatenCharsP, float* valueP)
+bool static ParseFloat(const char** textP, int32_t* eatenCharsP, double* valueP)
 {
     char* endP = 0;
     const char* text = *textP;
@@ -1047,12 +1047,13 @@ LcontinueLexing:
                     double fValue;
                     if (ParseFloat(&text, &eatenChars, &fValue))
                     {
-                        (*(uint32_t*)&numberFlags) |= (uint32_t)parse_number_flag_float;
+                        U32(numberFlags) |= parse_number_flag_float;
                         token.ValueF52 = fValue;
                         token.TokenType = tok_float;
                         c = *text;
                         if (c == 'f')
                         {
+                            //TODO convert to f23 and put flag in.
                             text++;
                             eatenChars++;
                         }
