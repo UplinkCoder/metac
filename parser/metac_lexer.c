@@ -22,6 +22,11 @@
     (((N) + 15) & ~15)
 #endif
 
+static inline bool IsNumericChar(char c)
+{
+    return (((cast(unsigned) c) - '0') <= 9);
+}
+
 static inline metac_token_enum_t MetaCLexFixedLengthToken(const char _chrs[3])
 {
     switch (_chrs[0])
@@ -107,6 +112,8 @@ static inline metac_token_enum_t MetaCLexFixedLengthToken(const char _chrs[3])
         switch (_chrs[1])
         {
         default:
+            if (IsNumericChar(_chrs[1]))
+                return tok_invalid;
             return tok_dot;
         case '.':
             switch(_chrs[2])
@@ -539,11 +546,6 @@ static inline bool IsIdentifierChar(char c)
 }
 #endif
 
-static inline bool IsNumericChar(char c)
-{
-    return (((cast(unsigned) c) - '0') <= 9);
-}
-
 static inline bool IsHexLiteralChar(char c)
 {
   c |= 32;
@@ -879,6 +881,7 @@ metac_token_t* MetaCLexerLexNextToken(metac_lexer_t* self,
     }
     int32_t eatenChars = 0;
     char c = *text++;
+    bool sawDot;
 LcontinueLexing:
     {
         uint32_t column = state->Column;
@@ -937,296 +940,298 @@ LcontinueLexing:
 
     if (c && (token.TokenType = MetaCLexFixedLengthToken(text)) == tok_invalid)
     {
-        // const char* begin = text;
-        if (c)
+        if (c == '.')
         {
-            if (IsIdentifierChar(c))
+            sawDot = true;
+            goto LcontinueLexing;
+        }
+        if (IsIdentifierChar(c))
+        {
+            uint32_t identifierLength = 0;
+            uint32_t identifierHash = ~0;
+            const char* identifierBegin = text;
+
+            while ((c = *text++) && (IsIdentifierChar(c) || IsNumericChar(c)))
             {
-                uint32_t identifierLength = 0;
-                uint32_t identifierHash = ~0;
-                const char* identifierBegin = text;
-
-                while ((c = *text++) && (IsIdentifierChar(c) || IsNumericChar(c)))
-                {
 #ifdef INCREMENTAL_HASH
-                    identifierHash = crc32c_byte(identifierHash, c);
+                identifierHash = crc32c_byte(identifierHash, c);
 #endif
-                    identifierLength++;
-                    eatenChars++;
-                }
-                token.TokenType = tok_identifier;
-                assert(identifierLength < 0xFFF);
-                state->Column += eatenChars;
+                identifierLength++;
+                eatenChars++;
+            }
+            token.TokenType = tok_identifier;
+            assert(identifierLength < 0xFFF);
+            state->Column += eatenChars;
 #ifndef INCREMENTAL_HASH
-                identifierHash = crc32c_nozero(~0, identifierBegin, identifierLength);
+            identifierHash = crc32c_nozero(~0, identifierBegin, identifierLength);
 #endif
-                token.IdentifierKey =
-                    IDENTIFIER_KEY(identifierHash, identifierLength);
+            token.IdentifierKey =
+                IDENTIFIER_KEY(identifierHash, identifierLength);
 
-                // You can take out keyword matching but it doesn't cost much anywys
-                MetaCLexerMatchKeywordIdentifier(&token, identifierBegin);
+            // You can take out keyword matching but it doesn't cost much anywys
+            MetaCLexerMatchKeywordIdentifier(&token, identifierBegin);
 
-                if(token.TokenType == tok_identifier)
-                {
-                    token.IdentifierPtr = GetOrAddIdentifier(&self->IdentifierTable, token.IdentifierKey, identifierBegin);
+            if(token.TokenType == tok_identifier)
+            {
+                token.IdentifierPtr = GetOrAddIdentifier(&self->IdentifierTable, token.IdentifierKey, identifierBegin);
 #if !defined(NO_PREPROCESSOR)
-                    if (token.IdentifierKey == define_key)
+                if (token.IdentifierKey == define_key)
+                {
+                    if (self->TokenCount && self->Tokens[self->TokenCount - 1].TokenType == tok_hash)
                     {
-                        if (self->TokenCount && self->Tokens[self->TokenCount - 1].TokenType == tok_hash)
-                        {
-                            self->InDefine = true;
-                        }
+                        self->InDefine = true;
                     }
+                }
 #endif
+            }
+        }
+        else if (IsNumericChar(c))
+        {
+            token.TokenType = tok_uint;
+            parse_number_flag_t numberFlags = parse_number_flag_none;
+            uint64_t value;
+            uint32_t initialPos = eatenChars;
+//             LparseDigits:
+            value = 0;
+            if (sawDot) goto LparseFloat;
+
+            if (c == '0')
+            {
+                ++text;
+                c = *text;
+                eatenChars++;
+                if (c == 'x')
+                {
+                    text++;
+                    eatenChars++;
+                    if (!ParseHex(&text, &eatenChars, &value))
+                    {
+                        ParseErrorF(loc, "invalid hex literal %.*s", 4, text - 1);
+                        result = &err_token;
+                        goto Lreturn;
+                    }
+                    U32(numberFlags) |= parse_number_flag_hex;
+
+                    c = *text++;
+                    //printf("eaten_chars: %u -- C: %c\n", eatenChars, c);
+                    goto LParseNumberDone;
+                }
+                else if (c >= '0' && c <= '7') // if an octal number follows
+                {
+                    if (!ParseOctal(&text, &eatenChars, &value))
+                    {
+                        ParseErrorF(loc, "invalid octal literal %.*s", 4, text - 1);
+                        result = &err_token;
+                        goto Lreturn;
+                    }
+                    U32(numberFlags) |= parse_number_flag_octal;
+
+                    c = *text++;
+                    goto LParseNumberDone;
+                }
+                else // nither x nor octal number follows 0
+                {
+                    // nothing to do here value was already intialized to 0
                 }
             }
-            else if (IsNumericChar(c))
-            {
-                token.TokenType = tok_uint;
-                parse_number_flag_t numberFlags = parse_number_flag_none;
-                uint64_t value;
-                uint32_t initialPos = eatenChars;
-//             LparseDigits:
-                value = 0;
 
-                if (c == '0')
+            while (c && IsNumericChar((c = *text++)))
+            {
+                eatenChars++;
+                value *= 10;
+                value += c - '0';
+            }
+        LParseNumberDone:
+            c |= 32;
+
+            if ((c == 'f') | (c == '.'))
+LparseFloat:    {
+                int32_t backwards = (eatenChars - initialPos);
+                text = text - (backwards + 1);
+                eatenChars -= backwards;
+                assert(eatenChars >= 0);
+                double fValue;
+                if (ParseFloat(&text, &eatenChars, &fValue))
                 {
-                    ++text;
+                    U32(numberFlags) |= parse_number_flag_float;
+                    token.ValueF52 = fValue;
+                    token.TokenType = tok_float;
                     c = *text;
-                    eatenChars++;
-                    if (c == 'x')
+                    if (c == 'f')
                     {
+                        //TODO convert to f23 and put flag in.
                         text++;
                         eatenChars++;
-                        if (!ParseHex(&text, &eatenChars, &value))
-                        {
-                            ParseErrorF(loc, "invalid hex literal %.*s", 4, text - 1);
-                            result = &err_token;
-                            goto Lreturn;
-                        }
-                        U32(numberFlags) |= parse_number_flag_hex;
-
-                        c = *text++;
-                        //printf("eaten_chars: %u -- C: %c\n", eatenChars, c);
-                        goto LParseNumberDone;
-                    }
-                    else if (c >= '0' && c <= '7') // if an octal number follows
-                    {
-                        if (!ParseOctal(&text, &eatenChars, &value))
-                        {
-                            ParseErrorF(loc, "invalid octal literal %.*s", 4, text - 1);
-                            result = &err_token;
-                            goto Lreturn;
-                        }
-                        U32(numberFlags) |= parse_number_flag_octal;
-
-                        c = *text++;
-                        goto LParseNumberDone;
-                    }
-                    else // nither x nor octal number follows 0
-                    {
-                        // nothing to do here value was already intialized to 0
-                    }
-                }
-
-                while (c && IsNumericChar((c = *text++)))
-                {
-                    eatenChars++;
-                    value *= 10;
-                    value += c - '0';
-                }
-            LParseNumberDone:
-                c |= 32;
-
-                if ((c == 'f') | (c == '.'))
-                {
-                    int32_t backwards = (eatenChars - initialPos);
-                    text = text - (backwards + 1);
-                    eatenChars -= backwards;
-                    assert(eatenChars >= 0);
-                    double fValue;
-                    if (ParseFloat(&text, &eatenChars, &fValue))
-                    {
-                        U32(numberFlags) |= parse_number_flag_float;
-                        token.ValueF52 = fValue;
-                        token.TokenType = tok_float;
-                        c = *text;
-                        if (c == 'f')
-                        {
-                            //TODO convert to f23 and put flag in.
-                            text++;
-                            eatenChars++;
-                        }
-                    }
-                    else
-                    {
-                        assert(0);
                     }
                 }
                 else
                 {
-                    while (c == 'u' ||  c == 'l')
-                    {
-                        if (c == 'u')
-                        {
-                            U32(numberFlags) |= parse_number_flag_unsigned;
-                        }
-                        else if (c == 'l')
-                        {
-                            if ((numberFlags & parse_number_flag_long) != 0)
-                            {
-                                U32(numberFlags) |= parse_number_flag_long_long;
-                            }
-                            U32(numberFlags) |= parse_number_flag_long;
-                        }
-                        eatenChars++;
-                        c = (*text++ | 32);
-                    }
+                    assert(0);
                 }
-
-                if ((numberFlags & parse_number_flag_float) == 0)
-                {
-                    token.ValueU64 = value;
-                }
-
-                token.ValueLength = eatenChars - initialPos;
-                token.NumberFlags = numberFlags;
-                state->Column += eatenChars;
             }
-            else if (c == '\'')
+            else
             {
-                uint32_t charLength = 0;
-                text++;
-                token.TokenType = tok_char;
-                c = *text++;
-                eatenChars++;
-                if (c == '\'')
+                while (c == 'u' ||  c == 'l')
                 {
-                    ParseError(loc, "Empty character Literal");
-                    result = &err_token;
+                    if (c == 'u')
+                    {
+                        U32(numberFlags) |= parse_number_flag_unsigned;
+                    }
+                    else if (c == 'l')
+                    {
+                        if ((numberFlags & parse_number_flag_long) != 0)
+                        {
+                            U32(numberFlags) |= parse_number_flag_long_long;
+                        }
+                        U32(numberFlags) |= parse_number_flag_long;
+                    }
+                    eatenChars++;
+                    c = (*text++ | 32);
+                }
+            }
+
+            if ((numberFlags & parse_number_flag_float) == 0)
+            {
+                token.ValueU64 = value;
+            }
+
+            token.ValueLength = eatenChars - initialPos;
+            token.NumberFlags = numberFlags;
+            state->Column += eatenChars;
+        }
+        else if (c == '\'')
+        {
+            uint32_t charLength = 0;
+            text++;
+            token.TokenType = tok_char;
+            c = *text++;
+            eatenChars++;
+            if (c == '\'')
+            {
+                ParseError(loc, "Empty character Literal");
+                result = &err_token;
+                goto Lreturn;
+            }
+            while(c && c != '\'')
+            {
+                token.chars[charLength++] = c;
+                if (charLength > 8)
+                {
+                    ParseError(loc, "Char literal too long.");
+                    token.TokenType = tok_error;
                     goto Lreturn;
                 }
-                while(c && c != '\'')
-                {
-                    token.chars[charLength++] = c;
-                    if (charLength > 8)
-                    {
-                        ParseError(loc, "Char literal too long.");
-                        token.TokenType = tok_error;
-                        goto Lreturn;
-                    }
 
-                    if (c == '\\')
-                    {
-                        c = *text++;
-                        token.chars[charLength++] = c;
-                        eatenChars++;
-                        if (!IsValidEscapeChar(c))
-                        {
-                            ParseErrorF(loc, "Invalid escape seqeunce '%.*s'", 4, (text - 2));
-                        }
-                        if (c == 'U')
-                        {
-                            // start eating the chars after the /U
-                            // since there might be up to eight
-                            token.TokenType = tok_char_uni;
-                            charLength = 0;
-                        }
-                    }
+                if (c == '\\')
+                {
                     c = *text++;
+                    token.chars[charLength++] = c;
                     eatenChars++;
+                    if (!IsValidEscapeChar(c))
+                    {
+                        ParseErrorF(loc, "Invalid escape seqeunce '%.*s'", 4, (text - 2));
+                    }
+                    if (c == 'U')
+                    {
+                        // start eating the chars after the /U
+                        // since there might be up to eight
+                        token.TokenType = tok_char_uni;
+                        charLength = 0;
+                    }
                 }
-                if (*text++ != '\'')
-                {
-                    assert("Unterminated char literal");
-                }
-                state->Column += eatenChars++;
-                token.charLength = charLength;
-            }
-            else if (c == '\"' || c == '`')
-            {
-                ++text;
-                char matchTo = c;
-                token.TokenType = tok_string;
-                const char* stringBegin = text;
-                uint32_t stringHash = ~0u;
                 c = *text++;
-
-                uint32_t column = state->Column;
                 eatenChars++;
-                uint32_t eatenCharsAtStringStart = eatenChars;
+            }
+            if (*text++ != '\'')
+            {
+                assert("Unterminated char literal");
+            }
+            state->Column += eatenChars++;
+            token.charLength = charLength;
+        }
+        else if (c == '\"' || c == '`')
+        {
+            ++text;
+            char matchTo = c;
+            token.TokenType = tok_string;
+            const char* stringBegin = text;
+            uint32_t stringHash = ~0u;
+            c = *text++;
 
-                while(c && c != matchTo)
+            uint32_t column = state->Column;
+            eatenChars++;
+            uint32_t eatenCharsAtStringStart = eatenChars;
+
+            while(c && c != matchTo)
+            {
+#ifdef INCREMENTAL_HASH
+                stringHash = crc32c_byte(stringHash, c);
+#endif
+                eatenChars++;
+                column++;
+                if (c == '\\')
                 {
+                    eatenChars++;
+                    column++;
 #ifdef INCREMENTAL_HASH
                     stringHash = crc32c_byte(stringHash, c);
 #endif
-                    eatenChars++;
-                    column++;
-                    if (c == '\\')
+                    c = *text++;
+                    if (!IsValidEscapeChar(c))
                     {
-                        eatenChars++;
-                        column++;
-#ifdef INCREMENTAL_HASH
-                        stringHash = crc32c_byte(stringHash, c);
-#endif
-                        c = *text++;
-                        if (!IsValidEscapeChar(c))
-                        {
-                            state->Column = column;
-                            ParseErrorF(loc, "Invalid escape seqeunce '%.*s'", 4, (text - 2));
-                        }
-                        if (c == '\n')
-                        {
-                            state->Line++;
-                            column = 0;
-                        }
+                        state->Column = column;
+                        ParseErrorF(loc, "Invalid escape seqeunce '%.*s'", 4, (text - 2));
+                    }
+                    if (c == '\n')
+                    {
+                        state->Line++;
+                        column = 0;
+                    }
 
-                     }
-                     c = *text++;
-                }
-
-                if (c != matchTo)
-                {
-                    ParseErrorF(loc, "Unterminated string literal '%.*s' \n", 10, text - eatenChars - 1);
-                    result = &err_token;
-                    goto Lreturn;
-                }
-
-                uint32_t stringLength = (eatenChars - eatenCharsAtStringStart);
-
-                eatenChars++;
-#ifndef INCREMENTAL_HASH
-                stringHash = crc32c_nozero(~0, stringBegin, stringLength);
-#endif
-                assert(stringLength < 0xFFFFF);
-                state->Column = column;
-                token.Key = STRING_KEY(stringHash, stringLength);
-                token.StringPtr = GetOrAddIdentifier(&self->StringTable, token.Key, stringBegin);
+                 }
+                 c = *text++;
             }
-            //TODO special hack as long as we don't do proper preprocessing
-            else if (c == '\\')
+
+            if (c != matchTo)
             {
-                text++;
+                ParseErrorF(loc, "Unterminated string literal '%.*s' \n", 10, text - eatenChars - 1);
+                result = &err_token;
+                goto Lreturn;
+            }
+
+            uint32_t stringLength = (eatenChars - eatenCharsAtStringStart);
+
+            eatenChars++;
+#ifndef INCREMENTAL_HASH
+            stringHash = crc32c_nozero(~0, stringBegin, stringLength);
+#endif
+            assert(stringLength < 0xFFFFF);
+            state->Column = column;
+            token.Key = STRING_KEY(stringHash, stringLength);
+            token.StringPtr = GetOrAddIdentifier(&self->StringTable, token.Key, stringBegin);
+        }
+        //TODO special hack as long as we don't do proper preprocessing
+        else if (c == '\\')
+        {
+            text++;
+            c = *text++;
+            if (c == '\n')
+            {
                 c = *text++;
-                if (c == '\n')
-                {
-                    c = *text++;
-                    state->Line++;
-                    state->Column = 0;
-                    goto LcontinueLexing;
-                }
-                else if (c == '\r')
-                {
-                    c = *text++;
-                    state->Column = 0;
-                    goto LcontinueLexing;
-                }
-                else
-                {
-                    ParseErrorF(loc, "escaping '\\%c' in wild code\n", UnescapedChar(c));
-                    assert(0); // this is not to escape a newline
-                }
+                state->Line++;
+                state->Column = 0;
+                goto LcontinueLexing;
+            }
+            else if (c == '\r')
+            {
+                c = *text++;
+                state->Column = 0;
+                goto LcontinueLexing;
+            }
+            else
+            {
+                ParseErrorF(loc, "escaping '\\%c' in wild code\n", UnescapedChar(c));
+                assert(0); // this is not to escape a newline
             }
         }
     }
