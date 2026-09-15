@@ -224,13 +224,13 @@ static inline void PrintI64(metac_printer_t* self, int64_t value)
     PrintString(self, result, length);
 }
 
-static inline void PrintF23(metac_printer_t* self, float value)
+static inline void PrintF52(metac_printer_t* self, double value)
 {
-    char f23Buffer[25];
+    char f52Buffer[25];
 
-    int len = fpconv_dtoa(cast(double) value, f23Buffer);
-    f23Buffer[len] = 'f';
-    PrintString(self, f23Buffer, len + 1);
+    int len = fpconv_dtoa(cast(double) value, f52Buffer);
+    // f23Buffer[len] = 'f';
+    PrintString(self, f52Buffer, len);
 }
 
 
@@ -266,7 +266,7 @@ static inline void PrintNumber(metac_printer_t* self, const metac_token_t* token
     if (flags & parse_number_flag_float)
     {
         //TODO use dedicated thingy for double.
-        PrintF23(self, token->ValueF23);
+        PrintF52(self, token->ValueF52);
     }
     else // Integer-Typen
     {
@@ -1443,7 +1443,7 @@ static inline void PrintExpr(metac_printer_t* self, metac_expr_t* expr)
     }
     else if (expr->Kind == expr_float)
     {
-        PrintF23(self, expr->ValueF23);
+        PrintF52(self, expr->ValueF52);
     }
     else if (expr->Kind == expr_char)
     {
@@ -2075,7 +2075,7 @@ static inline void PrintSemaExpr(metac_printer_t* self,
     }
     else if (semaExpr->Kind == expr_float)
     {
-        PrintF23(self, semaExpr->ValueF23);
+        PrintF52(self, semaExpr->ValueF52);
     }
     else if (semaExpr->Kind == expr_char)
     {

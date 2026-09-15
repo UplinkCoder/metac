@@ -229,7 +229,7 @@ EvaluateExpr(metac_sema_state_t* sema,
              TYPE_INDEX_INDEX(e->TypeIndex) == (uint32_t) type_float)
     {
         result.Kind = expr_float;
-        result.ValueF23 = *(float*) &resultInt;
+        result.ValueF52 = *(float*) &resultInt;
         result.TypeIndex.v = TYPE_INDEX_V(type_index_basic, type_float);
     }
     else

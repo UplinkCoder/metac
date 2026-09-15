@@ -1120,8 +1120,8 @@ static void MetaCCodegen_doExpr(metac_bytecode_ctx_t* ctx,
         }
         else if (op == expr_float)
         {
-            (*result) = imm32(*(uint32_t*)&exp->ValueF23);
-            result->type.type = BCTypeEnum_f23;
+            (*result) = imm64(*(uint64_t*)&exp->ValueF52);
+            result->type.type = BCTypeEnum_f52;
             goto Lret;
         }
 
