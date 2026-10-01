@@ -51,7 +51,7 @@ typedef struct repl_state_t
 
     const char* Line;
 
-    const char* Promt;
+    const char* Prompt;
 
     char* SrcBuffer;
     void* FreePtr;

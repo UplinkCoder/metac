@@ -438,40 +438,40 @@ void Repl_SwtichMode(repl_state_t* self)
     {
     case repl_mode_max: assert(0);
     case repl_mode_lex_file:
-        self->Promt = ">File<";
+        self->Prompt = ">File<";
         break;
     case repl_mode_token:
-        self->Promt = "Token>";
+        self->Prompt = "Token>";
         break;
     case repl_mode_decl:
-        self->Promt = "Decl>";
+        self->Prompt = "Decl>";
         break;
     case repl_mode_expr:
-        self->Promt = "Exp>";
+        self->Prompt = "Exp>";
         break;
     case repl_mode_stmt:
-        self->Promt = "Stmt>";
+        self->Prompt = "Stmt>";
         break;
     case repl_mode_preproc:
-        self->Promt = "Preproc>";
+        self->Prompt = "Preproc>";
         break;
     case repl_mode_ee:
-        self->Promt = "EE>";
+        self->Prompt = "EE>";
         break;
     case repl_mode_e2:
-        self->Promt = "E2>";
+        self->Prompt = "E2>";
         break;
     case repl_mode_es:
-        self->Promt = "ES>";
+        self->Prompt = "ES>";
         break;
     case repl_mode_ss:
-        self->Promt = "SS>";
+        self->Prompt = "SS>";
         break;
     case repl_mode_ds:
-        self->Promt = "DS>";
+        self->Prompt = "DS>";
         break;
     case repl_mode_setvars:
-        self->Promt = "SetVars>";
+        self->Prompt = "SetVars>";
         break;
     }
 }
@@ -489,7 +489,7 @@ void Repl_Init(repl_state_t* self)
     self->FreePtr = 0;
     self->SrcBufferLength = 0;
 
-    self->Promt = ">";
+    self->Prompt = ">";
 
     AllocDefaultHeap(&self->Heap);
 

@@ -23,7 +23,7 @@ const char* Linenoise_GetInputLine(ui_state_t* state, repl_state_t* repl, uint32
     uint32_t length = 0;
 
     ALIGN_STACK();
-    line = linenoise(repl->Promt);
+    line = linenoise(repl->Prompt);
     RESTORE_STACK();
 
     if (line && *line)
