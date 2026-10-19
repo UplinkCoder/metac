@@ -881,7 +881,7 @@ metac_token_t* MetaCLexerLexNextToken(metac_lexer_t* self,
     }
     int32_t eatenChars = 0;
     char c = *text++;
-    bool sawDot;
+    bool sawDot = false;
 LcontinueLexing:
     {
         uint32_t column = state->Column;
