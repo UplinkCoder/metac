@@ -144,7 +144,7 @@ const char* MetaCNodeKind_toChars(metac_node_kind_t type);
 const char* MetaCExprKind_toChars(metac_expr_kind_t type);
 
 decl_parameter_list_t ParseParameterList(metac_parser_t* self,
-                                         decl_function_t* parent);
+                                         metac_node_t parent);
 
 bool IsExprNode(metac_node_kind_t Kind);
 

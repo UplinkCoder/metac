@@ -912,7 +912,7 @@ uint32_t HashDecl(metac_decl_t* decl);
 
 
 decl_parameter_list_t ParseParameterList(metac_parser_t* self,
-                                         decl_function_t* parent)
+                                         metac_node_t parent)
 {
     uint32_t hash = CRC32C_PARENPAREN;
 
@@ -1899,10 +1899,10 @@ metac_decl_t* MetaCParser_ParseDecl(metac_parser_t* self, metac_decl_t* parent)
             fType->Parameters     = f->FunctionParameters;
             fType->ParameterCount = f->FunctionParameterCount;
 
-            synVar.VarType       = fType;
+            synVar.VarType       = cast(decl_type_t*) fType;
             synVar.VarIdentifier = f->Identifier;
             synVar.Kind = decl_variable;
-            synVar.Hash = HashDecl(&synVar);
+            synVar.Hash = HashDecl(cast(metac_decl_t*) &synVar);
             var = &synVar;
         }
 
