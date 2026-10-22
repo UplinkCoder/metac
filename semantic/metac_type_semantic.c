@@ -250,6 +250,7 @@ static inline bool TypeConvertsToPointer(const metac_type_index_t a)
                 TYPE_INDEX_INDEX(a);
             result = (basicKind == basic_int);
         }
+        break;
         default :
             result = false;
     }

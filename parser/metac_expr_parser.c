@@ -697,7 +697,7 @@ metac_expr_t* MetaCParser_ParsePrimaryExpr(metac_parser_t* self, parse_expr_flag
             else
             {
                 decl_parameter_list_t paramList;
-                paramList = ParseParameterList(self, result);
+                paramList = ParseParameterList(self, METAC_NODE(result));
                 result->FuncParameterCount = paramList.ParameterCount;
                 result->FuncParameters = paramList.List;
                 hash ^= paramList.Hash;

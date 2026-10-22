@@ -1499,7 +1499,7 @@ decl_function_t* ParseFunctionDecl(metac_parser_t* self,
     funcDecl->Identifier = identifier;
 
     funcDecl->FunctionBody = (stmt_block_t*) _emptyPointer;
-    decl_parameter_list_t parameterList = ParseParameterList(self, funcDecl);
+    decl_parameter_list_t parameterList = ParseParameterList(self, METAC_NODE(funcDecl));
     funcDecl->FunctionParameters = parameterList.List;
     funcDecl->FunctionParameterCount = parameterList.ParameterCount;
 
