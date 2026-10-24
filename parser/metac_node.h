@@ -103,7 +103,9 @@
     M(expr_string) \
     M(expr_char) \
     M(expr_signed_integer) \
-    M(expr_float)
+    M(expr_float) \
+    M(expr_tuple)
+
 
 #define FOREACH_UNARY_EXP(M) \
     M(expr_increment) \
@@ -140,7 +142,6 @@
     M(expr_run) \
     \
     M(expr_paren) \
-    M(expr_tuple) \
     M(expr_ternary) \
     M(expr_cast) \
     \
