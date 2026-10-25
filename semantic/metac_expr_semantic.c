@@ -181,8 +181,11 @@ EvaluateExpr(metac_sema_state_t* sema,
 
     MetaCCodegen_End(&ctx);
 
-    uint32_t resultInt =
+    BCValue resultVal =
         MetaCCodegen_RunFunction(&ctx, fCode, &interpAlloc, heap, "", 0);
+
+    int64_t resultInt = resultVal.imm64.imm64;
+    double resultDouble = *(double*)&resultInt;
 
     MetaCCodegen_UnsetDefaultInterface();
 
@@ -194,7 +197,7 @@ EvaluateExpr(metac_sema_state_t* sema,
     {
         result.Kind = expr_type;
         result.TypeIndex.v = TYPE_INDEX_V(type_index_basic, type_type);
-        result.TypeExp.v = resultInt;
+        result.TypeExp.v = cast(uint32_t)resultInt;
     }
     else if (TYPE_INDEX_KIND(e->TypeIndex) == type_index_tuple)
     {
@@ -226,11 +229,12 @@ EvaluateExpr(metac_sema_state_t* sema,
         result.TupleExprCount = count;
     }
     else if (TYPE_INDEX_KIND(e->TypeIndex) == type_index_basic &&
-             TYPE_INDEX_INDEX(e->TypeIndex) == (uint32_t) type_float)
+             (TYPE_INDEX_INDEX(e->TypeIndex) == (uint32_t) type_float
+          ||  TYPE_INDEX_INDEX(e->TypeIndex) == (uint32_t) type_double) )
     {
         result.Kind = expr_float;
-        result.ValueF52 = *(float*) &resultInt;
-        result.TypeIndex.v = TYPE_INDEX_V(type_index_basic, type_float);
+        result.ValueF52 =  resultDouble;
+        result.TypeIndex.v = TYPE_INDEX_V(type_index_basic, type_double);
     }
     else
     {

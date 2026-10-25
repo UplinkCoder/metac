@@ -326,11 +326,11 @@ void MetaCCodegen_doGlobal(metac_bytecode_ctx_t* ctx, metac_sema_decl_t* decl, u
 }
 
 
-long MetaCCodegen_RunFunction(metac_bytecode_ctx_t* self,
-                              metac_bytecode_function_t f,
-                              metac_alloc_t* interpAlloc,
-                              BCHeap* heap,
-                              const char* fargs, ...)
+BCValue MetaCCodegen_RunFunction(metac_bytecode_ctx_t* self,
+                                 metac_bytecode_function_t f,
+                                 metac_alloc_t* interpAlloc,
+                                 BCHeap* heap,
+                                 const char* fargs, ...)
 {
     va_list l;
     va_start(l, fargs);
@@ -383,7 +383,7 @@ long MetaCCodegen_RunFunction(metac_bytecode_ctx_t* self,
     va_end(l);
 
     BCValue result = gen.Run(self->c, f.FunctionIndex, args, nArgs, heap);
-    return result.imm32.imm32;
+    return result;
 }
 
 void MetaCCodegen_End(metac_bytecode_ctx_t* self)

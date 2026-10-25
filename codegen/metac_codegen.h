@@ -141,11 +141,11 @@ static void MetaCCodegen_doExpr(metac_bytecode_ctx_t* ctx,
 
 uint32_t MetaCCodegen_GetStorageSize(metac_bytecode_ctx_t* ctx, BCType bcType);
 
-long MetaCCodegen_RunFunction(metac_bytecode_ctx_t* self,
-                              metac_bytecode_function_t f,
-                              metac_alloc_t* interpAlloc,
-                              BCHeap* heap,
-                              const char* fargs, ...);
+BCValue MetaCCodegen_RunFunction(metac_bytecode_ctx_t* self,
+                                 metac_bytecode_function_t f,
+                                 metac_alloc_t* interpAlloc,
+                                 BCHeap* heap,
+                                 const char* fargs, ...);
 
 void MetaCCodegen_SetDefaultInterface(const BackendInterface* defInterface);
 void MetaCCodegen_UnsetDefaultInterface(void);
