@@ -2826,17 +2826,18 @@ static inline void BCGen_emitArithInstruction(BCGen* self
             inst = (LongInst)t;
         }
     }
-    else if (rhs_vType == BCValueType_Immediate)
+
+    if (rhs_vType == BCValueType_Immediate)
     {
-        const int64_t imm64s = (BCTypeEnum_basicTypeSize(rhs_type_type) <= 8 ? cast(int64_t)rhsP->imm64.imm64 : 0);
+        const int64_t imm64s = ((BCTypeEnum_basicTypeSize(rhs_type_type) <= 8) ? cast(int64_t)rhsP->imm64.imm64 : 0);
         if  (BCTypeEnum_basicTypeSize(rhs_type_type) <= 4 || (imm64s <= INT32_MAX && imm64s > -INT32_MAX))
         {
             //Change the instruction into the corresponding Imm Instruction;
             if (inst != LongInst_Set)
             {
-                int t = (int) inst;
-                t += ((int)LongInst_ImmAdd - (int)LongInst_Add);
-                inst = (LongInst)t;
+                int t = cast(int) inst;
+                t += (cast(int)LongInst_ImmAdd - cast(int)LongInst_Add);
+                inst = cast(LongInst)t;
             }
             else
             {
@@ -2859,6 +2860,7 @@ static inline void BCGen_emitArithInstruction(BCGen* self
     }
     else
     {
+        printf("The valueType: '%s' is unexpected here\n", BCValueType_toChars(&rhsP->vType));
         assert(0);//, "Cannot handle: " ~ enumToString(rhs.vType));
     }
 Lreturn:
