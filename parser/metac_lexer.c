@@ -880,9 +880,11 @@ metac_token_t* MetaCLexerLexNextToken(metac_lexer_t* self,
         // printf("Not enough token storage\n");
     }
     int32_t eatenChars = 0;
-    char c = *text++;
     bool sawDot = false;
-LcontinueLexing:
+    char c;
+
+LcontinueLexing: {}
+    c = *text++;
     {
         uint32_t column = state->Column;
         uint32_t line = state->Line;
@@ -940,9 +942,10 @@ LcontinueLexing:
 
     if (c && (token.TokenType = MetaCLexFixedLengthToken(text)) == tok_invalid)
     {
-        if (c == '.')
+        if (c == '.' && !sawDot)
         {
             sawDot = true;
+            text += 1;
             goto LcontinueLexing;
         }
         if (IsIdentifierChar(c))
