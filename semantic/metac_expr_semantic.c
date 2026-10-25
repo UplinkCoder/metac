@@ -1040,8 +1040,8 @@ LswitchIdKey:
         }
         break;
         case expr_float :
-            hash = CRC32C_VALUE(expr_float, expr->ValueF23);
-            result->TypeIndex = MetaCSemantic_GetTypeIndex(self, type_float, (decl_type_t*)emptyPointer);
+            hash = CRC32C_VALUE(expr_float, expr->ValueF52);
+            result->TypeIndex = MetaCSemantic_GetTypeIndex(self, type_double, (decl_type_t*)emptyPointer);
         break;
 
         case expr_assign:
