@@ -86,7 +86,7 @@ int MetaCSemaTree_Walk_Real(metac_node_t node, struct metac_sema_state_t* sema,
         case node_decl_min:
         case node_decl_max:
             assert(0);
-        FOREACH_PRIMARY_EXP(CASE_)
+//        FOREACH_PRIMARY_EXP(CASE_)
             break;
 
         FOREACH_BINARY_EXP(CASE_)
