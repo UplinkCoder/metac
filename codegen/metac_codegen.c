@@ -915,7 +915,8 @@ static void MetaCCodegen_doCastExpr(metac_bytecode_ctx_t* ctx,
 
     if (castToKind == castFromKind && castToKind == type_index_ptr)
     {
-        
+        gen.Set(c, result, &rhs);
+        return;
     }
 
     if (castToType.v == TYPE_INDEX_V(type_index_basic, type_float))
@@ -929,6 +930,23 @@ static void MetaCCodegen_doCastExpr(metac_bytecode_ctx_t* ctx,
                 rhs = tmp;
             }
             gen.IToF32(c, result, &rhs);
+            return;
+        }
+    }
+    else if (castToType.v == TYPE_INDEX_V(type_index_basic, type_double))
+    {
+        if (castFromType.v == TYPE_INDEX_V(type_index_basic, type_int)
+         || castFromType.v == TYPE_INDEX_V(type_index_basic, type_long)
+         || castFromType.v == TYPE_INDEX_V(type_index_basic, type_long_long))
+        {
+            if (rhs.vType == BCValueType_Immediate)
+            {
+                BCType intType = MetaCCodegen_GetBCType(ctx, castFromType);
+                BCValue tmp = gen.GenTemporary(c, intType);
+                gen.Set(c, &tmp, &rhs);
+                rhs = tmp;
+            }
+            gen.IToF64(c, result, &rhs);
             return;
         }
     }
@@ -946,10 +964,38 @@ static void MetaCCodegen_doCastExpr(metac_bytecode_ctx_t* ctx,
             gen.F32ToI(c, result, &rhs);
             return;
         }
+        else if (castFromType.v == TYPE_INDEX_V(type_index_basic, type_double))
+        {
+            if (rhs.vType == BCValueType_Immediate)
+            {
+                BCType BCType_f52 = {BCTypeEnum_f52};
+                BCValue tmp = gen.GenTemporary(c, BCType_f52);
+                gen.Set(c, &tmp, &rhs);
+                rhs = tmp;
+            }
+            gen.F64ToI(c, result, &rhs);
+            return;
+        }
         else if (TYPE_INDEX_KIND(castFromType) == type_index_enum)
         {
             gen.Set(c, result, &rhs);
             return ;
+        }
+    }
+    else if (castToType.v == TYPE_INDEX_V(type_index_basic, type_long)
+          || castToType.v == TYPE_INDEX_V(type_index_basic, type_long_long))
+    {
+        if (castFromType.v == TYPE_INDEX_V(type_index_basic, type_double))
+        {
+            if (rhs.vType == BCValueType_Immediate)
+            {
+                BCType BCType_f52 = {BCTypeEnum_f52};
+                BCValue tmp = gen.GenTemporary(c, BCType_f52);
+                gen.Set(c, &tmp, &rhs);
+                rhs = tmp;
+            }
+            gen.F64ToI(c, result, &rhs);
+            return;
         }
     }
 
