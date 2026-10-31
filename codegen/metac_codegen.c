@@ -645,8 +645,11 @@ metac_bytecode_function_t MetaCCodegen_GenerateFunction(metac_bytecode_ctx_t* ct
     STACK_ARENA_ARRAY(BCValue, locals, 16, &ctx->Allocator)
     STACK_ARENA_ARRAY(BCAddr, breaks, 32, &ctx->Allocator)
 
+    const metac_identifier_table_t *semaIdTable =
+        &ctx->Sema->SemanticIdentifierTable;
+
     const char* fName =
-        IdentifierPtrToCharPtr(ctx->IdentifierTable, function->Identifier);
+        IdentifierPtrToCharPtr(semaIdTable, function->Identifier);
 
     uint32_t functionId =
         gen.BeginFunction(c, 0, fName);
@@ -666,7 +669,7 @@ metac_bytecode_function_t MetaCCodegen_GenerateFunction(metac_bytecode_ctx_t* ct
         BCType paramType = MetaCCodegen_GetBCType(ctx, paramVar->TypeIndex);
         uint32_t paramSize = MetaCCodegen_GetStorageSize(ctx, paramType);
 
-        const char* paramName = IdentifierPtrToCharPtr(ctx->IdentifierTable,
+        const char* paramName = IdentifierPtrToCharPtr(semaIdTable,
                                                        paramVar->VarIdentifier);
         BCValue param = gen.GenParameter(c, paramType, paramName);
         ARENA_ARRAY_ADD(parameters, param);
@@ -1888,10 +1891,12 @@ static inline bool IsEmpty(metac_stmt_t* stmt)
 void MetaCCodegen_doLocalVar(metac_bytecode_ctx_t* ctx,
                              sema_decl_variable_t* localVar)
 {
+    const metac_identifier_table_t *semaIdTable =
+        &ctx->Sema->SemanticIdentifierTable;
     const BackendInterface gen = *ctx->gen;
     void* c = ctx->c;
 
-    const char* localName = IdentifierPtrToCharPtr(ctx->IdentifierTable,
+    const char* localName = IdentifierPtrToCharPtr(semaIdTable,
                                                    localVar->VarIdentifier);
     BCType localType = MetaCCodegen_GetBCType(ctx, localVar->TypeIndex);
     BCValue local = gen.GenLocal(c, localType, localName);
