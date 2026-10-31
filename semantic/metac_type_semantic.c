@@ -821,7 +821,7 @@ void MetaCSemantic_ComputeEnumValues(metac_sema_state_t* self,
             assert(METAC_NODE(member) == emptyNode);
             MetaCSemantic_PopOnResolveFail(self);
 
-            if (unresolvedMembers == lastUnresolvedMembers)
+            if (unresolvedMembers && unresolvedMembers == lastUnresolvedMembers)
             {
                 // we have a the same number of unresolved members as last round
                 // which indicates a lack of local progress.
