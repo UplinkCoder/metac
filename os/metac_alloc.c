@@ -170,19 +170,29 @@ arena_ptr_t Allocate_(metac_alloc_t* allocator, uint32_t size,
     tagged_arena_t* arenas = allocator->Arenas;
 
 LsearchArena:
-    for(uint32_t arenaIdx = 0;
-       arenaIdx < ArenasCount;
-       arenaIdx++)
     {
-        tagged_arena_t candidate = arenas[arenaIdx];
-        if (!(candidate.Flags & arena_flag_inUse))
+        tagged_arena_t* best_arena = 0;
+        uint32_t min_size_left = 0xFFFFFFFF;
+        for (uint32_t arenaIdx = 0; arenaIdx < ArenasCount; arenaIdx++)
         {
-            // we will create a new arena from a reused one
-            if (candidate.SizeLeft >= size)
+            if (!(arenas[arenaIdx].Flags & arena_flag_inUse))
             {
-                arena = &arenas[arenaIdx];
-                break;
+                uint32_t sl = arenas[arenaIdx].SizeLeft;
+                if (sl == size)
+                {
+                    best_arena = &arenas[arenaIdx];
+                    break;
+                }
+                if (sl > size && sl < min_size_left)
+                {
+                    min_size_left = sl;
+                    best_arena = &arenas[arenaIdx];
+                }
             }
+        }
+        if (best_arena)
+        {
+            arena = best_arena;
         }
     }
 
@@ -345,7 +355,7 @@ void* Allocator_Realloc_(metac_alloc_t* alloc, void* oldMem,
             if (Arena_ContainsMemoryP(candidate, oldMem))
             {
                 oldArena = candidate;
-                oldArenaPtr.Index = i;
+                oldArenaPtr.Index = -(i + 1);
                 break;
             }
         }
@@ -361,7 +371,7 @@ void* Allocator_Realloc_(metac_alloc_t* alloc, void* oldMem,
             if (Arena_ContainsMemoryP(candidate, oldMem))
             {
                 oldArena = candidate;
-                oldArenaPtr.Index = i;
+                oldArenaPtr.Index = i + 1;
                 break;
             }
         }
