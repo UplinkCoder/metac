@@ -1,6 +1,47 @@
 // Semantic analysis for @run blocks and eject statements.
 // Included from metac_semantic.c (unity build).
 
+void MetaCSemantic_RunStmtSemantic(stmt_run_t* runStmt, metac_sema_state_t* parent)
+{
+    uint32_t runId = 0;
+    bool hasEject = false;
+    BCValue *compilerArg;
+    BCValue *bufferArg;
+    metac_semanatic_state_t* sema;
+
+    assert(runStmt->Kind == stmt_run);
+    // check if it contains an eject
+    // first scan for an eject stmt as this determines wheter we should make
+    // a token buffer
+    // TODO write a little test. for the eject scanning
+
+    for(metac_stmt_t* child = cast(metac_stmt_t*) runStmt->RunBody;
+        METAC_NODE(child) != emptyNode;
+        child = child->Next)
+    {
+        if (child->Kind == stmt_eject)
+        {
+            hasEject = true;
+            break;
+        }
+    }
+    MetaCSemantic_Init(sema, &LPP->Parser, 0);
+    MetaCSemantic_PushNewScope(sema, scope_owner_module, cast(metac_node_t)cast(intptr_t)1);
+
+
+    // TODO run sema on the run block so we can do codegen for it
+    gen.Initailze();
+    BCType compilerType = {0};
+    // GetBCType(parent->CompilerVariable.TypeIndex);
+    compilerArg = gen.GenParameter(c, compilerType);
+    if (hasEject)
+    {
+        tokenBufferArg = gen.GenParameter(c, tokenBufferType)
+    }
+    runId = gen.beginFunction("__run__");
+}
+
+
 static metac_sema_stmt_t* MetaCRunSemantic_Execute(metac_sema_state_t* self,
                                                   sema_decl_function_t* function,
                                                   bool fileScope)
