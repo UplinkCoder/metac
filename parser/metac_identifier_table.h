@@ -58,6 +58,10 @@ typedef struct metac_identifier_table_t
 
     uint32_t LengthShift;
     uint32_t MaxDisplacement;
+
+    /// Allocator used for Slots/StringMemory; null when the table was
+    /// loaded via ReadTable (malloc-backed) or zero-initialized.
+    metac_alloc_t* Alloc;
 } metac_identifier_table_t;
 
 #pragma pack(push, 1)
@@ -80,6 +84,10 @@ typedef struct identifier_table_file_header_t
 
 void IdentifierTable_Init_(metac_identifier_table_t* table, uint32_t lengthShift, uint32_t slotCountLog2, metac_alloc_t* alloc,
                            const char* file, uint32_t line);
+
+void IdentifierTable_Free(metac_identifier_table_t* table);
+
+bool MetaCIdentifierTable_Grow(metac_identifier_table_t* self, uint32_t nSlots);
 
 metac_identifier_ptr_t GetOrAddIdentifier(metac_identifier_table_t* table,
                                           uint32_t identifierKey,

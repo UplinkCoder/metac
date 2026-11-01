@@ -1,32 +1,69 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include "../compat.h"
-#include <unistd.h>
 #include <errno.h>
 
-char** app_args = 0;
+#if defined(_MSC_VER)
+#  include <process.h>
+#  if (_MSC_VER < 1900)
+#    define snprintf _snprintf
+#  endif
+#else
+#  include <unistd.h>
+#  include <sys/wait.h>
+/* strict C89 hides the C99 snprintf declaration from <stdio.h> */
+#  if !defined(__STDC_VERSION__) || __STDC_VERSION__ < 199901L
+int snprintf(char* str, size_t size, const char* format, ...);
+#  endif
+#endif
+
+const char** app_args = 0;
 
 int runApp(const char* file)
 {
-    pid_t pid;
-    if ((pid = fork()) == 0)
+    int res;
+
+    app_args[1] = file;
+
+#if defined(_MSC_VER)
+    /* _P_WAIT blocks until the child exits and returns its exit code,
+       or -1 if the process could not be started at all. */
+    res = (int) _spawnv(_P_WAIT, app_args[0], app_args);
+#else
     {
-        // printf("my fork just returned null, which means I am the child running %s\n", app_args[0]);
-        app_args[1] = file;
-        int res = execv(app_args[0], app_args);
-        // printf("res: %d\n", res);
-        return res;
+        pid_t pid = fork();
+        if (pid == 0)
+        {
+            /* Only reached when execv failed; must not fall back into main. */
+            execv(app_args[0], (char**) app_args);
+            _exit(127);
+        }
+        else if (pid > 0)
+        {
+            int status = 0;
+            waitpid(pid, &status, 0);
+            res = WIFEXITED(status) ? WEXITSTATUS(status) : -1;
+        }
+        else
+        {
+            res = -1;
+        }
     }
-    else
-    {
-        int res;
-        waitpid(pid, &res, 0);
-        return res;
-    }
+#endif
+
+    return res;
 }
 
 int main(int argc, const char* argv[])
 {
+    const char* tester_app;
+    const char* file;
+    FILE* fd;
+    long fSize;
+    int arg_idx;
+    char formatBuffer[512];
+    FILE* newFD;
+    char* newBuffer;
+
     if (argc < 3)
     {
         printf("Usage <tester_app> <filename> [optional arguments to tester app]");
@@ -35,27 +72,25 @@ int main(int argc, const char* argv[])
         return -1;
     }
 
-    const char* tester_app = argv[1];
-    const char* file       = argv[2];
+    tester_app = argv[1];
+    file       = argv[2];
 
-    FILE* fd = fopen(file, "rb");
+    fd = fopen(file, "rb");
     if (!fd)
     {
         perror("Opening source file");
         return -ENOENT;
     }
 
-    uint32_t fSize;
     fseek(fd, 0, SEEK_END);
     fSize = ftell(fd);
-    // char* fileMem = (char*) malloc(fSize);
     fseek(fd, 0, SEEK_SET);
 
-    app_args = malloc(((argc + 1) * sizeof(char*)));
+    app_args = (const char**) malloc((argc + 1) * sizeof(char*));
     app_args[0] = tester_app;
     app_args[1] = file;
 
-    for(int arg_idx = 3;
+    for(arg_idx = 3;
         arg_idx < argc;
         arg_idx++)
     {
@@ -69,12 +104,11 @@ int main(int argc, const char* argv[])
         return -1;
     }
 
-    // when we got here our app fails with the given argument as it is supposed to
-    // let's now write a new file which only has the upper half of the input
-    char formatBuffer[512];
-    snprintf(formatBuffer, 512, "%s.uprhlf", file);
-    FILE* newFD = fopen(formatBuffer, "wb");
-    char* newBuffer = malloc((fSize + 1) / 2);
+    /* when we got here our app fails with the given argument as it is supposed to
+       let's now write a new file which only has the upper half of the input */
+    snprintf(formatBuffer, sizeof(formatBuffer), "%s.uprhlf", file);
+    newFD = fopen(formatBuffer, "wb");
+    newBuffer = (char*) malloc((fSize + 1) / 2);
     fread(newBuffer, 1, fSize / 2, fd);
     fwrite(newBuffer, 1, fSize / 2, newFD);
     fclose(newFD);
@@ -88,7 +122,7 @@ int main(int argc, const char* argv[])
         printf("works on upper half\n");
     }
 
-    snprintf(formatBuffer, 512, "%s.lwrhlf", file);
+    snprintf(formatBuffer, sizeof(formatBuffer), "%s.lwrhlf", file);
     newFD = fopen(formatBuffer, "wb");
     fread(newBuffer, 1, fSize / 2, fd);
     fwrite(newBuffer, 1, fSize / 2, newFD);
@@ -102,13 +136,6 @@ int main(int argc, const char* argv[])
     {
         printf("works on lower half\n");
     }
-
-
-    enum
-    {
-        lower_half,
-        upper_half
-    };
 
     return 0;
 #if 0

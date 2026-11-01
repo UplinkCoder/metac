@@ -53,7 +53,14 @@ os_error_t PageAlloc(uint32_t minSize, uint32_t* allocatedSize, void** outMemory
 
     return Error_Success;
 }
-/// Get's a 32bit time stamp where the upper 16 bit are second resolution and the lower 16 bit are in increments of 16 microseconds.
+/// Packed performance timestamp (32-bit):
+///   [31:16] seconds (mod 65536, wraps ~18.2h) — coarse scale, 1s steps
+///   [15:0]  (usec / 16) — fine scale, 16us steps, resets each second
+///
+/// Designed for short-interval perf logging: sub-second deltas keep 16us
+/// resolution; over minutes/hours only the second field advances, so
+/// precision degrades to 1s (and absolute wall-clock identity is lost
+/// after the 16-bit second wrap). Use TimeStampDeltaUs for signed deltas.
 os_error_t GetTimeStamp(uint32_t* tsp)
 {
 #if defined(POSIX)
@@ -68,11 +75,25 @@ os_error_t GetTimeStamp(uint32_t* tsp)
     return Error_Success;
 }
 
+/// Signed microsecond delta end - start for packed timestamps.
+/// Interprets each half separately (ticks are not a linear usec count
+/// across a second boundary) and folds the 16-bit second field with
+/// signed 16-bit arithmetic so wraps inside ~18.2h still work.
+int64_t TimeStampDeltaUs(uint32_t start, uint32_t end)
+{
+    int32_t secDiff = (int16_t)((end >> 16) - (start >> 16));
+    int32_t tickDiff = (int32_t)(end & 0xffff) - (int32_t)(start & 0xffff);
+    return (int64_t)secDiff * 1000000ll + (int64_t)tickDiff * 16ll;
+}
+
 /// to be called at startup so we have a timestamp to compare to.
 os_error_t SetStartTime(void)
 {
 
-    struct tm* startTime = gmtime(NULL);
+    time_t nowSeconds = time(0);
+    struct tm* startTime = gmtime(&nowSeconds);
+    if (!startTime)
+        return Error_InvalidErrorCode;
 
     os_date_t now = {
         (uint8_t)startTime->tm_sec,
@@ -93,19 +114,12 @@ os_error_t SetStartTime(void)
 const char* TimeStampToChars(uint32_t tsp)
 {
     uint32_t elapsedSeconds;
-    uint32_t elapsedMicroseconds;
     static char buffer[32];
 
-    if (tsp > OS.StartTimeStamp)
-    {
-        elapsedSeconds = (OS.StartTimeStamp >> 16) - (tsp >> 16);
-        elapsedMicroseconds = ((OS.StartTimeStamp & 0xFFFF) - (tsp & 0xFFFF)) << 4;
-    }
-    else
-    {
+    if (tsp >= OS.StartTimeStamp)
         elapsedSeconds = (tsp >> 16) - (OS.StartTimeStamp >> 16);
-        elapsedMicroseconds = ((tsp & 0xFFFF) - (OS.StartTimeStamp & 0xFFFF)) << 4;
-    }
+    else
+        elapsedSeconds = (OS.StartTimeStamp >> 16) - (tsp >> 16);
 
     {
         uint32_t el_sec = elapsedSeconds % 60;
@@ -115,9 +129,16 @@ const char* TimeStampToChars(uint32_t tsp)
         int32_t year = OS.StartDate.Year;
         int32_t month = OS.StartDate.Month;
         int32_t day = OS.StartDate.Day;
-        int32_t hour = OS.StartDate.Hour + el_hr;
-        int32_t minute = OS.StartDate.Minute + el_min;
         int32_t second = OS.StartDate.Second + el_sec;
+        int32_t minute = OS.StartDate.Minute + el_min;
+        int32_t hour = OS.StartDate.Hour + el_hr;
+
+        // Normalize seconds -> minutes -> hours (and hour -> next day is
+        // left alone: only wall-clock time-of-day is formatted).
+        minute += second / 60;
+        second %= 60;
+        hour += minute / 60;
+        minute %= 60;
 
         snprintf(buffer, sizeof(buffer),
             "%d-%02d-%02d %02d:%02d:%02d",

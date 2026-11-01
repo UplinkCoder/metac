@@ -1062,6 +1062,7 @@ static inline void PrintStmt(metac_printer_t* self, metac_stmt_t* stmt)
             PrintChar(self, '(');
             PrintExpr(self, stmt_while->DoWhileExp);
             PrintChar(self, ')');
+            PrintTokenType(self, tok_semicolon);
         } break;
         case stmt_comment:
         {
@@ -1603,12 +1604,15 @@ static inline void PrintExpr(metac_printer_t* self, metac_expr_t* expr)
 
         assert(op);
 
-        if (!IsBinaryExp(expr->E1->Kind) || self->ExtraParens)
+        /* expr_paren prints its own parens, don't double them up */
+        if ((!IsBinaryExp(expr->E1->Kind) && expr->E1->Kind != expr_paren)
+         || self->ExtraParens)
             PrintChar(self, '(');
 
         PrintExpr(self, expr->E1);
 
-        if (!IsBinaryExp(expr->E1->Kind) || self->ExtraParens)
+        if ((!IsBinaryExp(expr->E1->Kind) && expr->E1->Kind != expr_paren)
+         || self->ExtraParens)
             PrintChar(self, ')');
 
         PrintString(self, op, (uint32_t)strlen(op));

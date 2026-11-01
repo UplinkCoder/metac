@@ -17,6 +17,11 @@
 
 #include "../3rd_party/tracy/TracyC.h"
 
+// Robin Hood probing for GetOrAddIdentifier. Enable with -DMETAC_ROBINHOOD=1.
+#ifndef METAC_ROBINHOOD
+#  define METAC_ROBINHOOD 0
+#endif
+
 #ifdef TRACY_ENABLE
 #  define TRACY_COUNTER(COUNTER) static uint32_t COUNTER
 #else
@@ -29,6 +34,9 @@ static inline bool IsFilled(metac_identifier_table_slot_t slot)
 {
     return slot.HashKey != 0;
 }
+
+void InsertSlot(metac_identifier_table_slot_t* slots, metac_identifier_table_slot_t slot,
+                const uint32_t slotIndexMask);
 
 const char* IdentifierPtrToCharPtr(const metac_identifier_table_t* table,
                                    metac_identifier_ptr_t ptr)
@@ -51,49 +59,194 @@ void IdentifierTable_Init_(metac_identifier_table_t* table, uint32_t lengthShift
     table->SlotsUsed = 0;
     table->LengthShift = lengthShift;
     table->MaxDisplacement = 0;
+    table->Alloc = alloc;
 }
 
 void IdentifierTable_Free(metac_identifier_table_t* table)
 {
-    // free(table->Slots);
-    // free(table->StringMemory);
+    // Arena-backed tables (Alloc != 0) are reclaimed with the parent
+    // allocator; only malloc-backed tables (ReadTable) own their buffers.
+    if (table->Alloc == 0)
+    {
+        free(table->Slots);
+        free(table->StringMemory);
+    }
     static const metac_identifier_table_t zeroTable = {0};
     (*table) = zeroTable;
 }
 
+/// Ceil(log2(n)) for n >= 1; 0 for n == 0.
+static inline uint32_t MetaCIdentifierTable_CeilLog2(uint32_t n)
+{
+    uint32_t log2 = 0;
+    while ((1u << log2) < n && log2 < 31)
+        log2++;
+    return log2;
+}
+
 bool MetaCIdentifierTable_Grow(metac_identifier_table_t* self, uint32_t nSlots)
 {
-    uint32_t log2Slots = LOG2(nSlots);
-    uint32_t slots2Allocate = (1 << log2Slots);
+    if (!self->Alloc)
+        return false;
+
+    const uint32_t newLog2 = MetaCIdentifierTable_CeilLog2(nSlots);
+    if (newLog2 < self->SlotCount_Log2)
+        return true; // already large enough
+
+    const uint32_t newMaxSlots = 1u << newLog2;
+    metac_identifier_table_slot_t* newSlots =
+        cast(metac_identifier_table_slot_t*)
+        Allocator_Calloc_(self->Alloc, sizeof(metac_identifier_table_slot_t),
+                          newMaxSlots, __FILE__, __LINE__);
+    if (!newSlots)
+        return false;
+
+    const uint32_t oldMaxSlots = 1u << self->SlotCount_Log2;
+    const uint32_t newIndexMask = newMaxSlots - 1;
+    for (uint32_t i = 0; i < oldMaxSlots; i++)
+    {
+        if (self->Slots[i].HashKey)
+            InsertSlot(newSlots, self->Slots[i], newIndexMask);
+    }
+
+    // Scale string storage with the slot table when we own the allocator.
+    const uint32_t newStrCapacity = newMaxSlots * 32;
+    if (newStrCapacity > self->StringMemoryCapacity)
+    {
+        char* newStringMemory =
+            cast(char*) Allocator_Calloc_(self->Alloc, sizeof(char),
+                                          newStrCapacity, __FILE__, __LINE__);
+        if (!newStringMemory)
+        {
+            // Slots already rehashed; keep old string buffer.
+        }
+        else
+        {
+            memcpy(newStringMemory, self->StringMemory, self->StringMemorySize);
+            self->StringMemory = newStringMemory;
+            self->StringMemoryCapacity = newStrCapacity;
+        }
+    }
+
+    self->Slots = newSlots;
+    self->SlotCount_Log2 = newLog2;
+    return true;
+}
+
+static bool MetaCIdentifierTable_GrowStringMemory(metac_identifier_table_t* table,
+                                                  uint32_t minCapacity)
+{
+    if (!table->Alloc)
+        return false;
+
+    uint32_t newCapacity = table->StringMemoryCapacity;
+    if (newCapacity == 0)
+        newCapacity = 64;
+    while (newCapacity < minCapacity && newCapacity < (1u << 30))
+        newCapacity *= 2;
+
+    char* newMemory = cast(char*)
+        Allocator_Calloc_(table->Alloc, sizeof(char), newCapacity,
+                          __FILE__, __LINE__);
+    if (!newMemory)
+        return false;
+
+    memcpy(newMemory, table->StringMemory, table->StringMemorySize);
+    table->StringMemory = newMemory;
+    table->StringMemoryCapacity = newCapacity;
+    return true;
 }
 
 #define ALIGN4(N) (((N) + 3) & ~3)
+
+/// Intern `identifier` (length bytes, not counting NUL) into table string memory.
+static metac_identifier_ptr_t MetaCIdentifierTable_InternString(
+    metac_identifier_table_t* table, const char* identifier, uint32_t length)
+{
+    metac_identifier_ptr_t result = {0};
+    const uint32_t alignLen = ALIGN4(length + 1);
+
+    if (table->StringMemorySize + alignLen >= table->StringMemoryCapacity)
+    {
+        if (!MetaCIdentifierTable_GrowStringMemory(
+                table, table->StringMemorySize + alignLen + 1))
+        {
+            return result;
+        }
+    }
+
+#ifdef ATOMIC
+    {
+        uint32_t expected = table->StringMemorySize;
+        uint32_t newValue = expected + alignLen;
+        if (_InterlockedCompareExchange(&table->StringMemorySize,
+                                        newValue, expected) != expected)
+        {
+            return result; // caller may retry
+        }
+        result.v = expected + 4;
+    }
+    _InterlockedIncrement(&table->SlotsUsed);
+#else
+    result.v = table->StringMemorySize + 4;
+    table->StringMemorySize += alignLen;
+    ++table->SlotsUsed;
+#endif
+
+    char* dest = table->StringMemory + (result.v - 4);
+    memcpy(dest, identifier, length);
+    dest[length] = '\0';
+    return result;
+}
+
 metac_identifier_ptr_t GetOrAddIdentifier(metac_identifier_table_t* table,
                                           uint32_t identifierKey,
                                           const char* identifier)
 {
     TracyCZone(ctx, true);
-    uint32_t length = (identifierKey >> table->LengthShift);
+    const uint32_t length = (identifierKey >> table->LengthShift);
+    const uint32_t origKey = identifierKey;
 
     metac_identifier_ptr_t result = {0};
 
+    // Grow when load factor exceeds ~50% so probe sequences stay short.
+    // Skip for malloc-backed tables (no allocator) which cannot grow.
+    if (table->Alloc &&
+        table->SlotsUsed > ((1u << table->SlotCount_Log2) / 2))
+    {
+        const uint32_t growTo = 1u << (table->SlotCount_Log2 + 1);
+        MetaCIdentifierTable_Grow(table, growTo);
+    }
+
     const uint32_t slotIndexMask = ((1 << table->SlotCount_Log2) - 1);
-    const uint32_t initialSlotIndex = (identifierKey & slotIndexMask);
+    const uint32_t initialSlotIndex = (origKey & slotIndexMask);
     // TracyCPlot("TargetIndex", initialSlotIndex);
     uint32_t displacement = 0;
-    if (table->SlotsUsed > (slotIndexMask - (1 << (table->SlotCount_Log2 -1))) )
-    {
-        // we should grow the table here.
-    }
+
+#if METAC_ROBINHOOD
+    // Entry currently seeking a home. Starts as the caller's identifier;
+    // after a Robin Hood steal it becomes the displaced occupant.
+    uint32_t placeKey = origKey;
+    metac_identifier_ptr_t placePtr = {0};
+    bool placeIsOriginal = true;
+#endif
+
+    // Visit every slot exactly once (mask+1 probes), starting at initialSlotIndex.
     for(
-        uint32_t slotIndex = initialSlotIndex;
-        (++slotIndex & slotIndexMask) != initialSlotIndex;
+        uint32_t probes = 0;
+        probes <= slotIndexMask;
+        probes++
     )
     {
-        metac_identifier_table_slot_t* slot = &table->Slots[(slotIndex - 1) & slotIndexMask];
+        const uint32_t slotIdx = (initialSlotIndex + probes) & slotIndexMask;
+        metac_identifier_table_slot_t* slot = &table->Slots[slotIdx];
         const char* stringEntry;
 
+#if METAC_ROBINHOOD
+        if (placeIsOriginal && slot->HashKey == origKey)
+#else
         if (slot->HashKey == identifierKey)
+#endif
         {
             stringEntry = IdentifierPtrToCharPtr(table, slot->Ptr);
             if (memcmp(identifier, stringEntry, length) == 0)
@@ -123,73 +276,89 @@ metac_identifier_ptr_t GetOrAddIdentifier(metac_identifier_table_t* table,
         }
         else if (slot->HashKey == 0)
         {
-            uint32_t expected;
-            uint32_t newValue;
-            // TracyCPlot("MaxDisplacement", table->MaxDisplacement);
             TracyCPlot("Displacement", displacement);
-            do {
-                if (table->StringMemorySize + ALIGN4(length + 1)
-                       < table->StringMemoryCapacity)
+
+#if METAC_ROBINHOOD
+            if (!placePtr.v)
+            {
+                placePtr = MetaCIdentifierTable_InternString(
+                    table, identifier, length);
+                if (!placePtr.v)
                 {
-                    result.v = (table->StringMemorySize + 4);
-                    // Compare xchange here
-                    expected = table->StringMemorySize;
-                    newValue = (result.v - 4) + ALIGN4(length + 1);
+                    result.v = 0;
+                    break;
                 }
-                else
-                {
-                    
-                }
-#ifndef ATOMIC
-                table->StringMemorySize = newValue;
-            } while (false);
-            ++table->SlotsUsed;
+            }
+            slot->HashKey = placeKey;
+            slot->Ptr = placePtr;
+            if (placeIsOriginal)
+                result = placePtr;
+#else
+            metac_identifier_ptr_t inserted =
+                MetaCIdentifierTable_InternString(
+                    table, identifier, length);
+            if (!inserted.v)
+            {
+                result.v = 0;
+                break;
+            }
+            slot->HashKey = identifierKey;
+            slot->Ptr = inserted;
+            result = inserted;
+#endif
             TracyCPlot("LoadFactor", (float)table->SlotsUsed / (float)slotIndexMask);
             TracyCPlot("StringMemorySize", table->StringMemorySize);
-#else
-            } while(_InterlockedCompareExchange(&table->StringMemorySize, newValue, expected)
-                    != expected))
-            // atomic compare exchange has been done.
-            _InterlockedIncrement(&table->SlotsUsed);
-#endif
-            char* tableMem = (table->StringMemory + (result.v - 4));
-            memcpy(tableMem, identifier, length);
-            tableMem[length] = '\0';
             static uint32_t misses = 0;
             TracyCPlot("Misses", misses++);
-            slot->HashKey = identifierKey;
-            slot->Ptr = result;
 #ifdef REFCOUNT
             slot->RefCount++;
             slot->Displacement = displacement;
 #endif
             break;
         }
-#if 0
+#if METAC_ROBINHOOD
         else
         {
-            const uint32_t TargetSlot = (slot->HashKey & slotIndexMask);
-            int targetDisplacement = (slotIndex - TargetSlot);
-            if (++displacement > targetDisplacement)
+            // Occupied by a different key: maybe steal if we are poorer.
+            const uint32_t theirHome = slot->HashKey & slotIndexMask;
+            const uint32_t theirDisp = (slotIdx - theirHome) & slotIndexMask;
+            if (displacement > theirDisp)
             {
-                uint32_t nextInsertKey = slot->HashKey;
-                metac_identifier_ptr_t nextInsertPtr = slot->Ptr;
-                slot->HashKey = identifierKey;
-                slot->Ptr = insertPtr;
+                if (placeIsOriginal && !placePtr.v)
+                {
+                    placePtr = MetaCIdentifierTable_InternString(
+                        table, identifier, length);
+                    if (!placePtr.v)
+                    {
+                        result.v = 0;
+                        break;
+                    }
+                }
 
-                insertPtr = nextInsertPtr;
-                identifierKey = nextInsertKey;
+                const uint32_t nextKey = slot->HashKey;
+                const metac_identifier_ptr_t nextPtr = slot->Ptr;
+
+                slot->HashKey = placeKey;
+                slot->Ptr = placePtr;
+#ifdef REFCOUNT
+                slot->RefCount++;
+                slot->Displacement = theirDisp;
+#endif
+                if (placeIsOriginal)
+                    result = placePtr;
+
+                placeKey = nextKey;
+                placePtr = nextPtr;
+                placeIsOriginal = false;
+                // Displaced entry continues one step past where it sat.
+                displacement = theirDisp + 1;
+                TracyCPlot("RobinHoodSteal", 1);
+                continue;
             }
         }
- #endif
-            //if (++displacement > table->MaxDisplacement)
-            //{
-            //    table->MaxDisplacement = displacement;
-            //}
-            TracyCPlot("MaxDisplacement", table->MaxDisplacement);
-            TracyCPlot("LoadFactor", (float)table->SlotsUsed / (float)slotIndexMask);
-            TracyCPlot("StringMemorySize", table->StringMemorySize);
-            displacement++;
+#endif
+        TracyCPlot("MaxDisplacement", table->MaxDisplacement);
+        displacement++;
         continue;
     }
     TracyCZoneEnd(ctx);
@@ -210,11 +379,12 @@ int32_t MetaCIdentifierTable_HasKey(metac_identifier_table_t* table,
     // TracyCPlot("TargetIndex", initialSlotIndex);
 
     for(
-        uint32_t slotIndex = initialSlotIndex;
-        (++slotIndex & slotIndexMask) != initialSlotIndex;
+        uint32_t probes = 0;
+        probes <= slotIndexMask;
+        probes++
     )
     {
-        int32_t idx = cast(int32_t)((slotIndex - 1) & slotIndexMask);
+        int32_t idx = cast(int32_t)((initialSlotIndex + probes) & slotIndexMask);
         metac_identifier_table_slot_t slot =
             table->Slots[idx];
 
@@ -255,11 +425,12 @@ void InsertSlot(slot_t* slots, slot_t slot, const uint32_t slotIndexMask)
     const uint32_t initialSlotIndex = (slot.HashKey & slotIndexMask);
     // TracyCPlot("TargetIndex", initialSlotIndex);
     for(
-        uint32_t slotIndex = initialSlotIndex;
-        (++slotIndex & slotIndexMask) != initialSlotIndex;
+        uint32_t probes = 0;
+        probes <= slotIndexMask;
+        probes++
     )
     {
-        slot_t* dstSlot = slots + ((slotIndex - 1) & slotIndexMask);
+        slot_t* dstSlot = slots + ((initialSlotIndex + probes) & slotIndexMask);
         if (dstSlot->HashKey == 0)
         {
             *dstSlot = slot;
@@ -281,12 +452,13 @@ metac_identifier_ptr_t IsIdentifierInTable(metac_identifier_table_t* table,
     // if slotIndexMask is 0 most likely the table has not been initialized
     // TracyCPlot("TargetIndex", initialSlotIndex);
     for(
-        uint32_t slotIndex = initialSlotIndex;
-        (++slotIndex & slotIndexMask) != initialSlotIndex;
+        uint32_t probes = 0;
+        probes <= slotIndexMask;
+        probes++
     )
     {
         metac_identifier_table_slot_t slot =
-            table->Slots[(slotIndex - 1) & slotIndexMask];
+            table->Slots[(initialSlotIndex + probes) & slotIndexMask];
 
         if (slot.HashKey == 0)
             return result;
@@ -302,8 +474,7 @@ metac_identifier_ptr_t IsIdentifierInTable(metac_identifier_table_t* table,
             }
         }
     }
-    assert(0);
-
+    // Not found after a full probe — miss is a normal outcome.
     return result;
 }
 
@@ -316,11 +487,12 @@ metac_identifier_table_slot_t* IdentifierTableLookup(
     const uint32_t initialSlotIndex = (key & slotIndexMask);
     // TracyCPlot("TargetIndex", initialSlotIndex);
     for(
-        uint32_t slotIndex = initialSlotIndex;
-        (++slotIndex & slotIndexMask) != initialSlotIndex;
+        uint32_t probes = 0;
+        probes <= slotIndexMask;
+        probes++
     )
     {
-        uint32_t lookupIdx = (slotIndex - 1) & slotIndexMask;
+        uint32_t lookupIdx = (initialSlotIndex + probes) & slotIndexMask;
         metac_identifier_table_slot_t slot =
             table->Slots[lookupIdx];
 
@@ -329,7 +501,6 @@ metac_identifier_table_slot_t* IdentifierTableLookup(
         if (slot.HashKey == key && slot.Ptr.v == value.v)
             return table->Slots + lookupIdx;
     }
-    assert(0);
     return 0;
 }
 
@@ -354,21 +525,49 @@ metac_identifier_table_t ReadTable(const char* filename)
 
     identifier_table_file_header_t header;
     FILE* fd = fopen(filename, "rb");
+    if (!fd)
+    {
+        fprintf(stderr, "ReadTable: cannot open '%s'\n", filename);
+        return result;
+    }
 
-    fread(&header, 1, sizeof(header), fd);
+    if (fread(&header, 1, sizeof(header), fd) != sizeof(header))
+    {
+        fclose(fd);
+        return result;
+    }
+
     if (header.HeaderCommentSize)
     {
-        char* comment = (char*)malloc(header.HeaderCommentSize);
-        fread(&comment, 1, header.HeaderCommentSize, fd);
-        printf("Comment: %.*s\n", header.HeaderCommentSize, comment);
-        free((void*)comment);
+        char* comment = (char*)malloc(header.HeaderCommentSize + 1);
+        if (comment)
+        {
+            if (fread(comment, 1, header.HeaderCommentSize, fd)
+                    == header.HeaderCommentSize)
+            {
+                comment[header.HeaderCommentSize] = '\0';
+                printf("Comment: %s\n", comment);
+            }
+            free(comment);
+        }
+    }
+
+    // Header is followed by the comment padded to 4 bytes, then slots.
+    if (fseek(fd, header.OffsetSlots, SEEK_SET) != 0)
+    {
+        fclose(fd);
+        return result;
     }
 
     uint32_t stringMemoryCapacity = ((header.StringMemorySize + 64) & ~63);
 
     result.StringMemoryCapacity = stringMemoryCapacity;
     result.StringMemorySize = header.StringMemorySize;
-    result.SlotCount_Log2 = LOG2(header.NumberOfSlots);
+    result.LengthShift = header.LengthShift;
+    // Leave at least one empty slot so probes can terminate (load factor < 1).
+    result.SlotCount_Log2 = MetaCIdentifierTable_CeilLog2(header.NumberOfSlots + 1);
+    if (result.SlotCount_Log2 < 1)
+        result.SlotCount_Log2 = 1;
 
     result.Slots = cast(slot_t*)
                     calloc((1 << result.SlotCount_Log2),
@@ -387,18 +586,31 @@ metac_identifier_table_t ReadTable(const char* filename)
 
     for(uint32_t i = 0; i < header.NumberOfSlots; i++)
     {
-        fread(readSlot, 1, header.SizeofSlot, fd);
+        if (fread(readSlot, 1, header.SizeofSlot, fd) != header.SizeofSlot)
+            break;
         InsertSlot(result.Slots, *readSlot, slotIndexMask);
     }
-    uint32_t soff = ftell(fd);
-    assert(soff == header.OffsetStrings);
+    free(readSlot);
+
+    if (fseek(fd, header.OffsetStrings, SEEK_SET) != 0)
+    {
+        fclose(fd);
+        free(result.Slots);
+        result.Slots = 0;
+        return result;
+    }
 
     result.StringMemory = (char*)malloc(result.StringMemoryCapacity);
-    fread(result.StringMemory, 1, result.StringMemorySize, fd);
+    if (result.StringMemory)
+    {
+        memset(result.StringMemory, 0, result.StringMemoryCapacity);
+        fread(result.StringMemory, 1, result.StringMemorySize, fd);
+    }
 
     uint32_t stringSizeLeft = result.StringMemorySize;
     uint32_t stringsProcessed = 0;
 
+    if (result.StringMemory)
     for(char* prevNewline = result.StringMemory;
         stringSizeLeft > 0;)
     {
@@ -416,6 +628,7 @@ metac_identifier_table_t ReadTable(const char* filename)
     printf("stringProcessed: %d, header.NumberOfSlots: %d\n",
         stringsProcessed, header.NumberOfSlots);
     result.SlotsUsed = header.NumberOfSlots;
+    fclose(fd);
     return result;
 #undef slot_t
 }
@@ -511,6 +724,14 @@ void WriteTable(metac_identifier_table_t* table, const char* filename, uint32_t 
     // --------------- write header / end of file ----------------------
     fsetpos(fd, &startPosition);
     fwrite(&header, 1, sizeof(header), fd);
+    if (header.HeaderCommentSize && comment)
+    {
+        fwrite(comment, 1, header.HeaderCommentSize, fd);
+        // pad comment to ALIGN4
+        uint32_t padBy = ALIGN4(header.HeaderCommentSize) - header.HeaderCommentSize;
+        if (padBy)
+            fwrite("@@@@", 1, padBy, fd);
+    }
     fclose(fd);
 }
 #endif

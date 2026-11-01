@@ -95,4 +95,9 @@ struct OS
 extern struct OS OS;
 
 const char* TimeStampToChars(uint32_t tsp);
+
+/// Signed microsecond delta (end - start) for GetTimeStamp values.
+/// Short spans: 16us resolution; long spans: 1s resolution via the
+/// upper half; 16-bit second field wraps every ~18.2 hours.
+int64_t TimeStampDeltaUs(uint32_t start, uint32_t end);
 #endif // _OS_H_
