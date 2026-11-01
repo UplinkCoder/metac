@@ -111,8 +111,8 @@ static inline void BCGen_Init(BCGen* self)
     self->functionCount = 0;
     self->functionCapacity = INITIAL_LOCALS_CAPACITY;
 
-    self->contexts = (ReadI32_ctx_t*) self->allocFn(self->allocCtx,
-        sizeof(ReadI32_ctx_t) * 64, 0);
+    self->contexts = (BCReadContext*) self->allocFn(self->allocCtx,
+        sizeof(BCReadContext) * 64, 0);
     self->contextCount = 0;
     self->contextCapacity = 64;
 
@@ -236,8 +236,9 @@ typedef struct BCInterpreter {
     uint32_t mapPtr;
     BCValue cRetval;
 
-    BCExternal externals[16];
-    uint16_t externalsCount;
+    BCExternal* externals;
+    uint32_t externalsCount;
+    uint32_t externalsCapacity;
 
     BCFunctionType functionTypes[16];
     uint16_t functionTypesCount;
@@ -1047,6 +1048,9 @@ void BCGen_PrintCode(BCGen* self, uint32_t start, uint32_t end)
             {
                 printf("LongInst_Line \n");
             } break;
+        case LongInst_ReadString:
+            printf("LongInst_ReadString R[%u], callback %u\n", opRefOffset / 4, hi);
+            break;
         case LongInst_SetMode :
             {
                 printf("LongInst_SetMode \n");
@@ -1957,6 +1961,34 @@ BCValue BCGen_interpret(BCGen* self, uint32_t fnIdx, BCValue* args, uint32_t n_a
 
                 external.size = mapSize;
                 external.addr = (void*) addrInt;
+                uint32_t addressSpace = AddressFrom(AddressKind_Heap, 0) -
+                                        AddressFrom(AddressKind_External, 0);
+                if (!mapSize || mapSize > addressSpace - state.mapPtr)
+                {
+                    fprintf(stderr, "VM external address space exhausted\n");
+                    BCValue error = imm32(2004);
+                    error.vType = BCValueType_Bailout;
+                    return error;
+                }
+                if (state.externalsCount == state.externalsCapacity)
+                {
+                    if (state.externalsCapacity > UINT32_MAX / (2 * sizeof(BCExternal)))
+                    {
+                        fprintf(stderr, "Too many VM external mappings\n");
+                        abort();
+                    }
+                    uint32_t capacity = state.externalsCapacity ? state.externalsCapacity * 2 : 16;
+                    BCExternal* mappings = self->allocFn(self->allocCtx, capacity * sizeof(*mappings), 0);
+                    if (!mappings)
+                    {
+                        fprintf(stderr, "Cannot allocate VM external mappings\n");
+                        abort();
+                    }
+                    if (state.externalsCount)
+                        memcpy(mappings, state.externals, state.externalsCount * sizeof(*mappings));
+                    state.externals = mappings;
+                    state.externalsCapacity = capacity;
+                }
                 external.mapAddr = AddressFrom(AddressKind_External, state.mapPtr);
                 state.mapPtr += align4(external.size);
 
@@ -2200,12 +2232,56 @@ BCValue BCGen_interpret(BCGen* self, uint32_t fnIdx, BCValue* args, uint32_t n_a
             case LongInst_ReadI32:
             {
                 assert(hi < self->contextCount);
-                ReadI32_ctx_t ctx = self->contexts[hi];
+                BCReadContext ctx = self->contexts[hi];
                 int32_t value = (int32_t)(*(int64_t*)opRef);
                 ctx.cb(value, ctx.userCtx);
             }
             break;
 
+        case LongInst_ReadString:
+            {
+                assert(hi < self->contextCount);
+                uint64_t address = (uint64_t)*opRef;
+                uint32_t available = 0;
+                uint32_t offset = 0;
+                if (address && address <= UINT32_MAX)
+                {
+                    address_kind_t kind = ClassifyAddress((uint32_t)address, &offset);
+                    if (kind == AddressKind_Heap && offset < heapPtr->heapSize)
+                        available = heapPtr->heapSize - offset;
+                    else if (kind == AddressKind_External)
+                    {
+                        for (uint32_t i = 0; i < state.externalsCount; i++)
+                        {
+                            BCExternal mapping = state.externals[i];
+                            if (address >= mapping.mapAddr && address - mapping.mapAddr < mapping.size)
+                            {
+                                available = mapping.size - (uint32_t)(address - mapping.mapAddr);
+                                break;
+                            }
+                        }
+                    }
+                }
+                if (!available)
+                {
+                    fprintf(stderr, "VM string splice has a null or unmapped address\n");
+                    BCValue error = imm32(2002);
+                    error.vType = BCValueType_Error;
+                    return error;
+                }
+                const char* text = (const char*)BCInterpreter_toRealPointer(&state, heapPtr, (uint32_t)address);
+                const char* end = memchr(text, 0, available);
+                if (!end)
+                {
+                    fprintf(stderr, "VM string splice is not NUL-terminated within its mapped storage\n");
+                    BCValue error = imm32(2003);
+                    error.vType = BCValueType_Error;
+                    return error;
+                }
+                BCReadContext context = self->contexts[hi];
+                context.stringCb(text, (uint32_t)(end - text), context.userCtx);
+            }
+            break;
         case LongInst_Comment:
             {
 L_LongInst_Comment:
@@ -2664,8 +2740,11 @@ static inline void BCGen_Set(BCGen* self, BCValue* lhs, const BCValue* rhs)
     }
     else if (!BCValue_eq(lhs, rhs)) // do not emit self assignments;
     {
-        BCValue tmp = *lhs;
-        BCGen_emitArithInstruction(self, LongInst_Set, lhs, rhs, 0);
+        if (lhs->type.type == BCTypeEnum_Ptr || lhs->type.type == BCTypeEnum_Array ||
+            rhs->type.type == BCTypeEnum_Ptr || rhs->type.type == BCTypeEnum_Array)
+            BCGen_emitLongInstSS(self, LongInst_Set, lhs->stackAddr, rhs->stackAddr);
+        else
+            BCGen_emitArithInstruction(self, LongInst_Set, lhs, rhs, 0);
     }
 }
 
@@ -3409,12 +3488,12 @@ static inline CndJmpBegin BCGen_beginCndJmp(BCGen* self, const BCValue* cond, bo
     return result;
 }
 
-static inline void BCGen_ReadI32(BCGen* self, const BCValue* value, ReadI32_cb_t ReadI32_cb, void* userCtx)
+static uint32_t BCGen_AddReadContext(BCGen* self, BCReadContext context)
 {
     if (self->contextCount == self->contextCapacity)
     {
         uint32_t capacity = self->contextCapacity * 2;
-        ReadI32_ctx_t* contexts = self->allocFn(self->allocCtx,
+        BCReadContext* contexts = self->allocFn(self->allocCtx,
             sizeof(*contexts) * capacity, 0);
         if (!contexts)
         {
@@ -3427,16 +3506,25 @@ static inline void BCGen_ReadI32(BCGen* self, const BCValue* value, ReadI32_cb_t
         self->contextCapacity = capacity;
     }
 
-    uint32_t ptr = self->contextCount;
-    ReadI32_ctx_t ctx;
+    uint32_t index = self->contextCount;
+    self->contexts[self->contextCount++] = context;
+    return index;
+}
 
-    ctx.cb = ReadI32_cb;
-    ctx.userCtx = userCtx;
-
-    self->contexts[self->contextCount++] = ctx;
+static inline void BCGen_ReadI32(BCGen* self, const BCValue* value, ReadI32_cb_t readCb, void* userCtx)
+{
+    BCReadContext context = {userCtx, readCb, 0};
+    uint32_t index = BCGen_AddReadContext(self, context);
     assert(BCValue_isStackValueOrParameter(value));
+    BCGen_emitLongInstSI(self, LongInst_ReadI32, value->stackAddr, index);
+}
 
-    BCGen_emitLongInstSI(self, LongInst_ReadI32, value->stackAddr, ptr);
+static void BCGen_ReadString(BCGen* self, const BCValue* value, ReadString_cb_t readCb, void* userCtx)
+{
+    BCReadContext context = {userCtx, 0, readCb};
+    uint32_t index = BCGen_AddReadContext(self, context);
+    assert(BCValue_isStackValueOrParameter(value));
+    BCGen_emitLongInstSI(self, LongInst_ReadString, value->stackAddr, index);
 }
 
 static inline void BCGen_endCndJmp(BCGen* self, const CndJmpBegin* jmp, BCLabel target)
@@ -3597,6 +3685,7 @@ const BackendInterface BCGen_interface = {
 
     /*.set_alloc_memory =*/ cast(set_alloc_memory_t) BCGen_set_alloc_memory,
     /*.set_get_typeinfo =*/ cast(set_get_typeinfo_t) BCGen_set_get_typetypeinfo,
+    /*.ReadString =*/ (ReadString_t) BCGen_ReadString,
 };
 
 #endif

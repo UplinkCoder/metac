@@ -618,6 +618,22 @@ static inline void MetaCLexerMatchKeywordIdentifier(metac_token_t* tok,
 #include "../generated/metac_match_keyword.inl"
 }
 
+bool MetaCLexer_IsIdentifierText(const char* text, uint32_t length)
+{
+    if (!length || length > (UINT32_MAX >> IDENTIFIER_LENGTH_SHIFT) ||
+        !IsIdentifierChar(text[0]))
+        return false;
+    for (uint32_t i = 1; i < length; i++)
+    {
+        if (!IsIdentifierChar(text[i]) && !IsNumericChar(text[i]))
+            return false;
+    }
+    metac_token_t token = {tok_identifier};
+    token.IdentifierKey = IDENTIFIER_KEY(crc32c_nozero(~0, text, length), length);
+    MetaCLexerMatchKeywordIdentifier(&token, text);
+    return token.TokenType == tok_identifier;
+}
+
 bool static ParseOctal(const char** textP, int32_t* eatenCharsP, uint64_t* valueP)
 {
     bool result = true;

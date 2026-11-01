@@ -339,6 +339,7 @@ static inline void MetaCTokenBuffer_Append(metac_token_buffer_t* buffer,
 }
 
 uint32_t MetaCTokenLength(metac_token_t token);
+bool MetaCLexer_IsIdentifierText(const char* text, uint32_t length);
 
 
 typedef struct metac_location_t

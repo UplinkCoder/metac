@@ -132,12 +132,7 @@ BCType MetaCCodegen_GetBCType(metac_bytecode_ctx_t* ctx, metac_type_index_t type
     }
     else if (typeKind == type_index_enum)
     {
-#if 0
-        result.type = BCTypeEnum_Enum;
-        result.typeIndex = typeIdx.Index;
-#else
-        result.type = BCTypeEnum_i32;
-#endif
+        result = MetaCCodegen_GetBCType(ctx, EnumTypePtr(ctx->Sema, typeIdx.Index)->BaseType);
     }
     else
     {
@@ -971,22 +966,16 @@ void MetaCCodegen_doDeref(metac_bytecode_ctx_t* ctx,
 {
     BackendInterface gen = *ctx->gen;
     void* c = ctx->c;
-    // this only works for pointers to 32bit basic types
-/*
-    if (addr->vType == BCValueType_External)
+    uint32_t size = MetaCCodegen_GetStorageSize(ctx, MetaCCodegen_GetBCType(ctx, varType));
+    switch (size)
     {
-        if (sizeof(void*) == 4)
-        {
-            gen.Load32(c, result, addr);
-        }
-        else if (sizeof(void*) == 8)
-        {
-            gen.Load64(c, result, addr);
-        }
-    }
-    else */
-    {
-        gen.Load32(c, result, addr);
+        case 1: gen.Load8(c, result, addr); break;
+        case 2: gen.Load16(c, result, addr); break;
+        case 4: gen.Load32(c, result, addr); break;
+        case 8: gen.Load64(c, result, addr); break;
+        default:
+            SemanticError(0, "unsupported dereference size %u", size);
+            abort();
     }
 }
 
@@ -1160,6 +1149,13 @@ static void MetaCCodegen_doArrowExpr(metac_bytecode_ctx_t* ctx,
     gen.Comment(c, "doDref was executed ... ");
 }
 
+static metac_type_index_t MetaCCodegen_IntegerType(metac_bytecode_ctx_t* ctx, metac_type_index_t type)
+{
+    if (TYPE_INDEX_KIND(type) == type_index_enum)
+        return EnumTypePtr(ctx->Sema, TYPE_INDEX_INDEX(type))->BaseType;
+    return type;
+}
+
 static void MetaCCodegen_doExpr(metac_bytecode_ctx_t* ctx,
                                 metac_sema_expr_t* exp,
                                 BCValue* result,
@@ -1196,8 +1192,9 @@ static void MetaCCodegen_doExpr(metac_bytecode_ctx_t* ctx,
 
         if (op == expr_signed_integer)
         {
-            int32_t typeIndexIndex = TYPE_INDEX_INDEX(exp->TypeIndex);
-            bool isSigned = TypeIndex_isSigned(exp->TypeIndex);
+            metac_type_index_t integerType = MetaCCodegen_IntegerType(ctx, exp->TypeIndex);
+            int32_t typeIndexIndex = TYPE_INDEX_INDEX(integerType);
+            bool isSigned = TypeIndex_isSigned(integerType);
             if (typeIndexIndex == type_long_long
              || typeIndexIndex == type_unsigned_long_long)
             {
@@ -1286,7 +1283,7 @@ static void MetaCCodegen_doExpr(metac_bytecode_ctx_t* ctx,
         if (exp->E2->Kind == expr_signed_integer
            && (exp->E2->ValueI64 >= INT32_MIN && exp->E2->ValueI64 <= INT32_MAX))
         {
-            bool isSigned = TypeIndex_isSigned(exp->E2->TypeIndex);
+            bool isSigned = TypeIndex_isSigned(MetaCCodegen_IntegerType(ctx, exp->E2->TypeIndex));
             rhs = imm32_(cast(int32_t)exp->E2->ValueI64, isSigned);
         }
         else
@@ -1422,7 +1419,7 @@ static void MetaCCodegen_doExpr(metac_bytecode_ctx_t* ctx,
 
         case expr_string:
         {
-            const char* str = ctx->StringTable->StringMemory + (exp->StringPtr.v - 4);
+            const char* str = IdentifierPtrToCharPtr(&ctx->Sema->SemanticStringTable, exp->StringPtr);
             BCValue strPtr =
                 gen.GenExternal(c, MetaCCodegen_GetBCType(ctx, exp->TypeIndex), str);
 
@@ -1746,6 +1743,14 @@ static void MetaCCodegen_doExpr(metac_bytecode_ctx_t* ctx,
                 ARENA_ARRAY_ADD(args, nullValue);
                 BCValue* argP = &args[i];
                 MetaCCodegen_doExpr(ctx, call.Arguments[i], argP, _Rvalue);
+                if (argP->vType == BCValueType_External &&
+                    (argP->type.type == BCTypeEnum_Ptr || argP->type.type == BCTypeEnum_Array))
+                {
+                    BCType pointerType = {BCTypeEnum_Ptr};
+                    BCValue address = gen.GenTemporary(c, pointerType);
+                    gen.Set(c, &address, argP);
+                    *argP = address;
+                }
             }
 
             if (isExternal)
@@ -1958,7 +1963,39 @@ typedef struct metac_eject_token_context_t
     metac_token_buffer_t* Buffer;
     metac_token_t Token;
     bool Signed;
+    bool Stringify;
+    metac_parser_t* Parser;
 } metac_eject_token_context_t;
+
+static void MetaCCodegen_EmitEjectText(const char* text, uint32_t length, void* userContext)
+{
+    metac_eject_token_context_t* context = userContext;
+    metac_token_t token = {0};
+    uint32_t hash = crc32c_nozero(~0, text, length);
+    if (context->Stringify)
+    {
+        if (length > (UINT32_MAX >> STRING_LENGTH_SHIFT))
+        {
+            SemanticError(0, "eject string literal is too long");
+            abort();
+        }
+        token.TokenType = tok_string;
+        token.StringKey = STRING_KEY(hash, length);
+        token.StringPtr = GetOrAddIdentifier(&context->Parser->StringTable, token.StringKey, text);
+    }
+    else
+    {
+        if (!MetaCLexer_IsIdentifierText(text, length))
+        {
+            SemanticError(0, "eject identifier splice requires a non-keyword identifier");
+            abort();
+        }
+        token.TokenType = tok_identifier;
+        token.IdentifierKey = IDENTIFIER_KEY(hash, length);
+        token.IdentifierPtr = GetOrAddIdentifier(&context->Parser->IdentifierTable, token.IdentifierKey, text);
+    }
+    MetaCTokenBuffer_Append(context->Buffer, &token);
+}
 
 static void MetaCCodegen_EmitEjectToken(uint32_t value, void* userContext)
 {
@@ -1966,7 +2003,21 @@ static void MetaCCodegen_EmitEjectToken(uint32_t value, void* userContext)
     metac_token_t token = context->Token;
     if (token.TokenType == tok_eject_parameter)
     {
+        if (context->Stringify)
+        {
+            char text[16];
+            int length = context->Signed ? snprintf(text, sizeof(text), "%d", (int32_t)value) :
+                                           snprintf(text, sizeof(text), "%u", value);
+            if (length < 0 || (size_t)length >= sizeof(text))
+            {
+                SemanticError(0, "cannot stringify eject integer");
+                abort();
+            }
+            MetaCCodegen_EmitEjectText(text, (uint32_t)length, context);
+            return;
+        }
         token.TokenType = tok_uint;
+        token.LocationId.v = 0;
         token.ValueI64 = context->Signed ? (int64_t)(int32_t)value : (int64_t)value;
         token.ValueLength = 0;
         token.NumberFlags = context->Signed ? parse_number_flag_none : parse_number_flag_unsigned;
@@ -1995,14 +2046,32 @@ void MetaCCodegen_doStmt(metac_bytecode_ctx_t* ctx,
                 metac_eject_token_context_t* context =
                     Allocator_Calloc(&ctx->Allocator, metac_eject_token_context_t, 1);
                 context->Buffer = ctx->RunTokenBuffer;
+                context->Parser = ctx->Sema->Parser;
                 context->Token = eject->EjectTokens[i];
+                if (context->Token.TokenType == tok_hash && i + 1 < eject->EjectTokensCount &&
+                    eject->EjectTokens[i + 1].TokenType == tok_eject_parameter)
+                {
+                    context->Stringify = true;
+                    context->Token = eject->EjectTokens[++i];
+                }
                 BCValue value = imm32(0);
+                bool stringValue = false;
                 if (context->Token.TokenType == tok_eject_parameter)
                 {
                     value.vType = BCValueType_Unknown;
                     metac_sema_expr_t* expression =
                         eject->EjectExpressions[context->Token.EjectParameterIndex];
                     BCType type = MetaCCodegen_GetBCType(ctx, expression->TypeIndex);
+                    if (type.type == BCTypeEnum_Ptr || type.type == BCTypeEnum_Array)
+                    {
+                        metac_type_index_t element = MetaCSemantic_GetElementType(ctx->Sema, expression->TypeIndex);
+                        stringValue = element.v == TYPE_INDEX_V(type_index_basic, type_char);
+                        if (!stringValue)
+                        {
+                            SemanticError(0, "eject string splice requires a char pointer or array");
+                            abort();
+                        }
+                    }
                     switch (type.type)
                     {
                         case BCTypeEnum_i8:
@@ -2013,17 +2082,29 @@ void MetaCCodegen_doStmt(metac_bytecode_ctx_t* ctx,
                         case BCTypeEnum_u8:
                         case BCTypeEnum_u16:
                         case BCTypeEnum_u32:
+                        case BCTypeEnum_Ptr:
+                        case BCTypeEnum_Array:
                             break;
                         default:
-                            SemanticError(0, "eject currently supports only integer splices up to 32 bits");
+                            SemanticError(0, "eject supports integers up to 32 bits and char strings");
                             abort();
                     }
                     MetaCCodegen_doExpr(ctx, expression, &value, _Rvalue);
                 }
-                BCType type = {BCTypeEnum_u32};
+                BCType type = {stringValue ? BCTypeEnum_Ptr : BCTypeEnum_u32};
                 BCValue argument = gen.GenTemporary(c, type);
                 gen.Set(c, &argument, &value);
-                gen.ReadI32(c, &argument, MetaCCodegen_EmitEjectToken, context);
+                if (stringValue)
+                {
+                    if (!gen.ReadString)
+                    {
+                        SemanticError(0, "backend does not support reading VM strings for eject");
+                        abort();
+                    }
+                    gen.ReadString(c, &argument, MetaCCodegen_EmitEjectText, context);
+                }
+                else
+                    gen.ReadI32(c, &argument, MetaCCodegen_EmitEjectToken, context);
                 gen.DestroyTemporary(c, &argument);
             }
         } break;

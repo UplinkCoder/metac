@@ -107,6 +107,7 @@ typedef void (*init_instance_t) (void * instance);
 typedef void (*fini_instance_t) (void* instance);
 
 typedef void (*ReadI32_t) (void* ctx, const BCValue* val, const ReadI32_cb_t readCb, void* userCtx);
+typedef void (*ReadString_t) (void* ctx, const BCValue* val, ReadString_cb_t readCb, void* userCtx);
 typedef void (*ReadI32_cb_t)(uint32_t value, void* userCtx);
 
 typedef void (*ValueCallback_cb_t)(BCValue* value, void* userCtx);
@@ -224,6 +225,7 @@ typedef struct BackendInterface
 
     void (*const set_alloc_memory) (void* ctx, alloc_fn_t alloc_fn, void* userCtx);
     void (*const set_get_typeinfo) (void* ctx, get_typeinfo_fn_t get_typeinfo_fn, void* userCtx);
+    void (*const ReadString) (void* ctx, const BCValue* val, ReadString_cb_t readCb, void* userCtx);
 } BackendInterface;
 
 #endif

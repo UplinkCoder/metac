@@ -820,7 +820,9 @@ metac_expr_t* MetaCParser_ParsePrimaryExpr(metac_parser_t* self, parse_expr_flag
 
         // Extract the length and pointer to the string
         uint32_t stringLength = LENGTH_FROM_STRING_KEY(currentToken->StringKey);
-        const char* currentStringP = IdentifierPtrToCharPtr(&self->Lexer->StringTable, currentToken->StringPtr);
+        const metac_identifier_table_t* sourceStrings =
+            self->TokenSourceCount ? &self->StringTable : &self->Lexer->StringTable;
+        const char* currentStringP = IdentifierPtrToCharPtr(sourceStrings, currentToken->StringPtr);
 
         // Initialize hash and other variables
         uint32_t stringHash = crc32c_nozero(~0, currentStringP, stringLength);
@@ -849,7 +851,7 @@ metac_expr_t* MetaCParser_ParsePrimaryExpr(metac_parser_t* self, parse_expr_flag
 
             // Update current string and length for the next token
             currentLen = LENGTH_FROM_STRING_KEY(currentToken->StringKey);
-            currentStringP = IdentifierPtrToCharPtr(&self->Lexer->StringTable, currentToken->StringPtr);
+            currentStringP = IdentifierPtrToCharPtr(sourceStrings, currentToken->StringPtr);
 
             // Update the hash and total length
             stringHash = crc32c_nozero(stringHash, currentStringP, currentLen);

@@ -57,12 +57,14 @@ typedef struct Imm64
 } Imm64;
 
 typedef void (*ReadI32_cb_t)(uint32_t value, void* userCtx);
+typedef void (*ReadString_cb_t)(const char* value, uint32_t length, void* userCtx);
 
-typedef struct ReadI32_ctx_t
+typedef struct BCReadContext
 {
     void* userCtx;
     ReadI32_cb_t cb;
-} ReadI32_ctx_t;
+    ReadString_cb_t stringCb;
+} BCReadContext;
 
 typedef enum BCTypeEnum
 {

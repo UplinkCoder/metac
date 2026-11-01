@@ -1881,4 +1881,5 @@ const BackendInterface Lightning_interface = {
 
     /*.set_alloc_memory = */(set_alloc_memory_t) Lightning_set_alloc_memory,
     /*.set_get_typeinfo = */(set_get_typeinfo_t) 0, //Lightning_set_get_typeinfo,
+    /*.ReadString = */0,
 };

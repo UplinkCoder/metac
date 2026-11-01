@@ -31,6 +31,65 @@ echo 'PASS: @run executes and reparses ejected declarations and statements witho
 
 status=0
 timeout 30 stdbuf -o0 -e0 "$WORK/repl" > "$WORK/output" 2>&1 <<EOF || status=$?
+:r $(pwd)/test_run_eject_strings.mtc
+:q
+EOF
+if [ "$status" -ne 1 ] ||
+   ! grep -qF 'semantic done: 8 decls' "$WORK/output" ||
+   ! grep -qF 'Repl_Loop exited this should only happen on quit' "$WORK/output" ||
+   grep -Eq 'SemanticError|Assertion|lookup failed|unsupported' "$WORK/output"; then
+    cat "$WORK/output"
+    echo "FAIL: @run string and identifier splices (exit $status)"
+    exit 1
+fi
+echo 'PASS: VM strings produce identifiers and string literals without .Compiler'
+
+sed 's/same_text(generated_name(), "hello world")/same_text(generated_name(), "hello worle")/' \
+    test_run_eject_strings.mtc > "$WORK/wrong_string.mtc"
+status=0
+timeout 30 stdbuf -o0 -e0 "$WORK/repl" > "$WORK/output" 2>&1 <<EOF || status=$?
+:r $WORK/wrong_string.mtc
+:q
+EOF
+if [ "$status" -eq 124 ] ||
+   ! grep -qF '@run execution failed' "$WORK/output" ||
+   grep -qF 'semantic done:' "$WORK/output"; then
+    cat "$WORK/output"
+    echo 'FAIL: incorrect generated string content was not rejected'
+    exit 1
+fi
+echo 'PASS: generated string assertions check exact content, not just the first character'
+
+reject_string_splice() {
+    local source=$1 diagnostic=$2 status=0
+    printf '%s\n' "$source" > "$WORK/bad_splice.mtc"
+    timeout 30 stdbuf -o0 -e0 "$WORK/repl" > "$WORK/output" 2>&1 <<EOF || status=$?
+:r $WORK/bad_splice.mtc
+:q
+EOF
+    if [ "$status" -eq 124 ] ||
+       ! grep -qF "$diagnostic" "$WORK/output" ||
+       grep -qF 'semantic done:' "$WORK/output"; then
+        cat "$WORK/output"
+        echo "FAIL: expected string splice rejection: $diagnostic"
+        exit 1
+    fi
+}
+
+for name in '' '1bad' 'two words' 'a-b' 'int'; do
+    printf -v source '@run { const char* name = "%s"; eject { int $(name); } };' "$name"
+    reject_string_splice "$source" 'eject identifier splice requires a non-keyword identifier'
+done
+reject_string_splice '@run { const char* text = 0; eject { #$(text) } };' \
+    'VM string splice has a null or unmapped address'
+reject_string_splice '@run { const char* text = "x"; text += 2; eject { #$(text) } };' \
+    'VM string splice has a null or unmapped address'
+reject_string_splice '@run { int* text = 0; eject { #$(text) } };' \
+    'eject string splice requires a char pointer or array'
+echo 'PASS: invalid identifiers, null/out-of-range strings and non-character pointers are rejected'
+
+status=0
+timeout 30 stdbuf -o0 -e0 "$WORK/repl" > "$WORK/output" 2>&1 <<EOF || status=$?
 :r $(pwd)/test_run_eject_edges.mtc
 :q
 EOF

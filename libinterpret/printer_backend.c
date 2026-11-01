@@ -1021,6 +1021,21 @@ static inline void Printer_ReadI32(Printer* self, const BCValue* val, const Read
     Printer_PutNewlineIndent(self);
 }
 
+
+static inline void Printer_ReadString(Printer* self, const BCValue* val, const ReadString_cb_t readCb, void* userCtx)
+{
+    self->VirualInstructionPointer += 2;
+
+    Printer_PutStr(self, "ReaString(");
+    Printer_PrintBCValue(self, val);
+    Printer_PutStr(self, ", ");
+    Printer_PutHex(self, (intptr_t) readCb);
+    Printer_PutStr(self, ", ");
+    Printer_PutHex(self, (intptr_t) userCtx);
+    Printer_PutStr(self, ");");
+    Printer_PutNewlineIndent(self);
+}
+
 static inline BCValue Printer_run(Printer* self, uint32_t fnIdx, const BCValue* args, uint32_t n_args)
 {
     BCValue result = {BCValueType_Unknown};
@@ -1173,4 +1188,5 @@ const BackendInterface Printer_interface = {
 
     /*.set_alloc_memory =*/ (set_alloc_memory_t) Printer_set_alloc_memory,
     /*.set_get_typeinfo =*/ (set_get_typeinfo_t) Printer_set_get_typeinfo,
+    /*.ReadString =*/ (ReadString_t)  Printer_ReadString,
 };

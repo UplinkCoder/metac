@@ -42,15 +42,24 @@ enclosing runtime variable values cannot be captured. Identifiers in quoted
 code resolve after reparsing, so emitted statements can reference the surrounding
 function's locals.
 
-See [the minimal regression](repl/test_run_eject.mtc) and
-[edge cases](repl/test_run_eject_edges.mtc). On Linux or WSL, run
+See [the minimal regression](repl/test_run_eject.mtc),
+[edge cases](repl/test_run_eject_edges.mtc), and
+[string/identifier splices](repl/test_run_eject_strings.mtc). On Linux or WSL, run
 `bash repl/test_run_eject.sh`. The runner builds without the compiler interface
 and checks successful execution, generated output, and intentional failures.
 Expected failure cases currently terminate with a diagnostic and an abort.
 
-Value splicing currently supports integers up to 32 bits. Identifier splicing,
-`#$()` stringification, and template specialization are not completed by this
-path. The VM's existing fixed bytecode/register limits still apply.
+`$(expression)` supports integers up to 32 bits, or a NUL-terminated `char`
+pointer/array producing one identifier token. Identifier text must follow the
+lexer's identifier rules and cannot be a keyword. `#$(expression)` produces one
+string literal from a character string or the decimal representation of a
+supported integer. Splices read actual VM values, including reassigned locals
+and helper-function results; generated text is stored in parser-owned tables.
+String reads are bounded by VM heap or external mappings, and invalid addresses
+or missing terminators report errors.
+
+Compiler-interface reflection and template specialization remain unfinished.
+The VM's existing fixed bytecode/register limits still apply.
 
 ### Type Expressions (works partially)
 

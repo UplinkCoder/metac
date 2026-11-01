@@ -378,14 +378,14 @@ void MetaCSemantic_doCallSemantic(metac_sema_state_t* self,
 
     expr_argument_t* argList = (METAC_NODE(call->E2) != emptyNode ?
         (expr_argument_t*)call->E2 : (expr_argument_t*)emptyNode);
-    STACK_ARENA_ARRAY(metac_sema_expr_t*, arguments, 64, &self->TempAlloc);
-
     uint32_t nArgs = 0;
-    while(METAC_NODE(argList) != emptyNode)
-    {
+    for (expr_argument_t* arg = argList; METAC_NODE(arg) != emptyNode; arg = arg->Next)
         nArgs++;
-        ARENA_ARRAY_ADD(arguments,
-            MetaCSemantic_doExprSemantic(self, argList->Expr, 0));
+    metac_sema_expr_t** arguments = nArgs ?
+        Allocator_Calloc(&self->Allocator, metac_sema_expr_t*, nArgs) : 0;
+    for (uint32_t i = 0; i < nArgs; i++)
+    {
+        arguments[i] = MetaCSemantic_doExprSemantic(self, argList->Expr, 0);
         argList = argList->Next;
     }
 
@@ -408,8 +408,6 @@ void MetaCSemantic_doCallSemantic(metac_sema_state_t* self,
 
     xprintf("function call with: %u arguments\n", nArgs);
 
-    STACK_ARENA_ARRAY_TO_HEAP(arguments, &self->Allocator);
-
     metac_expr_t dummy;
     dummy.LocationIdx = call->LocationIdx;
     dummy.Kind = expr_variable;
@@ -428,7 +426,6 @@ void MetaCSemantic_doCallSemantic(metac_sema_state_t* self,
 
     result->TypeIndex = funcType->ReturnType;
 
-    //STACK_ARENA_ARRAY_FREE(arguments);
 }
 
 void ResolveIdentifierToExp(metac_sema_state_t* self,

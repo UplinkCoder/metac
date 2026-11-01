@@ -184,6 +184,7 @@ typedef enum LongInst
     LongInst_File,
 
     LongInst_ReadI32,
+    LongInst_ReadString,
 
     LongInst_max
 } LongInst;
@@ -245,7 +246,7 @@ typedef struct BCGen
     uint32_t callsCount;
     uint32_t callsCapacity;
 
-    ReadI32_ctx_t* contexts;
+    BCReadContext* contexts;
     uint32_t contextCount;
     uint32_t contextCapacity;
 

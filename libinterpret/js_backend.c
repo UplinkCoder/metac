@@ -946,4 +946,5 @@ const BackendInterface JsBackend_interface = {
 
     /*.set_alloc_memory = */(set_alloc_memory_t) JsBackend_set_alloc_memory,
     /*.set_get_typeinfo = */(set_get_typeinfo_t) JsBackend_set_get_typeinfo,
+    /*.ReadString = */0,
 };
