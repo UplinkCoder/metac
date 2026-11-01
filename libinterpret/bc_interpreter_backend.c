@@ -204,11 +204,6 @@ typedef struct ReturnAddr
 
 #define MAX_CALL_DEPTH 2000
 #define LOCAL_STACK_SIZE 2048
-typedef struct BCExternal {
-  void* addr;
-  uint32_t size;
-  uint32_t mapAddr;
-} BCExternal;
 
 #define MAX_REGS 512
 
@@ -233,12 +228,7 @@ typedef struct BCInterpreter {
 
     uint32_t lastLine;
 
-    uint32_t mapPtr;
     BCValue cRetval;
-
-    BCExternal* externals;
-    uint32_t externalsCount;
-    uint32_t externalsCapacity;
 
     BCFunctionType functionTypes[16];
     uint16_t functionTypesCount;
@@ -1061,61 +1051,6 @@ void BCGen_PrintCode(BCGen* self, uint32_t start, uint32_t end)
 }
 #endif // PRINT_CODE
 
-static inline uint8_t* BCInterpreter_toRealPointer(const BCInterpreter* self, const BCHeap* heapPtr, uint32_t addr)
-{
-    uint32_t offset;
-    address_kind_t kind = ClassifyAddress(addr, &offset);
-    uint8_t* result = NULL;
-
-    switch(kind) {
-        case AddressKind_Heap:
-            result = heapPtr->heapData + offset;
-            break;
-            
-        case AddressKind_Stack:
-            // Stack grows up from VM_ADDR_STACK_START
-            // offset is already addr - VM_ADDR_STACK_START
-            assert((offset & 3) == 0);  // 4-byte aligned for stack slots
-            result = (uint8_t*)(self->fp + offset);
-            break;
-            
-        case AddressKind_Register:
-            // Register page at VM_ADDR_REG_PAGE
-            result = (cast(uint8_t*)self->regs[self->stackTop + Align(offset, 8) / 8]) + (offset & 7);
-            break;
-            
-        case AddressKind_External:
-            // Find external mapping
-            for(uint32_t i = 0; i < self->externalsCount; i++) {
-                BCExternal candidate = self->externals[i];
-                if (candidate.mapAddr <= addr && candidate.mapAddr + candidate.size > addr) {
-                    uint32_t externalOffset = addr - candidate.mapAddr;
-                    result = (uint8_t*)candidate.addr + externalOffset;
-                    break;
-                }
-            }
-            if (!result) {
-                assert(!"External address not mapped");
-            }
-            break;
-            
-         case AddressKind_ROMetadata:
-             //result = self->roMetadata + offset;
-            //break;
-            
-         case AddressKind_Reserved:
-            //result = self->systemWorker + offset;
-            //break;
-            
-        case AddressKind_Invalid:
-        default:
-            assert(!"Invalid address for pointer conversion");
-            break;
-    }
-    
-    return result;
-}
-
 static inline uint64_t loadWithWidthSafe(uint8_t* ptr, int width) {
     switch(width) {
         case 1: return ptr[0];
@@ -1823,7 +1758,7 @@ BCValue BCGen_interpret(BCGen* self, uint32_t fnIdx, BCValue* args, uint32_t n_a
         case LongInst_HeapLoad8:
             {
                 assert(*rhs);
-                uint8_t* realPtr = BCInterpreter_toRealPointer(&state, heapPtr, (uint32_t)*rhs);
+                uint8_t* realPtr = (uint8_t*)(uintptr_t)*rhs;
                 (*lhsRef) = loadWithWidthSafe(realPtr, 1);
             }
             break;
@@ -1831,7 +1766,7 @@ BCValue BCGen_interpret(BCGen* self, uint32_t fnIdx, BCValue* args, uint32_t n_a
         case LongInst_HeapStore8:
             {
                 assert(*lhsRef);
-                uint8_t* realPtr = BCInterpreter_toRealPointer(&state, heapPtr, (uint32_t)*lhsRef);
+                uint8_t* realPtr = (uint8_t*)(uintptr_t)*lhsRef;
                 storeWithWidthSafe(realPtr, *rhs, 1);
             }
             break;
@@ -1840,7 +1775,7 @@ BCValue BCGen_interpret(BCGen* self, uint32_t fnIdx, BCValue* args, uint32_t n_a
         case LongInst_HeapLoad16:
             {
                 assert(*rhs);
-                uint8_t* realPtr = BCInterpreter_toRealPointer(&state, heapPtr, (uint32_t)*rhs);
+                uint8_t* realPtr = (uint8_t*)(uintptr_t)*rhs;
                 (*lhsRef) = loadWithWidthSafe(realPtr, 2);
             }
             break;
@@ -1848,7 +1783,7 @@ BCValue BCGen_interpret(BCGen* self, uint32_t fnIdx, BCValue* args, uint32_t n_a
         case LongInst_HeapStore16:
             {
                 assert(*lhsRef);
-                uint8_t* realPtr = BCInterpreter_toRealPointer(&state, heapPtr, (uint32_t)*lhsRef);
+                uint8_t* realPtr = (uint8_t*)(uintptr_t)*lhsRef;
                 storeWithWidthSafe(realPtr, *rhs, 2);
             }
             break;
@@ -1857,7 +1792,7 @@ BCValue BCGen_interpret(BCGen* self, uint32_t fnIdx, BCValue* args, uint32_t n_a
         case LongInst_HeapLoad32:
             {
                 assert(*rhs);
-                uint8_t* realPtr = BCInterpreter_toRealPointer(&state, heapPtr, (uint32_t)*rhs);
+                uint8_t* realPtr = (uint8_t*)(uintptr_t)*rhs;
                 (*lhsRef) = loadWithWidthSafe(realPtr, 4);
             }
             break;
@@ -1865,7 +1800,7 @@ BCValue BCGen_interpret(BCGen* self, uint32_t fnIdx, BCValue* args, uint32_t n_a
         case LongInst_HeapStore32:
             {
                 assert(*lhsRef);
-                uint8_t* realPtr = BCInterpreter_toRealPointer(&state, heapPtr, (uint32_t)*lhsRef);
+                uint8_t* realPtr = (uint8_t*)(uintptr_t)*lhsRef;
                 storeWithWidthSafe(realPtr, *rhs, 4);
             }
             break;
@@ -1874,7 +1809,7 @@ BCValue BCGen_interpret(BCGen* self, uint32_t fnIdx, BCValue* args, uint32_t n_a
         case LongInst_HeapLoad64:
             {
                 assert(*rhs);
-                uint8_t* realPtr = BCInterpreter_toRealPointer(&state, heapPtr, (uint32_t)*rhs);
+                uint8_t* realPtr = (uint8_t*)(uintptr_t)*rhs;
                 (*lhsRef) = loadWithWidthSafe(realPtr, 8);
             }
             break;
@@ -1882,7 +1817,7 @@ BCValue BCGen_interpret(BCGen* self, uint32_t fnIdx, BCValue* args, uint32_t n_a
         case LongInst_HeapStore64:
             {
                 assert(*lhsRef);
-                uint8_t* realPtr = BCInterpreter_toRealPointer(&state, heapPtr, (uint32_t)*lhsRef);
+                uint8_t* realPtr = (uint8_t*)(uintptr_t)*lhsRef;
                 storeWithWidthSafe(realPtr, *rhs, 8);
             }
             break;
@@ -1929,9 +1864,9 @@ BCValue BCGen_interpret(BCGen* self, uint32_t fnIdx, BCValue* args, uint32_t n_a
             {
                 if ((lw & UINT16_MAX) >> 8)
                 {
-                    long offset = *opRef;
-                    uint8_t length = heapPtr->heapData[offset];
-                    char* string_start = cast(char*)&heapPtr->heapData[offset + 1];
+                    uint8_t* stringPtr = (uint8_t*)(uintptr_t)*opRef;
+                    uint8_t length = stringPtr[0];
+                    char* string_start = cast(char*)(stringPtr + 1);
                 }
                 else
                 {
@@ -1952,49 +1887,12 @@ BCValue BCGen_interpret(BCGen* self, uint32_t fnIdx, BCValue* args, uint32_t n_a
 
         case LongInst_MapExternal:
             {
-                uint32_t mapSize = hi;
                 const uint32_t lw = (codeP)[state.ip];
                 const uint32_t hi = (codeP)[state.ip + 1];
                 intptr_t addrInt = lw | (((uint64_t) hi) << 32);
-                BCExternal external;
                 state.ip += 2;
 
-                external.size = mapSize;
-                external.addr = (void*) addrInt;
-                uint32_t addressSpace = AddressFrom(AddressKind_Heap, 0) -
-                                        AddressFrom(AddressKind_External, 0);
-                if (!mapSize || mapSize > addressSpace - state.mapPtr)
-                {
-                    fprintf(stderr, "VM external address space exhausted\n");
-                    BCValue error = imm32(2004);
-                    error.vType = BCValueType_Bailout;
-                    return error;
-                }
-                if (state.externalsCount == state.externalsCapacity)
-                {
-                    if (state.externalsCapacity > UINT32_MAX / (2 * sizeof(BCExternal)))
-                    {
-                        fprintf(stderr, "Too many VM external mappings\n");
-                        abort();
-                    }
-                    uint32_t capacity = state.externalsCapacity ? state.externalsCapacity * 2 : 16;
-                    BCExternal* mappings = self->allocFn(self->allocCtx, capacity * sizeof(*mappings), 0);
-                    if (!mappings)
-                    {
-                        fprintf(stderr, "Cannot allocate VM external mappings\n");
-                        abort();
-                    }
-                    if (state.externalsCount)
-                        memcpy(mappings, state.externals, state.externalsCount * sizeof(*mappings));
-                    state.externals = mappings;
-                    state.externalsCapacity = capacity;
-                }
-                external.mapAddr = AddressFrom(AddressKind_External, state.mapPtr);
-                state.mapPtr += align4(external.size);
-
-                state.externals[state.externalsCount++] = external;
-                (*opRef) = external.mapAddr;
-                //assert(0);//, "Unsupported right now: BCBuiltin");
+                (*opRef) = addrInt;
             }
             break;
 
@@ -2174,58 +2072,31 @@ BCValue BCGen_interpret(BCGen* self, uint32_t fnIdx, BCValue* args, uint32_t n_a
 
         case LongInst_Alloc:
             {
-                const uint32_t allocSize = *rhs;
-                const uint32_t heapSize = heapPtr->heapSize;
+                const uint32_t allocSize = (uint32_t)*rhs;
+                void* allocPtr = BCHeap_Alloc(heapPtr, allocSize ? allocSize : 1);
 
-                if(heapSize + allocSize  >= heapPtr->heapMax)
+                if (!allocPtr)
                 {
-                    if (heapPtr->heapMax >= (1 << 31))
-                        assert(0);//, "!!! HEAP OVERFLOW !!!");
-                    else
-                    {
-                        // we will now resize the heap to 4 times its former size
-                        const uint32_t newHeapSize =
-                            ((allocSize < heapPtr->heapMax * 2) ?
-                            heapPtr->heapMax * 4 :
-                            align4(cast(uint32_t)(heapPtr->heapMax + allocSize)) * 2);
-
-                        heapPtr->heapData = (uint8_t*)realloc(heapPtr->heapData, newHeapSize);
-                        heapPtr->heapMax = newHeapSize;
-                    }
+                    BCValue error = imm32(2004);
+                    error.vType = BCValueType_Bailout;
+                    return error;
                 }
 
-                *lhsRef = heapSize;
-                heapPtr->heapSize += allocSize;
+                *lhsRef = (intptr_t)allocPtr;
             }
             break;
         case LongInst_MemCpy:
             {
                 uint32_t cpySize = cast(uint32_t)*opRef;
-                uint32_t cpySrc = cast(uint32_t)*rhs;
-                uint32_t cpyDst = cast(uint32_t)*lhsRef;
+                uint8_t* cpySrcP = (uint8_t*)(uintptr_t)*rhs;
+                uint8_t* cpyDstP = (uint8_t*)(uintptr_t)*lhsRef;
 
-                if (cpySrc != cpyDst && cpySize != 0)
+                if (cpySrcP != cpyDstP && cpySize != 0)
                 {
-                    // Basic validation
-                    assert(cpySrc); // Null source pointer
-                    assert(cpyDst); // Null destination pointer
-                    
-                    // Get real pointers using the unified function
-                    uint8_t* cpySrcP = BCInterpreter_toRealPointer(&state, heapPtr, cpySrc);
-                    uint8_t* cpyDstP = BCInterpreter_toRealPointer(&state, heapPtr, cpyDst);
-                    
-                    // Check for overlapping regions (if you want to keep this safety check)
-                    // Note: memcpy doesn't handle overlap, memmove does
-                    // But we can keep your original check for safety
-                    uintptr_t src_start = (uintptr_t)cpySrcP;
-                    uintptr_t src_end = src_start + cpySize;
-                    uintptr_t dst_start = (uintptr_t)cpyDstP;
-                    uintptr_t dst_end = dst_start + cpySize;
-                    
-                    assert(dst_start >= src_end || dst_end <= src_start);
-                    
-                    // Perform the copy
-                    memcpy(cpyDstP, cpySrcP, cpySize);
+                    assert(cpySrcP); // Null source pointer
+                    assert(cpyDstP); // Null destination pointer
+
+                    memmove(cpyDstP, cpySrcP, cpySize);
                 }
             }
             break;
@@ -2242,42 +2113,15 @@ BCValue BCGen_interpret(BCGen* self, uint32_t fnIdx, BCValue* args, uint32_t n_a
             {
                 assert(hi < self->contextCount);
                 uint64_t address = (uint64_t)*opRef;
-                uint32_t available = 0;
-                uint32_t offset = 0;
-                if (address && address <= UINT32_MAX)
+                if (!address)
                 {
-                    address_kind_t kind = ClassifyAddress((uint32_t)address, &offset);
-                    if (kind == AddressKind_Heap && offset < heapPtr->heapSize)
-                        available = heapPtr->heapSize - offset;
-                    else if (kind == AddressKind_External)
-                    {
-                        for (uint32_t i = 0; i < state.externalsCount; i++)
-                        {
-                            BCExternal mapping = state.externals[i];
-                            if (address >= mapping.mapAddr && address - mapping.mapAddr < mapping.size)
-                            {
-                                available = mapping.size - (uint32_t)(address - mapping.mapAddr);
-                                break;
-                            }
-                        }
-                    }
-                }
-                if (!available)
-                {
-                    fprintf(stderr, "VM string splice has a null or unmapped address\n");
+                    fprintf(stderr, "VM string splice has a null address\n");
                     BCValue error = imm32(2002);
                     error.vType = BCValueType_Error;
                     return error;
                 }
-                const char* text = (const char*)BCInterpreter_toRealPointer(&state, heapPtr, (uint32_t)address);
-                const char* end = memchr(text, 0, available);
-                if (!end)
-                {
-                    fprintf(stderr, "VM string splice is not NUL-terminated within its mapped storage\n");
-                    BCValue error = imm32(2003);
-                    error.vType = BCValueType_Error;
-                    return error;
-                }
+                const char* text = (const char*)(uintptr_t)address;
+                const char* end = text + strlen(text);
                 BCReadContext context = self->contexts[hi];
                 context.stringCb(text, (uint32_t)(end - text), context.userCtx);
             }
@@ -2294,8 +2138,8 @@ L_LongInst_Comment:
                 cond = 1;
 
                 uint32_t size = cast(uint32_t) *opRef;
-                uint32_t _lhs = cast(uint32_t) *lhsRef;
-                uint32_t _rhs = cast(uint32_t) *rhs;
+                uintptr_t _lhs = cast(uintptr_t) *lhsRef;
+                uintptr_t _rhs = cast(uintptr_t) *rhs;
 
                 assert(_lhs && _rhs);//, "trying to deref nullPointers");
                 if (_lhs == _rhs)
@@ -2304,8 +2148,8 @@ L_LongInst_Comment:
                 }
                 else
                 {
-                    uint8_t* lhsP = BCInterpreter_toRealPointer(&state, heapPtr, _lhs);
-                    uint8_t* rhsP = BCInterpreter_toRealPointer(&state, heapPtr, _rhs);
+                    uint8_t* lhsP = (uint8_t*)_lhs;
+                    uint8_t* rhsP = (uint8_t*)_rhs;
 
                     for(uint32_t i = 0; i < size; i++)
                     {

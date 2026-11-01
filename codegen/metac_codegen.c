@@ -356,13 +356,12 @@ BCValue MetaCCodegen_RunFunction(metac_bytecode_ctx_t* self,
                 nArgs++;
                 const char* a = va_arg(l, const char*);
                 uint32_t sz = strlen(a);
-                HeapAddr ptr = {heap->heapSize};
-                heap->heapSize += align4(sz + 1);
-                BCValue stringPtr;
-                stringPtr.vType = BCValueType_Immediate;
+                char* copy = (char*)BCHeap_Alloc(heap, sz + 1);
+                assert(copy);
+                memcpy(copy, a, sz + 1);
+                BCValue stringPtr = imm64((uint64_t)(uintptr_t)copy);
                 BCType bcType = {BCTypeEnum_Ptr, 10};
                 stringPtr.type = bcType;
-                stringPtr.heapAddr = ptr;
                 ARENA_ARRAY_ADD(args, stringPtr);
             } break;
             case 'p':

@@ -43,29 +43,31 @@ static bool IsAggregateType(metac_type_index_kind_t typeKind)
 
 void ConvertTupleElementToExp(metac_sema_state_t* sema,
                               metac_sema_expr_t** dstP, metac_type_index_t elemType,
-                              uint32_t offset, BCHeap* heap)
+                              uintptr_t address, BCHeap* heap)
 {
+    uint8_t* tupleData = (uint8_t*)address;
+    (void) heap;
     metac_expr_t exp = {expr_invalid};
     *dstP = AllocNewSemaExpr(sema, &exp);
     metac_sema_expr_t* dst = *dstP;
 
     if (elemType.v == TYPE_INDEX_V(type_index_basic, type_int))
     {
-        int32_t value = *cast(int32_t*)(heap->heapData + offset);
+        int32_t value = *cast(int32_t*)(tupleData);
         dst->Kind = expr_signed_integer;
         dst->TypeIndex = elemType;
         dst->ValueI64 = value;
     }
     else if (elemType.v == TYPE_INDEX_V(type_index_basic, type_unsigned_int))
     {
-        uint32_t value = *cast(uint32_t*)(heap->heapData + offset);
+        uint32_t value = *cast(uint32_t*)(tupleData);
         dst->Kind = expr_signed_integer;
         dst->TypeIndex = elemType;
         dst->ValueI64 = value;
     }
     else if (elemType.v == TYPE_INDEX_V(type_index_basic, type_char))
     {
-        char value = *cast(char*)(heap->heapData + offset);
+        char value = *cast(char*)(tupleData);
         uint32_t charHash = CRC32C_VALUE(~0, value);
         dst->Kind = expr_char;
         dst->TypeIndex = elemType;
@@ -74,7 +76,7 @@ void ConvertTupleElementToExp(metac_sema_state_t* sema,
     }
     else if (elemType.v == TYPE_INDEX_V(type_index_basic, type_type))
     {
-        metac_type_index_t value = *cast(metac_type_index_t*)(heap->heapData + offset);
+        metac_type_index_t value = *cast(metac_type_index_t*)(tupleData);
         dst->Kind = expr_type;
         dst->TypeIndex = elemType;
         dst->TypeExp = value;
@@ -206,7 +208,7 @@ EvaluateExpr(metac_sema_state_t* sema,
 
         const uint32_t count = typeTuple->TypeCount;
 
-        uint32_t currrentHeapOffset = resultInt;
+        uintptr_t currrentHeapOffset = (uintptr_t)resultInt;
 
         STACK_ARENA_ARRAY(metac_sema_expr_t*, tupleExps, 32, &sema->TempAlloc)
 

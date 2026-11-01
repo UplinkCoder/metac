@@ -546,153 +546,6 @@ EXTERN_C bool BCValue_isStackValueOrParameter(const BCValue* val)
          || val->vType == BCValueType_External);
 }
 /*
-+ ADDRESS RANGE           | SIZE    | SEGMENT NAME    | BITMASK (Top 7)  | PURPOSE / NOTES
-+-------------------------|---------|-----------------|------------------|---------------------------------------
-+ 0x00000000 - 0x00001FFF | 8 KB    | NULL TRAP       | 0000000          | Catch NULL derefs (up to 8KB offset)
-+ 0x00002000 - 0x00002FFF | 4 KB    | REGISTER PAGE   | 0000000          | 256 x 64-bit GPRs + VM State
-+ 0x00003000 - 0x00003FFF | 4 KB    | DOUBLE GUARD    | 0000000          | Protects Regs from Stack underflow
-+ 0x00004000 - 0x01FFFFFF | ~32 MB  | STACK (UP)      | 0000000          | Frame: Grows UP toward External
-+-------------------------|---------|-----------------|------------------|---------------------------------------
-+ 0x02000000 - 0x41FFFFFF | 1 GB    | EXTERNAL (TLB)  | 0000001 - 0100000| 4096 x 256KB Cascaded Slots
-+-------------------------|---------|-----------------|------------------|---------------------------------------
-+ 0x42000000 - 0xC1FFFFFF | ~2 GB   | HEAP (ARENA)    | 0100001 - 1100000| Main Growable Host Memory (Hot Path)
-+-------------------------|---------|-----------------|------------------|---------------------------------------
-+ 0xC2000000 - 0xC2100FFF | 1 MB    | RETURN STACK    | 1100001 - ...    | Shadow Stack (32-bit return addrs)
-+ 0xC2101000 - 0xD2100FFF | 256 MB  | RO METADATA     | ...              | core.reflect / Immutable Literals
-+ 0xD2101000 - 0xFFFFFFFF | ~735 MB | SYSTEM WORKER   | ...     - 1111111| Fiber Meta / Waiter Tables / Debug
-+-------------------------|---------|-----------------|------------------|---------------------------------------
-*/
-
-#define VM_TOP_BITS_SHIFT         25
-#define VM_KIND_HEAP_START        33  // 0100001
-#define VM_KIND_HEAP_END          96  // 1100000
-#define VM_KIND_SYSTEM_START      97  // 1100001
-
-// --- LOW SYSTEM AREA (top == 0) ---
-#define VM_ADDR_NULL_TRAP         0x00000000
-#define VM_ADDR_REG_PAGE          0x00002000
-#define VM_ADDR_GUARD_PAGE        0x00003000
-#define VM_ADDR_STACK_START       0x00004000
-
-// --- EXTERNAL / TLB ---
-#define VM_ADDR_EXTERNAL_START    0x02000000
-
-// --- HEAP AREA ---
-#define VM_ADDR_HEAP_START        0x42000000
-
-// --- SYSTEM RESERVED AREA (top >= 97) ---
-#define VM_ADDR_RESERVED_START    0xC2000000
-#define VM_ADDR_RETURN_STACK      0xC2000000
-#define VM_ADDR_RO_METADATA       0xC2101000
-#define VM_ADDR_SYSTEM_WORKER     0xD2101000
-
-// --- SIZES & LIMITS ---
-#define VM_SIZE_REG_PAGE          (4  * 1024)
-#define VM_SIZE_RETURN_STACK      (1  * 1024 * 1024)
-#define VM_SIZE_RO_METADATA       (256 * 1024 * 1024)
-#define VM_LIMIT_RECURSION        2000
-
-uint32_t AddressFrom(address_kind_t kind, uint32_t offset)
-{
-    uint32_t result = 0;
-    switch (kind)
-    {
-        case AddressKind_Heap: {
-            result = VM_ADDR_HEAP_START + offset;
-        } break;
-        case AddressKind_Stack: {
-            result = VM_ADDR_STACK_START + offset;
-        } break;
-        case AddressKind_Register: {
-            result = VM_ADDR_REG_PAGE + offset;
-        } break;
-        case AddressKind_ROMetadata: {
-            result = VM_ADDR_RO_METADATA + offset;
-        } break;
-        case AddressKind_External: {
-            result = VM_ADDR_EXTERNAL_START + offset;
-        } break;
-        default : assert(0);
-    }
-    return result;
-}
-
-address_kind_t ClassifyAddress(uint32_t addr, uint32_t* out_offset)
-{
-    const uint32_t top = addr >> VM_TOP_BITS_SHIFT; // 128 chunks of 32MB
-    address_kind_t kind = AddressKind_Invalid;
-    uint32_t offset = 0;
-
-    /* HOT PATH: Heap (0x42000000 - 0xC1FFFFFF) */
-    // Top 7 bits: 33 (0100001) to 96 (1100000)
-    if (top >= VM_KIND_HEAP_START && top <=  VM_KIND_HEAP_END)
-    {
-        kind   = AddressKind_Heap;
-        offset = addr - VM_ADDR_HEAP_START;
-    }
-    /* SECOND HOT PATH: Frame (Regs & Stack in the first 32MB) */
-    else if (top == 0)
-    {
-        // Stack grows up, starts at 0x4000
-        if (addr >= VM_ADDR_STACK_START)
-        {
-            kind   = AddressKind_Stack;
-            offset = addr - VM_ADDR_STACK_START;
-        }
-        // 4KB Guard (0x3000 - 0x3FFF)
-        else if (addr >= VM_ADDR_GUARD_PAGE)
-        {
-             // kind = AddressKind_Invalid; // Guard Hit
-        }
-        // 4KB Register Page (0x2000 - 0x2FFF)
-        else if (addr >= VM_ADDR_REG_PAGE)
-        {
-            kind   = AddressKind_Register;
-            offset = addr - VM_ADDR_REG_PAGE;
-        }
-        // 8KB NULL trap (0x0000 - 0x1FFF)
-        else
-        {
-            // kind = AddressKind_Invalid; // NULL trap Hit
-        }
-    }
-    /* SYSTEM RESERVED: (Shadow Stack, RO Metadata, System Data) */
-    // Top 7 bits: 97 (1100001) to 127 (1111111)
-    else if (top >= 97)
-    {
-        // Shadow Return Stack (dedicated for 32-bit return addresses)
-        // this is address invalid
-        if (addr < VM_ADDR_RETURN_STACK)
-        {
-            // kind   = AddressKind_ReturnStack;
-            // offset = addr - VM_ADDR_RETURN_STACK;
-        }
-        // RO METADATA (core.reflect, string literals, immutable data)
-        else if (addr < VM_ADDR_RO_METADATA)
-        {
-            kind   = AddressKind_ROMetadata;
-            offset = addr - VM_ADDR_RO_METADATA;
-        }
-        // Rest of SYSTEM RESERVED (Fibers, Waiter Tables, etc.)
-        else
-        {
-            // this is also invald
-            // kind   = AddressKind_Reserved;
-            // offset = addr - VM_ADDR_RESERVED_START;
-        }
-    }
-    /* EXTERNAL (TLB-backed) (0x02000000 - 0x41FFFFFF) */
-    else if (top <= 32)
-    {
-        kind   = AddressKind_External;
-        offset = addr - VM_ADDR_EXTERNAL_START;
-    }
-
-    *out_offset = offset;
-    return kind;
-}
-
-/*
 string typeFlagsToString(BCTypeFlags flags) pure @safe
 {
     string result;
@@ -743,6 +596,24 @@ EXTERN_C BCValue imm64_(uint64_t value, bool signed_)
     return ret;
 }
 
+static void* default_heap_alloc(void* ctx, uint32_t size)
+{
+    (void) ctx;
+    return malloc(size);
+}
+
+static void* default_heap_realloc(void* ctx, void* ptr, uint32_t size)
+{
+    (void) ctx;
+    return realloc(ptr, size);
+}
+
+static void default_heap_free(void* ctx, void* ptr)
+{
+    (void) ctx;
+    free(ptr);
+}
+
 static inline void AllocDefaultHeap(BCHeap* newHeap)
 {
     newHeap->heapMax = 1 << 14;
@@ -752,6 +623,11 @@ static inline void AllocDefaultHeap(BCHeap* newHeap)
         newHeap->heapData[i] = (i & 0xff);
     }
     newHeap->heapSize = 128;
+
+    newHeap->allocator.alloc = default_heap_alloc;
+    newHeap->allocator.realloc_ = default_heap_realloc;
+    newHeap->allocator.free_ = default_heap_free;
+    newHeap->allocator.ctx = 0;
 }
 
 void* alloc_with_malloc(void* ctx, uint32_t size, void* fn)

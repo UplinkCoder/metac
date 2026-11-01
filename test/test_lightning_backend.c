@@ -58,6 +58,7 @@ TestBackend* TestBackend_Create(void) {
     memset(tb->ctx, 0, ctx_size);
     
     // Create heap
+    memset(&tb->heap, 0, sizeof(tb->heap));
     tb->heap.heapData = malloc(1024 * 1024);
     tb->heap.heapMax = 1024 * 1024;
     tb->heap.heapSize = 4;
@@ -389,7 +390,8 @@ void test_store_load64(test_stats_t* stats) {
     uint32_t fnIdx = tb->backend->BeginFunction(tb->ctx, 0, NULL);
 
     BCType i64t = {BCTypeEnum_i64, 0, BCTypeFlags_None};
-    BCValue addr = imm32(AddressFrom(AddressKind_Heap, 16));
+    BCValue addr = imm64((uint64_t)(uintptr_t)(tb->heap.heapData + 16));
+    addr.type = (BCType){BCTypeEnum_Ptr, 0, BCTypeFlags_None};
     BCValue value = {BCValueType_Immediate};
     value.type = i64t;
     value.imm64.imm64 = 0x123456789LL;
@@ -599,6 +601,117 @@ void test_emit_flag(test_stats_t* stats) {
     TestBackend_Destroy(tb);
 }
 
+typedef struct HostStackRecord {
+    uint32_t id;
+    char label[32];
+} HostStackRecord;
+
+/**
+ * Test: read and measure a string field from a C struct literal on the host stack
+ */
+void test_host_stack_struct_string(test_stats_t* stats) {
+    TestBackend* tb = TestBackend_Create();
+
+    HostStackRecord hostRecord = {
+        .id = 7,
+        .label = "host stack string",
+    };
+
+    BCType ptrT = {BCTypeEnum_Ptr, 0, BCTypeFlags_None};
+    BCType i32T = {BCTypeEnum_i32, 0, BCTypeFlags_None};
+    BCType u8T = {BCTypeEnum_u8, 0, BCTypeFlags_None};
+
+    uint32_t fnIdx = tb->backend->BeginFunction(tb->ctx, 0, NULL);
+
+    BCValue record = tb->backend->GenParameter(tb->ctx, ptrT, "record");
+    BCValue labelOffset = imm32((uint32_t)offsetof(HostStackRecord, label));
+    BCValue labelAddr = tb->backend->GenTemporary(tb->ctx, ptrT);
+    tb->backend->Add3(tb->ctx, &labelAddr, &record, &labelOffset);
+
+    BCValue count = tb->backend->GenLocal(tb->ctx, i32T, "count");
+    BCValue zero = imm32(0);
+    tb->backend->Set(tb->ctx, &count, &zero);
+
+    BCValue cursor = tb->backend->GenLocal(tb->ctx, ptrT, "cursor");
+    tb->backend->Set(tb->ctx, &cursor, &labelAddr);
+
+    BCLabel loop = tb->backend->GenLabel(tb->ctx);
+
+    BCValue byte = tb->backend->GenTemporary(tb->ctx, u8T);
+    tb->backend->Load8(tb->ctx, &byte, &cursor);
+
+    BCValue isNul = tb->backend->GenTemporary(tb->ctx, i32T);
+    tb->backend->Eq3(tb->ctx, &isNul, &byte, &zero);
+
+    CndJmpBegin done = tb->backend->BeginCndJmp(tb->ctx, &isNul, true);
+
+    BCValue one = imm32(1);
+    tb->backend->Add3(tb->ctx, &count, &count, &one);
+    tb->backend->Add3(tb->ctx, &cursor, &cursor, &one);
+
+    tb->backend->Jmp(tb->ctx, loop);
+    tb->backend->EndCndJmp(tb->ctx, &done, tb->backend->GenLabel(tb->ctx));
+
+    tb->backend->Ret(tb->ctx, &count);
+    tb->backend->EndFunction(tb->ctx, fnIdx);
+    tb->backend->Finalize(tb->ctx);
+
+    BCValue arg = imm64((uint64_t)(uintptr_t)&hostRecord);
+    arg.type = ptrT;
+    BCValue args[] = { arg };
+    BCValue output = tb->backend->Run(tb->ctx, fnIdx, args, 1, &tb->heap);
+
+    int passed = (output.vType == BCValueType_Immediate
+               && output.imm32.imm32 == (uint32_t)strlen(hostRecord.label));
+    test_record(stats, "Host stack struct literal string length", passed);
+
+    TestBackend_Destroy(tb);
+}
+
+static uint64_t fixture_mutate_local_u32(uint64_t address) {
+    uint32_t* value = (uint32_t*)(uintptr_t)address;
+    *value += 41;
+    return *value;
+}
+
+void test_map_external_func_mutates_local(test_stats_t* stats) {
+    TestBackend* tb = TestBackend_Create();
+
+    BCType i32T = {BCTypeEnum_i32, 0, BCTypeFlags_None};
+    BCType ptrT = {BCTypeEnum_Ptr, 0, BCTypeFlags_None};
+    BCType fnT = {BCTypeEnum_Function, 0, BCTypeFlags_None};
+
+    uint32_t fnIdx = tb->backend->BeginFunction(tb->ctx, 0, NULL);
+
+    BCValue value = tb->backend->GenLocal(tb->ctx, i32T, "value");
+    BCValue one = imm32(1);
+    tb->backend->Set(tb->ctx, &value, &one);
+
+    BCValue valueAddr = tb->backend->GenTemporary(tb->ctx, ptrT);
+    tb->backend->LoadFramePointer(tb->ctx, &valueAddr, -(int32_t)value.stackAddr.addr);
+
+    BCValue external = tb->backend->GenExternalFunc(tb->ctx, fnT, "fixture_mutate_local_u32");
+    BCValue funcPtr = imm64((uint64_t)(uintptr_t)fixture_mutate_local_u32);
+    funcPtr.type = ptrT;
+    tb->backend->MapExternalFunc(tb->ctx, &external, &funcPtr);
+
+    BCValue ignored = tb->backend->GenTemporary(tb->ctx, i32T);
+    BCValue args[] = { valueAddr };
+    tb->backend->Call(tb->ctx, &ignored, &external, args, 1);
+
+    tb->backend->Ret(tb->ctx, &value);
+    tb->backend->EndFunction(tb->ctx, fnIdx);
+    tb->backend->Finalize(tb->ctx);
+
+    BCValue noArgs = {BCValueType_Unknown};
+    BCValue output = tb->backend->Run(tb->ctx, fnIdx, &noArgs, 0, &tb->heap);
+
+    int passed = output.vType == BCValueType_Immediate && output.imm32.imm32 == 42;
+    test_record(stats, "MapExternalFunc mutates GenLocal value", passed);
+
+    TestBackend_Destroy(tb);
+}
+
 int main(int argc, const char** argv) {
     printf("=== Lightning Backend Standalone Tests ===\n\n");
 
@@ -619,6 +732,8 @@ int main(int argc, const char** argv) {
     test_call_no_args(&stats);
     test_call_with_args(&stats);
     test_emit_flag(&stats);
+    test_host_stack_struct_string(&stats);
+    test_map_external_func_mutates_local(&stats);
     test_debug_elf(&stats);
     
     printf("\n=== Test Summary ===\n");

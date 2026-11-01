@@ -218,22 +218,17 @@ typedef struct CndJmpBegin
     bool ifTrue;
 } CndJmpBegin;
 
-typedef enum address_kind_t
+typedef void* (*BCHeapAlloc_fn_t)(void* ctx, uint32_t size);
+typedef void* (*BCHeapRealloc_fn_t)(void* ctx, void* ptr, uint32_t size);
+typedef void (*BCHeapFree_fn_t)(void* ctx, void* ptr);
+
+typedef struct BCHeapAllocator
 {
-    AddressKind_Invalid,
-
-    AddressKind_Register,
-    AddressKind_Stack,
-    AddressKind_External,
-    AddressKind_Heap,
-    AddressKind_Reserved,
-    AddressKind_ROMetadata,
-
-    AddressKind_Max
-} address_kind_t;
-
-uint32_t AddressFrom(address_kind_t kind, uint32_t offset);
-address_kind_t ClassifyAddress(uint32_t addr, uint32_t* out_offset);
+    BCHeapAlloc_fn_t alloc;
+    BCHeapRealloc_fn_t realloc_;
+    BCHeapFree_fn_t free_;
+    void* ctx;
+} BCHeapAllocator;
 
 
 CONSTEXPR static inline const uint32_t align4(const uint32_t val)
@@ -292,7 +287,33 @@ typedef struct BCHeap
     uint32_t heapMax;// = initHeapMax;
     uint32_t heapSize;// = 4;
     uint8_t* heapData;
+
+    BCHeapAllocator allocator;
 } BCHeap;
+
+static inline void* BCHeap_Alloc(BCHeap* self, uint32_t size)
+{
+    if (self && self->allocator.alloc)
+        return self->allocator.alloc(self->allocator.ctx, size);
+    return malloc(size);
+}
+
+static inline void* BCHeap_Realloc(BCHeap* self, void* ptr, uint32_t size)
+{
+    if (self && self->allocator.realloc_)
+        return self->allocator.realloc_(self->allocator.ctx, ptr, size);
+    return realloc(ptr, size);
+}
+
+static inline void BCHeap_Free(BCHeap* self, void* ptr)
+{
+    if (self && self->allocator.free_)
+    {
+        self->allocator.free_(self->allocator.ctx, ptr);
+        return;
+    }
+    free(ptr);
+}
 
 typedef struct BCLabel
 {
