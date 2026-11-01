@@ -821,7 +821,7 @@ void MetaCSemantic_ComputeEnumValues(metac_sema_state_t* self,
             assert(METAC_NODE(member) == emptyNode);
             MetaCSemantic_PopOnResolveFail(self);
 
-            if (unresolvedMembers == lastUnresolvedMembers)
+            if (unresolvedMembers && unresolvedMembers == lastUnresolvedMembers)
             {
                 // we have a the same number of unresolved members as last round
                 // which indicates a lack of local progress.
@@ -1063,7 +1063,7 @@ metac_type_index_t TypeEnumSemantic(metac_sema_state_t* self,
 #define ISOLATED_ENUM_SCOPE 0
     if (!ISOLATED_ENUM_SCOPE)
     {
-        assert(self->CurrentScope->Owner.Kind == scope_owner_module);
+        assert(self->CurrentScope);
 
         for(uint32_t memberIndex = 0;
             memberIndex < tmpSemaEnum.MemberCount;

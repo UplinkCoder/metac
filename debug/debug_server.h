@@ -21,7 +21,7 @@ void NAME (void *cls, \
            enum MHD_RequestTerminationCode toe)
 
 #define MHD_HANDLER(NAME) \
-int NAME (void *cls, \
+enum MHD_Result NAME (void *cls, \
           struct MHD_Connection *connection, \
           const char *url, \
           const char *method, \

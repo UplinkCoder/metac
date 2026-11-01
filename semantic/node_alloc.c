@@ -376,7 +376,7 @@ sema_stmt_block_t* AllocNewSemaBlockStmt(metac_sema_state_t* self,
 
         ARENA_ARRAY_ADD(self->BlockStmts, stmt);
         result = self->BlockStmts + self->BlockStmtsCount - 1;
-        ARENA_ARRAY_INIT_SZ(metac_sema_stmt_t*, result->Body, &self->Allocator, stmtCount);
+        ARENA_ARRAY_INIT_SZ(metac_sema_stmt_t*, result->Body, &self->Allocator, stmtCount ? stmtCount : 1);
     }
     (*result_ptr) = result;
 
@@ -388,14 +388,11 @@ sema_stmt_casebody_t* AllocNewSemaCasebodyStmt(metac_sema_state_t* self,
                                                     void** result_ptr)
 {
     sema_stmt_casebody_t* result;
-    sema_stmt_casebody_t stmt = {(metac_stmt_kind_t)0};
 
     {
         result = cast(sema_stmt_casebody_t*)
             AllocNewSemaStmt(self, stmt_casebody, &result);
 
-        ARENA_ARRAY_ADD(self->Stmts, *(metac_sema_stmt_t*)&stmt);
-        result = (sema_stmt_casebody_t*) self->BlockStmts + self->BlockStmtsCount - 1;
         ARENA_ARRAY_INIT_SZ(metac_sema_stmt_t*, result->Stmts, &self->Allocator, stmtCount);
 
         result->StmtCount = stmtCount;
@@ -413,4 +410,3 @@ uint32_t BlockStmtIndex(metac_sema_state_t* self,
 {
     return blockstmt - self->BlockStmts;
 }
-

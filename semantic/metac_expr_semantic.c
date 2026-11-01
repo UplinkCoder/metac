@@ -448,6 +448,27 @@ void ResolveIdentifierToExp(metac_sema_state_t* self,
              node->Kind == node_decl_parameter)
     {
         sema_decl_variable_t* v = cast(sema_decl_variable_t*)node;
+        if (self->RunScope && !self->UnevaluatedDepth)
+        {
+            bool insideRun = false;
+            uint32_t hash = crc32c_nozero(~0, &v->VarIdentifier.v, sizeof(v->VarIdentifier.v));
+            for (metac_scope_t* scope = self->CurrentScope; scope; scope = scope->Parent)
+            {
+                if (MetaCScope_LookupIdentifier(scope, hash, v->VarIdentifier) == node)
+                {
+                    insideRun = true;
+                    break;
+                }
+                if (scope == self->RunScope)
+                    break;
+            }
+            if (!insideRun)
+            {
+                SemanticError(0, "@run cannot read enclosing runtime variable '%s'",
+                    IdentifierPtrToCharPtr(&self->SemanticIdentifierTable, v->VarIdentifier));
+                abort();
+            }
+        }
         result->Kind = expr_variable;
         result->Variable = v;
         result->TypeIndex = v->TypeIndex;
@@ -467,6 +488,15 @@ void ResolveIdentifierToExp(metac_sema_state_t* self,
         metac_enum_member_t* enumMember = cast(metac_enum_member_t*)node;
         (*resultP) = enumMember->Value;
         printf("node->Kind == node_decl_enum_member\n");
+    }
+    else if (node->Kind == node_decl_type_enum)
+    {
+        metac_type_enum_t* t_enum = cast(metac_type_enum_t*)node;
+        result->Kind = expr_type;
+        result->TypeExp.v =
+            TYPE_INDEX_V(type_index_enum, EnumIndex(self, t_enum));
+        result->TypeIndex.v = TYPE_INDEX_V(type_index_basic, type_type);
+        hash = t_enum->Header.Hash;
     }
     else if (node->Kind == node_decl_type_struct)
     {
@@ -496,6 +526,12 @@ void ResolveIdentifierToExp(metac_sema_state_t* self,
     }
     else if (node->Kind == node_expr_unknown_value)
     {
+        (*result) = *cast(metac_sema_expr_t*) node;
+        hash = result->Hash;
+    }
+    else if (node->Kind == (metac_node_kind_t)expr_signed_integer)
+    {
+        // bound template parameters are integer constants
         (*result) = *cast(metac_sema_expr_t*) node;
         hash = result->Hash;
     }
@@ -704,6 +740,71 @@ metac_sema_expr_t* MetaCSemantic_doExprSemantic_(metac_sema_state_t* self,
                     MetaCExprKind_toChars(expr->Kind));
             assert(0);
         }
+
+        case expr_template_instance:
+        {
+            // template instantiation is being redesigned (sema-side template bodies), see the template work notes
+            SemanticError(expr->LocationIndex, "template instantiation is not supported yet\n");
+            return (metac_sema_expr_t*)emptyNode;
+#if 0
+            // f!N : instantiate the template function f with its single value parameter bound to N
+            // sema expr pointers can go stale when analyzing E2, so copy the template value first
+            metac_sema_expr_t templValue = *MetaCSemantic_doExprSemantic(self, expr->E1, 0);
+            fprintf(stderr, "DBG E1 kind=%s parserKind=%s\n", MetaCExprKind_toChars(templValue.Kind), MetaCExprKind_toChars(expr->E1->Kind));
+            metac_sema_expr_t argValue = *UnwrapParen(MetaCSemantic_doExprSemantic(self, expr->E2, 0));
+
+            if (templValue.Kind != expr_function
+             || templValue.Function->ParserDecl == 0
+             || templValue.Function->ParserDecl->TemplateParameterCount != 1)
+            {
+                SemanticError(expr->LocationIndex,
+                    "template instance needs a function with exactly one template parameter\n");
+                return (metac_sema_expr_t*)emptyNode;
+            }
+            sema_decl_function_t* templFunc = templValue.Function;
+            if (argValue.Kind != expr_signed_integer)
+            {
+                SemanticError(expr->LocationIndex,
+                    "template instance argument must be an integer constant\n");
+                return (metac_sema_expr_t*)emptyNode;
+            }
+
+            decl_function_t* templDecl = templFunc->ParserDecl;
+            char instName[256];
+            snprintf(instName, sizeof(instName), "%s!%lld",
+                IdentifierPtrToCharPtr(&self->SemanticIdentifierTable, templFunc->Identifier),
+                (long long)argValue.ValueI64);
+            const uint32_t instNameLen = strlen(instName);
+            metac_identifier_ptr_t instId = GetOrAddIdentifier(&self->SemanticIdentifierTable,
+                IDENTIFIER_KEY(crc32c_nozero(~0, instName, instNameLen), instNameLen), instName);
+
+            sema_decl_function_t* inst = cast(sema_decl_function_t*)
+                MetaCSemantic_LookupIdentifier(self, instId);
+            if (inst == cast(sema_decl_function_t*)emptyNode)
+            {
+                metac_scope_t tmpScope = {scope_flag_temporary};
+                MetaCScopeTable_InitN(&tmpScope.ScopeTable, 1, &self->TempAlloc);
+                tmpScope.Owner.v = SCOPE_OWNER_V(scope_owner_template, 0);
+                MetaCSemantic_PushTemporaryScope(self, &tmpScope);
+
+                // bind the template parameter to the value of the argument
+                metac_identifier_ptr_t paramId =
+                    MetaCIdentifierTable_CopyIdentifier(self->ParserIdentifierTable,
+                        &self->SemanticIdentifierTable, templDecl->TemplateParameters->Parameter->VarIdentifier);
+                metac_sema_expr_t* bound = AllocNewSemaExpr(self, expr->E2);
+                *bound = argValue;
+                MetaCSemantic_RegisterInScope(self, paramId, METAC_NODE(bound));
+
+                inst = MetaCSemantic_doFunctionInstance(self, templDecl, &instId);
+                MetaCSemantic_PopTemporaryScope(self);
+                MetaCSemantic_RegisterInScope(self, instId, METAC_NODE(inst));
+            }
+
+            result->Kind = expr_function;
+            result->Function = inst;
+            result->TypeIndex = inst->TypeIndex;
+#endif
+        } break;
 
         case expr_comma:
         {
@@ -925,6 +1026,32 @@ LswitchIdKey:
                 MetaCSemantic_UnmountScope(self);
 
                 // hash = 0xfefefefe;
+            }
+            else if (result->E1->Kind == expr_type &&
+                     TYPE_INDEX_KIND(result->E1->TypeExp) == type_index_enum)
+            {
+                metac_type_enum_t* enum_ =
+                    EnumTypePtr(self, TYPE_INDEX_INDEX(result->E1->TypeExp));
+                metac_identifier_ptr_t memberId = GetIdentifierPtr(expr->E2);
+                metac_enum_member_t* member = 0;
+
+                for (uint32_t memberIdx = 0; memberIdx < enum_->MemberCount; memberIdx++)
+                {
+                    if (enum_->Members[memberIdx].Identifier.v == memberId.v)
+                    {
+                        member = enum_->Members + memberIdx;
+                        break;
+                    }
+                }
+
+                if (!member)
+                {
+                    SemanticError(expr->LocationIndex,
+                        "enum has no member: %s\n",
+                        IdentifierPtrToCharPtr(self->ParserIdentifierTable, memberId));
+                    return (metac_sema_expr_t*)emptyNode;
+                }
+                *result = *member->Value;
             }
             else
             {
@@ -1302,17 +1429,17 @@ LswitchIdKey:
         case expr_typeof:
         {
             hash = typeof_key;
+            self->UnevaluatedDepth++;
             metac_sema_expr_t* e1 =
                 MetaCSemantic_doExprSemantic(self, expr->E1, 0);
+            self->UnevaluatedDepth--;
 
+            // an expression naming a type (E, int, ...) has type `type`
+            // but denotes the type in TypeExp
             metac_type_index_t type = e1->TypeIndex;
-            // usually we assume the type of which we want
-            // to get the size is the type of the expression
-            if (e1->TypeIndex.v == TYPE_INDEX_V(type_index_basic, type_type))
+            if (e1->Kind == expr_type)
             {
-                // if the expression is any other kind of expression and it is of type type
-                // it indicates we want this typeof be resolved at a later time
-                // possibly when calling a function
+                type = e1->TypeExp;
             }
 
             result->TypeIndex.v = TYPE_INDEX_V(type_index_basic, type_type);
@@ -1322,8 +1449,10 @@ LswitchIdKey:
         case expr_sizeof:
         {
             int32_t size = -1;
+            self->UnevaluatedDepth++;
             metac_sema_expr_t* e1 =
                 MetaCSemantic_doExprSemantic(self, expr->E1, 0);
+            self->UnevaluatedDepth--;
             metac_type_index_t typeIdx;
             hash = sizeof_key;
 
@@ -1369,9 +1498,8 @@ LswitchIdKey:
             //    IdentifierPtrToCharPtr(self->ParserIdentifierTable, result->IdentifierPtr));
 
             metac_node_t node = MetaCSemantic_LookupIdentifier(self, semaIdentifier);
-            if (node == emptyPointer)
-            {
-                xfprintf(stderr, "'%s' Identifier lookup failed\n",  IdentifierPtrToCharPtr(&self->SemanticIdentifierTable, result->IdentifierPtr));
+            if (node == emptyPointer)            {
+                xfprintf(stderr, "'%s' Identifier lookup failed\n",  IdentifierPtrToCharPtr(&self->SemanticIdentifierTable, semaIdentifier));
                 hash = expr->IdentifierPtr.v;
             }
             else

@@ -199,6 +199,7 @@ typedef struct ReturnAddr
     uint32_t fnId;
     int64_t* fp;
     int64_t* retval;
+    uint32_t stackTop;
 } ReturnAddr;
 
 #define MAX_CALL_DEPTH 2000
@@ -254,6 +255,7 @@ bool BCInterpreter_Return(BCInterpreter* self)
         self->ip = returnAddr.ip;
 
         self->fp = returnAddr.fp;
+        self->stackTop = returnAddr.stackTop;
         self->callDepth--;
         BCValue cRetval = self->cRetval;
 
@@ -269,6 +271,10 @@ bool BCInterpreter_Return(BCInterpreter* self)
         if (cRetval.type.type == BCTypeEnum_i64 || cRetval.type.type == BCTypeEnum_u64 || cRetval.type.type == BCTypeEnum_f52)
         {
             (*returnAddr.retval) = cRetval.imm64.imm64;
+        }
+        else if (cRetval.type.type == BCTypeEnum_i32)
+        {
+            (*returnAddr.retval) = (int32_t)cRetval.imm32.imm32;
         }
         else
         {
@@ -1071,7 +1077,7 @@ static inline uint8_t* BCInterpreter_toRealPointer(const BCInterpreter* self, co
             
         case AddressKind_Register:
             // Register page at VM_ADDR_REG_PAGE
-            result = (cast(uint8_t*)self->regs[Align(offset, 8) / 8]) + (offset & 7);
+            result = (cast(uint8_t*)self->regs[self->stackTop + Align(offset, 8) / 8]) + (offset & 7);
             break;
             
         case AddressKind_External:
@@ -1139,11 +1145,16 @@ BCValue BCGen_interpret(BCGen* self, uint32_t fnIdx, BCValue* args, uint32_t n_a
 
     BCInterpreter state = {0};
     BCFunction* f = self->functions + (fnIdx - 1);
-    void* frameP = (void*)state.fp;
+    if (f->maxStackUsed / 4 > MAX_REGS || n_args >= MAX_REGS)
+    {
+        BCValue error = imm32(2001);
+        error.vType = BCValueType_Bailout;
+        return error;
+    }
 
     state.ip = f->bytecode_start;
-    state.fp = state.stack;
-    state.sp = state.stack;
+    state.fp = state.regs;
+    state.sp = state.regs;
 
     uint32_t* codeP = self->byteCodeArray;
     if (self->byteCodeCount > ARRAY_SIZE(self->byteCodeArray))
@@ -1164,8 +1175,7 @@ BCValue BCGen_interpret(BCGen* self, uint32_t fnIdx, BCValue* args, uint32_t n_a
                 case BCTypeEnum_i16:
                 case BCTypeEnum_i8:
                 {
-                    (*cast(int32_t*)frameP) = cast(int32_t)arg->imm32.imm32;
-                    frameP += 4;
+                    state.regs[i + 1] = cast(int32_t)arg->imm32.imm32;
                 }
                 break;
 
@@ -1175,23 +1185,21 @@ BCValue BCGen_interpret(BCGen* self, uint32_t fnIdx, BCValue* args, uint32_t n_a
                 case BCTypeEnum_u16:
                 case BCTypeEnum_u8:
                 {
-                    (*cast(uint32_t*)frameP) = cast(uint32_t)arg->imm32.imm32;
-                    frameP += 4;
+                    state.regs[i + 1] = arg->imm32.imm32;
                 }
                 break;
 
             case BCTypeEnum_i64:
                 {
-                    (*cast(int64_t*)frameP) = cast(int64_t)arg->imm64.imm64;
-                    frameP += 8;
+                    state.regs[i + 1] = cast(int64_t)arg->imm64.imm64;
                 }
                 break;
 
             case BCTypeEnum_u64:
             case BCTypeEnum_f52:
+            case BCTypeEnum_Ptr:
             {
-                    (*cast(uint64_t*)frameP) = cast(uint64_t)arg->imm64.imm64;
-                    frameP += 8;
+                    state.regs[i + 1] = arg->imm64.imm64;
             }
             break;
 
@@ -1242,7 +1250,7 @@ BCValue BCGen_interpret(BCGen* self, uint32_t fnIdx, BCValue* args, uint32_t n_a
         const uint32_t lhsOffset   = hi & 0xFFFF;
         const uint32_t rhsOffset   = (hi >> 16) & 0xFFFF;
 
-        const int64_t* regsP = state.regs;
+        const int64_t* regsP = state.regs + state.stackTop;
 
         int64_t* lhsRef = cast(int64_t*) &regsP[(lhsOffset / 4)];
         int64_t* rhs = cast(int64_t*) &regsP[(rhsOffset / 4)];
@@ -2060,7 +2068,7 @@ BCValue BCGen_interpret(BCGen* self, uint32_t fnIdx, BCValue* args, uint32_t n_a
             {
                 assert(self->functions);//, "When calling functions you need functions to call");
                 RetainedCall call = self->calls[(*rhs & UINT32_MAX) - 1];
-                ReturnAddr returnAddr = {state.ip, state.fnIdx, state.fp, lhsRef};
+                ReturnAddr returnAddr = {state.ip, state.fnIdx, state.fp, lhsRef, state.stackTop};
 
                 uint32_t fn = ((call.fn.vType == BCValueType_Immediate) ?
                     call.fn.imm32.imm32 :
@@ -2070,12 +2078,24 @@ BCValue BCGen_interpret(BCGen* self, uint32_t fnIdx, BCValue* args, uint32_t n_a
                 bool isExternal =
                     call.fn.vType == BCValueType_ExternalFunction;
 
-                state.fnIdx = fn - 1;
-
-                int64_t* newStack = state.sp;
-
                 if (!isExternal)
                 {
+                    if (fn == 0 || fn > self->functionCount ||
+                        state.callDepth >= max_call_depth)
+                    {
+                        BCValue error = imm32(2000);
+                        error.vType = BCValueType_Bailout;
+                        return error;
+                    }
+                    uint32_t newTop = state.stackTop +
+                        self->functions[state.fnIdx].maxStackUsed / 4;
+                    if (newTop + self->functions[fn - 1].maxStackUsed / 4 > MAX_REGS)
+                    {
+                        BCValue error = imm32(2001);
+                        error.vType = BCValueType_Bailout;
+                        return error;
+                    }
+                    int64_t* newStack = state.regs + newTop;
                     //foreach(size_t i,ref arg;call.args)
                     for(int i = 0; i < call.n_args; i++)
                     {
@@ -2083,11 +2103,19 @@ BCValue BCGen_interpret(BCGen* self, uint32_t fnIdx, BCValue* args, uint32_t n_a
                         const int argOffset_ = (i * 1) + 1;
                         if(BCValue_isStackValueOrParameter(arg))
                         {
-                            newStack[argOffset_] = *(cast(uint64_t*)(frameP + arg->stackAddr.addr));
+                            newStack[argOffset_] = regsP[arg->stackAddr.addr / 4];
                         }
                         else if (arg->vType == BCValueType_Immediate)
                         {
-                            newStack[argOffset_] = arg->imm64.imm64;
+                            if (arg->type.type == BCTypeEnum_i8 ||
+                                arg->type.type == BCTypeEnum_i16 ||
+                                arg->type.type == BCTypeEnum_i32)
+                                newStack[argOffset_] = (int32_t)arg->imm32.imm32;
+                            else if (BCType_isBasicBCType(arg->type) &&
+                                     BCTypeEnum_basicTypeSize(arg->type.type) <= 4)
+                                newStack[argOffset_] = arg->imm32.imm32;
+                            else
+                                newStack[argOffset_] = arg->imm64.imm64;
                         }
                         else
                         {
@@ -2095,17 +2123,13 @@ BCValue BCGen_interpret(BCGen* self, uint32_t fnIdx, BCValue* args, uint32_t n_a
                         }
                     }
 
-                    if (state.callDepth++ == max_call_depth)
-                    {
-                        BCValue bailoutValue;
-                        bailoutValue.vType = BCValueType_Bailout;
-                        bailoutValue.imm32.imm32 = 2000;
-                        return bailoutValue;
-                    }
+                    state.callDepth++;
 
                     {
                         state.returnAddrs[state.n_return_addrs++] = returnAddr;
-                        state.stackTop = state.stackTop + (call.callerSp.addr / 4);
+                        state.stackTop = newTop;
+                        state.fp = newStack;
+                        state.fnIdx = fn - 1;
                         BCFunction* f =  self->functions + state.fnIdx;
                         state.ip = f->bytecode_start;
                     }
@@ -2495,6 +2519,8 @@ static inline uint32_t BCGen_beginFunction(BCGen* self, uint32_t fnIdx, void* fd
 
     if (!fnIdx)
         fnIdx = ++self->functionCount;
+    else if (fnIdx > self->functionCount)
+        self->functionCount = fnIdx;
 
     // emit four zeros as start marker
     BCGen_emit2(self, 0, 0);
@@ -3037,11 +3063,16 @@ static inline void BCGen_Ret(BCGen* self, const BCValue* val)
     {
          inst = ((BCTypeEnum_basicTypeSize(val->type.type) == 8) ? LongInst_Ret64 : LongInst_Ret32);
     }
+    if (val->type.type == BCTypeEnum_i8 || val->type.type == BCTypeEnum_i16 ||
+        val->type.type == BCTypeEnum_i32)
+        inst = LongInst_RetS32;
+    else if (val->type.type == BCTypeEnum_i64)
+        inst = LongInst_RetS64;
 
 
     if (val->vType == BCValueType_Immediate)
     {
-        if (inst == LongInst_Ret32 && val->imm32.imm32 != INT32_MIN)
+        if ((inst == LongInst_Ret32 || inst == LongInst_RetS32) && val->imm32.imm32 != INT32_MIN)
         {
             if (val->imm32.imm32 == 0)
                 hi = INT32_MIN;
@@ -3380,7 +3411,21 @@ static inline CndJmpBegin BCGen_beginCndJmp(BCGen* self, const BCValue* cond, bo
 
 static inline void BCGen_ReadI32(BCGen* self, const BCValue* value, ReadI32_cb_t ReadI32_cb, void* userCtx)
 {
-    assert(self->contextCount < self->contextCapacity);
+    if (self->contextCount == self->contextCapacity)
+    {
+        uint32_t capacity = self->contextCapacity * 2;
+        ReadI32_ctx_t* contexts = self->allocFn(self->allocCtx,
+            sizeof(*contexts) * capacity, 0);
+        if (!contexts)
+        {
+            fprintf(stderr, "Cannot allocate VM value callbacks\n");
+            abort();
+        }
+        memcpy(contexts, self->contexts, sizeof(*contexts) * self->contextCount);
+        self->allocFn(self->allocCtx, FREE_SIZE, self->contexts);
+        self->contexts = contexts;
+        self->contextCapacity = capacity;
+    }
 
     uint32_t ptr = self->contextCount;
     ReadI32_ctx_t ctx;

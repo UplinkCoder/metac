@@ -18,6 +18,7 @@
 #include "../semantic/metac_type_table.h"
 #include "../repl/completion_trie.c"
 #include "../repl/repl.h"
+#include "../parser/metac_parsetree_dot.h"
 
 #include <stdio.h>
 
@@ -51,6 +52,8 @@ void HelpMessage(ui_interface_t uiInterface, struct ui_state_t* uiState)
        "      :ss for statement semantic mode\n"
        "      :t for token mode\n"
        "      :l Load and lex file\n"
+       "      :r <file> Load, parse and run semantic on a file (run mode)\n"
+       "      :dot <file> Write the parse tree of a file as graphviz to <file>.dot\n"
        "      :heap to see the first 128 bytes of the heap\n"
        "      :p for preprocessor mode\n"
        "      :q to quit\n"
@@ -91,6 +94,19 @@ static inline int TranslateIdentifiers(metac_node_t node, void* ctx)
 
     switch(node->Kind)
     {
+        case stmt_eject:
+        {
+            stmt_eject_t* eject = cast(stmt_eject_t*) node;
+            for (uint32_t i = 0; i < eject->EjectTokensCount; i++)
+            {
+                metac_token_t* token = &eject->EjectTokens[i];
+                if (token->TokenType == tok_identifier)
+                    TranslateIdentifier(DstTable, SrcTable, &token->IdentifierPtr);
+                else if (token->TokenType == tok_string)
+                    TranslateIdentifier(context->DstTableStrings, context->SrcTableStrings,
+                                        &token->StringPtr);
+            }
+        } break;
         case decl_variable:
         {
             decl_variable_t* var = cast(decl_variable_t*) node;
@@ -237,8 +253,7 @@ static inline int Presemantic(metac_node_t node, void* ctx)
         decl_type_typedef_t* typedef_ = cast(decl_type_typedef_t*) node;
         metac_identifier_ptr_t typedefId = typedef_->Identifier;
 
-        metac_type_index_t typeIndex =
-            MetaCSemantic_doTypeSemantic(context->Sema, node);
+        MetaCSemantic_doTypeSemantic(context->Sema, node);
 
         return 1;
     }
@@ -473,6 +488,9 @@ void Repl_SwtichMode(repl_state_t* self)
     case repl_mode_setvars:
         self->Prompt = "SetVars>";
         break;
+    case repl_mode_run:
+        self->Prompt = "Run>";
+        break;
     }
 }
 
@@ -683,6 +701,56 @@ LswitchMode:
                 }
                 goto LnextLine;
             } break;
+            case 'r' :
+            {
+                const char* filename = repl->Line + 3;
+                repl->ParseMode = repl_mode_run;
+
+                if (strlen(repl->Line) < 4)
+                {
+                    ERRORMSG("usage: :r <file>\n");
+                    goto LswitchMode;
+                }
+
+                FILE* fd = fopen(filename, "rb");
+                if (!fd)
+                {
+                    perror(filename);
+                    goto LswitchMode;
+                }
+                fclose(fd);
+
+                MSGF("running: '%s'\n", filename);
+                {
+                    metac_lpp_t runLpp = {0};
+                    MetaCLPP_Init(&runLpp, &repl->Allocator, 0);
+                    decl_array_t decls = ReadLexParse(filename, &runLpp, &repl->Allocator);
+
+                    identifier_translation_context_t transCtx =
+                    {
+                        crc32c(~0, "TranslateIdentifiers", sizeof("TranslateIdentifiers") - 1),
+
+                        &runLpp.Parser.IdentifierTable,
+                        &repl->LPP.Parser.IdentifierTable,
+
+                        &runLpp.Parser.StringTable,
+                        &repl->LPP.Parser.StringTable
+                    };
+
+                    for(uint32_t i = 0; i < decls.Length; i++)
+                    {
+                        MetaCNode_TreeWalk_Real(METAC_NODE(decls.Ptr[i]), TranslateIdentifiers, &transCtx);
+                    }
+
+                    for(uint32_t i = 0; i < decls.Length; i++)
+                    {
+                        MetaCSemantic_doDeclSemantic(&repl->SemanticState, decls.Ptr[i]);
+                    }
+
+                    MSGF("semantic done: %u decls\n", decls.Length);
+                }
+                goto LswitchMode;
+            }
             case 'c' :
             {
                 uiInterface.Clear(uiState);
@@ -740,6 +808,54 @@ LswitchMode:
                 repl->ParseMode = repl_mode_token;
                 goto LswitchMode;
             case 'd' :
+                if (0 == strncmp(":dot", repl->Line, 4)
+                    && (repl->Line[4] == 0 || repl->Line[4] == ' ' || repl->Line[4] == '\t'
+                        || repl->Line[4] == '\r' || repl->Line[4] == '\n'))
+                {
+                    char dotSource[1024];
+                    metac_lpp_t dotLpp = {0};
+                    char dotOutName[1024];
+                    FILE* dotFile;
+                    size_t dotLen;
+                    const char* dotArg = repl->Line + 4;
+
+                    while (*dotArg == ' ' || *dotArg == '\t')
+                    {
+                        dotArg++;
+                    }
+                    if (*dotArg == 0 || *dotArg == '\r' || *dotArg == '\n')
+                    {
+                        MSG("usage: :dot <file>\n");
+                        goto LnextLine;
+                    }
+
+                    snprintf(dotSource, sizeof(dotSource), "%s", dotArg);
+                    dotLen = strlen(dotSource);
+                    while (dotLen && (dotSource[dotLen - 1] == ' ' || dotSource[dotLen - 1] == '\t'
+                                      || dotSource[dotLen - 1] == '\r' || dotSource[dotLen - 1] == '\n'))
+                    {
+                        dotSource[--dotLen] = 0;
+                    }
+
+                    MetaCLPP_Init(&dotLpp, &repl->Allocator, 0);
+                    decl_array_t dotDecls = ReadLexParse(dotSource, &dotLpp, &repl->Allocator);
+
+                    snprintf(dotOutName, sizeof(dotOutName), "%s.dot", dotSource);
+                    dotFile = fopen(dotOutName, "wb");
+                    if (dotFile)
+                    {
+                        MetaCParseTree_DumpDot(dotFile, dotDecls,
+                                               &dotLpp.Parser.IdentifierTable,
+                                               &dotLpp.Parser.StringTable);
+                        fclose(dotFile);
+                        MSGF("wrote '%s'\n", dotOutName);
+                    }
+                    else
+                    {
+                        perror(dotOutName);
+                    }
+                    goto LnextLine;
+                }
                 if (0 == strcmp("ate", repl->Line + 2))
                 {
                     MSG("Build on " __DATE__ " " __TIME__ "\n");
@@ -938,6 +1054,9 @@ LswitchMode:
             switch(repl->ParseMode)
             {
             case repl_mode_max: break;
+            case repl_mode_run:
+                MSG("Run mode takes ':r <file>'\n");
+                goto LnextLine;
             case repl_mode_expr:
             {
 

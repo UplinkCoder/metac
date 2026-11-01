@@ -1,0 +1,359 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="color-scheme" content="dark">
+    <title>MetaC Web REPL</title>
+    <link rel="stylesheet" href="/theme.css">
+    <style>
+        :root {
+            --terminal-bg: #1e1f1c;
+            --terminal-border: #49483e;
+            --terminal-text: #f8f8f2;
+            --terminal-muted: #a6a69c;
+            --terminal-green: #a6e22e;
+            --terminal-pink: #f92672;
+            --terminal-cyan: #66d9ef;
+            --terminal-yellow: #e6db74;
+        }
+
+        body {
+            min-height: 100vh;
+            background: #272822;
+            color: var(--terminal-text);
+            font: 14px/1.5 "Cascadia Code", "SFMono-Regular", Consolas, monospace;
+        }
+
+        .workbench {
+            display: flex;
+            flex-direction: column;
+            width: min(1100px, 100%);
+            min-height: 100vh;
+            margin: 0 auto;
+            padding: 28px 24px 24px;
+        }
+
+        .topbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid var(--terminal-border);
+        }
+
+        .brand {
+            margin: 0;
+            color: var(--terminal-yellow);
+            font-size: 17px;
+            font-weight: 650;
+        }
+
+        .status {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--terminal-muted);
+            font-size: 12px;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--terminal-green);
+            box-shadow: 0 0 10px #a6e22e66;
+        }
+
+        .status.offline .status-dot {
+            background: var(--terminal-pink);
+            box-shadow: none;
+        }
+
+        .terminal {
+            display: flex;
+            flex: 1;
+            flex-direction: column;
+            min-height: 360px;
+            margin-top: 18px;
+            overflow: hidden;
+            background: var(--terminal-bg);
+            border: 1px solid var(--terminal-border);
+        }
+
+        .transcript {
+            flex: 1;
+            min-height: 280px;
+            padding: 18px 20px;
+            overflow: auto;
+            white-space: pre-wrap;
+            overflow-wrap: anywhere;
+            scrollbar-color: #66675d var(--terminal-bg);
+        }
+
+        .output-line {
+            margin: 0 0 5px;
+            color: var(--terminal-text);
+        }
+
+        .output-line.error {
+            color: var(--terminal-pink);
+        }
+
+        .output-line.info {
+            color: var(--terminal-cyan);
+        }
+
+        .command-line {
+            display: flex;
+            gap: 10px;
+            margin: 12px 0;
+            color: var(--terminal-yellow);
+        }
+
+        .command-prompt {
+            flex: none;
+            color: var(--terminal-green);
+        }
+
+        .input-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 12px 16px;
+            border-top: 1px solid var(--terminal-border);
+            background: #252620;
+        }
+
+        .prompt-label {
+            flex: none;
+            color: var(--terminal-green);
+        }
+
+        #commandInput {
+            flex: 1;
+            min-width: 0;
+            padding: 7px 0;
+            border: 0;
+            outline: 0;
+            background: transparent;
+            color: var(--terminal-text);
+            font: inherit;
+            caret-color: var(--terminal-green);
+        }
+
+        #commandInput:focus-visible {
+            outline: 0;
+        }
+
+        #submitButton {
+            padding: 7px 12px;
+            border: 1px solid var(--terminal-green);
+            background: var(--terminal-green);
+            color: var(--terminal-bg);
+            font: inherit;
+            font-weight: 650;
+            cursor: pointer;
+        }
+
+        #submitButton:hover:not(:disabled) {
+            border-color: var(--terminal-yellow);
+            background: var(--terminal-yellow);
+        }
+
+        #submitButton:disabled {
+            opacity: .55;
+            cursor: wait;
+        }
+
+        .toolbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 14px;
+            padding-top: 12px;
+            color: var(--terminal-muted);
+            font-size: 12px;
+        }
+
+        .toolbar button {
+            padding: 4px 0;
+            border: 0;
+            background: transparent;
+            color: var(--terminal-cyan);
+            font: inherit;
+            cursor: pointer;
+        }
+
+        .toolbar button:hover {
+            color: var(--terminal-yellow);
+        }
+
+        button:focus-visible, #commandInput:focus-visible {
+            outline: 2px solid var(--terminal-cyan);
+            outline-offset: 3px;
+        }
+
+        @media (max-width: 600px) {
+            .workbench {
+                padding: 18px 12px 12px;
+            }
+
+            .terminal {
+                min-height: 0;
+                margin-top: 12px;
+            }
+
+            .transcript {
+                min-height: 55vh;
+                padding: 14px 12px;
+            }
+
+            .input-row {
+                gap: 7px;
+                padding: 10px;
+            }
+
+            .toolbar {
+                align-items: flex-start;
+            }
+        }
+    </style>
+</head>
+<body>
+    <main class="workbench">
+        <header class="topbar">
+            <h1 class="brand">MetaC <span style="color:var(--terminal-text)">/</span> REPL</h1>
+            <div class="status" id="connectionStatus" role="status" aria-live="polite">
+                <span class="status-dot" aria-hidden="true"></span>
+                <span id="statusText">Connecting</span>
+            </div>
+        </header>
+
+        <section class="terminal" aria-label="MetaC interactive terminal">
+            <div class="transcript" id="transcript" role="log" aria-live="polite" aria-relevant="additions"></div>
+            <form class="input-row" id="commandForm">
+                <label class="prompt-label" id="promptLabel" for="commandInput">EE&gt;</label>
+                <input id="commandInput" name="command" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" autofocus>
+                <button id="submitButton" type="submit" title="Run command">Run</button>
+            </form>
+        </section>
+
+        <footer class="toolbar">
+            <span>Enter to run · Up/Down for history · Ctrl+L to clear</span>
+            <button type="button" id="clearButton" title="Clear transcript">Clear output</button>
+        </footer>
+    </main>
+
+    <script>
+        const transcript = document.getElementById("transcript");
+        const input = document.getElementById("commandInput");
+        const promptLabel = document.getElementById("promptLabel");
+        const submitButton = document.getElementById("submitButton");
+        const status = document.getElementById("connectionStatus");
+        const statusText = document.getElementById("statusText");
+        const history = [];
+        let historyIndex = 0;
+        let eventCursor = 0;
+
+        function appendText(text, kind) {
+            const line = document.createElement("div");
+            line.className = "output-line " + (kind || "");
+            line.textContent = text;
+            transcript.appendChild(line);
+            transcript.scrollTop = transcript.scrollHeight;
+        }
+
+        function appendCommand(command) {
+            const row = document.createElement("div");
+            row.className = "command-line";
+            const prompt = document.createElement("span");
+            prompt.className = "command-prompt";
+            prompt.textContent = promptLabel.textContent;
+            const text = document.createElement("span");
+            text.textContent = command;
+            row.append(prompt, text);
+            transcript.appendChild(row);
+            transcript.scrollTop = transcript.scrollHeight;
+        }
+
+        async function pollEvents() {
+            try {
+                const response = await fetch("/repl/events?after=" + eventCursor, { cache: "no-store" });
+                if (!response.ok) throw new Error("server returned " + response.status);
+                const data = await response.json();
+                if (data.prompt) promptLabel.textContent = data.prompt;
+                for (const event of data.events) {
+                    eventCursor = Math.max(eventCursor, event.id);
+                    if (event.kind === "clear") transcript.replaceChildren();
+                    else appendText(event.text, event.kind);
+                }
+                status.classList.remove("offline");
+                statusText.textContent = "Connected";
+            } catch (error) {
+                status.classList.add("offline");
+                statusText.textContent = "Connection lost";
+            }
+        }
+
+        async function pollLoop() {
+            while (true) {
+                await pollEvents();
+                await new Promise(resolve => setTimeout(resolve, 300));
+            }
+        }
+
+        document.getElementById("commandForm").addEventListener("submit", async event => {
+            event.preventDefault();
+            const command = input.value;
+            if (!command.trim()) return;
+            submitButton.disabled = true;
+            appendCommand(command);
+            history.push(command);
+            historyIndex = history.length;
+            input.value = "";
+            try {
+                const response = await fetch("/repl/input", {
+                    method: "POST",
+                    headers: { "Content-Type": "text/plain; charset=utf-8" },
+                    body: command
+                });
+                if (!response.ok) {
+                    const message = await response.text();
+                    appendText(message || "Input was rejected (HTTP " + response.status + ")", "error");
+                }
+            } catch (error) {
+                appendText("Could not send input: " + error.message, "error");
+            } finally {
+                submitButton.disabled = false;
+                input.focus();
+            }
+        });
+
+        input.addEventListener("keydown", event => {
+            if (event.ctrlKey && event.key.toLowerCase() === "l") {
+                event.preventDefault();
+                transcript.replaceChildren();
+                return;
+            }
+            if (event.key === "ArrowUp" && historyIndex > 0) {
+                event.preventDefault();
+                input.value = history[--historyIndex];
+            } else if (event.key === "ArrowDown" && historyIndex < history.length) {
+                event.preventDefault();
+                historyIndex++;
+                input.value = historyIndex === history.length ? "" : history[historyIndex];
+            }
+        });
+
+        document.getElementById("clearButton").addEventListener("click", () => {
+            transcript.replaceChildren();
+            input.focus();
+        });
+
+        pollLoop();
+        input.focus();
+    </script>
+</body>
+</html>

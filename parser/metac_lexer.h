@@ -310,6 +310,34 @@ typedef struct metac_token_buffer_t
     uint32_t Capacity;
 } metac_token_buffer_t;
 
+static inline void MetaCTokenBuffer_Append(metac_token_buffer_t* buffer,
+                                           const metac_token_t* token)
+{
+    if (!buffer || !token)
+    {
+        fprintf(stderr, "Cannot append a token without a token buffer and token\n");
+        abort();
+    }
+    if (buffer->Length == buffer->Capacity)
+    {
+        uint32_t capacity = buffer->Capacity ? buffer->Capacity * 2 : 16;
+        if (capacity <= buffer->Capacity || capacity > SIZE_MAX / sizeof(*buffer->Ptr))
+        {
+            fprintf(stderr, "Eject token buffer is too large\n");
+            abort();
+        }
+        metac_token_t* tokens = realloc(buffer->Ptr, capacity * sizeof(*tokens));
+        if (!tokens)
+        {
+            fprintf(stderr, "Cannot allocate eject token buffer\n");
+            abort();
+        }
+        buffer->Ptr = tokens;
+        buffer->Capacity = capacity;
+    }
+    buffer->Ptr[buffer->Length++] = *token;
+}
+
 uint32_t MetaCTokenLength(metac_token_t token);
 
 

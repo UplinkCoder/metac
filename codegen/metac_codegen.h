@@ -16,6 +16,7 @@ typedef struct metac_bytecode_function_t
 {
     uint32_t FunctionIndex;
     void* FuncDeclPtr;
+    bool Emitted;
 } metac_bytecode_function_t;
 
 typedef struct function_metadata_t
@@ -80,6 +81,9 @@ typedef struct metac_bytecode_ctx_t
     uint32_t GlobalMemoryOffset;
 
     BCValue CompilerInterfaceValue;
+    metac_token_buffer_t* RunTokenBuffer;
+    uint32_t NextFunctionIndex;
+    bool GeneratingFunction;
 
     AT(transient) const BackendInterface* gen;
 
@@ -146,6 +150,13 @@ BCValue MetaCCodegen_RunFunction(metac_bytecode_ctx_t* self,
                                  metac_alloc_t* interpAlloc,
                                  BCHeap* heap,
                                  const char* fargs, ...);
+
+// Generates and runs a @run function through the BC interpreter.
+// tokenBuffer may be NULL when no token buffer is present.
+BCValue MetaCCodegen_RunRunBlock(metac_sema_state_t* sema,
+                                 sema_decl_function_t* runFunc,
+                                 void* tokenBuffer,
+                                 BCHeap* heap);
 
 void MetaCCodegen_SetDefaultInterface(const BackendInterface* defInterface);
 void MetaCCodegen_UnsetDefaultInterface(void);

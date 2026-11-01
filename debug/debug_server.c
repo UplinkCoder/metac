@@ -6,8 +6,17 @@
 #include "../os/bsf.h"
 #include <json-c/json.h>
 #include <assert.h>
+#if defined(DEBUG_SERVER_LOOPBACK) && !defined(_WIN32)
+#include <netinet/in.h>
+#endif
 
 extern uint32_t crc32c_nozero(uint32_t crc, const void* s, const uint32_t len_p);
+
+#if defined(WEB_REPL_BUILD)
+MHD_HANDLER(WebRepl_Page);
+MHD_HANDLER(WebRepl_Events);
+MHD_HANDLER(WebRepl_Input);
+#endif
 
 debug_server_t* g_DebugServer = 0;
 
@@ -46,6 +55,66 @@ int send_html_free(struct MHD_Connection* connection, const char* text, int len)
     MHD_add_response_header(response, MHD_HTTP_HEADER_CONTENT_TYPE,
         "text/html");
     ret = MHD_queue_response(connection, MHD_HTTP_OK, response);
+    MHD_destroy_response(response);
+    return ret;
+}
+
+int send_page(struct MHD_Connection* connection, const char* title,
+              const char* body, int bodyLen)
+{
+    static const char* pageFormat =
+        "<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\">"
+        "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">"
+        "<title>%s</title><link rel=\"stylesheet\" href=\"/theme.css\"></head>"
+        "<body><main class=\"page-shell\">%.*s</main></body></html>";
+    size_t capacity = strlen(pageFormat) + strlen(title) + bodyLen + 1;
+    char* page = (char*)malloc(capacity);
+    int len = snprintf(page, capacity, pageFormat, title, bodyLen, body);
+    return send_html_free(connection, page, len);
+}
+
+MHD_HANDLER(handleTheme)
+{
+    static const char* css =
+        ":root{color-scheme:dark;--bg:#272822;--panel:#1e1f1c;--surface:#33342e;"
+        "--border:#49483e;--text:#f8f8f2;--muted:#a6a69c;--yellow:#e6db74;"
+        "--green:#a6e22e;--pink:#f92672;--cyan:#66d9ef;--orange:#fd971f;"
+        "--purple:#ae81ff}*{box-sizing:border-box}body{margin:0;background:var(--bg);"
+        "color:var(--text);font:14px/1.55 'Cascadia Code','SFMono-Regular',Consolas,"
+        "monospace}.page-shell{width:min(1120px,100%);margin:0 auto;padding:32px 28px 48px}"
+        "h1{margin:0 0 22px;color:var(--yellow);font-size:21px;font-weight:650}"
+        "h2,h3{color:var(--cyan);font-size:15px}p{color:var(--muted)}a{color:var(--cyan);"
+        "text-decoration:none}a:hover{color:var(--yellow);text-decoration:underline}"
+        "table{width:100%;border-collapse:collapse;background:var(--panel);font-size:13px}"
+        "th,td{padding:9px 12px;border:1px solid var(--border);text-align:left;"
+        "overflow-wrap:anywhere}th{background:var(--surface);color:var(--yellow);font-weight:600}"
+        "tr:nth-child(even) td{background:#292a25}"
+        ".route-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));"
+        "gap:8px;list-style:none;padding:0}.route-list a{display:block;padding:10px 12px;"
+        "background:var(--panel);border:1px solid var(--border)}"
+        ".parser-meta{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));"
+        "gap:10px;margin-bottom:20px}.meta-item,.stack-panel{padding:12px 14px;"
+        "background:var(--panel);border:1px solid var(--border)}.meta-label{display:block;"
+        "color:var(--muted);font-size:12px;margin-bottom:4px}.meta-value{color:var(--yellow);"
+        "overflow-wrap:anywhere}.stack-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));"
+        "gap:12px}.stack-panel h2{margin:0 0 10px}.stack-list{display:flex;flex-wrap:wrap;"
+        "gap:7px;min-height:38px;list-style:none;margin:0;padding:0}.stack-list li{padding:5px 9px;"
+        "border:1px solid var(--border);background:var(--surface);color:var(--text)}"
+        ".selected{background:var(--green)!important;color:var(--panel)!important;"
+        "border-color:var(--green)!important}.highlight{background:var(--surface);"
+        "color:var(--pink);padding:2px 4px}.button-row{display:flex;gap:8px;margin-top:16px}"
+        "button{padding:8px 13px;border:1px solid var(--green);background:var(--green);"
+        "color:var(--panel);font:inherit;font-weight:600;cursor:pointer}button:hover{"
+        "background:var(--yellow);border-color:var(--yellow)}button:focus-visible,a:focus-visible{"
+        "outline:2px solid var(--cyan);outline-offset:3px}#holder{width:100%;height:min(62vh,520px);"
+        "min-height:320px;background:var(--panel);border:1px solid var(--border)}"
+        "#holder text{fill:var(--text)!important}"
+        "@media(max-width:640px){.page-shell{padding:22px 14px 32px}.stack-grid{grid-template-columns:1fr}"
+        "table{font-size:12px}th,td{padding:7px 8px}#holder{height:380px;min-height:300px}}";
+    struct MHD_Response* response = MHD_create_response_from_buffer(
+        strlen(css), (void*)css, MHD_RESPMEM_PERSISTENT);
+    MHD_add_response_header(response, MHD_HTTP_HEADER_CONTENT_TYPE, "text/css");
+    int ret = MHD_queue_response(connection, MHD_HTTP_OK, response);
     MHD_destroy_response(response);
     return ret;
 }
@@ -109,14 +178,15 @@ MHD_HANDLER (handleCurrentScope)
     debug_server_t* debugServer = (debug_server_t*) cls;
     if (!debugServer->CurrentScope)
     {
-        return send_html(connection, "<html><body>No CurrentScope set</body></html>", sizeof("<html><body>No CurrentScope set</body></html>") - 1);
+        const char* body = "<h1>Current scope</h1><p>No current scope set.</p>";
+        return send_page(connection, "Current scope", body, strlen(body));
     }
 
     responseSize +=
         snprintf(responseString, ARRAYSIZE(responseString) - responseSize,
-            "<html><body>");
+            "<h1>Current scope</h1><ul>");
     metac_scope_table_slot_t* slot = debugServer->CurrentScope->ScopeTable.Slots;
-    for(uint32_t i = 0; i < debugServer->CurrentScope->ScopeTable.SlotsUsed;)
+    for(uint32_t i = 0; i < debugServer->CurrentScope->ScopeTable.SlotsUsed; i++, slot++)
     {
         if (slot->Hash == 0)
             continue;
@@ -125,15 +195,15 @@ MHD_HANDLER (handleCurrentScope)
             metac_identifier_ptr_t idPtr = slot->Ptr;
             responseSize +=
                 snprintf(responseString, ARRAYSIZE(responseString) - responseSize,
-                    "%s <br/>", IdentifierPtrToCharPtr(
+                        "<li>%s</li>", IdentifierPtrToCharPtr(
                             debugServer->CurrentIdentifierTable, idPtr));
         }
     }
 
     responseSize +=
         snprintf(responseString, ARRAYSIZE(responseString) - responseSize,
-            "</body></html>");
-    return send_html(connection, responseString, responseSize);
+                "</ul>");
+            return send_page(connection, "Current scope", responseString, responseSize);
 }
 
 // Sample history data for demonstration purposes
@@ -181,6 +251,11 @@ MHD_HANDLER(handleHistory)
 MHD_HANDLER(handleGraphJs)
 {
     return serveFile("/home/uplink/dev/metac/debug/graph.js", "application/javascript", connection);
+}
+
+MHD_HANDLER(handleThemeCss)
+{
+    return handleTheme(MHD_HANDLER_PASSTHROUGH);
 }
 
 MHD_HANDLER(handleParser)
@@ -321,13 +396,11 @@ MHD_HANDLER (handleAllocators)
         outAllocRow(body, ARRAYSIZE(body), &p, alloc);
     }
 
-   len = snprintf (responseString, ARRAYSIZE (responseString),
-                    "<html><body>"
-                    "<h3>Allocators: </h3>"
-                    "<table id=\"allocators\">%s</table>"
-                    "</body></html>",
+    len = snprintf (responseString, ARRAYSIZE (responseString),
+                          "<h1>Allocators</h1>"
+                          "<table id=\"allocators\">%s</table>",
            body);
-    return send_html (connection, responseString, len);
+     return send_page (connection, "Allocators", responseString, len);
 }
 
 void outArenaRow(char* body, uint32_t sz, uint32_t* pp, tagged_arena_t* arena)
@@ -400,13 +473,11 @@ MHD_HANDLER(handleArenas)
     if (!alloc)
         return MHD_NO;
 
-   uint32_t len = snprintf (responseBuffer, ARRAYSIZE (responseBuffer),
-                    "<html><body>"
-                    "<h3>Arenas: </h3>"
-                    "<table id=\"arenas\">%s</table>"
-                    "</body></html>",
+    uint32_t len = snprintf (responseBuffer, ARRAYSIZE (responseBuffer),
+                          "<h1>Arenas</h1>"
+                          "<table id=\"arenas\">%s</table>",
            body);
-    return send_html (connection, responseBuffer, len);
+     return send_page (connection, "Arenas", responseBuffer, len);
 }
 
 #ifndef NO_FIBERS
@@ -478,8 +549,7 @@ MHD_HANDLER(handleLogs)
     };
 
     debug_server_t *debugServer = cast(debug_server_t*) cls;
-    p += snprintf (body + p, bufferSz - p, "<html><body>"
-              "<h3>Logs: </h3>"
+    p += snprintf (body + p, bufferSz - p, "<h1>Logs</h1>"
               "<table id=\"logs\">"
     );
 
@@ -507,10 +577,10 @@ MHD_HANDLER(handleLogs)
         }
     }
 
-   p += snprintf(body + p, bufferSz - p,
-                    "</table>"
-                    "</body></html>");
-    return send_html_free (connection, body, p);
+    p += snprintf(body + p, bufferSz - p, "</table>");
+        int ret = send_page (connection, "Logs", body, p);
+        free(body);
+        return ret;
 }
 
 MHD_HANDLER(handleTasks)
@@ -566,23 +636,18 @@ MHD_HANDLER(handleTasks)
     task_t* activeTask = worker ? worker->ActiveTask : 0;
 
     uint32_t len = snprintf (responseBuffer, ARRAYSIZE (responseBuffer),
-                    "<html><body>"
-                    "<h3>Worker: (%u/%u)</h3>"
-                    "<h3>Tasks: </h3>"
-                    "<h2>ActiveTask: %p '%s'</h2>"
-                    "<table id=\"tasks\">%s</table>"
-                    "</body></html>",
+                    "<h1>Worker (%u/%u)</h1>"
+                    "<h2>Active task: %p '%s'</h2>"
+                    "<table id=\"tasks\">%s</table>",
            workerIdx, debugServer->WorkersCount,
            activeTask, activeTask ? activeTask->TaskName : "None",
            body);
 #else
-   uint32_t len = snprintf (responseBuffer, ARRAYSIZE (responseBuffer),
-                    "<html><body>"
-                    "<h3>No task support (compiled wtih NO_FIBERS set)</h3>"
-                    "</body></html>");
+    uint32_t len = snprintf (responseBuffer, ARRAYSIZE (responseBuffer),
+                    "<h1>Tasks</h1><p>No task support (compiled with NO_FIBERS set).</p>");
 
 #endif
-    return send_html (connection, responseBuffer, len);
+    return send_page (connection, "Tasks", responseBuffer, len);
 }
 
 static MHD_HANDLER(debugServerHandler)
@@ -602,19 +667,18 @@ static MHD_HANDLER(debugServerHandler)
     {
         static char defaultPage[1024];
         int p = 0;
-        p += sprintf(defaultPage + p, "<html><body>");
-        p += sprintf(defaultPage + p, "<h1>Avilable routes are: </h1>");
+        p += sprintf(defaultPage + p, "<h1>Debug server</h1><ul class=\"route-list\">");
         {
             int i;
             for(i = 0; i < debugServer->RoutesCount; i++)
             {
                 debug_server_route_t route = debugServer->Routes[i];
                 const char* url = route.Url;
-                p += sprintf(defaultPage + p, "<a href=\"%s\">%s</a><br/>", url, url);
+                p += sprintf(defaultPage + p, "<li><a href=\"%s\">%s</a></li>", url, url);
             }
         }
-        p += sprintf(defaultPage + p, "</body></html>");
-        return send_html(connection, defaultPage, p);
+        p += sprintf(defaultPage + p, "</ul>");
+        return send_page(connection, "Debug server", defaultPage, p);
     }
 
 /*
@@ -629,6 +693,11 @@ static MHD_HANDLER(debugServerHandler)
 
 static MHD_COMPLETED_CB (MhdCompletionCallback)
 {
+    if (con_cls && *con_cls)
+    {
+        free(*con_cls);
+        *con_cls = 0;
+    }
 }
 
 const char* DebugServer_AddString(debug_server_t* debugServer,
@@ -658,6 +727,7 @@ void debug_init_routes(debug_server_t* debugServer)
     DebugServer_AddRoute(debugServer, "/arenas", handleArenas);
     DebugServer_AddRoute(debugServer, "/graphs", handleGraphs);
     DebugServer_AddRoute(debugServer, "/graph.js", handleGraphJs);
+    DebugServer_AddRoute(debugServer, "/theme.css", handleThemeCss);
     DebugServer_AddRoute(debugServer, "/lc", handleLc);
     DebugServer_AddRoute(debugServer, "/data.json", handleDataJson);
     // DebugServer_AddRoute(debugServer, "/identifier_tables", handleIdentifierTables);
@@ -665,6 +735,11 @@ void debug_init_routes(debug_server_t* debugServer)
     DebugServer_AddRoute(debugServer, "/history", handleHistory);
     DebugServer_AddRoute(debugServer, "/logs", handleLogs);
     DebugServer_AddRoute(debugServer, "/tasks", handleTasks);
+#if defined(WEB_REPL_BUILD)
+    DebugServer_AddRoute(debugServer, "/repl", WebRepl_Page);
+    DebugServer_AddRoute(debugServer, "/repl/events", WebRepl_Events);
+    DebugServer_AddRoute(debugServer, "/repl/input", WebRepl_Input);
+#endif
 }
 
 
@@ -685,13 +760,32 @@ int Debug_Init(debug_server_t* debugServer, unsigned short port) {
     }
 #endif    /**/
 
-    d = MHD_start_daemon (MHD_USE_SELECT_INTERNALLY, port,
-                          NULL, NULL,
-                          debugServerHandler, debugServer,
-                          MHD_OPTION_NOTIFY_COMPLETED,
-                            MhdCompletionCallback, 0,
-                          MHD_OPTION_END);
+#if defined(DEBUG_SERVER_LOOPBACK)
+        struct sockaddr_in loopbackAddress = {0};
+        loopbackAddress.sin_family = AF_INET;
+        loopbackAddress.sin_port = htons(port);
+        loopbackAddress.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+        d = MHD_start_daemon (MHD_USE_SELECT_INTERNALLY, port,
+                                                    NULL, NULL,
+                                                    debugServerHandler, debugServer,
+                                                    MHD_OPTION_SOCK_ADDR, &loopbackAddress,
+                                                    MHD_OPTION_NOTIFY_COMPLETED,
+                                                        MhdCompletionCallback, 0,
+                                                    MHD_OPTION_END);
+#else
+        d = MHD_start_daemon (MHD_USE_SELECT_INTERNALLY, port,
+                                                    NULL, NULL,
+                                                    debugServerHandler, debugServer,
+                                                    MHD_OPTION_NOTIFY_COMPLETED,
+                                                        MhdCompletionCallback, 0,
+                                                    MHD_OPTION_END);
+#endif
 
+    if (!d)
+    {
+        fprintf(stderr, "MicroHTTPD failed to bind port %u\n", port);
+        return 1;
+    }
     debugServer->Daemon = d;
 
     assert(!g_DebugServer);

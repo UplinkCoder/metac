@@ -64,12 +64,27 @@ typedef struct metac_expr_parser_t
     int32_t LBracketCount;
 } metac_expr_parser_t;
 
+#define TOKEN_SOURCE_STACK_CAPACITY 16
+
+/// A temporary token array the parser reads instead of the lexer's tokens,
+/// e.g. the tokens produced by a @run block or by preprocessing.
+typedef struct metac_token_source_t
+{
+    metac_token_t* Tokens;
+    uint32_t Count;
+    /// CurrentTokenIndex of the enclosing source, restored on pop
+    uint32_t ParentTokenIndex;
+} metac_token_source_t;
+
 typedef struct metac_parser_t
 {
     metac_lexer_t* Lexer;
     metac_lexer_state_t* LexerState;
 
+    /// index into the active token source
     uint32_t CurrentTokenIndex;
+    metac_token_source_t TokenSources[TOKEN_SOURCE_STACK_CAPACITY];
+    uint32_t TokenSourceCount;
     metac_identifier_table_t IdentifierTable;
     metac_identifier_table_t StringTable;
 
@@ -114,6 +129,14 @@ bool NextIsStmt(metac_parser_t* self, int32_t offset);
 
 void MetaCParser_Init(metac_parser_t* self, metac_alloc_t* allocator);
 void MetaCParser_InitFromLexer(metac_parser_t* self, metac_lexer_t* lexer, metac_alloc_t* allocator);
+
+/// Makes `tokens` the active token source until the matching pop.
+/// Sources nest; the lexer's tokens are the implicit bottom of the stack.
+/// Identifier and string tokens must refer to this parser's tables.
+void MetaCParser_PushTokenSource(metac_parser_t* self, metac_token_t* tokens, uint32_t count);
+void MetaCParser_PopTokenSource(metac_parser_t* self);
+/// Tokens and count of the active source
+metac_token_t* MetaCParser_ActiveTokens(metac_parser_t* self, uint32_t* count);
 
 #define MetaCParser_PeekToken(SELF, P) \
     (MetaCParser_PeekToken_(SELF, P, __LINE__))

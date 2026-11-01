@@ -6,6 +6,7 @@
 #include "../os/compat.h"
 #include "backend_interface_funcs.h"
 #include "bc_common.h"
+#include "bc_lightning_debug.h"
 
 #define NREGS 6
 
@@ -13,6 +14,9 @@
 
 #define offsetof(st, m) \
     ((size_t)((char *)&((st *)0)->m - (char *)0))
+
+#define LIGHTNING_LABEL_CAPACITY 4096
+#define LIGHTNING_READI32_CAPACITY 64
 
 typedef struct register_index_t
 {
@@ -111,6 +115,8 @@ typedef struct RuntimeContext
 
 
     uint32_t MapAddr;
+
+    struct Lightning* instance;
 } RuntimeContext;
 
 
@@ -128,7 +134,9 @@ typedef struct Lightning
     uint32_t TemporaryCount;
 
     _Bool InFunction;
+    _Bool Finalized;
     uint32_t FrameSize;
+    int32_t CondAddr;
     uint32_t CurrentFunctionIdx;
     uint8_t* codePage;
     uint32_t coagePageLeft;
@@ -153,8 +161,17 @@ typedef struct Lightning
     uint32_t stackOffset;
 
     jit_node_t* FunctionLabels[512];
-    uint32_t (*FunctionPtrs[512]) (RuntimeContext* rtCtx, BCValue* args, uint32_t nArgs);
+    uint32_t (*FunctionPtrs[512]) (RuntimeContext* rtCtx, const int64_t* args, uint32_t nArgs);
     uint32_t nFunctions;
+
+    jit_node_t* Labels[LIGHTNING_LABEL_CAPACITY];
+    uint32_t LabelCount;
+    jit_node_t* PendingJumps[LIGHTNING_LABEL_CAPACITY];
+    uint32_t PendingJumpCount;
+
+    ReadI32_cb_t ReadI32Callbacks[LIGHTNING_READI32_CAPACITY];
+    void* ReadI32UserCtxs[LIGHTNING_READI32_CAPACITY];
+    uint32_t ReadI32Count;
 
     alloc_fn_t allocMemory;
     get_typeinfo_fn_t getTypeInfo;
@@ -164,6 +181,9 @@ typedef struct Lightning
 
     uint32_t currentLine;
     const char* currentFile;
+
+    // DWARF recorder, written by Dbg_Write (see bc_lightning_debug.h)
+    DbgRecorder Dbg;
 } Lightning;
 
 // cmp ops
@@ -204,22 +224,34 @@ typedef struct Lightning
 #define HASH_F52TOI 0x1f // f52toi
 #define HASH_ITOF52 0x7b // f52toi
 
-static inline bool RuntimeContext_isPointerToStack(RuntimeContext* self, uint unrealPointer)
+static inline uint8_t* RuntimeContext_toRealPointer(RuntimeContext* self,
+                                                    uint32_t unrealPointer)
 {
-    return (unrealPointer & stackAddrMask) == stackAddrMask;
-}
-
-void* RuntimeContext_toRealPointer(RuntimeContext* self, uint32_t unrealPointer)
-{
-    void* realPointer = self->heapDataBegin + unrealPointer;
-
-    if (RuntimeContext_isPointerToStack(self, unrealPointer))
+    uint32_t offset = 0;
+    address_kind_t kind = ClassifyAddress(unrealPointer, &offset);
+    switch (kind)
     {
-        uint32_t stackOffset = (unrealPointer & ~stackAddrMask);
-        realPointer = self->stackDataBegin + stackOffset;
+        case AddressKind_Heap:
+            return self->heapDataBegin + offset;
+        case AddressKind_Stack:
+            return self->framePointer + offset;
+        case AddressKind_External:
+            for (uint32_t i = 0; i < self->externalsCount; i++)
+            {
+                Lightning_External* external = self->externals + i;
+                if (unrealPointer >= external->mapAddr
+                 && unrealPointer - external->mapAddr < external->size)
+                {
+                    return (uint8_t*)external->addr + (unrealPointer - external->mapAddr);
+                }
+            }
+            break;
+        default:
+            break;
     }
 
-    return realPointer;
+    assert(!"Invalid or unmapped VM address");
+    return 0;
 }
 static inline void RegisterStatus_Init(register_status_t* self)
 {
@@ -386,6 +418,17 @@ static inline void StoreRegValue(Lightning* self,
         break;
     }
 }
+// immediates of 8-byte types use the full imm64, everything else is sign-extended from imm32
+static inline int64_t Lightning_ImmediateBits(const BCValue* val)
+{
+    if (BCType_isBasicBCType(val->type)
+        && BCTypeEnum_basicTypeSize(val->type.type) == 8)
+    {
+        return val->imm64.imm64;
+    }
+    return (int64_t) val->imm32.imm32;
+}
+
 static const register_index_t r0Index = {JIT_R0 + 1, 0};
 static const register_index_t r1Index = {JIT_R1 + 1, 0};
 static const register_index_t r2Index = {JIT_R2 + 1, 0};
@@ -401,10 +444,59 @@ static inline void PrintS2R(Lightning* self, const char* f, jit_gpr_t reg, jit_g
 }
 
 
+static uint64_t Lightning_NodeAddr(void* ctx, void* node)
+{
+    Lightning* self = ctx;
+    return (uint64_t)(uintptr_t) jit_address((jit_node_t*) node);
+}
+
+// returns 0 on success; the instance must be finalized so addresses are known
+static int Lightning_WriteDebugElf(Lightning* self, const char* path)
+{
+    if (!self->Finalized)
+        return -1;
+
+    jit_word_t codeSize = 0;
+    const uint8_t* code = (const uint8_t*) jit_get_code(&codeSize);
+    return Dbg_Write(&self->Dbg, path, code, (uint64_t) codeSize, Lightning_NodeAddr, self);
+}
+
+static uint8_t Lightning_DbgBaseType(BCType bct)
+{
+    if (BCType_isBasicBCType(bct))
+    {
+        switch (bct.type)
+        {
+            case BCTypeEnum_i8:  return DbgBaseType_I8;
+            case BCTypeEnum_i16: return DbgBaseType_I16;
+            case BCTypeEnum_i32: return DbgBaseType_I32;
+            case BCTypeEnum_i64: return DbgBaseType_I64;
+            case BCTypeEnum_u8:  return DbgBaseType_U8;
+            case BCTypeEnum_u16: return DbgBaseType_U16;
+            case BCTypeEnum_u32: return DbgBaseType_U32;
+            case BCTypeEnum_u64: return DbgBaseType_U64;
+            case BCTypeEnum_c8:  return DbgBaseType_U8;
+            case BCTypeEnum_c16: return DbgBaseType_U16;
+            case BCTypeEnum_c32: return DbgBaseType_U32;
+            case BCTypeEnum_f23: return DbgBaseType_F32;
+            case BCTypeEnum_f52: return DbgBaseType_F64;
+            default: break;
+        }
+    }
+    // pointers and aggregates are shown as an unsigned word
+    return DbgBaseType_U64;
+}
+
+static void Lightning_DbgAddVar(Lightning* self, const char* name, BCType bct, int32_t fpOffset, uint8_t isParam)
+{
+    Dbg_AddVar(&self->Dbg, self->CurrentFunctionIdx, name, Lightning_DbgBaseType(bct), fpOffset, isParam);
+}
+
 static inline void Lightning_Initialize(Lightning* self, uint32_t n_args, ...)
 {
     RegisterStatus_Init(&self->Registers);
     self->Jit = jit_new_state();
+    Dbg_RecorderInit(&self->Dbg);
 }
 
 static inline void Lightning_InitializeV(Lightning* self, uint32_t n_args, va_list args)
@@ -414,12 +506,19 @@ static inline void Lightning_InitializeV(Lightning* self, uint32_t n_args, va_li
 
 static inline void Lightning_Finalize(Lightning* self)
 {
+    if (self->Finalized)
+        return;
+    self->Finalized = 1;
+
     void* base = jit_emit();
     for(uint32_t i = 1; i < self->nFunctions + 1; i++)
     {
         self->FunctionPtrs[i] = jit_address(self->FunctionLabels[i]);
     }
     // jit_clear_state();
+    const char* debugPath = getenv("BC_LIGHTNING_DEBUG_ELF");
+    if (debugPath)
+        Lightning_WriteDebugElf(self, debugPath);
 }
 
 static inline uint32_t Lightning_BeginFunction(Lightning* self, uint32_t fnIdx, const void* fd)
@@ -432,9 +531,11 @@ static inline uint32_t Lightning_BeginFunction(Lightning* self, uint32_t fnIdx, 
         fnIdx = ++self->nFunctions;
     }
     self->CurrentFunctionIdx = fnIdx;
+    self->LabelCount = 0;
+    self->PendingJumpCount = 0;
 
-    self->FunctionLabels[fnIdx] = jit_note(NULL, 0);
-    printf("Setting Label for fn: %d\n", fnIdx);
+    self->FunctionLabels[fnIdx] = jit_indirect();
+    Dbg_BeginFunc(&self->Dbg, fnIdx, self->FunctionLabels[fnIdx]);
     jit_prolog();
     // self->getFrameSize(fd);
     //TODO implement a way to get the assumed frame size of a function
@@ -444,9 +545,12 @@ static inline uint32_t Lightning_BeginFunction(Lightning* self, uint32_t fnIdx, 
     self->NumberOfArgumentsArg = jit_arg();
 
     jit_getarg(JIT_V0, self->RuntimeContextArg);
+    jit_getarg(JIT_V1, self->ArgumentsArg);
 
     self->FrameSize = 4;
-
+    // the last comparison's result, read back by EmitFlag
+    self->FrameSize += 4;
+    self->CondAddr = self->FrameSize;
 
     return fnIdx;
 }
@@ -456,6 +560,9 @@ static inline void* Lightning_EndFunction(Lightning* self, uint32_t fnIdx)
     assert(self->InFunction);
     assert(self->CurrentFunctionIdx == fnIdx);
     self->InFunction = 0;
+    jit_epilog();
+    // marks the end of the function for its DWARF subprogram range
+    Dbg_EndFunc(&self->Dbg, jit_note(NULL, 0));
     return self->FunctionLabels[fnIdx];
 }
 
@@ -465,8 +572,8 @@ static inline BCValue Lightning_GenTemporary(Lightning* self, BCType bct)
 
     result.type = bct;
     result.temporaryIndex = ++self->TemporaryCount;
-    result.stackAddr.addr = self->FrameSize;
 
+    // the slot spans [FP - addr, FP - addr + size), so reserve before taking the offset
     if (BCType_isBasicBCType(bct))
     {
         self->FrameSize += align4(BCTypeEnum_basicTypeSize(bct.type));
@@ -475,6 +582,7 @@ static inline BCValue Lightning_GenTemporary(Lightning* self, BCType bct)
     {
         self->FrameSize += 4;
     }
+    result.stackAddr.addr = self->FrameSize;
 
     return result;
 }
@@ -486,12 +594,15 @@ static inline void Lightning_DestroyTemporary(Lightning* self, BCValue* tmp)
 
 static inline BCValue Lightning_GenLocal(Lightning* self, BCType bct, const char* name)
 {
-    assert(0);
+    BCValue result = Lightning_GenTemporary(self, bct);
+    result.vType = BCValueType_Local;
+    result.name = name;
+    Lightning_DbgAddVar(self, name, bct, (int32_t) result.stackAddr.addr, 0);
+    return result;
 }
 
 static inline void Lightning_DestroyLocal(Lightning* self, BCValue* local)
 {
-    assert(0);
 }
 
 static inline BCValue Lightning_GenParameter(Lightning* self, BCType bct, const char* name)
@@ -501,10 +612,15 @@ static inline BCValue Lightning_GenParameter(Lightning* self, BCType bct, const 
     p.type = bct;
     p.vType = BCValueType_Parameter;
     p.parameterIndex = ++self->ParametersCount;
-    p.stackAddr.addr = self->FrameSize;
 
     self->FrameSize += align4(BCTypeEnum_basicTypeSize(bct.type));
+    p.stackAddr.addr = self->FrameSize;
     p.name = name;
+    Lightning_DbgAddVar(self, name, bct, (int32_t) p.stackAddr.addr, 1);
+
+    // arguments arrive as 8-byte words, parameterIndex is 1-based
+    jit_ldxi_l(JIT_R0, JIT_V1, (p.parameterIndex - 1) * sizeof(int64_t));
+    StoreRegValue(self, &p, r0Index);
 
     return p;
 }
@@ -516,9 +632,9 @@ static inline BCValue Lightning_GenExternal(Lightning* self, BCType bct, const c
     p.type = bct;
     p.vType = BCValueType_External;
     p.externalIndex = ++self->ExternalsCount;
-    p.stackAddr.addr = self->FrameSize;
 
     self->FrameSize += align4(sizeof(void*));
+    p.stackAddr.addr = self->FrameSize;
     p.name = name;
 
     return p;
@@ -570,9 +686,9 @@ static inline BCValue Lightning_GenExternalFunc(Lightning* self, BCType bct, con
     p.type = bct;
     p.vType = BCValueType_ExternalFunction;
     p.externalIndex = ++self->ExternalFuncsCount;
-    p.stackAddr.addr = self->FrameSize;
 
     self->FrameSize += 4;
+    p.stackAddr.addr = self->FrameSize;
     p.name = name;
 
     return p;
@@ -622,7 +738,9 @@ static inline BCValue Lightning_MapExternalFunc(Lightning* self, BCValue* result
 
 static inline void Lightning_EmitFlag(Lightning* self, BCValue* lhs)
 {
-    assert(0);
+    assert(BCValue_isStackValueOrParameter(lhs));
+    jit_ldxi_i(JIT_R0, JIT_FP, -self->CondAddr);
+    StoreRegValue(self, lhs, r0Index);
 }
 
 uint32_t Runtime_Alloc(RuntimeContext* ctx, uint32_t size)
@@ -690,25 +808,8 @@ static inline void Lightning_BeginCall(Lightning* self, const BCValue fn)
 static inline void Runtime_MemCpy(RuntimeContext* ctx,
                                   uint32_t dst, uint32_t src, uint32_t size)
 {
-    address_kind_t dstKind = ClassifyAddress(dst);
-    address_kind_t srcKind = ClassifyAddress(src);
-
-    if (dstKind == AddressKind_Heap)
-    {
-        if (srcKind == AddressKind_Heap)
-        {
-            uint8_t* heapPtr = ctx->heapDataBegin;
-            memcpy(heapPtr + dst, heapPtr + src, size);
-        }
-        else
-        {
-            assert(0);
-        }
-    }
-    else
-    {
-        assert(0);
-    }
+    memcpy(RuntimeContext_toRealPointer(ctx, dst),
+           RuntimeContext_toRealPointer(ctx, src), size);
 }
 
 static inline void Lightning_MemCpy(Lightning* self,
@@ -731,28 +832,57 @@ static inline void Lightning_MemCpy(Lightning* self,
 static inline void Lightning_File(Lightning* self, const char* filename)
 {
     self->currentFile = filename;
+    Dbg_SetFile(&self->Dbg, filename);
 }
 
 static inline void Lightning_Line(Lightning* self, uint32_t line)
 {
     self->currentLine = line;
+    if (!Dbg_IsActive(&self->Dbg))
+        return;
+    Dbg_AddMark(&self->Dbg, jit_note(NULL, 0), line);
 }
 
 static inline void Lightning_Comment(Lightning* self, const char* comment)
 {
-    assert(0);
+}
+
+void Runtime_Prt(RuntimeContext* ctx, uint64_t value, uint32_t isString)
+{
+    if (isString)
+    {
+        uint8_t* str = RuntimeContext_toRealPointer(ctx, (uint32_t)value);
+        printf("%.*s", (int)str[0], (char*)(str + 1));
+    }
+    else
+    {
+        printf("%lld", (long long)value);
+    }
 }
 
 static inline void Lightning_Prt(Lightning* self, const BCValue* value, bool isString)
 {
-    assert(0);
+    if (value->vType == BCValueType_Immediate)
+    {
+        jit_movi(JIT_R1, value->imm32.imm32);
+    }
+    else
+    {
+        LoadRegValue(self, r1Index, value);
+    }
+
+    jit_prepare();
+    jit_pushargr(JIT_V0);
+    jit_pushargr(JIT_R1);
+    jit_pushargi(isString ? 1 : 0);
+    jit_finishi((jit_pointer_t)Runtime_Prt);
 }
 
 static inline void Lightning_Set(Lightning* self, BCValue *lhs, const BCValue* rhs)
 {
     if (rhs->vType == BCValueType_Immediate)
     {
-        jit_movi(JIT_R1, rhs->imm32.imm32);
+        jit_movi(JIT_R1, Lightning_ImmediateBits(rhs));
     }
     else
     {
@@ -864,9 +994,9 @@ static inline void Lightning_CmpOp3(Lightning* self, BCValue *result, const BCVa
         }
     }
 
+    jit_stxi_i(-self->CondAddr, JIT_FP, JIT_R0);
     StoreRegValue(self, result, r0Index);
 }
-
 
 static inline void Lightning_Ult3(Lightning* self, BCValue *result, const BCValue* lhs, const BCValue* rhs)
 {
@@ -1216,153 +1346,128 @@ static inline void Lightning_Not(Lightning* self, BCValue *result, const BCValue
 
 static inline void Lightning_LoadFramePointer(Lightning* self, BCValue *result, const int32_t offset)
 {
-    assert(0);
+    // The interpreter emits this as a context manipulation that its executor does not handle, so it is a no-op here too.
 }
 
 static inline void Lightning_Call(Lightning* self, BCValue *result, const BCValue* fn, const BCValue* args, uint32_t n_args)
 {
-    if (fn->type.type == BCTypeEnum_Function)
+    // reserve the argument words in this frame; the block is [FP - base, FP - base + 8 * n_args)
+    self->FrameSize += sizeof(int64_t) * n_args;
+    const int32_t argBlockBase = self->FrameSize;
+
+    jit_addi(JIT_R1, JIT_FP, -argBlockBase);
+    for (uint32_t i = 0; i < n_args; i++)
     {
-        if (fn->vType == BCValueType_Immediate)
+        if ((args + i)->vType == BCValueType_Immediate)
         {
-            if (n_args)
-            {
-                assert(0);
-                jit_prepare();
-                for(uint32_t i = 0; i < n_args; i++)
-                {
-
-                }
-                jit_finishi(self->FunctionPtrs + fn->imm32.imm32 - 1);
-            }
-            else
-            {
-                jit_prepare();
-                jit_pushargr(JIT_V0);
-                jit_pushargi(0);
-                jit_pushargi(0);
-                jit_finishi(self->FunctionPtrs + fn->imm32.imm32 - 1);
-            }
+            jit_movi(JIT_R0, Lightning_ImmediateBits(args + i));
         }
-
-        assert(0);
+        else
+        {
+            LoadRegValue(self, r0Index, args + i);
+        }
+        jit_stxi_l(i * sizeof(int64_t), JIT_R1, JIT_R0);
     }
-    else if (fn->type.type == BCTypeEnum_Ptr)
-    {
 
+    // FunctionPtrs is 1-based and read at runtime so calls to functions emitted later still resolve
+    if (fn->vType == BCValueType_Immediate)
+    {
+        jit_movi(JIT_R0, (jit_word_t) &self->FunctionPtrs[fn->imm32.imm32]);
+        jit_ldr(JIT_R0, JIT_R0);
+    }
+    else
+    {
+        LoadRegValue(self, r0Index, fn);
+        jit_lshi(JIT_R0, JIT_R0, 3);
+        jit_addi(JIT_R0, JIT_R0, (jit_word_t) self->FunctionPtrs);
+        jit_ldr(JIT_R0, JIT_R0);
+    }
+
+    jit_prepare();
+    jit_pushargr(JIT_V0);
+    jit_pushargr(JIT_R1);
+    jit_pushargi(n_args);
+    jit_finishr(JIT_R0);
+
+    if (result)
+    {
+        jit_retval(JIT_R0);
+        StoreRegValue(self, result, r0Index);
     }
 }
 
 static inline BCLabel Lightning_GenLabel(Lightning* self)
 {
-    assert(0);
+    assert(self->LabelCount < LIGHTNING_LABEL_CAPACITY);
+    BCLabel label = {0};
+    label.addr.addr = self->LabelCount;
+    self->Labels[self->LabelCount++] = jit_note(NULL, 0);
+    return label;
 }
 
 static inline void Lightning_Jmp(Lightning* self, BCLabel target)
 {
-    assert(0);
+    jit_patch_at(jit_jmpi(), self->Labels[target.addr.addr]);
 }
 
 static inline BCAddr Lightning_BeginJmp(Lightning* self)
 {
-    assert(0);
+    assert(self->PendingJumpCount < LIGHTNING_LABEL_CAPACITY);
+    BCAddr at = {self->PendingJumpCount};
+    self->PendingJumps[self->PendingJumpCount++] = jit_jmpi();
+    return at;
 }
 
 static inline void Lightning_EndJmp(Lightning* self, BCAddr atIp, BCLabel target)
 {
-    assert(0);
+    jit_patch_at(self->PendingJumps[atIp.addr], self->Labels[target.addr.addr]);
 }
 
 static inline CndJmpBegin Lightning_BeginCndJmp(Lightning* self, const BCValue* cond, bool ifTrue)
 {
-    assert(0);
+    assert(self->PendingJumpCount < LIGHTNING_LABEL_CAPACITY);
+
+    if (cond->vType == BCValueType_Immediate)
+    {
+        jit_movi(JIT_R0, cond->imm32.imm32);
+    }
+    else
+    {
+        LoadRegValue(self, r0Index, cond);
+    }
+
+    CndJmpBegin result = {0};
+    result.at.addr = self->PendingJumpCount;
+    result.cond = (BCValue*) cond;
+    result.ifTrue = ifTrue;
+
+    // jump when the condition is non-zero for ifTrue, zero otherwise
+    self->PendingJumps[self->PendingJumpCount++] = ifTrue
+        ? jit_bnei(JIT_R0, 0)
+        : jit_beqi(JIT_R0, 0);
+
+    return result;
 }
 
 static inline void Lightning_EndCndJmp(Lightning* self, const CndJmpBegin *jmp, BCLabel target)
 {
-    assert(0);
+    jit_patch_at(self->PendingJumps[jmp->at.addr], self->Labels[target.addr.addr]);
 }
 
-static inline void Runtime_Load(RuntimeContext* ctx, void* destPtr, uint32_t unrealPtr, uint32_t sz)
+static inline uint64_t Runtime_Load(RuntimeContext* ctx, uint32_t unrealPtr,
+                                    uint32_t sz)
 {
-    address_kind_t addressKind = ClassifyAddress(unrealPtr);
+    uint64_t value = 0;
+    assert(sz == 1 || sz == 2 || sz == 4 || sz == 8);
+    memcpy(&value, RuntimeContext_toRealPointer(ctx, unrealPtr), sz);
+    return value;
+}
 
-    if (addressKind == AddressKind_Heap)
-    {
-        assert(unrealPtr < (*ctx->heapSizeP));
-
-        switch(sz)
-        {
-            default: assert(0);
-            case 1:
-                *((uint8_t*)destPtr) = (*(char*)(((char*) ctx->heapDataBegin) + unrealPtr));
-            break;
-            case 2:
-                *((uint16_t*)destPtr) = (*(uint16_t*)(((char*) ctx->heapDataBegin) + unrealPtr));
-            break;
-            case 4:
-                *((uint32_t*)destPtr) = (*(uint32_t*)(((char*) ctx->heapDataBegin) + unrealPtr));
-            break;
-            case 8:
-                assert(0);
-        }
-    }
-    else if (addressKind == AddressKind_Frame)
-    {
-        switch(sz)
-        {
-            default: assert(0);
-            case 1:
-                *((uint8_t*)destPtr) = (*(char*)(ctx->framePointer + unrealPtr));
-            break;
-            case 2:
-                *((uint16_t*)destPtr) = (*(uint16_t*)(ctx->framePointer + unrealPtr));
-            break;
-            case 4:
-                *((uint32_t*)destPtr) = (*(uint32_t*)(ctx->framePointer + unrealPtr));
-            break;
-            case 8:
-                assert(0);
-        }
-    }
-    else if (addressKind == AddressKind_External)
-    {
-        uint32_t i;
-        Lightning_External external = {0, 0, 0};
-
-        for(i = 0; i < ctx->externalsCount; i++)
-        {
-            Lightning_External canidate = ctx->externals[i];
-            if (unrealPtr >= canidate.mapAddr && unrealPtr <= (canidate.mapAddr + canidate.size))
-            {
-                external = canidate;
-                printf("Found external.\n");
-                break;
-            }
-        }
-
-        assert(external.mapAddr != 0);
-        uint32_t externalOffset = unrealPtr - external.mapAddr;
-        switch(sz)
-        {
-            default: assert(0);
-            case 1:
-                *((uint8_t*)destPtr) = (*(char*)(((char*)external.addr) + externalOffset));
-            break;
-            case 2:
-                *((uint16_t*)destPtr) = (*(uint16_t*)(((char*)external.addr) + externalOffset));
-            break;
-            case 4:
-                *((uint32_t*)destPtr) = (*(uint32_t*)(((char*)external.addr) + externalOffset));
-            break;
-            case 8:
-                assert(0);
-        }
-    }
-    else
-    {
-        assert(0);
-    }
+static inline void Runtime_Store(RuntimeContext* ctx, uint32_t unrealPtr,
+                                 uint64_t value, uint32_t sz)
+{
+    assert(sz == 1 || sz == 2 || sz == 4 || sz == 8);
+    memcpy(RuntimeContext_toRealPointer(ctx, unrealPtr), &value, sz);
 }
 
 static inline void Lightning_Load(Lightning* self, BCValue *dest, const BCValue* from, uint32_t sz)
@@ -1372,106 +1477,53 @@ static inline void Lightning_Load(Lightning* self, BCValue *dest, const BCValue*
 
     if (from->vType == BCValueType_Immediate)
     {
-        address_kind_t addressKind = ClassifyAddress(from->imm32.imm32);
-
-        if (addressKind == AddressKind_Heap)
-        {
-            jit_ldxi(JIT_R1, JIT_V0, offsetof(RuntimeContext, heapDataBegin));
-
-            switch(sz)
-            {
-                default: assert(0);
-                case 1:
-                    jit_ldxi_c(JIT_R0, JIT_R1, from->imm32.imm32);
-                break;
-                case 2:
-                    jit_ldxi_s(JIT_R0, JIT_R1, from->imm32.imm32);
-                break;
-                case 4:
-                    jit_ldxi_i(JIT_R0, JIT_R1, from->imm32.imm32);
-                break;
-                case 8:
-                    assert(0);
-            }
-        }
-        else if (addressKind == AddressKind_Frame)
-        {
-            assert(0);
-        }
-        else if (addressKind == AddressKind_External)
-        {
-            assert(0);
-        }
-        else
-        {
-            assert(0);
-        }
+        jit_movi(JIT_R2, from->imm32.imm32);
     }
     else
     {
         assert(BCValue_isStackValueOrParameter(from));
-
         jit_ldxi(JIT_R2, JIT_FP, -from->stackAddr.addr);
-        jit_prepare();
-
-        jit_pushargr(JIT_V0);
-
-        jit_finishi(Runtime_Load);
     }
 
-    jit_stxi(-dest->stackAddr.addr, JIT_FP, JIT_R0);
+    jit_prepare();
+    jit_pushargr(JIT_V0);
+    jit_pushargr(JIT_R2);
+    jit_pushargi(sz);
+    jit_finishi((jit_pointer_t)Runtime_Load);
+    jit_retval(JIT_R0);
+    StoreRegValue(self, dest, r0Index);
 }
 
 static inline void Lightning_Store(Lightning* self, BCValue *dest, const BCValue* value, uint32_t sz)
 {
+    if (dest->vType == BCValueType_Immediate)
+    {
+        jit_movi(JIT_R1, dest->imm32.imm32);
+    }
+    else
+    {
+        assert(BCValue_isStackValueOrParameter(dest));
+        LoadRegValue(self, r1Index, dest);
+    }
+
     if (value->vType == BCValueType_Immediate)
     {
-        jit_movi(JIT_R0, value->imm32.imm32);
+        if (sz == 8)
+            jit_movi(JIT_R0, value->imm64.imm64);
+        else
+            jit_movi(JIT_R0, value->imm32.imm32);
     }
     else
     {
         LoadRegValue(self, r0Index, value);
     }
 
-    jit_ldxi(JIT_R1, JIT_V0, offsetof(RuntimeContext, heapDataBegin));
-
-    if (dest->vType == BCValueType_Immediate)
-    {
-        switch(sz)
-        {
-            default: assert(0);
-            case 1:
-                jit_stxi_c(dest->imm32.imm32, JIT_R1, JIT_R0);
-            break;
-            case 2:
-                jit_stxi_s(dest->imm32.imm32, JIT_R1, JIT_R0);
-            break;
-            case 4:
-                jit_stxi_i(dest->imm32.imm32, JIT_R1, JIT_R0);
-            break;
-            case 8:
-                assert(0);
-        }
-    }
-    else
-    {
-        jit_ldxi(JIT_R2, JIT_FP, -dest->stackAddr.addr);
-        switch(sz)
-        {
-            default: assert(0);
-            case 1:
-                jit_stxr_c(JIT_R2, JIT_R1, JIT_R0);
-            break;
-            case 2:
-                jit_stxr_s(JIT_R2, JIT_R1, JIT_R0);
-            break;
-            case 4:
-                jit_stxr_i(JIT_R2, JIT_R1, JIT_R0);
-            break;
-            case 8:
-                assert(0);
-        }
-    }
+    jit_prepare();
+    jit_pushargr(JIT_V0);
+    jit_pushargr(JIT_R1);
+    jit_pushargr(JIT_R0);
+    jit_pushargi(sz);
+    jit_finishi((jit_pointer_t)Runtime_Store);
 }
 
 
@@ -1508,12 +1560,12 @@ static inline void Lightning_Store32(Lightning* self, BCValue *dest, const BCVal
 
 static inline void Lightning_Load64(Lightning* self, BCValue *dest, const BCValue* from)
 {
-    assert(0);
+    Lightning_Load(self, dest, from, 8);
 }
 
 static inline void Lightning_Store64(Lightning* self, BCValue *dest, const BCValue* value)
 {
-    assert(0);
+    Lightning_Store(self, dest, value, 8);
 }
 
 static inline void Lightning_Throw(Lightning* self, const BCValue* e)
@@ -1556,34 +1608,59 @@ static inline void Lightning_Ret(Lightning* self, const BCValue* val)
 
 }
 
+// Values live in the frame; each conversion goes through JIT_F0 and writes its result back to the frame at once.
 static inline void Lightning_IToF32(Lightning* self, BCValue *result, const BCValue* rhs)
 {
-    assert(0);
+    assert(BCValue_isStackValueOrParameter(result));
+    assert(BCValue_isStackValueOrParameter(rhs));
+    jit_ldxi_i(JIT_R0, JIT_FP, -rhs->stackAddr.addr);
+    jit_extr_f(JIT_F0, JIT_R0);
+    jit_stxi_f(-result->stackAddr.addr, JIT_FP, JIT_F0);
 }
 
 static inline void Lightning_IToF64(Lightning* self, BCValue *result, const BCValue* rhs)
 {
-    assert(0);
+    assert(BCValue_isStackValueOrParameter(result));
+    assert(BCValue_isStackValueOrParameter(rhs));
+    jit_ldxi_i(JIT_R0, JIT_FP, -rhs->stackAddr.addr);
+    jit_extr_d(JIT_F0, JIT_R0);
+    jit_stxi_d(-result->stackAddr.addr, JIT_FP, JIT_F0);
 }
 
 static inline void Lightning_F32ToI(Lightning* self, BCValue *result, const BCValue* rhs)
 {
-    assert(0);
+    assert(BCValue_isStackValueOrParameter(result));
+    assert(BCValue_isStackValueOrParameter(rhs));
+    jit_ldxi_f(JIT_F0, JIT_FP, -rhs->stackAddr.addr);
+    jit_truncr_f_i(JIT_R0, JIT_F0);
+    jit_stxi_i(-result->stackAddr.addr, JIT_FP, JIT_R0);
 }
 
 static inline void Lightning_F64ToI(Lightning* self, BCValue *result, const BCValue* rhs)
 {
-    assert(0);
+    assert(BCValue_isStackValueOrParameter(result));
+    assert(BCValue_isStackValueOrParameter(rhs));
+    jit_ldxi_d(JIT_F0, JIT_FP, -rhs->stackAddr.addr);
+    jit_truncr_d_i(JIT_R0, JIT_F0);
+    jit_stxi_i(-result->stackAddr.addr, JIT_FP, JIT_R0);
 }
 
 static inline void Lightning_F32ToF64(Lightning* self, BCValue *result, const BCValue* rhs)
 {
-    assert(0);
+    assert(BCValue_isStackValueOrParameter(result));
+    assert(BCValue_isStackValueOrParameter(rhs));
+    jit_ldxi_f(JIT_F0, JIT_FP, -rhs->stackAddr.addr);
+    jit_extr_f_d(JIT_F0, JIT_F0);
+    jit_stxi_d(-result->stackAddr.addr, JIT_FP, JIT_F0);
 }
 
 static inline void Lightning_F64ToF32(Lightning* self, BCValue *result, const BCValue* rhs)
 {
-    assert(0);
+    assert(BCValue_isStackValueOrParameter(result));
+    assert(BCValue_isStackValueOrParameter(rhs));
+    jit_ldxi_d(JIT_F0, JIT_FP, -rhs->stackAddr.addr);
+    jit_extr_d_f(JIT_F0, JIT_F0);
+    jit_stxi_f(-result->stackAddr.addr, JIT_FP, JIT_F0);
 }
 
 static inline void Lightning_Memcmp(Lightning* self, BCValue *result, const BCValue* lhs, const BCValue* rhs)
@@ -1602,7 +1679,6 @@ static inline BCValue Lightning_Run(Lightning* self, uint32_t fnIdx, const BCVal
 
     RuntimeContext rtContext = {0};
 
-    printf("&rtContext: %p\n", &rtContext);
 
     BCValue result = {BCValueType_Unknown};
     char parameterString[64];
@@ -1610,6 +1686,7 @@ static inline BCValue Lightning_Run(Lightning* self, uint32_t fnIdx, const BCVal
     void* marshaled_args = self->allocMemory(self->allocCtx, sizeof(double) * n_args, 0);
 
     {
+        rtContext.instance = self;
         rtContext.heapDataBegin = heap ? heap->heapData : 0;
         rtContext.heapCapacityP = heap ? &heap->heapMax : 0;
         rtContext.heapSizeP = heap ? &heap->heapSize : 0;
@@ -1618,32 +1695,16 @@ static inline BCValue Lightning_Run(Lightning* self, uint32_t fnIdx, const BCVal
         rtContext.externalsCount = 0;
         rtContext.externalsCapacity = 8;
 
-        rtContext.MapAddr = externalAddrMask;
+        rtContext.MapAddr = AddressFrom(AddressKind_External, 0);
     }
 
     for(uint32_t i = 0; i < n_args; i++)
     {
         assert((args + i)->vType == BCValueType_Immediate);
-        switch((args + i)->type.type)
-        {
-            default: assert(!"ParameterType not handled");
-
-            case BCTypeEnum_u8:
-            case BCTypeEnum_u16:
-            case BCTypeEnum_u32:
-            case BCTypeEnum_i8:
-            case BCTypeEnum_i16:
-            case BCTypeEnum_i32:
-            case BCTypeEnum_c8:
-            case BCTypeEnum_c16:
-            case BCTypeEnum_c32:
-                (*(int32_t*) marshaled_args) = (args + i)->imm32.imm32;
-            break;
-        }
-        marshaled_args += (sizeof(double));
+        ((int64_t*) marshaled_args)[i] = Lightning_ImmediateBits(args + i);
     }
-    jit_disassemble();
-    fnResult = self->FunctionPtrs[fnIdx](&rtContext, args, n_args);
+    // jit_disassemble();  // Skip disassembly to avoid BFD dependency
+    fnResult = self->FunctionPtrs[fnIdx](&rtContext, marshaled_args, n_args);
     result = imm32(fnResult);
 
     return result;
@@ -1683,13 +1744,39 @@ static inline void Lightning_init_instance(Lightning* self)
 
 static inline void Lightning_fini_instance(Lightning* self)
 {
+    Dbg_RecorderFree(&self->Dbg);
+
     jit_destroy_state();
 
 }
 
+void Runtime_ReadI32(RuntimeContext* ctx, uint32_t cbIdx, int32_t value)
+{
+    Lightning* instance = ctx->instance;
+    instance->ReadI32Callbacks[cbIdx](value, instance->ReadI32UserCtxs[cbIdx]);
+}
+
 static inline void Lightning_ReadI32(Lightning* self, const BCValue* val, const ReadI32_cb_t readCb, void* userCtx)
 {
-    assert(0);
+    assert(self->ReadI32Count < LIGHTNING_READI32_CAPACITY);
+    uint32_t cbIdx = self->ReadI32Count++;
+    self->ReadI32Callbacks[cbIdx] = readCb;
+    self->ReadI32UserCtxs[cbIdx] = userCtx;
+
+    if (val->vType == BCValueType_Immediate)
+    {
+        jit_movi(JIT_R1, val->imm32.imm32);
+    }
+    else
+    {
+        LoadRegValue(self, r1Index, val);
+    }
+
+    jit_prepare();
+    jit_pushargr(JIT_V0);
+    jit_pushargi(cbIdx);
+    jit_pushargr(JIT_R1);
+    jit_finishi((jit_pointer_t)Runtime_ReadI32);
 }
 
 static inline void Lightning_set_alloc_memory(Lightning* self, alloc_fn_t alloc_fn, void* userCtx)

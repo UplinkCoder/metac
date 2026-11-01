@@ -1,0 +1,27 @@
+@run {
+    int value = 6 * 7;
+    eject {
+        int generated_answer() { return $(value); }
+    }
+};
+
+int generated_sum(int input)
+{
+    int result = input;
+    enum LocalType { zero };
+    @run {
+        int count = 4;
+        assert(sizeof(typeof(input)) == sizeof(LocalType));
+        for (int i = 0; i < count; i++)
+        {
+            eject { result += $(i); }
+        }
+    };
+    @run { int unused = 1; assert(unused == 1); };
+    return result;
+}
+
+@run {
+    assert(generated_answer() == 42);
+    assert(generated_sum(10) == 16);
+};

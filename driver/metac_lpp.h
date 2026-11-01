@@ -40,4 +40,10 @@ metac_preprocessor_directive_t MetaCLPP_ParsePreprocFromString(metac_lpp_t* lpp,
 #endif
 
 decl_array_t ReadLexParse(const char* filename, metac_lpp_t* lpp, metac_alloc_t* parent);
+
+/// Converts VM results of eject expressions into tokens. `at` is the
+/// eject parameter token that the result replaces.
+metac_token_t MetaCLPP_UIntToken(const metac_token_t* at, uint64_t value);
+metac_token_t MetaCLPP_IdentifierToken(metac_lpp_t* lpp, const metac_token_t* at, const char* name);
+metac_token_t MetaCLPP_StringToken(metac_lpp_t* lpp, const metac_token_t* at, const char* text);
 #endif

@@ -32,7 +32,7 @@ typedef enum number_flags_t
 typedef enum {
     FuncFlag_None = 0,
     FuncFlag_Inline = (1 << 0),
-    FuncFlag_Run = (1 << 0),
+    FuncFlag_Run = (1 << 1),
 } funcflags_t;
 
 #define EXPR_HEADER \

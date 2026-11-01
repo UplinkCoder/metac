@@ -42,7 +42,12 @@ typedef struct  metac_enum_members_t {
     uint32_t Count;
 } metac_enum_members_t;
 
+/* Opaque handle to the token buffer that receives the tokens emitted by an
+   eject inside a @run block. The buffer is owned by the parser side. */
+struct metac_eject_buffer_t;
+typedef struct metac_eject_buffer_t* metac_eject_buffer_handle_t;
 
+struct metac_token_t;
 
 typedef struct metac_compiler_t
 {
@@ -62,6 +67,10 @@ typedef struct metac_compiler_t
     const char* (*TypeKindString)(metac_type_kind_t Kind);
 
     metac_enum_members_t* (*GetEnumMembers) (struct metac_compiler_t* compilerP, uint32_t T);
+
+    void (*InjectToken) (struct metac_compiler_t* compilerP,
+                         metac_eject_buffer_handle_t buffer,
+                         const struct metac_token_t* token);
 
     const char* Version;
     uint32_t IntVersion;

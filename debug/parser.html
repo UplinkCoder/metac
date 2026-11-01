@@ -1,33 +1,43 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Parser Web UI</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Parser Trace</title>
+    <link rel="stylesheet" href="/theme.css">
 </head>
 <body>
-    <h1>Parser Web UI</h1>
-    
-    <div>
-        <strong>Token Stream:</strong> <span id="tokenStreamLabel"></span>
-    </div>
-    <div>
-        <strong>Position:</strong> <span id="positionLabel"></span>
-    </div>
-    <br>
-    <div>
-        <div style="display: inline-block; vertical-align: top;">
-            <strong>Expression Stack:</strong>
-            <ul id="expressionStackList"></ul>
-        </div>
-        <div style="display: inline-block; vertical-align: top; margin-left: 20px;">
-            <strong>Operator Stack:</strong>
-            <ul id="operatorStackList"></ul>
-        </div>
-    </div>
-    <br>
-    <div>
-        <button onclick="prevHistory()">Previous</button>
-        <button onclick="nextHistory()">Next</button>
-    </div>
+    <main class="page-shell">
+        <h1>Parser trace</h1>
+        <section class="parser-meta" aria-label="Current parser state">
+            <div class="meta-item">
+                <span class="meta-label">Token stream</span>
+                <strong class="meta-value" id="tokenStreamLabel"></strong>
+            </div>
+            <div class="meta-item">
+                <span class="meta-label">Position</span>
+                <strong class="meta-value" id="positionLabel"></strong>
+            </div>
+            <div class="meta-item">
+                <span class="meta-label">History step</span>
+                <strong class="meta-value" id="historyLabel"></strong>
+            </div>
+        </section>
+        <section class="stack-grid" aria-label="Parser stacks">
+            <div class="stack-panel">
+                <h2>Expression stack</h2>
+                <ul class="stack-list" id="expressionStackList"></ul>
+            </div>
+            <div class="stack-panel">
+                <h2>Operator stack</h2>
+                <ul class="stack-list" id="operatorStackList"></ul>
+            </div>
+        </section>
+        <nav class="button-row" aria-label="Parser history">
+            <button id="previousButton" onclick="prevHistory()" type="button">Previous</button>
+            <button id="nextButton" onclick="nextHistory()" type="button">Next</button>
+        </nav>
+    </main>
 
     <script>
 		function locationType(){
@@ -54,6 +64,11 @@
             var positionLabel = document.getElementById('positionLabel');
             positionLabel.textContent = data.position;
 
+            document.getElementById('historyLabel').textContent =
+                (historyIndex + 1) + ' / ' + parserHistory.length;
+            document.getElementById('previousButton').disabled = historyIndex === 0;
+            document.getElementById('nextButton').disabled = historyIndex === parserHistory.length - 1;
+
             var expressionStackList = document.getElementById('expressionStackList');
             expressionStackList.innerHTML = '';
             data.expressionStack.forEach(function(item, index) {
@@ -76,9 +91,7 @@
                 operatorStackList.appendChild(li);
             });
 
-            // Highlight the current position in the token stream
-            var tokenStreamSpan = tokenStreamLabel.firstChild;
-            tokenStreamSpan.classList.add('highlight');
+            tokenStreamLabel.classList.add('highlight');
         }
 
         // Function to go to the previous history
@@ -120,14 +133,5 @@
         fetchHistoryUpdates();
     </script>
 
-    <style>
-        .selected {
-            background-color: yellow;
-        }
-        
-        .highlight {
-            background-color: lightblue;
-        }
-    </style>
 </body>
 </html>

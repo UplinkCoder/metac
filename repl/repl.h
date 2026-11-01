@@ -21,6 +21,8 @@ typedef enum repl_mode_t
     repl_mode_es,
     repl_mode_setvars,
 
+    repl_mode_run,
+
     repl_mode_max
 } repl_mode_t;
 

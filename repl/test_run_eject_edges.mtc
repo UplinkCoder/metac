@@ -1,0 +1,63 @@
+@run {};
+
+int accumulated(int input)
+{
+    int result = input;
+    @run {
+        for (int i = 0; i < 80; i++)
+        {
+            eject { result += $(i); }
+        }
+    };
+    return result;
+}
+
+int selected(int input)
+{
+    int result = -1;
+    switch (input)
+    {
+        @run {
+            for (int i = 0; i < 3; i++)
+            {
+                eject {
+                    case $(i): result = $(i * 10); break;
+                }
+            }
+        };
+    }
+    return result;
+}
+
+int local_declaration()
+{
+    @run {
+        int value = -7;
+        if (0) { eject { assert(0); } }
+        if (value < 0) { eject { int generated_local = $(value); } }
+    };
+    return generated_local;
+}
+
+int call_chain(int input)
+{
+    int preserved = input + 1;
+    return accumulated(input) + preserved;
+}
+
+@run {
+    eject {
+        @run {
+            eject { int nested_answer() { return 9; } }
+        };
+    }
+};
+
+@run {
+    assert(accumulated(10) == 3170);
+    assert(selected(2) == 20);
+    assert(selected(9) == -1);
+    assert(local_declaration() == -7);
+    assert(nested_answer() == 9);
+    assert(call_chain(-10) == 3141);
+};

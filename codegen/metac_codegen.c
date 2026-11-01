@@ -27,11 +27,9 @@
 #include "metac_codegen.h"
 
 #include <stdarg.h>
-/*
 #ifdef METAC_COMPILER_INTERFACE
 #include "../compiler_intrinsics/metac_compiler_interface.c"
 #endif
-*/
 uint32_t MetaCCodegen_GetTypeABISize(metac_bytecode_ctx_t* ctx,
                                      metac_type_index_t type)
 {
@@ -372,6 +370,15 @@ BCValue MetaCCodegen_RunFunction(metac_bytecode_ctx_t* self,
                 stringPtr.heapAddr = ptr;
                 ARENA_ARRAY_ADD(args, stringPtr);
             } break;
+            case 'p':
+            {
+                nArgs++;
+                void* a = va_arg(l, void*);
+                BCValue ptrVal = imm64((uint64_t)(uintptr_t)a);
+                BCType bcType = {BCTypeEnum_Ptr, 10};
+                ptrVal.type = bcType;
+                ARENA_ARRAY_ADD(args, ptrVal);
+            } break;
             default:
             {
                 fprintf(stderr, "arg specifier, '%c' unsupported\n", c);
@@ -386,8 +393,53 @@ BCValue MetaCCodegen_RunFunction(metac_bytecode_ctx_t* self,
     return result;
 }
 
+BCValue MetaCCodegen_RunRunBlock(metac_sema_state_t* sema,
+                                 sema_decl_function_t* runFunc,
+                                 void* tokenBuffer,
+                                 BCHeap* heap)
+{
+    metac_alloc_t interpAlloc;
+    metac_bytecode_ctx_t ctx = {0};
+
+    Allocator_Init(&interpAlloc, &sema->TempAlloc, 0);
+
+    MetaCCodegen_SetDefaultInterface(&BCGen_interface);
+
+    MetaCCodegen_Init(&ctx, &interpAlloc);
+    ctx.Sema = sema;
+    ctx.RunTokenBuffer = tokenBuffer;
+
+    for(uint32_t i = 0; i < sema->GlobalsCount; i++)
+    {
+        MetaCCodegen_doGlobal(&ctx, sema->Globals[i], i);
+    }
+
+    MetaCCodegen_Begin(&ctx, sema->ParserIdentifierTable, sema->ParserStringTable, sema);
+
+    metac_bytecode_function_t fCode =
+        MetaCCodegen_GenerateFunction(&ctx, runFunc);
+
+    MetaCCodegen_End(&ctx);
+
+    BCValue result =
+        MetaCCodegen_RunFunction(&ctx, fCode, &interpAlloc, heap, "p", tokenBuffer);
+
+    MetaCCodegen_UnsetDefaultInterface();
+    MetaCCodegen_Free(&ctx);
+
+    return result;
+}
+
 void MetaCCodegen_End(metac_bytecode_ctx_t* self)
 {
+    if (self->gen == &BCGen_interface)
+    {
+        for (uint32_t i = 0; i < self->FunctionsCount; i++)
+        {
+            if (!self->Functions[i].Emitted)
+                MetaCCodegen_GenerateFunction(self, self->Functions[i].FuncDeclPtr);
+        }
+    }
 
     self->gen->Finalize(self->c);
 
@@ -471,6 +523,9 @@ void MetaCCodegen_Init(metac_bytecode_ctx_t* self, metac_alloc_t* parentAlloc)
 
     gen.Initialize(self->c, 0);
     ARENA_ARRAY_INIT(metac_bytecode_function_t, self->Functions, &self->Allocator);
+    self->NextFunctionIndex = 0;
+    self->GeneratingFunction = false;
+    self->RunTokenBuffer = 0;
 
     ARENA_ARRAY_INIT(metac_external_entry_t, self->Externals, &self->Allocator);
 
@@ -526,7 +581,8 @@ static void InitCompilerInterface(metac_bytecode_ctx_t* ctx)
             ctx->Sema->CompilerInterface->TypeIndex.Index;
 
         ctx->CompilerInterfaceValue = gen.GenExternal(c, compilerInterfaceType, ".compiler");
-        // gen.MapExternal(c, &ctx->CompilerInterfaceValue, &compiler, sizeof(compiler));
+        compiler.semanticState = ctx->Sema;
+        gen.MapExternal(c, &ctx->CompilerInterfaceValue, &compiler, sizeof(compiler));
         ctx->Externals[0].ExtValue = ctx->CompilerInterfaceValue;
         ctx->ExternalsCount += 1;
     }
@@ -596,7 +652,9 @@ metac_bytecode_function_t MetaCCodegen_GenerateFunctionFromExp(metac_bytecode_ct
     }
 
     func.FunctionIndex =
-        gen.BeginFunction(c, 0, "dummy_eval_func");
+        gen.BeginFunction(c, ctx->gen == &BCGen_interface ? ++ctx->NextFunctionIndex : 0,
+                          "dummy_eval_func");
+    ctx->GeneratingFunction = true;
 
     InitCompilerInterface(ctx);
 
@@ -607,6 +665,7 @@ metac_bytecode_function_t MetaCCodegen_GenerateFunctionFromExp(metac_bytecode_ct
     gen.Ret(c, &resultVal);
 
     gen.EndFunction(c, func.FunctionIndex);
+    ctx->GeneratingFunction = false;
 
 #ifdef PRINT_BYTECODE
     if (ctx->gen == &BCGen_interface)
@@ -627,14 +686,30 @@ metac_bytecode_function_t MetaCCodegen_GenerateFunction(metac_bytecode_ctx_t* ct
     void* c = ctx->c;
     const BackendInterface gen = *ctx->gen;
 
+    uint32_t entryIndex = ctx->FunctionsCount;
     for(uint32_t i = 0; i < ctx->FunctionsCount; i++)
     {
         metac_bytecode_function_t* f = ctx->Functions + i;
         if (f->FuncDeclPtr == cast(void*) function)
         {
-            return *f;
+            if (ctx->gen != &BCGen_interface || f->Emitted || ctx->GeneratingFunction)
+                return *f;
+            entryIndex = i;
+            break;
         }
     }
+
+    if (ctx->gen == &BCGen_interface && entryIndex == ctx->FunctionsCount)
+    {
+        metac_bytecode_function_t pending = {++ctx->NextFunctionIndex, function, false};
+        ARENA_ARRAY_ADD(ctx->Functions, pending);
+    }
+    if (ctx->gen == &BCGen_interface && ctx->GeneratingFunction)
+        return ctx->Functions[entryIndex];
+    if (ctx->gen == &BCGen_interface)
+        ctx->Functions[entryIndex].Emitted = true;
+    ctx->GeneratingFunction = true;
+    VariableStore_Init(&ctx->Vstore, ctx->IdentifierTable, &ctx->Allocator);
 
     metac_type_functiontype_t* functionType =
         FunctiontypePtr(ctx->Sema, TYPE_INDEX_INDEX(function->TypeIndex));
@@ -649,7 +724,8 @@ metac_bytecode_function_t MetaCCodegen_GenerateFunction(metac_bytecode_ctx_t* ct
         IdentifierPtrToCharPtr(ctx->IdentifierTable, function->Identifier);
 
     uint32_t functionId =
-        gen.BeginFunction(c, 0, fName);
+        gen.BeginFunction(c, ctx->gen == &BCGen_interface ?
+                          ctx->Functions[entryIndex].FunctionIndex : 0, fName);
 
     // gen.Comment(c, "Function Begin.");
 
@@ -657,6 +733,7 @@ metac_bytecode_function_t MetaCCodegen_GenerateFunction(metac_bytecode_ctx_t* ct
 
     result.FunctionIndex = functionId;
     result.FuncDeclPtr = (void*) function;
+    result.Emitted = true;
 
     for(uint32_t i = 0;
         i < functionParameterCount;
@@ -675,7 +752,18 @@ metac_bytecode_function_t MetaCCodegen_GenerateFunction(metac_bytecode_ctx_t* ct
         frameSize += paramSize;
     }
 
-    assert(parametersCount == functionParameterCount);
+    // @run functions take a hidden token buffer handle as their last argument.
+    // It is NULL when no token buffer is present.
+    const bool isRunFunction = (function->Flags & FuncFlag_Run) != 0;
+    if (isRunFunction)
+    {
+        BCType tokenBufferType = {BCTypeEnum_Ptr, 10};
+        BCValue tokenBuffer = gen.GenParameter(c, tokenBufferType, "tokenBuffer");
+        ARENA_ARRAY_ADD(parameters, tokenBuffer);
+        frameSize += sizeof(void*);
+    }
+
+    assert(parametersCount == functionParameterCount + (isRunFunction ? 1 : 0));
 
 
 #ifdef METAC_COMPILER_INTERFACE
@@ -688,7 +776,8 @@ metac_bytecode_function_t MetaCCodegen_GenerateFunction(metac_bytecode_ctx_t* ct
             ctx->Sema->CompilerInterface->TypeIndex.Index;
 
         ctx->CompilerInterfaceValue = gen.GenExternal(c, compilerInterfaceType, ".compiler");
-//        gen.MapExternal(c, &ctx->CompilerInterfaceValue, &compiler, sizeof(compiler));
+        compiler.semanticState = ctx->Sema;
+        gen.MapExternal(c, &ctx->CompilerInterfaceValue, &compiler, sizeof(compiler));
         ctx->Externals[0].ExtValue = ctx->CompilerInterfaceValue;
         frameSize += sizeof(void*);
     }
@@ -718,6 +807,11 @@ metac_bytecode_function_t MetaCCodegen_GenerateFunction(metac_bytecode_ctx_t* ct
 
     // gen.Comment(c, "Function body end");
 
+    {
+        BCValue noResult = imm32(0);
+        gen.Ret(c, &noResult);
+    }
+
     if (ctx->BreaksAlloc)
     {
         Allocator_FreeArena(&ctx->Allocator, ctx->BreaksArenaPtr);
@@ -728,13 +822,15 @@ metac_bytecode_function_t MetaCCodegen_GenerateFunction(metac_bytecode_ctx_t* ct
     }
 
     gen.EndFunction(c, result.FunctionIndex);
+    ctx->GeneratingFunction = false;
 #ifdef PRINT_BYTECODE
     if (ctx->gen == &BCGen_interface)
     {
         BCGen_PrintCode((BCGen*)c, 0, 64);
     }
 #endif
-    ARENA_ARRAY_ADD(ctx->Functions, result);
+    if (ctx->gen != &BCGen_interface)
+        ARENA_ARRAY_ADD(ctx->Functions, result);
     return result;
 }
 
@@ -1087,6 +1183,7 @@ static void MetaCCodegen_doExpr(metac_bytecode_ctx_t* ctx,
         int32_t truthval = exp->ValueI64 & 0xffffffff
                          | exp->ValueI64 << 32;
         BCValue val = imm32(truthval);
+        *result = gen.GenTemporary(c, BCType_i32);
         gen.Set(c, result, &val);
         return ;
     }
@@ -1155,7 +1252,7 @@ static void MetaCCodegen_doExpr(metac_bytecode_ctx_t* ctx,
     else if (op == expr_arrow)
     {
     }
-    else if (IsUnaryExp(op))
+    else if (IsUnaryExp(op) && op != expr_assert)
     {
         if (exp->E1->Kind == expr_signed_integer
            && (exp->E1->ValueI64 >= INT32_MIN && exp->E1->ValueI64 <= INT32_MAX))
@@ -1166,8 +1263,7 @@ static void MetaCCodegen_doExpr(metac_bytecode_ctx_t* ctx,
         {
             bool opIsPostIncDec =
                 (op == expr_post_decrement || op == expr_post_increment);
-            lhs = gen.GenTemporary(c, expType);
-            // MetaCCodegen_doExpr(ctx, exp->E1, &lhs, (opIsPostIncDec ? _Lvalue : _Rvalue));
+            MetaCCodegen_doExpr(ctx, exp->E1, &lhs, (opIsPostIncDec ? _Lvalue : _Rvalue));
         }
     }
     else if (IsBinaryExp(op) && op != expr_comma && op != expr_call)
@@ -1338,15 +1434,16 @@ static void MetaCCodegen_doExpr(metac_bytecode_ctx_t* ctx,
 
             // this should not happen, we should have made it into a pointer I think
             //assert(0);
-        }
+        } break;
         case expr_assert:
         {
-            /*
             BCValue errVal = imm32(0);
-            BCValue cond = gen.GenTemporary(c, (BCType){BCTypeEnum_u64});
-            WalkTree(c, &cond, e->E1, vstore);
+            BCValue value = {BCValueType_Unknown};
+            MetaCCodegen_doExpr(ctx, exp->E1, &value, _Rvalue);
+            BCValue cond = gen.GenTemporary(c, value.type);
+            gen.Set(c, &cond, &value);
             gen.Assert(c, &cond, &errVal);
-             */
+            gen.DestroyTemporary(c, &cond);
         } break;
         case expr_assign:
         {
@@ -1367,10 +1464,7 @@ static void MetaCCodegen_doExpr(metac_bytecode_ctx_t* ctx,
 
             //metac_identifier_ptr_t idPtr = e->E1->Variable->VarIdentifier;
             //metac_identifier_ptr_t vStorePtr = GetVStoreID(vstore, e->E1);
-            if (lValueType != _Discard)
-            {
-                gen.Set(c, result, &rhs);
-            }
+            gen.Set(c, result, &rhs);
 
             if (exp->E1->Variable->Storage.Kind == storage_global)
             {
@@ -1853,10 +1947,31 @@ void MetaCCodegen_doLocalVar(metac_bytecode_ctx_t* ctx,
     VariableStore_AddVariable(&ctx->Vstore, localVar, &ctx->Locals[(ctx->LocalsCount) - 1]);
     if (METAC_NODE(localVar->VarInitExpr) != emptyNode)
     {
-        BCValue initVal;
+        BCValue initVal = {BCValueType_Unknown};
         MetaCCodegen_doExpr(ctx, localVar->VarInitExpr, &initVal, _Rvalue);
         gen.Set(ctx->c, &local, &initVal);
     }
+}
+
+typedef struct metac_eject_token_context_t
+{
+    metac_token_buffer_t* Buffer;
+    metac_token_t Token;
+    bool Signed;
+} metac_eject_token_context_t;
+
+static void MetaCCodegen_EmitEjectToken(uint32_t value, void* userContext)
+{
+    metac_eject_token_context_t* context = userContext;
+    metac_token_t token = context->Token;
+    if (token.TokenType == tok_eject_parameter)
+    {
+        token.TokenType = tok_uint;
+        token.ValueI64 = context->Signed ? (int64_t)(int32_t)value : (int64_t)value;
+        token.ValueLength = 0;
+        token.NumberFlags = context->Signed ? parse_number_flag_none : parse_number_flag_unsigned;
+    }
+    MetaCTokenBuffer_Append(context->Buffer, &token);
 }
 
 void MetaCCodegen_doStmt(metac_bytecode_ctx_t* ctx,
@@ -1867,6 +1982,51 @@ void MetaCCodegen_doStmt(metac_bytecode_ctx_t* ctx,
 
     switch(stmt->Kind)
     {
+        case stmt_eject:
+        {
+            if (!ctx->RunTokenBuffer)
+            {
+                SemanticError(0, "eject requires an executing @run");
+                abort();
+            }
+            sema_stmt_eject_t* eject = cast(sema_stmt_eject_t*)stmt;
+            for (uint32_t i = 0; i < eject->EjectTokensCount; i++)
+            {
+                metac_eject_token_context_t* context =
+                    Allocator_Calloc(&ctx->Allocator, metac_eject_token_context_t, 1);
+                context->Buffer = ctx->RunTokenBuffer;
+                context->Token = eject->EjectTokens[i];
+                BCValue value = imm32(0);
+                if (context->Token.TokenType == tok_eject_parameter)
+                {
+                    value.vType = BCValueType_Unknown;
+                    metac_sema_expr_t* expression =
+                        eject->EjectExpressions[context->Token.EjectParameterIndex];
+                    BCType type = MetaCCodegen_GetBCType(ctx, expression->TypeIndex);
+                    switch (type.type)
+                    {
+                        case BCTypeEnum_i8:
+                        case BCTypeEnum_i16:
+                        case BCTypeEnum_i32:
+                            context->Signed = true;
+                            break;
+                        case BCTypeEnum_u8:
+                        case BCTypeEnum_u16:
+                        case BCTypeEnum_u32:
+                            break;
+                        default:
+                            SemanticError(0, "eject currently supports only integer splices up to 32 bits");
+                            abort();
+                    }
+                    MetaCCodegen_doExpr(ctx, expression, &value, _Rvalue);
+                }
+                BCType type = {BCTypeEnum_u32};
+                BCValue argument = gen.GenTemporary(c, type);
+                gen.Set(c, &argument, &value);
+                gen.ReadI32(c, &argument, MetaCCodegen_EmitEjectToken, context);
+                gen.DestroyTemporary(c, &argument);
+            }
+        } break;
         case stmt_switch:
         {
             uint32_t currentBreakCount = ctx->BreaksCount;
@@ -1903,6 +2063,8 @@ void MetaCCodegen_doStmt(metac_bytecode_ctx_t* ctx,
         case stmt_decl:
         {
             sema_stmt_decl_t* declStmt = cast(sema_stmt_decl_t*) stmt;
+            if (declStmt->Decl->Kind != decl_variable)
+                break;
             sema_decl_variable_t* localVar = (sema_decl_variable_t*) declStmt->Decl;
             MetaCCodegen_doLocalVar(ctx, localVar);
             // MetaCCodegen_doStmt(ctx, decl)
@@ -1990,7 +2152,7 @@ void MetaCCodegen_doStmt(metac_bytecode_ctx_t* ctx,
             {
                 if (IsExprNode(forStmt->ForInit->Kind))
                 {
-                    BCValue dontCare;
+                    BCValue dontCare = {BCValueType_Unknown};
                     MetaCCodegen_doExpr(ctx,
                         cast(metac_sema_expr_t*)forStmt->ForInit, &dontCare, _Discard);
                 }
@@ -2003,17 +2165,21 @@ void MetaCCodegen_doStmt(metac_bytecode_ctx_t* ctx,
 
             CndJmpBegin cndJmpToCondEval;
             BCLabel loopBegin = gen.GenLabel(c);
+            BCValue cond = {BCValueType_Unknown};
 
             if (METAC_NODE(forStmt->ForCond) != emptyNode)
             {
-                BCValue cond = {BCValueType_Unknown};
                 MetaCCodegen_doExpr(ctx, forStmt->ForCond, &cond, _Cond);
                 cndJmpToCondEval = gen.BeginCndJmp(c, &cond, false);
             }
 
             MetaCCodegen_doStmt(ctx, forStmt->ForBody);
 
-            MetaCCodegen_doExpr(ctx, forStmt->ForPostLoop, 0, _Discard);
+            if (METAC_NODE(forStmt->ForPostLoop) != emptyNode)
+            {
+                BCValue dontCare = {BCValueType_Unknown};
+                MetaCCodegen_doExpr(ctx, forStmt->ForPostLoop, &dontCare, _Discard);
+            }
             gen.Jmp(c, loopBegin);
 
             if (METAC_NODE(forStmt->ForCond) != emptyNode)

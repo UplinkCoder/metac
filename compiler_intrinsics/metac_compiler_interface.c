@@ -1,10 +1,11 @@
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 #include "metac_compiler_interface.h"
 #include "../semantic/metac_type.h"
-#include "../semantic/metac_semantic.c"
+#include "../semantic/metac_semantic.h"
+#include "../parser/metac_identifier_table.h"
 #include "metac_type_kind.c"
-
-extern metac_compiler_t compiler;
 
 static void compiler_Message(struct metac_compiler_t* compilerP,
                       const char* str)
@@ -34,47 +35,56 @@ static const char* compiler_Help ()
     return "Hello I am Mr. compiler. I cannot help you ...";
 }
 
+/* Appends a copy of the token, so the caller's token does not need to outlive the call.
+   The buffer storage is malloc/realloc managed. */
+static void compiler_InjectToken (struct metac_compiler_t* compilerP,
+                                  metac_eject_buffer_handle_t handle,
+                                  const struct metac_token_t* token)
+{
+    MetaCTokenBuffer_Append((metac_token_buffer_t*)handle, token);
+}
+
+
 
 
 
 static metac_enum_members_t* compiler_GetEnumMembers (struct metac_compiler_t* compilerP, uint32_t T)
 {
     metac_sema_state_t* sema = (metac_sema_state_t*) compilerP->semanticState;
-    metac_type_enum_t* enumType = EnumTypePtr(sema, TYPE_INDEX_INDEX(T));
-    metac_alloc_t alloc =  sema->TempAlloc;
+    if (!sema)
+        return 0;
+
+    metac_type_index_t typeIdx;
+    typeIdx.v = T;
+    metac_type_enum_t* enumType = EnumTypePtr(sema, TYPE_INDEX_INDEX(typeIdx));
     uint32_t nMembers = enumType->MemberCount;
-    metac_enum_members_t *memberMemory = Allocator_Calloc(&alloc, metac_enum_members_t, 1);
-    memberMemory->Count = nMembers;
-    memberMemory->Names = Allocator_Calloc(&alloc, char*, nMembers);
-    memberMemory->Values = Allocator_Calloc(&alloc, uint32_t, nMembers);
-    
+    metac_enum_members_t* result = Allocator_Calloc(&sema->TempAlloc, metac_enum_members_t, 1);
+    result->Count = nMembers;
+    result->Array = Allocator_Calloc(&sema->TempAlloc, enum_member_t, nMembers);
+
     for(uint32_t i = 0; i < nMembers; i++)
     {
-        memberMemory->Names[i] = IdentifierPtrToCharPtr(&sema->SemanticIdentifierTable, enumType->Members[i].Identifier);
-        memberMemory->Values[i] = (int32_t)enumType->Members[i].Value->ValueU64;
+        result->Array[i].Identifier =
+            IdentifierPtrToCharPtr(&sema->SemanticIdentifierTable, enumType->Members[i].Identifier);
+        result->Array[i].Value = (int32_t)enumType->Members[i].Value->ValueU64;
     }
-    
-    return memberMemory;
+
+    return result;
 }
 
 
 
+/* Positional initializer, in the field order of metac_compiler_t. */
 metac_compiler_t compiler = {
-    0,
-    0,
-
-    compiler_PushAlloc,
+    0,                      /* semanticState */
+    0,                      /* SetReturnAlloc */
     compiler_Help,
-
     compiler_Message,
     compiler_Error,
-
     compiler_GetTypeKind,
     compiler_TypeKindString,
-
     compiler_GetEnumMembers,
-
-     "v0.1",
-     20260205,
+    compiler_InjectToken,
+    "v0.1",
+    20260205,
 };
-

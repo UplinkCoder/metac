@@ -109,6 +109,7 @@ typedef struct metac_sema_state_t
     metac_identifier_table_t SemanticStringTable;
     metac_identifier_table_t* ParserIdentifierTable;
     metac_identifier_table_t* ParserStringTable;
+    metac_parser_t* Parser;
     metac_location_t_array* ParserLocations;
 
     metac_location_t_array* LexerLocations;
@@ -128,6 +129,8 @@ typedef struct metac_sema_state_t
     AT(transient) uint32_t TemporaryScopeDepth;
 
     AT(TaskLocal) AT(transient) metac_scope_t* CurrentScope;
+    metac_scope_t* RunScope;
+    uint32_t UnevaluatedDepth;
 
     AT(TaskLocal) AT(transient) metac_semantic_lru_t LRU;
 
@@ -173,7 +176,7 @@ void MetaCSemantic_PopOnResolveFail(metac_sema_state_t* self);
 #include "metac_expr_semantic.h"
 
 #define SemanticError(LOC, MSG, ...) \
-    fprintf(stderr, "SemanticError[%s:%u]: "  MSG  "\n", __FILE__, __LINE__, __VA_ARGS__)
+    fprintf(stderr, "SemanticError[%s:%u]: "  MSG  "\n", __FILE__, __LINE__, ##__VA_ARGS__)
 
 void RegisterType(metac_sema_state_t* state, decl_type_t* type);
 const char* TypeToChars(metac_sema_state_t* self, metac_type_index_t typeIndex);
@@ -217,6 +220,9 @@ metac_type_index_t MetaCSemantic_doTypeSemantic_(metac_sema_state_t* self,
 
 sema_decl_function_t* MetaCSemantic_doFunctionSemantic(metac_sema_state_t* self,
                                                        decl_function_t* func);
+sema_decl_function_t* MetaCSemantic_doFunctionInstance(metac_sema_state_t* self,
+                                                       decl_function_t* func,
+                                                       const metac_identifier_ptr_t* instanceIdentifier);
 
 /// Returns _emptyNode to signifiy it could not be found
 /// a valid node otherwise

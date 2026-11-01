@@ -431,6 +431,8 @@ typedef struct sema_decl_function_t
 
     sema_stmt_block_t* FunctionBody;
 
+    uint32_t Flags;
+
     uint32_t IsExternal;
 } sema_decl_function_t;
 

@@ -244,6 +244,17 @@ int MetaCNode_TreeWalk_Real(metac_node_t node, walker_function_t walker_fn, void
                  return result;
         } break;
 
+        case node_stmt_eject:
+        {
+            stmt_eject_t* stmt_eject = cast(stmt_eject_t*) node;
+            for (uint32_t i = 0; i < stmt_eject->EjectExpressionsCount; i++)
+            {
+                result = MetaCNode_TreeWalk_Real(stmt_eject->EjectExpressions[i], walker_fn, ctx);
+                if (result)
+                    return result;
+            }
+        } break;
+
         case node_stmt_for:
         {
             stmt_for_t* stmt_for = cast(stmt_for_t*) node;

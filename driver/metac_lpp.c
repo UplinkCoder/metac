@@ -101,11 +101,17 @@ void ParseFile(metac_parser_t* parser,
             Allocator_Calloc(&parser->Allocator, metac_decl_t*,
             declarationCapacity);
 
-    while(parser->CurrentTokenIndex < parser->Lexer->TokenCount)
+    uint32_t activeTokenCount;
+    MetaCParser_ActiveTokens(parser, &activeTokenCount);
+    while(parser->CurrentTokenIndex < activeTokenCount)
     {
         metac_decl_t* decl =
             MetaCParser_ParseDecl(parser, 0);
-        assert(decl);
+        if (!decl)
+        {
+            // parse error was already reported, stop parsing this file
+            break;
+        }
         if (METAC_NODE(decl) == emptyNode)
         {
             continue;
@@ -262,6 +268,45 @@ decl_array_t ReadLexParse(const char* filename, metac_lpp_t* lpp, metac_alloc_t*
 
     result = MetaCLPP_LexParseBuffer(lpp, readResult.FileContent0, readResult.FileLength, filename, &alloc);
 
+    return result;
+}
+
+/// Token for an integer value produced by evaluating an eject expression.
+/// The token position is taken from the eject parameter it replaces.
+metac_token_t MetaCLPP_UIntToken(const metac_token_t* at, uint64_t value)
+{
+    metac_token_t result = {tok_uint};
+    result.Position = at->Position;
+    result.LocationId = at->LocationId;
+    result.ValueU64 = value;
+    return result;
+}
+
+/// Token for a name (identifier) produced by evaluating an eject expression.
+/// The name is interned into the lexer's identifier table so the parser can
+/// resolve it like any lexed identifier.
+metac_token_t MetaCLPP_IdentifierToken(metac_lpp_t* lpp, const metac_token_t* at, const char* name)
+{
+    uint32_t length = (uint32_t)strlen(name);
+    metac_token_t result = {tok_identifier};
+    result.Position = at->Position;
+    result.LocationId = at->LocationId;
+    result.IdentifierKey = IDENTIFIER_KEY(crc32c_nozero(~0, name, length), length);
+    result.IdentifierPtr = GetOrAddIdentifier(&lpp->Lexer.IdentifierTable, result.IdentifierKey, name);
+    return result;
+}
+
+/// String literal token for a string value produced by evaluating an eject
+/// expression. The text is interned into the lexer's string table, as the
+/// lexer does for string literals.
+metac_token_t MetaCLPP_StringToken(metac_lpp_t* lpp, const metac_token_t* at, const char* text)
+{
+    uint32_t length = (uint32_t)strlen(text);
+    metac_token_t result = {tok_string};
+    result.Position = at->Position;
+    result.LocationId = at->LocationId;
+    result.StringKey = STRING_KEY(crc32c_nozero(~0, text, length), length);
+    result.StringPtr = GetOrAddIdentifier(&lpp->Lexer.StringTable, result.StringKey, text);
     return result;
 }
 

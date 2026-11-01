@@ -230,6 +230,9 @@ typedef enum address_kind_t
     AddressKind_Max
 } address_kind_t;
 
+uint32_t AddressFrom(address_kind_t kind, uint32_t offset);
+address_kind_t ClassifyAddress(uint32_t addr, uint32_t* out_offset);
+
 
 CONSTEXPR static inline const uint32_t align4(const uint32_t val)
 {

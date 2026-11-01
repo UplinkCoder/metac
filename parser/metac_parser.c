@@ -59,6 +59,7 @@ static inline void InitSpecialIdentifier(metac_parser_t* self)
 void MetaCParser_Init(metac_parser_t* self, metac_alloc_t* allocator)
 {
     self->CurrentTokenIndex = 0;
+    self->TokenSourceCount = 0;
     Allocator_Init(&self->Allocator, allocator);
 
     IdentifierTable_Init(&self->IdentifierTable, IDENTIFIER_LENGTH_SHIFT, 13, &self->Allocator);
@@ -115,6 +116,35 @@ void MetaCParser_InitFromLexer(metac_parser_t* self, metac_lexer_t* lexer, metac
     self->Lexer = lexer;
     MetaCParser_Init(self, allocator);
 }
+
+metac_token_t* MetaCParser_ActiveTokens(metac_parser_t* self, uint32_t* count)
+{
+    if (self->TokenSourceCount)
+    {
+        metac_token_source_t* top = &self->TokenSources[self->TokenSourceCount - 1];
+        *count = top->Count;
+        return top->Tokens;
+    }
+    *count = self->Lexer->TokenCount;
+    return self->Lexer->Tokens;
+}
+
+void MetaCParser_PushTokenSource(metac_parser_t* self, metac_token_t* tokens, uint32_t count)
+{
+    assert(self->TokenSourceCount < TOKEN_SOURCE_STACK_CAPACITY);
+    metac_token_source_t* source = &self->TokenSources[self->TokenSourceCount++];
+    source->Tokens = tokens;
+    source->Count = count;
+    source->ParentTokenIndex = self->CurrentTokenIndex;
+    self->CurrentTokenIndex = 0;
+}
+
+void MetaCParser_PopTokenSource(metac_parser_t* self)
+{
+    assert(self->TokenSourceCount);
+    metac_token_source_t* source = &self->TokenSources[--self->TokenSourceCount];
+    self->CurrentTokenIndex = source->ParentTokenIndex;
+}
 //TODO Implement IsMacro
 //    and Handle Macro
 #define HandleMacro(...)
@@ -127,7 +157,7 @@ static const metac_location_t invalidLocation = {0,0,0,0,0};
 static inline metac_location_t LocationFromToken(metac_parser_t* self,
                                                  metac_token_t* tok)
 {
-     if (tok->TokenType == tok_newline)
+     if (tok->TokenType == tok_newline || !tok->LocationId.v)
         return invalidLocation;
 
     return self->Lexer->LocationStorage.Locations[tok->LocationId.v- 4];
@@ -147,6 +177,9 @@ static inline metac_location_t LocationFromIndex(metac_parser_t* self,
 metac_identifier_ptr_t RegisterIdentifier(metac_parser_t* self,
                                           metac_token_t* token)
 {
+    if (self->TokenSourceCount)
+        return token->IdentifierPtr;
+
     const char* identifierString =
         IdentifierPtrToCharPtr(
             &self->Lexer->IdentifierTable,
@@ -170,6 +203,9 @@ metac_identifier_ptr_t RegisterIdentifier(metac_parser_t* self,
 metac_identifier_ptr_t RegisterString(metac_parser_t* self,
                                       metac_token_t* token)
 {
+    if (self->TokenSourceCount)
+        return token->StringPtr;
+
     const char* string =
         IdentifierPtrToCharPtr(
             &self->Lexer->StringTable,
@@ -239,22 +275,21 @@ static inline void LoadTokens(metac_parser_t* self,
                               uint32_t** tokenOffset)
 {
 #if defined(NO_PREPROCESSOR)
-    (*tokens) = self->Lexer->Tokens;
-    (*tokenCount) = self->Lexer->TokenCount;
+    (*tokens) = MetaCParser_ActiveTokens(self, tokenCount);
     (*tokenOffset) = &self->CurrentTokenIndex;
 #else
     metac_preprocessor_t* preProc = self->Preprocessor;
-    (*tokenCount) = ((preProc && preProc->DefineTokenStackCount > 0) ?
-        preProc->DefineTokenStack[preProc->DefineTokenStackCount - 1].Count :
-        self->Lexer->TokenCount);
-
-    (*tokens) = ((preProc ? preProc->DefineTokenStackCount > 0 : 0) ?
-        preProc->DefineTokenStack[preProc->DefineTokenStackCount - 1].Ptr :
-        self->Lexer->Tokens);
-
-    (*tokenOffset) = ((preProc ? preProc->DefineTokenStackCount > 0 : 0) ?
-        &preProc->DefineTokenIndexStack[preProc->DefineTokenStackCount - 1] :
-        &self->CurrentTokenIndex);
+    if (preProc && preProc->DefineTokenStackCount > 0)
+    {
+        (*tokenCount) = preProc->DefineTokenStack[preProc->DefineTokenStackCount - 1].Count;
+        (*tokens) = preProc->DefineTokenStack[preProc->DefineTokenStackCount - 1].Ptr;
+        (*tokenOffset) = &preProc->DefineTokenIndexStack[preProc->DefineTokenStackCount - 1];
+    }
+    else
+    {
+        (*tokens) = MetaCParser_ActiveTokens(self, tokenCount);
+        (*tokenOffset) = &self->CurrentTokenIndex;
+    }
 #endif // !NO_PREPROCESSOR
 }
 
@@ -488,7 +523,8 @@ metac_token_t* MetaCParser_NextToken(metac_parser_t* self)
     }
     else
     {
-        assert(self->Lexer->TokenCount);
+        uint32_t activeCount;
+        assert(MetaCParser_ActiveTokens(self, &activeCount) && activeCount);
     LnextToken:
         result = NextToken();
     }
@@ -527,7 +563,7 @@ metac_token_t* MetaCParser_NextToken(metac_parser_t* self)
 #endif //NO_PREPROCESSOR
     if (result)
     {
-        self->LastLocation = self->Lexer->LocationStorage.Locations[result->LocationId.v - 4];
+        self->LastLocation = LocationFromToken(self, result);
     }
     return result;
 }
@@ -570,13 +606,18 @@ metac_token_t* MetaCParser_MatchOneOfIdentifierKeys(metac_parser_t* self, uint32
 
 uint32_t MetaCParser_HowMuchLookahead(metac_parser_t* self)
 {
-    return (self->Lexer->TokenCount - self->CurrentTokenIndex);
+    uint32_t tokenCount;
+    MetaCParser_ActiveTokens(self, &tokenCount);
+    return (tokenCount - self->CurrentTokenIndex);
 }
 
 metac_token_t* MetaCParser_PeekToken_(metac_parser_t* self, int32_t p, uint32_t line)
 {
     metac_token_t* result = 0;
-    assert(self->Lexer->TokenCount);
+    uint32_t activeTokenCount;
+    metac_token_t* activeTokens = MetaCParser_ActiveTokens(self, &activeTokenCount);
+    if (!activeTokenCount)
+        return 0;
     uint32_t CurrentTokenIndex = self->CurrentTokenIndex;
 
 #if !defined(NO_PREPROCESSOR)
@@ -603,19 +644,18 @@ LpeekDefine:
             goto Lpeek;
     } else
 #endif
-    if (cast(uint32_t)(CurrentTokenIndex + (p - 1)) < self->Lexer->TokenCount)
+    if (cast(uint32_t)(CurrentTokenIndex + (p - 1)) < activeTokenCount)
     {
 Lpeek:
-        result = self->Lexer->Tokens + CurrentTokenIndex + (p - 1);
+        result = activeTokens + CurrentTokenIndex + (p - 1);
         if (result->TokenType != tok_newline)
         {
-            self->LastLocation =
-                self->Lexer->LocationStorage.Locations[result->LocationId.v - 4];
+            self->LastLocation = LocationFromToken(self, result);
         }
 #if !defined(NO_PREPROCESSOR)
         if(result)
         {
-            if (result->TokenType == tok_identifier)
+            if (result->TokenType == tok_identifier && !self->TokenSourceCount)
             {
 //                uint32_t oldDefineStackTop = preProc->DefineTokenStackCount;
                 result = MetaCParser_HandleIdentifier(self, result, preProc);
@@ -648,7 +688,7 @@ metac_token_t* MetaCParser_Match_(metac_parser_t* self, metac_token_enum_t type,
         Debug_Logf(g_DebugServer, "Parser", "Match failed");
         if (got != tok_eof)
         {
-            metac_location_t loc = self->Lexer->LocationStorage.Locations[token->LocationId.v- 4];
+            metac_location_t loc = LocationFromToken(self, token);
 
             printf("[%s:%u] Expected: %s -- Got: %s {line: %u: col: %u}\n",
                 filename, lineNumber,
@@ -1818,6 +1858,32 @@ metac_decl_t* MetaCParser_ParseDecl(metac_parser_t* self, metac_decl_t* parent)
     if (tokenType == tok_eof)
         return (metac_decl_t*)emptyNode;
 
+    // file scope @run { ... };
+    if (tokenType == tok_at)
+    {
+        metac_token_t* maybeRun = MetaCParser_PeekToken(self, 2);
+        if (maybeRun && maybeRun->TokenType == tok_identifier && maybeRun->IdentifierKey == run_key)
+        {
+            decl_function_t* runFunc = AllocNewDecl(decl_function, &result);
+            runFunc->Hash = run_key;
+            MetaCParser_Match(self, tok_at);
+            MetaCParser_Match(self, tok_identifier);
+            runFunc->Flags |= FuncFlag_Run;
+            decl_type_t* voidType = 0;
+            AllocNewDecl(decl_type, &voidType);
+            voidType->TypeKind = type_void;
+            runFunc->ReturnType = voidType;
+            runFunc->Identifier = empty_identifier;
+            METAC_NODE(runFunc->FunctionParameters) = emptyNode;
+            METAC_NODE(runFunc->YieldType) = emptyNode;
+
+            runFunc->FunctionBody = MetaCParser_ParseBlockStmt(self, 0, 0);
+            if (MetaCParser_PeekMatch(self, tok_semicolon, 1))
+                MetaCParser_Match(self, tok_semicolon);
+            return result;
+        }
+    }
+
     // Let's deal with labels right at the start.
     if (MetaCParser_PeekMatch(self, tok_identifier, 1))
     {
@@ -2009,6 +2075,7 @@ metac_decl_t* MetaCParser_ParseDecl(metac_parser_t* self, metac_decl_t* parent)
                     runFunc->TemplateParameters = templateParams.List;
                     runFunc->TemplateParameterCount = templateParams.ParameterCount;
                     METAC_NODE(runFunc->FunctionParameters) = emptyNode;
+                    METAC_NODE(runFunc->YieldType) = emptyNode;
 
                     runFunc->FunctionBody = MetaCParser_ParseBlockStmt(self, 0, 0);
                     goto LendDecl;
@@ -2019,6 +2086,8 @@ metac_decl_t* MetaCParser_ParseDecl(metac_parser_t* self, metac_decl_t* parent)
             {
                 decl_function_t* funcDecl = ParseFunctionDecl(self, type, identifier);
                 funcDecl->YieldType = yieldType;
+                funcDecl->TemplateParameters = templateParams.List;
+                funcDecl->TemplateParameterCount = templateParams.ParameterCount;
                 result = (metac_decl_t*) funcDecl;
             }
             else
@@ -2107,6 +2176,46 @@ static decl_type_array_t* ParseArraySuffix(metac_parser_t* self, decl_type_t* ty
     return arrayType;
 }
 
+static uint32_t EjectTokenHash(uint32_t hash, metac_token_t* tok)
+{
+    hash = CRC32C_VALUE(hash, tok->TokenType);
+    switch (tok->TokenType)
+    {
+        case tok_identifier:
+        {
+            hash = CRC32C_VALUE(hash, tok->IdentifierKey);
+        } break;
+        case tok_string:
+        {
+            hash = CRC32C_VALUE(hash, tok->StringKey);
+        } break;
+        case tok_char:
+        {
+            hash = CRC32C_VALUE(hash, tok->charLength);
+            for (uint32_t i = 0; i < tok->charLength; i++)
+            {
+                hash = CRC32C_VALUE(hash, tok->chars[i]);
+            }
+        } break;
+        case tok_uint:
+        case tok_double:
+        {
+            hash = CRC32C_VALUE(hash, tok->ValueU64);
+        } break;
+        case tok_float:
+        {
+            hash = CRC32C_VALUE(hash, tok->ValueU32);
+        } break;
+        case tok_eject_parameter:
+        {
+            hash = CRC32C_VALUE(hash, tok->EjectParameterIndex);
+        } break;
+        default:
+            break;
+    }
+    return hash;
+}
+
 stmt_eject_t* ParseEjectStmt(metac_parser_t* self, metac_stmt_t** resultP)
 {
     int peekN = 2; // start at eject {
@@ -2190,12 +2299,30 @@ stmt_eject_t* ParseEjectStmt(metac_parser_t* self, metac_stmt_t** resultP)
                 default:
 Ldefault:
                 {
-                    ARENA_ARRAY_ADD(eject_stmt->EjectTokens, *MetaCParser_Match(self, tokenToConsume->TokenType));
+                    metac_token_t token = *MetaCParser_Match(self, tokenToConsume->TokenType);
+                    // Quoted tokens outlive the input lexer and use parser-owned tables.
+                    if (token.TokenType == tok_identifier)
+                        token.IdentifierPtr = RegisterIdentifier(self, &token);
+                    else if (token.TokenType == tok_string)
+                        token.StringPtr = RegisterString(self, &token);
+                    token.LocationId.v = 0;
+                    ARENA_ARRAY_ADD(eject_stmt->EjectTokens, token);
                 }
             }
         }
         // now consume closing }
         MetaCParser_Match(self, tok_rBrace);
+
+        uint32_t ejectHash = eject_key;
+        for (uint32_t i = 0; i < eject_stmt->EjectTokensCount; i++)
+        {
+            ejectHash = EjectTokenHash(ejectHash, &eject_stmt->EjectTokens[i]);
+        }
+        for (uint32_t i = 0; i < eject_stmt->EjectExpressionsCount; i++)
+        {
+            ejectHash = CRC32C_VALUE(ejectHash, eject_stmt->EjectExpressions[i]->Hash);
+        }
+        eject_stmt->Hash = ejectHash;
     } else {
         metac_token_t* tokens =  self->Lexer->Tokens ? self->Lexer->Tokens : self->Lexer->inlineTokens;
         // FIXME this assumes tokens are contiguously allocated, which may not be the case
@@ -2309,6 +2436,10 @@ metac_stmt_t* MetaCParser_ParseStmt(metac_parser_t* self,
     else if (tokenType == tok_kw_eject)
     {
         stmt_eject_t* eject_stmt = ParseEjectStmt(self, &result);
+        if (eject_stmt)
+        {
+            result->Hash = eject_stmt->Hash;
+        }
     }
     else if (tokenType == tok_kw_while)
     {
@@ -2476,7 +2607,7 @@ metac_stmt_t* MetaCParser_ParseStmt(metac_parser_t* self,
             nextStmtP = &nextStmt->Next;
             peek = MetaCParser_PeekToken(self, 1);
             peek2 = MetaCParser_PeekToken(self, 2);
-        } while((peek->TokenType != tok_kw_case
+        } while(peek && (peek->TokenType != tok_kw_case
             && peek->TokenType != tok_rBrace
             && peek->TokenType != tok_kw_default
             && (peek2 == 0 || peek2->TokenType != tok_colon)));

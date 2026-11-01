@@ -27,6 +27,31 @@ It exposes the functions that you can call.
 During compilation you can have functions run and those functions can access the compiler via the API.
 This allows you to use powerful meta-programming techniques.
 
+### Compile-time `@run` and `eject`
+
+Semantic analysis executes `@run { ... };` through the bytecode VM. Each run
+owns a token buffer. `eject { ... }` appends quoted tokens to that buffer;
+`$(expression)` inserts a value computed by the running block. After execution
+finishes, the tokens are reparsed and analyzed at the run's insertion site:
+declarations at file scope, or statements inside a function (including switch
+cases). This does not require `.Compiler` or `METAC_COMPILER_INTERFACE`.
+
+Run-local variables are available to the generator. Enclosing types and
+unevaluated type queries such as `typeof(parameter)` remain available, but
+enclosing runtime variable values cannot be captured. Identifiers in quoted
+code resolve after reparsing, so emitted statements can reference the surrounding
+function's locals.
+
+See [the minimal regression](repl/test_run_eject.mtc) and
+[edge cases](repl/test_run_eject_edges.mtc). On Linux or WSL, run
+`bash repl/test_run_eject.sh`. The runner builds without the compiler interface
+and checks successful execution, generated output, and intentional failures.
+Expected failure cases currently terminate with a diagnostic and an abort.
+
+Value splicing currently supports integers up to 32 bits. Identifier splicing,
+`#$()` stringification, and template specialization are not completed by this
+path. The VM's existing fixed bytecode/register limits still apply.
+
 ### Type Expressions (works partially)
 
 In MetaC, types are expressions.

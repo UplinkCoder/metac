@@ -25,6 +25,7 @@
 #include "metac_type.c"
 #include "metac_type_semantic.c"
 #include "metac_expr_semantic.c"
+#include "metac_run_semantic.c"
 
 #define USE_SEMA_ID_IN_SCOPE_TABLE 1
 
@@ -171,12 +172,15 @@ void MetaCSemantic_Init(metac_sema_state_t* self, metac_parser_t* parser,
 
     self->ParserIdentifierTable = &parser->IdentifierTable;
     self->ParserStringTable = &parser->StringTable;
+    self->Parser = parser;
     self->ParserLocations = &parser->LocationStorage;
 
     self->LexerLocations = &parser->Lexer->LocationStorage;
 
     self->CurrentLocIdx.v = 0;
     self->CurrentScope = 0;
+    self->RunScope = 0;
+    self->UnevaluatedDepth = 0;
     self->CurrentDeclState = 0;
 
     ARENA_ARRAY_INIT(metac_semantic_on_resolve_fail_t, self->OnResolveFailStack, &self->Allocator);
@@ -481,11 +485,7 @@ metac_sema_stmt_t* MetaCSemantic_doStmtSemantic_(metac_sema_state_t* self,
         case stmt_run:
         {
             stmt_run_t* runStmt = cast(stmt_run_t*) stmt;
-            sema_stmt_run_t *semaRunStmt =
-                AllocNewSemaStmt(self, stmt_run, &result);
-
-            semaRunStmt->RunBody =
-                MetaCSemantic_doStmtSemantic(self, runStmt->RunBody);
+            MetaCRunSemantic_doRunStmt(self, runStmt, &result);
         } break;
 
         case stmt_expr:
@@ -501,26 +501,9 @@ metac_sema_stmt_t* MetaCSemantic_doStmtSemantic_(metac_sema_state_t* self,
         case stmt_eject :
         {
             stmt_eject_t* ejectStmt = cast(stmt_eject_t*) stmt;
-            sema_stmt_eject_t* semaEjectStmt = AllocNewSemaStmt(self, stmt_eject, &result);
-            const uint32_t exprCount = ejectStmt->EjectExpressionsCount;
-            ARENA_ARRAY_INIT_SZ(metac_sema_expr_t*, semaEjectStmt->EjectExpressions, &self->Allocator, exprCount);
-            hash ^= eject_key;
-
-            for(int i = 0; i < exprCount; i++)
-            {
-                semaEjectStmt->EjectExpressions[i] = MetaCSemantic_doExprSemantic(self, ejectStmt->EjectExpressions[i], 0);
-                hash = CRC32C_VALUE(hash, semaEjectStmt->EjectExpressions[i]->Hash);
-            }
-            semaEjectStmt->EjectExpressionsCount = exprCount;
-            // copy the tokens .... sigh!
-            // TODO maybe we can transfer the array in one go ?
-            ARENA_ARRAY_INIT_SZ(metac_token_t, semaEjectStmt->EjectTokens, &self->Allocator, ejectStmt->EjectTokensCount);
-            for(int i = 0; i < ejectStmt->EjectTokensCount; i++)
-            {
-                semaEjectStmt->EjectTokens[i] = ejectStmt->EjectTokens[i];
-            }
-            semaEjectStmt->EjectTokensCount = ejectStmt->EjectTokensCount;
+            hash = MetaCRunSemantic_doEjectStmt(self, ejectStmt, &result, hash);
         } break;
+
         case stmt_comment:
         {
             hash ^= stmt_comment;
@@ -924,6 +907,13 @@ scope_insert_error_t MetaCSemantic_RegisterInScope(metac_sema_state_t* self,
     if (self->CurrentScope != 0)
     {
         result = MetaCScope_RegisterIdentifier(self->CurrentScope, idPtr, node);
+        if (result == identifier_exists_already)
+        {
+            // a task that yields and is re-run registers the same node again
+            uint32_t idHash = crc32c_nozero(~0, &idPtr.v, sizeof(idPtr.v));
+            if (MetaCScope_LookupIdentifier(self->CurrentScope, idHash, idPtr) == node)
+                result = success;
+        }
         if (result != success)
         {
             xprintf("Registering Identifier '%s' failed with '%s'\n",
@@ -1031,20 +1021,38 @@ void doParameterSemantic(metac_sema_state_t* self, decl_parameter_t* funcParamet
     assert(currentParam == emptyPointer);
 }
 
-sema_decl_function_t* MetaCSemantic_doFunctionSemantic(metac_sema_state_t* self,
-                                                       decl_function_t* func)
+sema_decl_function_t* MetaCSemantic_doFunctionInstance(metac_sema_state_t* self,
+                                                       decl_function_t* func,
+                                                       const metac_identifier_ptr_t* instanceIdentifier)
 {
     // one cannot do nested function semantic at this point
     // assert(self->CurrentDeclState == 0);
     metac_sema_decl_state_t declState = {0};
+    metac_sema_decl_state_t* previousDeclState = self->CurrentDeclState;
+    uint32_t previousLocalCount = self->nLocals;
     self->CurrentDeclState = &declState;
+    self->nLocals = 0;
 
     sema_decl_function_t* f = AllocNewSemaFunction(self, func);
+    f->Flags = func->Flags;
     // for now we don't nest functions.
     metac_identifier_ptr_t semaIdentifier = (func->Identifier.v == empty_identifier.v ? empty_identifier :
         MetaCIdentifierTable_CopyIdentifier(self->ParserIdentifierTable,
                                             &self->SemanticIdentifierTable, func->Identifier));
     f->Identifier = semaIdentifier;
+
+    // a template function is only registered here, its body is analyzed per instance
+    if (func->TemplateParameterCount != 0 && !instanceIdentifier)
+    {
+        MetaCSemantic_RegisterInScope(self, f->Identifier, METAC_NODE(f));
+        self->CurrentDeclState = previousDeclState;
+        self->nLocals = previousLocalCount;
+        return f;
+    }
+    if (instanceIdentifier)
+    {
+        f->Identifier = *instanceIdentifier;
+    }
     // printf("doing Function: %s\n", IdentifierPtrToCharPtr(&self->SemanticIdentifierTable, func->Identifier));
 
     // let's first do the parameters
@@ -1058,6 +1066,8 @@ sema_decl_function_t* MetaCSemantic_doFunctionSemantic(metac_sema_state_t* self,
     metac_scope_owner_t Parent = {SCOPE_OWNER_V(scope_owner_function, FunctionIndex(self, f))};
 
     f->Scope = MetaCSemantic_PushNewScope(self, scope_owner_function, (metac_node_t)f);
+    metac_scope_t* previousRunScope = self->RunScope;
+    self->RunScope = (func->Flags & FuncFlag_Run) ? f->Scope : 0;
     // now we compute the position on the stack and Register them in the scope.
 
     sema_decl_function_t* parentFunc = cast(sema_decl_function_t*) emptyNode;
@@ -1127,11 +1137,23 @@ sema_decl_function_t* MetaCSemantic_doFunctionSemantic(metac_sema_state_t* self,
 
     MetaCSemantic_PopScope(self);
 
-    MetaCSemantic_RegisterInScope(self, f->Identifier, METAC_NODE(f));
+    if (!instanceIdentifier && !(func->Flags & FuncFlag_Run))
+    {
+        MetaCSemantic_RegisterInScope(self, f->Identifier, METAC_NODE(f));
+    }
 
     printf("returnTypeIndex %x\n", returnType.v);
 
+    self->CurrentDeclState = previousDeclState;
+    self->nLocals = previousLocalCount;
+    self->RunScope = previousRunScope;
     return f;
+}
+
+sema_decl_function_t* MetaCSemantic_doFunctionSemantic(metac_sema_state_t* self,
+                                                       decl_function_t* func)
+{
+    return MetaCSemantic_doFunctionInstance(self, func, 0);
 }
 
 const static sema_decl_type_t basicTypes[type_max] = {
@@ -1283,7 +1305,8 @@ metac_sema_decl_t* MetaCSemantic_declSemantic(metac_sema_state_t* self,
             decl_function_t* f = cast(decl_function_t*) decl;
             result = cast(metac_sema_decl_t*)
                 MetaCSemantic_doFunctionSemantic(self, f);
-
+            if (f->Flags & FuncFlag_Run)
+                MetaCRunSemantic_Execute(self, cast(sema_decl_function_t*)result, true);
         } break;
         case decl_parameter:
             assert(0);
@@ -1317,7 +1340,8 @@ metac_sema_decl_t* MetaCSemantic_declSemantic(metac_sema_state_t* self,
 
             //TODO make sure nLocals is reset at the end of a function
             //     also this doesn't deal with static properly
-            if (v->StorageClass == storageclass_local)
+            if (v->StorageClass == storageclass_local ||
+                (v->StorageClass == storageclass_none && self->CurrentDeclState))
             {
                 var->Storage.v = STORAGE_V(storage_local, self->nLocals++);
             }
@@ -1372,14 +1396,24 @@ metac_sema_decl_t* MetaCSemantic_declSemantic(metac_sema_state_t* self,
 
             if (declId.v != 0 && declId.v != -1)
             {
+                metac_identifier_ptr_t semaDeclId =
+                    MetaCIdentifierTable_CopyIdentifier(self->ParserIdentifierTable,
+                                                        &self->SemanticIdentifierTable, declId);
                 if (tagScope)
                 {
                     MetaCSemantic_MountScope(self, tagScope);
                 }
-                MetaCSemantic_RegisterInScope(self, declId, METAC_NODE(typeNode));
+                MetaCSemantic_RegisterInScope(self, semaDeclId, METAC_NODE(typeNode));
                 if (tagScope)
                 {
                     MetaCSemantic_UnmountScope(self);
+                }
+                if (((decl_type_t*)decl)->TypeKind == type_enum &&
+                    !MetaCScope_LookupIdentifier(self->CurrentScope,
+                        crc32c_nozero(~0, &semaDeclId.v, sizeof(semaDeclId.v)), semaDeclId))
+                {
+                    // enum names are also usable as values (E.two)
+                    MetaCSemantic_RegisterInScope(self, semaDeclId, METAC_NODE(typeNode));
                 }
             }
         } break;

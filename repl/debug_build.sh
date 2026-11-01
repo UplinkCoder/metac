@@ -1,0 +1,10 @@
+#!/bin/sh
+./build.sh -ggdb -g3 -DDEBUG_SERVER=1 -DDEBUG_MEMORY=1 -DPRINT_BC=1 -DBC_PRINTER=1 -DPRINT_CODE=1 -DSSE2=1 -DMETAC_COMPILER_INTRINSICS=1 -DOLD_PARSER=1 -DMETAC_COMPILER_INTERFACE=1 -lmicrohttpd -ljson-c
+
+#./build.sh -ggdb -g3 -DDEBUG_MEMORY=1 -DPRINT_BC=1 -DBC_PRINTER=1 -DPRINT_CODE=1 -DSSE2=1 -DMETAC_COMPILER_INTRINSICS=1 -DOLD_PARSER=1 -DMETAC_COMPILER_INTERFACE=1 -lmicrohttpd -ljson-c \
+#    ~/dev/tracy/TracyClientNoExit.so -DENABLE_TRACY=1 -DTRACY_ENABLE=1 \
+#    -O0 -march=native -mtune=native -lpthread -lm -ldl $@
+
+
+# -DDEBUG_SERVER=0 
+
