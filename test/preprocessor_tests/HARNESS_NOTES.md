@@ -156,10 +156,44 @@ exit code 0 on success):
   no output buffering, main only lexes and dumps.
 - Everything else untouched.
 
-## Next steps
+## Status (session of the walker rewrite)
 
-1. Rewrite `preproc_test.c` per the design above.
-2. `gcc -E -P` reference generation in `run_tests.sh` + stub include dir
-   for `<stdio.h>`.
-3. Iterate: run the 4 local-include tests, fix listed preproc bugs as
-   they surface.
+**run_tests.sh: 5/5 PASS** (test_macros, test_conditionals, test_complex,
+test_includes, test_undef_error) — whitespace-stripped diff against
+`gcc -E -P -nostdinc` with a stub `<stdio.h>`.
+
+Key discoveries/decisions:
+
+1. The walker now tracks **source lines**, not start-of-line edges:
+   metac only emits `tok_newline` tokens inside `#define` bodies, so
+   directives are detected as a `tok_hash` whose `TokenStartLine()`
+   (from `lexer.LocationStorage.Locations[LocationId-4].StartLine`) is
+   later than the line of the last processed token (`ctx_t.CurrentLine`).
+2. **Lexer bug fixed** (parser/metac_lexer.c, `\`-newline continuation in
+   wild code): the continuation consumed chars from `text` but never
+   credited `state->Position`, so product drivers (`LexStringIntoLexer`,
+   `metac_lpp.c`), which advance by `state->Position` deltas, re-read
+   chars: first token after a continuation got a stale `Position` and
+   was duplicated. Fix: `state->Position += 3` in both the `
+` and ``
+   continuation branches.
+3. Directive names can be keywords (`#if`, `#else` lex as `tok_kw_if`,
+   `tok_kw_else` and never enter the identifier table) — dispatched via
+   the token enum spelling (strip `"tok_kw_"`).
+4. Conditional logic: only a branch after `#else` is an error; `#else`
+   with an active parent is legal (was mis-flagged).
+
+Harness-side resolution of earlier design questions:
+
+- expansion engine works against the **raw token array** (no parser
+  peeks), invoked from the walker when a function-like macro name has an
+  adjacent `(`.
+- the 4 preproc product bugs noted above remain unfixed but are not
+  needed for the harness path (it bypasses `MetaCParser` preproc
+  machinery for directives).
+
+Remaining harness caveats:
+
+- adjacency checks (invocation `(name(`, paste) use token `Position`,
+  which the now-fixed continuation path keeps accurate.
+- `dbg` tooling: lex_dump.c / lex_dump2.c dump raw token arrays.
