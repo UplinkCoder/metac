@@ -1223,12 +1223,14 @@ LparseFloat:    {
                 c = *text++;
                 state->Line++;
                 state->Column = 0;
+                state->Position += 3;
                 goto LcontinueLexing;
             }
             else if (c == '\r')
             {
                 c = *text++;
                 state->Column = 0;
+                state->Position += 3;
                 goto LcontinueLexing;
             }
             else
