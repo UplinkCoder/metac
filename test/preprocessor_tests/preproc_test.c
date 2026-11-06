@@ -139,8 +139,21 @@ static const char* FindStringChars(metac_token_t* tok, uint32_t* outLength)
 }
 
 
+// directive names can be keywords ('#if', '#else') or plain identifiers
+static bool IsDirectiveNameToken(const metac_token_t* tok)
+{
+    if (tok->TokenType == tok_identifier)
+        return true;
+#ifndef IS_DIR_KEYWORD_BOUND
+#define IS_DIR_KEYWORD_BOUND
+    return (tok->TokenType >= tok_kw_struct) &&
+           (tok->TokenType <= tok_kw___attribute__);
+#undef IS_DIR_KEYWORD_BOUND
+#endif
+}
+
 // the source line the token was lexed on; 0 for synthesized tokens
-static uint32_t TokenStartLine(metac_token_t* tok)
+static uint32_t TokenStartLine(const metac_token_t* tok)
 {
     if (tok->LocationId.v == 0)
         return 0;
@@ -890,11 +903,11 @@ static void HandleConditional(const metac_token_t* tokens, uint32_t count,
                 break;
             }
             cond_entry_t* entry = &condStack[condCount - 1];
-            if (entry->SawElse ||
-                (directive == pp_else && entry->ParentActive))
+            if (entry->SawElse)
             {
-                *(directive == pp_else && entry->SawElse ? &entry->SawElse
-                    : &errored) = true;
+                // any branch after an #else is an error
+                fprintf(stderr, "branch after #else\n");
+                errored = true;
             }
             if (directive == pp_else)
             {
@@ -937,9 +950,20 @@ static void HandleDirective(metac_token_t nameTok, toklist_t stream,
     const char* name = FindIdentifierChars(&nameTok, &nameLength);
     if (!name)
     {
-        fprintf(stderr, "unresolvable directive name\n");
-        errored = true;
-        return;
+        // keyword tokens ('#if', '#else') never enter the identifier
+        // table; their spelling lives in the token enum name
+        if (nameTok.TokenType > tok_kw_struct &&
+            nameTok.TokenType < tok_kw___attribute__)
+        {
+            name = MetaCTokenEnum_toChars(nameTok.TokenType) + 7;
+            nameLength = strlen(name);
+        }
+        else
+        {
+            fprintf(stderr, "unresolvable directive name\n");
+            errored = true;
+            return;
+        }
     }
 
 #define IS_DIR(NAME) \
@@ -1023,7 +1047,7 @@ static void HandleDirective(metac_token_t nameTok, toklist_t stream,
     // (define bodies use the line their last body token ends on)
     if (*cursor > 0 && *cursor <= stream.Count)
     {
-        metac_token_t* lastTok = &stream.Ptr[*cursor - 1];
+        const metac_token_t* lastTok = &stream.Ptr[*cursor - 1];
         uint32_t lastLine = TokenStartLine(lastTok);
         if (lastLine > *directiveLine)
             *directiveLine = lastLine;
@@ -1430,18 +1454,6 @@ static void ExpandInvocation(harness_macro_t* macro, metac_token_t nameTok,
         return;
     }
 
-#ifdef DBG_ARGS
-    fprintf(stderr, "DBG rawArgCount=%u:", rawArgCount);
-    for(uint32_t k = 0; k < rawArgCount; k++)
-    {
-        fprintf(stderr, " arg%u=[", k);
-        for(uint32_t i = 0; i < rawArgs[k].Count; i++)
-            fprintf(stderr, "%u ", (uint32_t) rawArgs[k].Ptr[i].TokenType);
-        fprintf(stderr, "]");
-    }
-    fprintf(stderr, "\n");
-#endif
-
     // pre-expand the fixed arguments (variadic extras fold into a single
     // merged argument, separated by commas)
     metac_token_t expBuf[2048];
@@ -1527,13 +1539,6 @@ static void RunCtx(void)
         // directives are recognized on lines the walker has not seen yet;
         // plain newlines carry no tokens (metac only emits them inside
         // define bodies), so line tracking runs over the source locations
-#ifdef DBG_WALK
-        if (tok.TokenType == tok_hash)
-        {
-            fprintf(stderr, "DBG hash line=%u cur=%u ctx=%u\n",
-                TokenStartLine(&tok), ctx->CurrentLine, ctx - ctxStack);
-        }
-#endif
         if (tok.TokenType == tok_hash &&
             TokenStartLine(&tok) > ctx->CurrentLine)
         {
@@ -1544,7 +1549,7 @@ static void RunCtx(void)
             uint32_t directiveLine = TokenStartLine(&tok);
 
             if (cursor < stream.Count &&
-                stream.Ptr[cursor].TokenType == tok_identifier)
+                IsDirectiveNameToken(&stream.Ptr[cursor]))
             {
                 metac_token_t nameTok = stream.Ptr[cursor];
                 cursor++;
@@ -1591,6 +1596,10 @@ static void RunCtx(void)
 
             default:
             {
+                uint32_t line = TokenStartLine(&tok);
+                if (line > ctx->CurrentLine)
+                    ctx->CurrentLine = line;
+
                 if (!CondsActive())
                 {
                     // inactive branch: skip the token
