@@ -161,6 +161,10 @@ void ExecuteTask(worker_context_t* worker, task_t* task, aco_t* fiber)
     assert(!(U32(task->TaskFlags) & Task_Complete));
     assert(task->Fiber == fiber);
 
+    // did this task get resumed after one of its yields?
+    bool resumed =
+        (U32(task->TaskFlags) & (Task_Running | Task_Waiting)) != 0;
+
     // Assign the task to the fiber
     fiber->arg = task;
 
@@ -198,44 +202,14 @@ void ExecuteTask(worker_context_t* worker, task_t* task, aco_t* fiber)
         assert(fiberIdx >= 0 && fiberIdx < sizeof(fiberPool->FreeBitfield) * 8);
         fiberPool->FreeBitfield |= (1 << fiberIdx);
         fiber->arg = 0;
+
+        worker->TasksCompleted += 1;
+        worker->TasksYielded += resumed ? 1 : 0;
     }
     else
     {
         // Ensure the task function is valid or the task is in waiting state
         assert((!task->TaskFunction) || (U32(task->TaskFlags) & Task_Waiting) == Task_Waiting);
-    }
-}
-
-static inline uint32_t TaskQueue_TasksInQueueFront(const taskqueue_t* q)
-{
-    const uint32_t readP = q->readPointer & (TASK_QUEUE_SIZE - 1);
-    const uint32_t writeP = q->writePointer & (TASK_QUEUE_SIZE - 1);
-
-    if (writeP >= readP)
-    {
-        return (writeP - readP);
-    }
-    else
-    {
-        // wrap-around
-        // we go from readP to length and from zero to writeP
-        return ((TASK_QUEUE_SIZE - readP) + writeP);
-    }
-}
-
-
-static inline uint32_t TaskQueue_TasksInQueueBack(const taskqueue_t* q)
-{
-    const uint32_t writePEnd = q->writePointerEnd;
-    const uint32_t writeP = q->writePointer;
-
-    if (writePEnd <= writeP)
-    {
-        return writeP - writePEnd;
-    }
-    else
-    {
-        return ((TASK_QUEUE_SIZE - writePEnd) + writeP);
     }
 }
 
@@ -286,6 +260,10 @@ void RunWorkerThread(worker_context_t* worker, void (*specialFunc)(),  void* spe
     uint32_t* fiberExecCounts = (uint32_t*)calloc(sizeof(uint32_t), FIBERS_PER_WORKER);
 
     worker->KillWorker = false;
+    worker->WorkerCycles = 0;
+    worker->TasksPulled = 0;
+    worker->TasksCompleted = 0;
+    worker->TasksYielded = 0;
     bool terminationRequested = false;
     uint32_t nextFiberIdx = 0;
 
@@ -314,6 +292,7 @@ void RunWorkerThread(worker_context_t* worker, void (*specialFunc)(),  void* spe
     {
         uint32_t nextFiberIdx = -1;
         aco_t* execFiber = 0;
+        worker->WorkerCycles += 1;
         // do we have a free fiber ?
         if ((*FreeBitfield) == 0)
         {
@@ -337,7 +316,7 @@ void RunWorkerThread(worker_context_t* worker, void (*specialFunc)(),  void* spe
                 task_t* taskP = &fiberPool.Tasks[nextFiberIdx];
                 if (TaskQueue_Pull(q, taskP))
                 {
-                    printf("Pulled task\n");
+                    worker->TasksPulled += 1;
                     taskP->Fiber = execFiber;
                     ExecuteTask(worker, taskP, execFiber);
                     if ((taskP->TaskFlags & Task_Complete) == Task_Complete)

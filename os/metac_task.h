@@ -171,6 +171,39 @@ typedef struct taskqueue_t
     uint32_t ContextStorageCapacity;
 } taskqueue_t;
 
+static inline uint32_t TaskQueue_TasksInQueueFront(const taskqueue_t* q)
+{
+    const uint32_t readP = q->readPointer & (TASK_QUEUE_SIZE - 1);
+    const uint32_t writeP = q->writePointer & (TASK_QUEUE_SIZE - 1);
+
+    if (writeP >= readP)
+    {
+        return (writeP - readP);
+    }
+    else
+    {
+        // wrap-around
+        // we go from readP to length and from zero to writeP
+        return ((TASK_QUEUE_SIZE - readP) + writeP);
+    }
+}
+
+
+static inline uint32_t TaskQueue_TasksInQueueBack(const taskqueue_t* q)
+{
+    const uint32_t writePEnd = q->writePointerEnd;
+    const uint32_t writeP = q->writePointer;
+
+    if (writePEnd <= writeP)
+    {
+        return writeP - writePEnd;
+    }
+    else
+    {
+        return ((TASK_QUEUE_SIZE - writePEnd) + writeP);
+    }
+}
+
 typedef struct fiber_pool_t
 {
     uint32_t FreeBitfield;
@@ -202,6 +235,12 @@ typedef struct worker_context_t
     volatile uint32_t Flags;
 
     uint32_t HeartBeat;
+
+    // task system diagnostics counters
+    uint32_t WorkerCycles;     // main loop iterations
+    uint32_t TasksPulled;      // tasks pulled from the queue
+    uint32_t TasksCompleted;   // tasks which finished
+    uint32_t TasksYielded;     // tasks which resumed after a yield
 
     thrd_t Thread;
     aco_t* WorkerMain;

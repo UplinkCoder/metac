@@ -410,16 +410,38 @@ MHD_HANDLER(handleArenas)
 }
 
 #ifndef NO_FIBERS
+static const char* TaskFlags_toChars(task_flags_t flags)
+{
+    static char flagString[8];
+    uint32_t p = 0;
+
+    if (flags & Task_Running)  flagString[p++] = 'r';
+    if (flags & Task_Waiting)  flagString[p++] = 'y';
+    if (flags & Task_Complete) flagString[p++] = 'c';
+
+    if (flags & Task_Continuation_JumpToLabel) flagString[p++] = 'j';
+    if (flags & Task_Continuation_Task)        flagString[p++] = 't';
+    if (flags & Task_Continuation_Func)        flagString[p++] = 'f';
+
+    if (!p) flagString[p++] = 'h';  // Task_Halted => all bits clear
+
+    flagString[p] = 0;
+
+    return flagString;
+}
+
 void outTaskRow(char* body, uint32_t sz, uint32_t* pp, task_t* task)
 {
 /*
         const char* headers[] = {
         "Task_Addr",
         "Name",
+        "Flags",
         "File",
         "Line",
         "Yield Reason",
         "Yield Loc",
+        "Children",
         "Parent_Addr",
         "Parent_Name",
     };
@@ -433,7 +455,11 @@ void outTaskRow(char* body, uint32_t sz, uint32_t* pp, task_t* task)
         );
 
         p += snprintf (body + p, sz - p,
-                       "<td>%p</td>", task->TaskFunction
+                       "<td>%s</td>", (task->TaskName ? task->TaskName : "(null)")
+        );
+
+        p += snprintf (body + p, sz - p,
+                       "<td>%s</td>", TaskFlags_toChars(task->TaskFlags)
         );
 
         p += snprintf (body + p, sz - p,
@@ -445,11 +471,15 @@ void outTaskRow(char* body, uint32_t sz, uint32_t* pp, task_t* task)
         );
 
         p += snprintf (body + p, sz - p,
-                       "<td>%s</td>", task->YieldReason
+                       "<td>%s</td>", (task->YieldReason ? task->YieldReason : "-")
         );
 
         p += snprintf (body + p, sz - p,
-                       "<td>%s</td>", task->YieldLoc
+                       "<td>%s</td>", (task->YieldLoc ? task->YieldLoc : "-")
+        );
+
+        p += snprintf (body + p, sz - p,
+                       "<td>%u/%u</td>", task->ChildrenCompleted, task->ChildCount
         );
 
         p += snprintf (body + p, sz - p,
@@ -457,7 +487,8 @@ void outTaskRow(char* body, uint32_t sz, uint32_t* pp, task_t* task)
         );
 
         p += snprintf (body + p, sz - p,
-                       "<td>%p</td>", (task->Parent ? task->Parent->TaskFunction : 0)
+                       "<td>%s</td>", ((task->Parent && task->Parent->TaskName)
+                                      ? task->Parent->TaskName : "-")
         );
     }
 
@@ -515,15 +546,16 @@ MHD_HANDLER(handleLogs)
 
 MHD_HANDLER(handleTasks)
 {
-    static char responseBuffer[8192];
     uint32_t p = 0;
     const char* headers[] = {
         "Task_Addr",
         "Name",
+        "Flags",
         "File",
         "Line",
         "Yield Reason",
-        "Yield Location",
+        "Yield Loc",
+        "Children",
         "Parent_Addr",
         "Parent_Name",
     };
@@ -531,58 +563,106 @@ MHD_HANDLER(handleTasks)
 
     debug_server_t *debugServer = cast(debug_server_t*) cls;
 #ifndef NO_FIBERS
+    uint32_t now;
+    OS.GetTimeStamp(&now);
+
     const char *workerIdxStr =
         MHD_lookup_connection_value(connection, MHD_GET_ARGUMENT_KIND, "workerIdx");
-    uint32_t workerIdx = workerIdxStr ? atoi(workerIdxStr) : 0;
-    worker_context_t* worker = ((workerIdx && workerIdx <= (debugServer->WorkersCount))
+    uint32_t workerIdx = workerIdxStr ? atoi(workerIdxStr)
+        : (debugServer->WorkersCount ? 1 : 0);
+    worker_context_t* worker =
+        ((workerIdx && workerIdx <= (debugServer->WorkersCount))
         ? debugServer->Workers[workerIdx - 1] : 0);
 
-    const uint32_t freeBitfield = worker ? worker->FiberPool->FreeBitfield : ~0;
-    const uint32_t inProgress = __builtin_popcount(~freeBitfield);
+    // worker overview: liveness + progress diagnostics
+    p += snprintf(body + p, ARRAYSIZE(body) - p,
+        "<html><body>"
+        "<h3>Workers: </h3>"
+        "<table id=\"workers\">"
+        "<tr><th>Idx</th><th>Id</th><th>Heartbeat Age</th>"
+        "<th>Cycles</th><th>Pulled</th><th>Completed</th><th>Yielded</th>"
+        "<th>QueueFront</th><th>QueueBack</th>"
+        "<th>Busy Fibers</th><th>Total Fibers</th><th>ActiveTask</th></tr>"
+    );
 
-    p += snprintf(body + p, ARRAYSIZE(body) - p, "<tr>");
+    for(uint32_t i = 0; i < debugServer->WorkersCount; i++)
+    {
+        worker_context_t* it = debugServer->Workers[i];
+        uint32_t busy = 0;
+        uint32_t total = 0;
+        uint32_t heartBeatAge = now - it->HeartBeat;
+
+        if (it->FiberPool)
+        {
+            busy = __builtin_popcount(~it->FiberPool->FreeBitfield);
+            total = sizeof(it->FiberPool->FreeBitfield) * 8;
+        }
+
+        p += snprintf(body + p, ARRAYSIZE(body) - p,
+            "<tr>"
+            "<td><a href=\"/tasks?workerIdx=%u\">%u</a></td>"
+            "<td>%u</td>"
+            "<td>%u ticks (%us)</td>"
+            "<td>%u</td><td>%u</td><td>%u</td><td>%u</td>"
+            "<td>%u</td><td>%u</td>"
+            "<td>%u/%u</td>"
+            "<td>%s</td></tr>",
+            i + 1, i + 1,
+            it->WorkerId,
+            heartBeatAge, heartBeatAge >> 16,
+            it->WorkerCycles, it->TasksPulled, it->TasksCompleted, it->TasksYielded,
+            TaskQueue_TasksInQueueFront(&it->Queue),
+            TaskQueue_TasksInQueueBack(&it->Queue),
+            busy, total,
+            it->ActiveTask && it->ActiveTask->TaskName
+                ? it->ActiveTask->TaskName : "None"
+        );
+    }
+
+    p += snprintf(body + p, ARRAYSIZE(body) - p, "</table>");
+
+    const uint32_t freeBitfield = (worker && worker->FiberPool)
+        ? worker->FiberPool->FreeBitfield : ~0;
+    const uint32_t inProgress = (worker && worker->FiberPool)
+        ? __builtin_popcount(~freeBitfield) : 0;
+    task_t* activeTask = worker ? worker->ActiveTask : 0;
+
+    p += snprintf(body + p, ARRAYSIZE(body) - p,
+                 "<h3>Worker: (%u/%u) -- inProgress: %u</h3>"
+                 "<h3>Tasks: </h3>"
+                 "<h2>ActiveTask: %p '%s'</h2>"
+                 "<table id=\"tasks\"><tr>",
+        workerIdx, debugServer->WorkersCount, inProgress,
+        cast(void*) activeTask, activeTask ? activeTask->TaskName : "None");
+
     for(uint32_t i = 0; i < ARRAYSIZE(headers); i++)
     {
         p += snprintf(body + p, ARRAYSIZE(body) - p, "<th>%s</th>", headers[i]);
     }
     p += snprintf(body + p, ARRAYSIZE(body) - p, "</tr>");
-#define CLEAR_BIT(BF, IDX) \
-    BF &= ~(1 << IDX);
-#define SET_BIT(BF, IDX) \
-    BF |= (1 << IDX);
 
+    // iterate the fibers which are busy (bits not set in the free bitfield)
+    uint32_t inProgressBf = worker && worker->FiberPool ? ~freeBitfield : 0;
+    while (inProgressBf)
     {
-        uint32_t inProgressBf = freeBitfield;
-        uint32_t currentIdx;
-        while (inProgressBf != ~0)
-        {
-            currentIdx = BSF(inProgressBf) - 1;
-            task_t* task = &worker->FiberPool->Tasks[currentIdx];
-            outTaskRow(body, ARRAYSIZE(body), &p, task);
-            SET_BIT(inProgressBf, currentIdx);
-        }
+        uint32_t currentIdx = BSF(inProgressBf);
+        inProgressBf &= ~(1 << currentIdx);
+
+        task_t* task = &worker->FiberPool->Tasks[currentIdx];
+        outTaskRow(body, ARRAYSIZE(body), &p, task);
     }
 
-    task_t* activeTask = worker ? worker->ActiveTask : 0;
-
-    uint32_t len = snprintf (responseBuffer, ARRAYSIZE (responseBuffer),
-                    "<html><body>"
-                    "<h3>Worker: (%u/%u)</h3>"
-                    "<h3>Tasks: </h3>"
-                    "<h2>ActiveTask: %p '%s'</h2>"
-                    "<table id=\"tasks\">%s</table>"
-                    "</body></html>",
-           workerIdx, debugServer->WorkersCount,
-           activeTask, activeTask ? activeTask->TaskName : "None",
-           body);
+    p += snprintf(body + p, ARRAYSIZE(body) - p,
+                     "</table>"
+                     "</body></html>");
+    return send_html (connection, body, p);
 #else
-   uint32_t len = snprintf (responseBuffer, ARRAYSIZE (responseBuffer),
-                    "<html><body>"
-                    "<h3>No task support (compiled wtih NO_FIBERS set)</h3>"
-                    "</body></html>");
-
+    p += snprintf(body + p, ARRAYSIZE(body) - p,
+                     "<html><body>"
+                     "<h3>No task support (compiled with NO_FIBERS set)</h3>"
+                     "</body></html>");
+    return send_html (connection, body, p);
 #endif
-    return send_html (connection, responseBuffer, len);
 }
 
 static MHD_HANDLER(debugServerHandler)
