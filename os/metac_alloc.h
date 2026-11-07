@@ -71,7 +71,7 @@ typedef struct metac_alloc_t
 
 extern metac_alloc_t g_allocator;
 
-arena_ptr_t ReallocArenaArray(const tagged_arena_t const * arena, metac_alloc_t* alloc, uint32_t elemSize,
+arena_ptr_t ReallocArenaArray(const tagged_arena_t * arena, metac_alloc_t* alloc, uint32_t elemSize,
                               const char* file, uint32_t line);
 
 #endif

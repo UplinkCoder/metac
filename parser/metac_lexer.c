@@ -287,6 +287,7 @@ const char* MetaCTokenEnum_toChars(metac_token_enum_t type)
     switch (type)
     {
         FOREACH_TOKEN(CASE_MACRO)
+        case tok_max: result = "tok_max"; break;
     }
 
     return result;
