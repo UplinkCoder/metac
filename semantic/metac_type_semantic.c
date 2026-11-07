@@ -712,9 +712,11 @@ I
 #define BeginTaskBarrier()
 #define EndTaskBarrier()
 
-void MetaCSemantic_ComputeEnumValues(metac_sema_state_t* self,
-                                     decl_type_enum_t* enum_,
-                                     metac_type_enum_t* semaEnum)
+
+/// this is a helper the temporary scope was created by the caller
+static inline void MetaCSemantic_ComputeEnumValues(metac_sema_state_t* self,
+                                                   decl_type_enum_t* enum_,
+                                                   metac_type_enum_t* semaEnum)
 {
     decl_enum_member_t* member = enum_->Members;
     int64_t nextValue = 0;
