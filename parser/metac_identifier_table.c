@@ -235,6 +235,10 @@ MetaCIdentifierTable_CopyIdentifier(const metac_identifier_table_t* srcTable,
                                     metac_identifier_table_t* dstTable,
                                     metac_identifier_ptr_t srcIdPtr)
 {
+    if (srcIdPtr.v == empty_identifier.v)
+    {
+        return srcIdPtr;
+    }
     assert(srcIdPtr.v);
     const char* idChars =
         IdentifierPtrToCharPtr((metac_identifier_table_t*)srcTable, srcIdPtr);
