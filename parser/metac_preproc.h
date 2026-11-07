@@ -202,6 +202,10 @@ typedef struct metac_preprocessor_t
     uint32_t DefineTokenIndexStack[16];
     uint32_t DefineTokenStackCount;
 
+    /// while set, identifiers peeked/read by the parser are handed
+    /// through unexpanded (used around define body scans)
+    bool DisableExpansion;
+
     ARENA_ARRAY(metac_token_t, TokenMemory);
 
     /// the file we are running the preprocessor on

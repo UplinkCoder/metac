@@ -345,6 +345,12 @@ metac_token_t* MetaCParser_HandleIdentifier(metac_parser_t* self,
 
     metac_token_t* result = tok;
 
+    // while scanning a define body, identifiers must be kept verbatim
+    // (an expansion here would push its tokens onto the define token
+    // stack mid-scan and corrupt the new define's body)
+    if (preProc && preProc->DisableExpansion)
+        return result;
+
     const uint32_t idKey = result->IdentifierKey;
 
     int32_t defineSlotIdx;

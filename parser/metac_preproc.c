@@ -28,7 +28,7 @@ uint32_t MetaCPreProcessor_PushDefine(metac_preprocessor_t* self,
     DEF_STACK_ARRAY(metac_token_t, tokens, 64);
 #define va_args_key 0xbc18fc
     if (parameters.Count != define->ParameterCount &&
-        ((define->ParameterCount >= parameters.Count) && !define->IsVariadic))
+        !(define->IsVariadic && parameters.Count >= define->ParameterCount))
     {
         xprintf("Macro takes %u arguments but %u are given\n",
               define->ParameterCount, parameters.Count);
@@ -70,7 +70,6 @@ uint32_t MetaCPreProcessor_PushDefine(metac_preprocessor_t* self,
                 va_args_idx < va_args.Count;
                 va_args_idx)
             {
-                // xprintf("Adding tok: %s\n", MetaCTokenEnum_toChars(tok.TokenType));
                 ADD_STACK_ARRAY(tokens, va_args.Ptr[va_args_idx]);
             }
             continue;
@@ -85,6 +84,9 @@ uint32_t MetaCPreProcessor_PushDefine(metac_preprocessor_t* self,
     PERSIST_STACK_ARRAY(tokens);
 
 Lret:
+    // the new level starts reading at 0; the caller reads
+    // DefineTokenIndexStack[top] right after the push
+    self->DefineTokenIndexStack[self->DefineTokenStackCount] = 0;
     self->DefineTokenStack[self->DefineTokenStackCount++] = tokens;
     xprintf("PushedDefine: [%u]\n", self->DefineTokenStackCount);
     return result;
@@ -112,7 +114,7 @@ metac_expr_t* MetaCPreProcessor_ResolveDefineToExp(metac_preprocessor_t* self,
 #define va_args_key 0xbc18fc
 
     if ((parameters.Count != define->ParameterCount) &&
-        ((define->ParameterCount >= parameters.Count) && !define->IsVariadic))
+        !(define->IsVariadic && parameters.Count >= define->ParameterCount))
     {
         xprintf("Macro takes %u arguments but %u are given\n",
               define->ParameterCount, parameters.Count);
@@ -148,7 +150,7 @@ metac_expr_t* MetaCPreProcessor_ResolveDefineToExp(metac_preprocessor_t* self,
             xprintf("saw __VA_ARGS__\n");
             for(uint32_t va_args_idx = 0;
                 va_args_idx < va_args.Count;
-                va_args_idx)
+                va_args_idx++)
             {
                 ADD_STACK_ARRAY(tokens, (*(va_args.Ptr + va_args_idx)));
             }
@@ -772,6 +774,12 @@ MetaCPreProcessor_ParseDefine(metac_preprocessor_t *self,
     uint32_t peek1 = 1;
     bool matchNewline = false;
 
+    // identifiers in the body must not expand while scanning: the
+    // parser's peek machinery otherwise pushes the expansion's tokens
+    // onto the define token stack mid-scan and corrupts this body
+    bool oldDisableExpansion = self->DisableExpansion;
+    self->DisableExpansion = true;
+
     for(;;)
     {
         const char* s = 0;
@@ -826,6 +834,7 @@ MetaCPreProcessor_ParseDefine(metac_preprocessor_t *self,
 
     if (currentToken && currentToken->TokenType == tok_newline)
         MetaCParser_Advance(parser);
+    self->DisableExpansion = oldDisableExpansion;
 
     metac_preprocessor_define_t define;
     define.loc = LocationFromToken(parser, defineName);
