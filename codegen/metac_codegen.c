@@ -144,8 +144,8 @@ BCType MetaCCodegen_GetBCType(metac_bytecode_ctx_t* ctx, metac_type_index_t type
     else
     {
         printf("cannot convert typekind: {%s, %u}\n",
-            type_index_kind_toChars(TYPE_INDEX_KIND(typeIdx)),
-                                    TYPE_INDEX_INDEX(typeIdx));
+            MetaCTypeIndexKind_toChars(TYPE_INDEX_KIND(typeIdx)),
+                                       TYPE_INDEX_INDEX(typeIdx));
         assert(0);
     }
 Lret:

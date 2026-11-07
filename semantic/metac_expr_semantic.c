@@ -935,8 +935,25 @@ LswitchIdKey:
 
                 // hash = 0xfefefefe;
             }
+            else if (TYPE_INDEX_KIND(e1Type) == type_index_basic &&
+                     TYPE_INDEX_INDEX(e1Type) == type_type)
+            {
+                // if we have an expression of type type
+                // it has to be a type expression
+                metac_type_index_t typeExp = result->E1->TypeExp;
+                if (TYPE_INDEX_KIND(typeExp) == type_index_enum)
+                {
+                    // since this is an enum we already know that
+                    // that the value of enum.ident is of the type of that
+                    // enum
+                    result->TypeIndex = typeExp;
+                    printf("yay we got an enum-type\n");
+                }
+            }
             else
             {
+                printf("e1Kind: %s\n", 
+                    MetaCTypeIndexKind_toChars(TYPE_INDEX_KIND(e1Type)));
                 assert(!"lhs of . doesn't seem to be an aggregate");
             }
         } break;

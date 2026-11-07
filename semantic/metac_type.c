@@ -1,6 +1,6 @@
 #include "metac_type.h"
 
-const char* type_index_kind_toChars(metac_type_index_kind_t kind)
+const char* MetaCTypeIndexKind_toChars(metac_type_index_kind_t kind)
 {
     const char* result = 0;
 
