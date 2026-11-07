@@ -468,6 +468,15 @@ void ResolveIdentifierToExp(metac_sema_state_t* self,
         (*resultP) = enumMember->Value;
         printf("node->Kind == node_decl_enum_member\n");
     }
+    else if (node->Kind == node_decl_type_enum)
+    {
+        metac_type_enum_t* t_enum = cast(metac_type_enum_t*)node;
+        result->Kind = expr_type;
+        result->TypeExp.v =
+            TYPE_INDEX_V(type_index_enum, EnumIndex(self, t_enum));
+        result->TypeIndex.v = TYPE_INDEX_V(type_index_basic, type_type);
+        hash = t_enum->Header.Hash;
+    }
     else if (node->Kind == node_decl_type_struct)
     {
         metac_type_aggregate_t* t_agg = cast(metac_type_aggregate_t*)node;

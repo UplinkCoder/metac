@@ -1375,7 +1375,8 @@ static void MetaCCodegen_doExpr(metac_bytecode_ctx_t* ctx,
 
         case expr_string:
         {
-            const char* str = ctx->StringTable->StringMemory + (exp->StringPtr.v - 4);
+            const char* str = IdentifierPtrToCharPtr(&ctx->Sema->SemanticStringTable, exp
+->StringPtr);
             BCValue strPtr =
                 gen.GenExternal(c, MetaCCodegen_GetBCType(ctx, exp->TypeIndex), str);
 
