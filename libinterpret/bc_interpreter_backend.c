@@ -1078,7 +1078,16 @@ static inline void storeWithWidthSafe(uint8_t* ptr, uint64_t value, int width) {
 #define MODE_STICKY_TRUE  ((0x1) << 7)
 #define MODE_STICKY_FALSE ((0x2) << 7)
 #define MODE_CND_SET       0x7
+
+#ifdef BC_DEBUG_TUI
+#  include "bc_debugger_tui.c"
+#endif
+
+#ifdef BC_DEBUG_TUI
+static BCValue BCGen_interpret_impl(BCGen* self, uint32_t fnIdx, BCValue* args, uint32_t n_args, BCHeap* heapPtr)
+#else
 BCValue BCGen_interpret(BCGen* self, uint32_t fnIdx, BCValue* args, uint32_t n_args, BCHeap* heapPtr)
+#endif
 {
     assert(self->finalized);
 
@@ -1161,6 +1170,14 @@ BCValue BCGen_interpret(BCGen* self, uint32_t fnIdx, BCValue* args, uint32_t n_a
 
     for (;;)
     {
+#ifdef BC_DEBUG_TUI
+        if (BCDebugger_OnInstruction(&state, self, codeP, cond, heapPtr))
+        {
+            BCValue debuggerQuit = imm32(2005);
+            debuggerQuit.vType = BCValueType_Bailout;
+            return debuggerQuit;
+        }
+#endif
         const uint32_t lw = (codeP)[state.ip];
         const uint32_t hi = (codeP)[state.ip + 1];
         const int32_t imm32c = *(cast(int32_t*)&((codeP)[state.ip + 1]));
@@ -2208,6 +2225,16 @@ Lbailout :
 
     return bailoutValue;
 }
+
+#ifdef BC_DEBUG_TUI
+/// public entry point; tears the debugger screen down on every exit path
+BCValue BCGen_interpret(BCGen* self, uint32_t fnIdx, BCValue* args, uint32_t n_args, BCHeap* heapPtr)
+{
+    BCValue result = BCGen_interpret_impl(self, fnIdx, args, n_args, heapPtr);
+    BCDebugger_OnExit();
+    return result;
+}
+#endif
 
 static void inline BCGen_emit2_at(BCGen* self, uint32_t low, uint32_t high, uint32_t atIp)
 {

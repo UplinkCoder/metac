@@ -264,6 +264,7 @@ static inline uint64_t loadu64(uint8_t* ptr)
     uint64_t v64;
     v64 = loadu32(ptr);
     v64 |= ((uint64_t)loadu32(ptr + 4)) << 32;
+    return v64;
 }
 
 CONSTEXPR static inline uint32_t align16(const uint32_t val)
