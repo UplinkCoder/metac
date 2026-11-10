@@ -19,7 +19,7 @@ if ! cc linenoise_repl.c -I.. -DACCEL=ACCEL_TABLE -DBC_DEBUG_TUI \
     exit 1
 fi
 
-if ! cc -O1 -Wall -Wextra pty_script.c -o "$WORK/pty_script" \
+if ! cc -O1 -Wall -Wextra pty_script.c pty_test.c -o "$WORK/pty_script" \
     > "$WORK/pty_build.log" 2>&1; then
     cat "$WORK/pty_build.log"
     exit 1
@@ -114,4 +114,12 @@ EOF
 run_case "q aborts the run and tears the debugger screen down" \
     "$WORK/quit.scr" BC_DEBUG_UI=paused
 
-echo "PASS: bc_debugger_tui"
+echo "PASS: bc_debugger_tui (script)"
+
+# The same scenarios as C, against the pty_test API - see PTY_TESTS.md.
+if ! cc -O1 -Wall -Wextra test_debug_tui.c pty_test.c \
+    -o "$WORK/test_debug_tui" > "$WORK/c_build.log" 2>&1; then
+    cat "$WORK/c_build.log"
+    exit 1
+fi
+"$WORK/test_debug_tui" "$WORK/repl"
