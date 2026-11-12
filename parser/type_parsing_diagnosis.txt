@@ -1,0 +1,733 @@
+===============================================================================
+ WHY C TYPE PARSING IS THE WEAKEST PART OF THIS PARSER
+ A diagnosis of parser/ (and the lexer) with concrete fixes
+===============================================================================
+
+0. HOW THIS WAS PRODUCED
+-------------------------------------------------------------------------------
+I built a small harness (outside the repo) that feeds declarations into
+MetaCLPP_ParseDeclFromString() / MetaCLPP_ParseStmtFromString(), prints the
+result with MetaCPrinter, and reports the first token that was left
+unconsumed. Each input ran in a forked child with an alarm so crashes are
+visible instead of taking the run down. Build line used:
+
+  cc harness.c driver/metac_lpp.c parser/metac_parser_obj.c -I. \
+     -DNO_DOT_PRINTER -DNO_SEMANTIC -DNO_FIBERS -DNO_PREPROCESSOR \
+     -DOLD_PARSER=1 -o typetest
+
+About 80 inputs were run (section 3 lists the interesting ones). Backtraces
+were taken with gdb. Everything below with a file:line was verified against
+the current tree.
+
+The existing test suite does not catch any of this: TestParseDecl()
+(parser/metac_parser.c:2805-2831) contains exactly three inputs:
+"int f(double x)", "unsigned int x", "signed int y".
+
+
+1. ONE-SENTENCE DIAGNOSIS
+-------------------------------------------------------------------------------
+Types are parsed by one function (MetaCParser_ParseTypeDecl) that consumes
+"the first type specifier plus a couple of hard-coded follow-ups" and then
+hands off to ad-hoc special cases for each declarator shape it happens to
+know about -- instead of the two-level grammar C actually has
+(specifier-sequence + recursively nested declarator) -- and when a token does
+not fit any special case the parser does not fail, it silently produces a
+half-structure, an invalid type, or a NULL dereference.
+
+
+2. WHAT C ACTUALLY REQUIRES
+-------------------------------------------------------------------------------
+  declaration      := declaration-specifier+ init-declarator-list? ";"
+  declaration-spec := storage-class-spec | type-specifier | type-qualifier
+                      | function-specifier | alignment-spec   (any order,
+                      but with combination rules: exactly one base
+                      type-specifier unless short/long/signed/unsigned
+                      combinations)
+  init-declarator  := declarator ("=" initializer)?
+  declarator       := pointer? direct-declarator
+  direct-declarator:= identifier
+                      | "(" declarator ")"
+                      | direct-declarator "[" type-qualifier* expr? "]"
+                      | direct-declarator "(" parameter-type-list ")"
+
+Two properties matter and neither is present today:
+
+  (a) The specifier part is a *set* with rules, not a prefix you match
+      once. `unsigned int`, `long unsigned int`, `const volatile int`,
+      `static const char *` are all the same kind of thing. Today the
+      parser eats a fixed prefix before the type ("ParseTypeModifiers"),
+      then one primary specifier, then at most one or two named
+      follow-ups (long long / long double / short int / long int).
+
+  (b) The declarator part is *recursive*: "(" declarator ")" can wrap
+      anything, and the suffixes [N] and (params) bind to the thing on
+      their left and then wrap outward. `int (*f(int))(void)` is not
+      exotic -- it is the grammar applied twice. The current parser has
+      one special case: `(* ident ) ( params )`. Everything else
+      (`(* p)`, `(** fp)`, `(* p)[10]`, `(x)`, initializer after a
+      function pointer) either misparses, is silently dropped, or
+      crashes.
+
+There is no amount of patching that fixes (a) and (b) individually; the
+structure has to change. Section 5 describes that structure.
+
+
+3. EMPIRICAL RESULTS
+-------------------------------------------------------------------------------
+"OK"  = printed the right thing
+"LOST"= parsed, but information silently disappeared
+"WRONG"= parsed into the wrong tree
+"CRASH" = segfault / assert
+Leftover means tokens were not consumed (the declaration is incomplete).
+
+INPUT                                   RESULT
+--------------------------------------  ------------------------------------
+int x;                                  OK
+unsigned int x;                         OK
+signed char c;                          OK
+long long x;                            OK
+unsigned long long x;                   OK
+const int x;                            OK
+int const x;                            OK
+int *p;                                 OK
+int **pp;                               OK
+int a[10];                              OK
+int a[10][4];                           OK
+int f(int, double);                     OK
+int (*fp)(int);                         OK (special case)
+typedef int (*fp_t)(void);              OK (special case)
+int f(int a[10]);                       OK
+--------------------------------------  ------------------------------------
+short int x;                            LOST "int" (prints "short x")
+volatile int x;                         LOST volatile (parsed as storage
+                                        class, stc is never stored)
+int volatile x;                         LOST volatile (same: consumed by
+                                        ParseStorageClasses at 1923 and
+                                        thrown away)
+static int x;                           LOST static   (stc never stored)
+extern int x;                           LOST extern   (stc never stored)
+char * const s;                         LOST const on the pointer
+                                        (node is correct -- TypeModifiers=1
+                                        on decl_type_ptr -- the *printer*
+                                        never prints quals on ptr nodes,
+                                        printer/metac_printer.c:542-548)
+const int * const * const p;            LOST two consts (printer, same)
+int a[];                                LOST the array: [] is lexed as one
+                                        token tok_full_slice
+                                        (metac_lexer.c:243-247) and the
+                                        declarator path matches it and
+                                        throws it away
+                                        (metac_parser.c:2042-2047)
+char *argv[];                           LOST the array (same)
+void f(int a[]);                        LOST the array (same)
+extern const char * const names[];      LOST storage class + array
+enum E : int { A };                     LOST the base type when printed
+                                        (printer has no BaseType case at
+                                        all -- grep "BaseType" in the
+                                        printer returns nothing)
+struct S { int a; } s;                  OK in the tree (Kind=decl_type_struct
+                                        with FieldCount=1) but prints as
+                                        "S s": printer drops both the
+                                        `struct` keyword and the body for
+                                        named aggregates (669-711)
+--------------------------------------  ------------------------------------
+auto int x;                             WRONG: type "auto", "int x" left over
+                                        (keyword branch breaks after one
+                                        specifier, metac_parser.c:1146)
+long unsigned int x;                    WRONG: type "long", "unsigned" left
+                                        over (unsigned is consumed *before*
+                                        the type loop only if it comes first)
+signed unsigned int x;                  WRONG: silently accepted, prints
+                                        "unsigned signed int x"
+unsigned x;                             WRONG: parsed as a TYPE
+                                        (type_unsigned_int), not a
+                                        declaration of a variable:
+                                        metac_parser.c:1068-1073 treats
+                                        "unsigned <identifier>" as
+                                        "unsigned int typedef'd as name"
+static const volatile int x;            WRONG: returns decl_type with
+                                        TypeKind = type_invalid (0); the
+                                        printer then asserts (signal 6).
+                                        volatile is not in IsTypeToken
+                                        (metac_parser.c:677-697) so the type
+                                        loop is never entered at all.
+volatile int x;  (struct member)        LOST volatile (parsed as a storage
+                                        class by ParseStorageClasses,
+                                        stc is never stored anywhere)
+register int x;                         WRONG: `register` is not a keyword,
+                                        so it is lexed as an identifier and
+                                        parsed as a *type name*; "int x;"
+                                        is left over
+restrict int x;                         WRONG (same)
+_Atomic int x;                          WRONG (same)
+_Atomic(int) x;                         WRONG (same, plus the "(" desyncs
+                                        the declarator path)
+int size_t;                             WRONG: size_t is a *keyword*, not an
+                                        identifier, so the name slot never
+                                        matches; "size_t;" left over
+int x, y;                               WRONG: comma declarator lists are
+                                        not supported, only "x" is parsed
+int (*p);                               CRASH: segfault in ParseParameterList
+                                        at metac_parser.c:949 (paramDecl is
+                                        NULL because Match(tok_lParen) failed
+                                        without advancing and ParseDecl
+                                        returned nothing useful)
+int (*p)[10];                           CRASH (same path)
+int (**fp)(int);                        WRONG: returns just "int",
+                                        "*( *fp) (int)" left over
+int (* const fp)(int);                  LOST const (parsed and discarded at
+                                        metac_parser.c:1940-1941, "TODO
+                                        acutally use those mods")
+int (x);                                WRONG: parenthesised declarator not
+                                        supported at all
+int (*fp)(void) = 0;                    WRONG: no initializer path after a
+                                        function pointer ("= 0" left over)
+int (*f(int))(void);                    WRONG: printed "int (*f) (int)" plus
+                                        a Match error -- the canonical hard
+                                        C declarator
+char *(*g(void))(void);                 WRONG (same)
+void (*signal(int, void (*)(int)))(int);
+                                        WRONG: "void (*signal) (int, void)"
+char * const *(*next)(char *, int);     printed "char** (*next)(...)" --
+                                        tree is right, printer loses both
+                                        consts (see above)
+int /*c*/ x;                            WRONG: comment is a token; only the
+                                        *start* of a declaration and of a
+                                        statement handle comments
+                                        (metac_parser.c:1841, 2254). Inside
+                                        a type/declarator it stops the parse.
+int x; // trailing                      left over comment (harmless at top
+                                        level only because ParseDecl then
+                                        returns it as a decl_comment)
+a * b;   (statement)                    WRONG: parsed as a *declaration*
+                                        (stmt kind=100 vs 99 for expressions)
+                                        -- see 4.I
+--------------------------------------  ------------------------------------
+typedef unsigned long size_t;          CRASH: SIGSEGV at
+                                        metac_parser.c:1914
+                                        (backtrace verified with gdb).
+                                        `size_t` is a keyword token, so the
+                                        recursive ParseDecl returns a TYPE
+                                        where the typedef code unconditionally
+                                        dereferences var->VarType
+struct S { unsigned x : 3; };          CRASH: assert at
+                                        metac_parser.c:1273 -- `unsigned x`
+                                        was consumed as a type, so the field
+                                        decl is decl_type, not decl_variable
+static const volatile int x;           CRASH (assert in printer, signal 6)
+struct S { const volatile int x; };    CRASH: assert at metac_parser.c:1273
+                                        (preceded by "warning: igonring
+                                        multiple field definitions" -- the
+                                        field decl came back as decl_type
+                                        because `const` was consumed and
+                                        `volatile` is not in IsTypeToken)
+struct S { register int x; };          CRASH: assert at 1273 (`register`
+                                        parsed as a type name, so the field
+                                        decl has no variable)
+struct S { int /*c*/ a; };             CRASH: assert at 1273 (the comment
+                                        token ended the field's type early)
+int f(const volatile int x);           CRASH: assert at metac_parser.c:1633
+                                        -- the type came out as type_invalid
+                                        with hash `type_key`, the unnamed-
+                                        parameter synthesis at 955-967 calls
+                                        HashDecl which recomputes
+                                        CRC32C(type_key, 0), and they differ
+int f(register int x);                 CRASH: assert at metac_parser.c:983
+                                        -- `register` became a type so
+                                        `int x` was never consumed, and
+                                        ParseParameterList asserts that the
+                                        next token is ')' (same for
+                                        `int f(restrict int *p);`)
+--------------------------------------  ------------------------------------
+HashDecl() on "enum E { A } e;"        assert(0) at metac_parser.c:1630
+                                        (no decl_type_enum case)
+HashDecl() on "struct S {int a;} s;"   SIGSEGV at metac_parser.c:1583
+                                        (post-loop field->Next dereferences
+                                        _emptyPointer)
+HashDecl() on "int a[4];"              assert(decl->Hash == result) at
+                                        metac_parser.c:1633 -- the variable
+                                        hash was computed *before* the array
+                                        suffix was attached (line 2035)
+HashDecl() on "int (*fp)(void);"       assert at metac_parser.c:1633 -- the
+                                        fptr var hash (line 1978) is
+                                        CRC(star, ftHash) and contains no
+                                        identifier, HashDecl recomputes
+                                        CRC(HashDecl(ft), ident)
+-------------------------------------------------------------------------------
+
+
+4. ROOT CAUSES
+-------------------------------------------------------------------------------
+
+A. The specifier sequence is parsed as a prefix, not a set.
+   metac_parser.c:857-886   ParseTypeModifiers -- only const/unsigned/signed,
+                            only *before* the type.
+   metac_parser.c:1010-1370 the type loop: consumes exactly one primary
+                            specifier (or struct/union/enum/typeof), with
+                            hard-coded patches for "long long", "long
+                            double", "short int", "long int" (1115-1147),
+                            then `break`s out of the loop entirely.
+   Consequences:
+     - order sensitive: unsigned-first works, unsigned-after-long does not
+     - qualifiers in the middle (`int volatile x`) are handled by a
+       *different* subsystem (ParseStorageClasses) that discards its result
+     - struct/union/enum/typeof branches never apply `typeModifiers` at all,
+       so `const struct S s` loses const (verified: TypeModifiers=0)
+     - a qualifier that is not in IsTypeToken (volatile) plus a leading
+       const makes the type loop never run at all, yielding
+       TypeKind = type_invalid with no error
+     - the modifiers do not compose: `signed unsigned int` is accepted
+
+B. There is no declarator recursion -- only special cases.
+   metac_parser.c:1929-1981 handles exactly `(* ident ) ( params )`.
+   Everything else in the declarator position falls through to the plain
+   `identifier` branch (1982+) or to nothing at all:
+     - `int (*p);`         -> code at 1952 matches rParen (fails silently),
+                              then unconditionally calls ParseParameterList,
+                              which matches `(` (fails silently, does not
+                              advance), then loops and calls ParseDecl on
+                              `;` which returns 0 -> deref at 949.
+     - `int (**fp)(int)`   -> only one `*` is consumed (1936 is an `if`,
+                              not a loop)
+     - `int (*p)[10]`      -> no array suffix handling in this branch
+     - `int (x)`           -> no "( declarator )" support
+     - `= 0` after an fptr -> no initializer handling in this branch
+     - `int (*f(int))(void)` -> nested declarator, structurally impossible
+       to express in the current code shape
+   Also note the fptr branch builds its own hash by hand (1961-1978) and
+   forgets the identifier, which is why HashDecl disagrees.
+
+C. Storage classes and qualifiers are parsed and thrown away.
+   metac_parser.c:1724/1806/1852-1854/1923 -- `stc` and `stc2_` are computed
+   (three times!) and never written into any decl node. decl_variable_t
+   (metac_parsetree.h:501-511) has no field for them, so `static`, `extern`,
+   `inline`, `volatile`, `__thread` are unrecoverable after parsing. The
+   printer therefore cannot print them either, which makes the loss
+   invisible in round-trip tests.
+
+D. Lexer keyword policy is wrong for a C parser.
+   FOREACH_KEYWORD_TOKEN (metac_lexer.h:83-135):
+     - missing: register, restrict, _Atomic, _Bool, _Alignas, _Alignof,
+       _Noreturn, _Generic, _Static_assert, _Thread_local, _Complex,
+       asm, __asm__, __extension__, __restrict, __inline, __signed__,
+       __volatile__, __const, __typeof__, __declspec, constexpr, nullptr.
+       Every one of these lexes as tok_identifier, and because
+       IsTypeToken() accepts tok_identifier, *every missing keyword is
+       parsed as a user type name* (register/restrict/_Atomic all
+       demonstrated above).
+     - present but wrong: `size_t` (metac_lexer.h:97) and `auto` used as
+       ordinary type specifiers. size_t is a typedef in every real C
+       program; because it is a keyword token, any typedef or variable
+       named size_t is unparsable and `typedef unsigned long size_t;`
+       crashes.
+     - `__thread` is special-cased as an *identifier key* inside
+       ParseStorageClasses (metac_parser.c:1676-1687) with a TODO -- the
+       usual symptom of a keyword set that does not match the language.
+     - `volatile` exists as a keyword but is classified as a storage class
+       (1666-1670) instead of a type qualifier, so it is dropped in every
+       position: before the type by ParseStorageClasses (1666-1670), after
+       the type by the same function called a second time (1923), and
+       nowhere is it written into the decl -- `volatile` cannot survive a
+       parse at all.
+
+   What the lexer gets right (do not "fix" this): keyword matching uses
+   IdentifierKey (hash + length) and then compares the exact keyword bytes
+   (generated/metac_match_keyword.inl), so `structure`/`unsigned_val` are
+   correctly identifiers -- there is no prefix-matching bug.
+
+   Housekeeping: parser/generated/metac_match_keyword.inl and
+   parser/generated/metac_keyword_keys.h are 0-byte stale copies.
+   metac_lexer.c:619 includes ../generated/... (repo root, produced by
+   gen_code.sh) so nothing is broken today, but an empty inl would
+   silently match no keywords at all -- delete the stale directory.
+
+   Hidden coupling: the range tok_kw_auto..tok_kw_double (metac_lexer.h:90-99)
+   is mapped to metac_parser_type_kind_t by arithmetic
+   (metac_parser.c:1119) and mapped back by the printer
+   (metac_printer.c:571-573), and the two enums carry "DO NOT CHANGE THE
+   ORDER" comments (metac_parsetree.h:421-433). Inserting one keyword
+   between auto and double silently corrupts every basic type and nothing
+   in the compiler will tell you.
+
+E. Comments are tokens and nothing normalizes the token stream.
+   The lexer emits tok_comment_single / tok_comment_multi
+   (metac_lexer.c:1242-1290). Only two places ever look at them: the start
+   of a declaration (metac_parser.c:1841) and the start of a statement
+   (2254). The expression parser has no comment handling at all
+   (grep "comment" metac_expr_parser.c -> nothing). So `int /*c*/ x;`,
+   `x /*c*/ + y`, `int a /*foo*/ [10]` all stop mid-type.
+   There is likewise no single place that skips them, no token-stream
+   normalisation pass, and no "significant token" accessor: every loop has
+   to remember to handle them, and none do.
+
+   Lexer-side bonus bugs in the same area:
+     - metac_lexer.c:1246-1249 computes `newlinePtr - text` *before*
+       checking newlinePtr != NULL (UB on a final line with no newline)
+     - metac_lexer.c:1278 `if (!slashPtr) assert(0);` -- an unterminated
+       /* comment is an assert on user input
+     - metac_lexer.c:1257-1258 bumps state->Line and Column for a `//`
+       comment even when there was no newline, desyncing every location
+       after it (this is what makes diagnostics for declarations wrong)
+   Note: newlines are *not* emitted outside of macro bodies
+   (metac_lexer.c:919-927), so multi-line declarations work by accident.
+
+F. Errors never fail. This is why the failures are crashes and not messages.
+   - MetaCParser_Match (metac_parser.c:636-668) prints "Expected X -- Got Y"
+     and then *does not advance* on failure (advance is in the else branch).
+     Callers routinely ignore the return value and keep going, so the token
+     cursor stops moving while the parser believes it consumed something.
+   - ParseError / ParseErrorF (metac_lexer.h:361-366) call
+     ParseErrorBreak(), which is `void ParseErrorBreak(void) { int k = 2; }`
+     (metac_lexer.c:703-706) -- a no-op. There is no error flag on the
+     parser, no poisoned state, no recovery: after printing, execution
+     continues into the NULL derefs in section 3.
+   - The parser has its own diagnostics module (parser/metac_diagnostics.c,
+     with levels, a growing array, and diagnostics_has_errors()) that is
+     used by nothing (grep across the repo finds no callers).
+   - assert() is used on user input in at least 30 places in
+     metac_parser.c, including 1273 (field kind) and 1630/1633 (HashDecl).
+   - The type loop `while (IsTypeToken(tokenType))` (metac_parser.c:1010)
+     never refreshes tokenType or currentToken inside the body -- it only
+     works because every reachable branch `break`s. Adding any token to
+     IsTypeToken that no branch handles is an instant infinite loop.
+   - ParseParameterList (914-991) asserts rather than reporting
+     (927, 983) and dereferences the ParseDecl result without a NULL check
+     (949).
+   Two places turn all of the above into aborts on ordinary input:
+     * the struct field loop (1229-1284) only accepts decl_variable or an
+       anonymous struct/union (assert at 1273). Any field whose parse goes
+       sideways -- `const volatile int x`, `register int x`,
+       `int /*c*/ a`, `unsigned x` -- is a decl_type and dies there.
+     * ParseParameterList accepts decl_variable or a type-only parameter
+       (947-973) and then asserts that a comma or ')' follows (983), so
+       `int f(register int x)` dies there instead of reporting.
+   Plus a recovery loop that prints "warning: igonring multiple field
+   definitions" (1250-1262) and silently eats tokens up to the next ';'
+   -- which is why errors inside a struct are reported as a weird warning
+   *and then* an assert.
+
+G. Type/decl hashing has three disagreeing implementations.
+   Hashing is how types get interned/deduped, so this is not cosmetic.
+     1. Inline per-branch hash construction inside ParseTypeDecl
+        (1004, 1143-1145, 1205, 1307, 1402/1411)
+     2. Inline hash construction inside ParseDecl / ParseArraySuffix
+        (1961-1978, 1978, 2035, 2074-2108)
+     3. HashDecl (1522-1637), which recomputes from the tree and asserts
+        equality (1632-1634)
+   Specific divergences:
+     - array dims: ParseTypeDecl:1411 folds no dim in;
+       ParseArraySuffix:2090-2096 shadows `dimToHash` in the inner scope
+       (line 2091) so the outer one is always 0 -> no dim either;
+       HashDecl:1617-1627 *does* fold the dim in.
+     - variable hash is computed at 2035 *before* the array suffix loop at
+       2037, so array variables carry a hash that HashDecl can never
+       reproduce -> assert at 1633 (verified).
+     - fptr variable hash (1978) has no identifier and a different
+       composition than HashDecl's decl_variable case (1586-1591).
+     - HashDecl has no case for decl_type_enum, decl_type_typeof,
+       decl_type_tuple, decl_type_template_instance, decl_field,
+       decl_parameter -> `default: assert(0)` (1630) (verified for enum).
+     - HashDecl's struct/union loop (1574-1583) walks FieldCount nodes and
+       then evaluates `field->Next` where field is already _emptyPointer
+       (0x1) -> SIGSEGV (verified).
+     - qualifier bits are folded into hashes inconsistently: 1144 does
+       `hash ^= (TypeModifiers & typemod_unsigned)`, i.e. it XORs the
+       *mask value* (2) into a CRC chain instead of folding the bit like
+       every other step (CRC32C_VALUE), so a modifier can be moved
+       between hash inputs without changing the result and the pattern
+       does not generalise to a second qualifier.
+
+H. The printer hides parser bugs, so you cannot trust "it looks right".
+   - quals on decl_type_ptr / decl_type_array nodes are never printed
+     (PrintType only prints TypeModifiers in the `decl_type` case,
+     metac_printer.c:550-568; ptr case 542-548 prints bare `*`)
+   - a named struct/union/enum prints as its bare name: the `struct`
+     keyword, the base-class colon syntax and the whole body are dropped
+     (669-711), so `struct S { int a; } s;` prints as `S s`, which
+     re-parses as an identifier type
+   - enum base type is never printed (no BaseType reference in the printer)
+   - because of this, several inputs in section 3 look like parser bugs and
+     are printer bugs (and vice versa: `const struct S s` loses const in
+     the *parser* and `struct` in the *printer*)
+
+I. Declaration-vs-expression at statement level is a 2-token guess.
+   metac_parser.c:2538-2570: if token1 "could start a decl" and token2
+   "could be part of a type", the parser *copies the entire parser struct*
+   (`metac_parser_t savedParser = *self;`), tries a declaration, and if the
+   token after it is not `;` or `{`, restores the struct byte-for-byte and
+   reparses as an expression. Verified: `a * b;` becomes a declaration
+   (stmt kind 100) because `*` is in IsTypeToken. Any expression statement
+   whose second token is `*`, an identifier, a keyword type, `const` or
+   `{` takes the declaration path. Struct-copy save/restore also undoes
+   side effects of PeekToken (LastLocation, preprocessor identifier
+   handling), which the code itself flags as dangerous.
+
+J. Test coverage is three declarations.
+   TestParseDecl (metac_parser.c:2805-2831) covers `int f(double x)`,
+   `unsigned int x`, `signed int y`. The suite cannot detect anything in
+   section 3. There is no round-trip test (parse -> print -> parse) even
+   though both halves exist.
+
+
+5. SUGGESTED FIXES
+-------------------------------------------------------------------------------
+Ordered so that each phase is independently shippable and each later phase
+becomes testable because of the earlier one.
+
+PHASE 0 -- make failure possible (2-3 days, removes the crashes)
+  0.1 Add `bool HadError;` (or use the existing parser/metac_diagnostics.c)
+      to metac_parser_t and route ParseError/ParseErrorF through
+      diagnostics_report(). ParseErrorBreak() becomes "set HadError and
+      return an error node".
+  0.2 Change MetaCParser_Match to report failure to its caller:
+        bool MetaCParser_Match(self, tok) ->  true on success (advances),
+                                              false on mismatch (does not
+                                              advance, records an error)
+      Keep the token-returning macro for the cases that need the token,
+      but every call site in a type/declarator position must check it.
+  0.3 Null-check every ParseDecl/ParseTypeDecl result before dereferencing
+      (metac_parser.c:949 and 1914 are the two verified SIGSEGVs; audit
+      1873 and the 1911-1919 typedef block as well).
+  0.4 Replace the assert-on-user-input sites with diagnostics:
+      1273 (field kind), 1630/1633 (HashDecl), 1373, 1010-loop hazards,
+      and the `assert(0)` on unterminated comments (metac_lexer.c:1278).
+  0.5 Give the type loop a real exit: refresh tokenType/currentToken at the
+      bottom of the body (or convert it to a for(;;) with a peek+break), so
+      a newly added token cannot spin forever.
+
+  Exit criterion: every input in section 3 either parses or produces a
+  diagnostic and a poisoned/explicit error node. No signals.
+
+PHASE 1 -- normalise the token stream (small, immediately visible wins)
+  1.1 Skip comments at the point tokens are *read*, not at the point they
+      are recognised. Add a `NextSignificantToken()` (or filter inside
+      MetaCParser_PeekToken) that steps over tok_comment_single/multi (and
+      tok_newline when not InDefine). Then delete the ad-hoc comment
+      branches at 1841 and 2254 if you still want comment nodes -- or keep
+      them but only when a comment is the first significant token.
+      This fixes `int /*c*/ x;`, `x /*c*/ + y`, struct bodies with
+      comments, and headers in general.
+  1.2 Stop lumping `[]` into tok_full_slice (metac_lexer.c:243-247), or if
+      you keep the token, handle it in exactly one place. Today the
+      type-suffix loop handles it (1406-1423) and the declarator path
+      swallows it (2042-2047). One code path, one behaviour.
+  1.3 Fix the comment location arithmetic (metac_lexer.c:1246-1249 NULL
+      deref-before-check, 1257-1258 Line bump without a newline) so
+      declaration locations are right.
+
+PHASE 2 -- the actual grammar restructure (the fix for "why am I bad at
+           parsing C types")
+  2.1 Split type parsing in two, the way C is defined:
+
+      /* everything before the declarator */
+      metac_decl_specifiers_t ParseDeclSpecifiers(self)
+        {
+          loop:
+            storage class  -> set bit (static/extern/register/thread/...)
+            type qualifier -> set bit (const/volatile/restrict/_Atomic)
+            type specifier  -> collect into a small array
+            function spec   -> inline, _Noreturn
+            alignment       -> _Alignas(expr)
+            stop when the token can no longer be a specifier
+          then *validate*:
+            - exactly one base type (or a short/long/signed/unsigned combo)
+            - no duplicate storage classes
+            - qualifiers allowed here
+          then *canonicalise* into a decl_type_t (so `unsigned` alone ==
+            unsigned int, `long unsigned int` == `unsigned long`, and you
+            emit type_unsigned_char/short/long/long_long kinds, which
+            semantic/metac_type_semantic.c:97-115 and :382-386 already
+            expect but the parser never produces today -- the only
+            unsigned kind it ever emits is type_unsigned_int, via the
+            `unsigned <identifier>` path at 1071).
+        }
+
+      This one function replaces ParseTypeModifiers (857-886),
+      ParseStorageClasses' current role (1639-1694), the specifier loop in
+      ParseTypeDecl (1010-1147) and the three stc reads at 1806/1852/1923.
+
+  2.2 Implement declarators recursively, with two entry points sharing one
+      implementation (declarator vs abstract-declarator):
+
+        decl_type_t* ParseDeclarator(spec, allowIdentifier, outName)
+        {
+            while (peek == '*' ) { match; quals = ParseQualifiers();
+                                    wrap type in decl_type_ptr with quals; }
+            /* direct declarator */
+            if (peek == '(' && next could start a declarator /* not ')' */) {
+                match '(';
+                inner = ParseDeclarator(...);      /* recursion */
+                match ')';
+                base = inner;                     /* then apply suffixes
+                                                     to base, then re-wrap */
+            } else if (allowIdentifier && peek == identifier) {
+                outName = match identifier;
+                base = spec;
+            } else {
+                base = spec;                       /* abstract declarator */
+            }
+            /* suffixes bind left, then wrap outward */
+            while (peek == '[' ) { parse dim (allow empty); base = array(base); }
+            while (peek == '(' ) { params = ParseParameterList();
+                                   base = functiontype(base, params); }
+            return base;   /* for the parenthesised case, the caller
+                              re-wraps: result = inner.result_with_suffixes
+                              placed at the hole left by the pointer */
+        }
+
+      Structurally this single change fixes, for free:
+        int (*p);            int (**fp)(int);      int (* const fp)(int);
+        int (*p)[10];        int (x);              int *f(void);
+        int (*f(int))(void); void (*signal(int, void(*)(int)))(int);
+        char * const *(*next)(char *, int);
+      and it removes the entire 1929-1981 special case plus its hand-rolled
+      hash.
+
+  2.3 ParseDecl becomes:
+        spec = ParseDeclSpecifiers();
+        do {
+            parse declarator;
+            if (peek == '=') init = ParseExpr();
+            if (peek == ':')  bitfield = ...;      /* struct members only */
+        } while (peek == ',');
+        expect(';');
+      That adds comma declarator lists (`int x, y;`), initialisers after
+      function pointers, and puts bitfields in one place instead of a
+      printf at 2055.
+
+  2.4 Store what you parse:
+      - add `metac_storageclasses_t StorageClass;` to decl_variable_t /
+        decl_function_t / decl_type_typedef_t (or fold them into
+        metac_type_modifiers: typemod_static|extern|inline|volatile|register|
+        restrict|_Atomic|_Thread_local already have a natural home in the
+        type node, and then the printer only needs one place updated).
+      - print them. Until then, `static int x;` cannot round-trip and you
+        cannot tell parser losses from printer losses (see H).
+
+PHASE 3 -- keyword policy (fixes the lexer half)
+  3.1 Reserved words only in the lexer. Add the missing C keywords:
+      register, restrict, _Atomic, _Bool, _Alignas, _Alignof, _Noreturn,
+      _Generic, _Static_assert, _Thread_local, _Complex, asm/__asm__,
+      __extension__, __restrict, __inline, __signed__, __volatile__,
+      __const, __typeof__ (map the __ forms onto the same token as the
+      C11 spelling so you do not double the parser branches).
+      Delete the `__thread_key` identifier hack at 1676-1687 in favour of
+      tok_kw__Thread_local / storageclass_thread.
+  3.2 Demote `size_t` (and probably `bool`/`auto` as bare type specifiers)
+      from the lexer to the parser: lex them as identifiers and let
+      ParseDeclSpecifiers recognise a *known type name* by identifier key
+      only when it has not been shadowed. That makes
+      `typedef unsigned long size_t;`, `int size_t;` and user typedefs of
+      any keyword-shaped name work, and it removes the crash at 1914
+      (which happens only because the typedef code assumed a variable and
+      got a type).
+      This also decouples metac_lexer.h's token order from
+      metac_parser_type_kind_t: replace `type_auto + (tokenType -
+      tok_kw_auto)` (1119) and the printer's reverse mapping (571) with an
+      explicit switch. Then the "DO NOT CHANGE THE ORDER" comments
+      (metac_parsetree.h:421-433) and the fragile generated keyword
+      ordering stop being a silent-corruption hazard.
+  3.3 Classify `volatile` as a type qualifier (ParseDeclSpecifiers), not a
+      storage class; accept `const`/`volatile`/`restrict` in any position
+      within the specifier sequence.
+
+PHASE 4 -- one hash implementation
+  4.1 Stop building hashes inline in the parser. Parse into the tree first,
+      then call HashDecl() exactly once per node when the node is complete
+      (bottom-up, in the allocator callback or right before returning from
+      ParseDeclarator/ParseDecl).
+  4.2 Add the missing HashDecl cases (decl_type_enum, decl_type_typeof,
+      decl_type_tuple, decl_type_template_instance, decl_field,
+      decl_parameter) and fix the struct field loop (1574-1583): iterate
+      `for (i = 0; i < FieldCount; i++) { hash...; field = field->Next; }`
+      and delete the post-loop `assert(field->Next == ...)` that derefs
+      0x1.
+  4.3 Decide once whether array dims participate in the hash, and make
+      ParseTypeDecl:1411, ParseArraySuffix:2091 and HashDecl:1617 agree
+      (and fix the shadowed `dimToHash` regardless).
+  4.4 Fold qualifiers into the hash in one canonical way (a separate
+      CRC32C step for each qualifier bit, not XOR with the mask value
+      at 1144).
+
+PHASE 5 -- printer, so tests can be trusted
+  5.1 Print TypeModifiers for decl_type_ptr / decl_type_array / aggregates
+      (or, if phase 2.4 puts quals on the base node, print them where the
+      base node is printed -- but be aware `char * const` and
+      `const char *` must not collapse to the same string).
+  5.2 Print the `struct`/`union`/`enum` keyword and the body for named
+      aggregates (669-711), and print enum_->BaseType.
+  5.3 Add a round-trip test: for every input, parse -> print -> parse ->
+      assert HashDecl equality and identical token count. This single test
+      would have caught most of section 3.
+
+PHASE 6 -- statement disambiguation
+  6.1 Keep the heuristic but make it honest: try the declaration, and on any
+      diagnostic *or* on "token after decl is not ; or {", restore from a
+      saved token index (CurrentTokenIndex) instead of struct-copying the
+      whole parser (2548/2560), and report which interpretation won only
+      in verbose mode. Longer term, feed it a symbol table: `a * b;` is an
+      expression iff `a` is a known variable.
+
+
+6. FIRST TEN PATCHES (smallest increments, ordered by value)
+-------------------------------------------------------------------------------
+ 1. metac_parser.c:1914   null/kind check before `var->VarType->...`
+                          (kills the size_t typedef segfault)
+ 2. metac_parser.c:949    null check on ParseDecl result in
+                          ParseParameterList (kills `int (*p);` segfault)
+ 3. metac_parser.c:1273   replace assert with a diagnostic + recovery
+                          (kills `struct S { unsigned x : 3; }` abort)
+ 4. metac_lexer.h:83-135  add register/restrict/_Atomic/_Bool/... as
+                          keywords; demote size_t to an identifier
+ 5. metac_parser.c:677-697 split IsTypeToken in two: a declaration-start
+                          predicate that must NOT accept tok_lBrace (it
+                          does today, so a stray `{` at declaration level
+                          is parsed as a type tuple) and the inner type
+                          loop, which may keep lBrace for tuple types.
+                          Add volatile (and the new qualifiers) to both,
+                          and write down why brackets are excluded.
+ 6. metac_parser.c:2042-2047 handle tok_full_slice like the type suffix
+                          loop does instead of discarding `[]`
+ 7. metac_parser.c:1115-1147 let the specifier loop *continue* (long/short/
+                          int/unsigned/signed in any order) instead of
+                          breaking after the first primary specifier --
+                          fixes `auto int`, `long unsigned int`
+ 8. metac_parser.c:1068-1073 stop treating `unsigned <identifier>` as a
+                          type: an identifier after unsigned/signed is the
+                          declarator name unless a symbol table says
+                          otherwise (or simply require a base type and let
+                          `unsigned x` mean `unsigned int x`)
+ 9. metac_parser.c:1574-1583 fix the HashDecl field loop deref; add the
+                          decl_type_enum case (1630)
+10. metac_parser.c:2035    compute the variable hash *after* the array
+                          suffix loop (or move hashing to phase 4.1)
+
+
+7. WHAT TO KEEP
+-------------------------------------------------------------------------------
+These are deliberate metac extensions and the restructure in phase 2 must
+preserve them; they are not the problem:
+  - typeof(expr) types                      metac_parser.c:1361-1369
+  - tuple types  int{a,b,c}                 metac_parser.c:1013-1041
+  - template instantiation  T!(args)        metac_parser.c:1082-1106
+  - struct/union template params  S!(T)     metac_parser.c:1185-1193
+  - `type` as a type-name keyword           metac_parser.c:1062-1067
+  - base-clause on struct/enum  S : Base    metac_parser.c:1208-1221
+  - @run functions                          metac_parser.c:1995-2015
+  - slices (tok_full_slice as a *type*
+    suffix)                                 metac_parser.c:1406-1423
+Note that all of these live in the *specifier* or *suffix* position and are
+therefore compatible with the recursive declarator parser in 2.2 -- they
+must only be moved out of the declarator position (the 1929-1981 block).
+
+===============================================================================
+SUMMARY
+===============================================================================
+The lexer does not know C's keyword set (and knows a typedef name), the
+parser has no declarator recursion and no error state, storage classes and
+qualifiers are discarded after being parsed, comments are tokens nothing
+skips, and the three separate hash builders disagree with each other. Fix
+the structure (phases 2 and 3) rather than adding more special cases: every
+input in section 3 that is not marked OK is one special case away from
+working today, and that is exactly why it keeps growing and keeps breaking.
+===============================================================================

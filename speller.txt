@@ -1,0 +1,438 @@
+# The Speller - typo correction for failed identifier resolution
+
+## Overview
+
+Right now when a name cannot be resolved the semantic just gives up.
+`MetaCSemantic_LookupIdentifier` walks the scope chain, finds nothing and
+returns `emptyNode` (semantic/metac_semantic.c:877). The expr path then prints
+`'foo' Identifier lookup failed` (semantic/metac_expr_semantic.c:1400) and the
+type path returns an unresolved type index. That's it - the user is on his own.
+
+The speller runs in exactly that moment. It collects the identifiers that are
+visible at the point of failure, scores them against the misspelled name and
+hands back a small ranked list of candidates which the hook turns into a fixit:
+
+    SemanticError[foo.mtc:12:5]: cannot resolve 'lenght'
+      fixit: replace with 'length'  (distance 1, soundex L523)
+
+It should stay completely optional. A null `Speller` pointer means nothing
+changes, one uncommented hook line means it's on. No other part of the
+compiler needs to know about it.
+
+The similarity search is two-staged:
+
+  1. a soundex key - phonetic and keyboard-typo-tuned, cheap, done 8-wide
+     with the simd abstraction from os/metac_simd.h
+  2. Damerau-Levenshtein with adjacent swapping - exact, bounded, only
+     runs on the few survivors of stage 1
+
+The first stage is a filter, not a verdict. Soundex answers "do these two
+even sound alike", Damerau answers "how many edits apart are they really".
+
+
+## Where it plugs in
+
+There are two final failure sites, both already marked for this:
+
+  * semantic/metac_type_semantic.c:1437
+        // MetaCSemantic_ResolveFail(self, type->TypeIdentifier);
+    sits right in the `OnResolveFail_ReturnNull` branch - failure is final
+    there, this is the primary hook.
+
+  * semantic/metac_expr_semantic.c:1398
+    the `expr_identifier` case, where lookup failure is reported today.
+
+Both sites only get reached when giving up is legitimate. While a fiber is
+waiting for a declaration to show up (`OnResolveFail_Yield`, see the waiter
+registration at metac_type_semantic.c:1449) we must NOT spellcheck: the name
+may be a forward reference that is about to be registered by another task
+via `MetaCSemantic_RegisterInScope`. Suggesting "did you mean x" for a name
+that resolves half a millisecond later would be noise. The
+`OnResolveFailStack` already tells us which case we are in, so the rule is
+simply: spell only when we are about to give up for good - the
+`OnResolveFail_ReturnNull` branch where the commented hook sits, and the
+expr path which has no retry at all. Never on the wait-and-retry path.
+
+The flow looks like this:
+
+    MetaCSemantic_LookupIdentifier
+              |
+              v
+        node == emptyNode ?
+              |
+     no -----+----- yes
+     |               |
+     v               v
+   done      OnResolveFail top == ReturnNull ?
+                        |
+              yes ------+------ no
+              |                   |
+              v                   v
+        MetaCSemantic_ResolveFail   wait for
+              |                     RegisterInScope
+              v                     (retry later)
+        collect candidates from the
+        mounted scope chain
+                |
+                v
+        stage 1: soundex + keyboard gate
+                |
+                v
+        stage 2: bounded damerau-levenshtein
+                |
+                v
+        rank top N -> fixit
+
+
+## Collecting the candidates (identifier aware)
+
+The candidate set is not "every identifier in the program". It is exactly
+what a lookup at this point could have found: walk the same chain that
+`MetaCSemantic_LookupIdentifier` walks, starting at `self->CurrentScope`
+and following `Parent` until null (semantic/metac_semantic.c:889-900).
+
+    self->CurrentScope
+          |
+          |  Parent
+          v
+     +---------+
+     | scope A |   <-- mountScope()'d member/aggregate scopes land here
+     +---------+       (MetaCSemantic_MountScope, metac_semantic.c:323)
+          |               so struct fields are candidates without any
+          |  Parent        extra work on our side
+          v
+     +---------+
+     |  ...    |
+     +---------+
+          |
+          |  Parent
+          v
+     +---------+
+     | globals |   <-- biggest table, usually where the real typo lives
+     +---------+
+
+For each scope in the chain, enumerate the open-addressed slot array
+`scope->ScopeTable.Slots[0 .. 1<<SlotCount_Log2]` and keep the ones with
+`Hash != 0` (metac_scope.h:79-85). Each slot gives us a
+`metac_identifier_ptr_t`, and turning that into characters is just
+
+    IdentifierPtrToCharPtr(table, slot->Ptr)
+        -> table->StringMemory + (ptr.v - 4)        // metac_identifier_table.c:33
+
+which is pointer arithmetic, no hashing, no search.
+
+Identifier awareness details that matter here:
+
+  * We see the same name in several scopes (inner shadows outer). Walk
+    inner-first and dedupe by `idPtr.v` so `length` in a local scope wins
+    over `length` in globals - closer to the use site is the better fixit.
+  * Which table the ptr belongs to depends on `USE_SEMA_ID_IN_SCOPE_TABLE`
+    exactly like `MetaCSemantic_RegisterInScope` decides (metac_semantic.c:911).
+  * The misspelled name itself arrives as a token and already carries
+    `IdentifierKey` with the length baked in at `IDENTIFIER_LENGTH_SHIFT`
+    (parser/metac_identifier_table.h:9) - we don't even need strlen for it.
+
+Temporary storage comes from the sema allocator, nothing mallocs on its own:
+
+    STACK_ARENA_ARRAY(metac_speller_cand_t, cands, 64, &self->TempAlloc)
+
+or a child allocator `Allocator_Init(&speller->Alloc, &sema->Allocator)` for
+any state that outlives a single suggestion call (see os/metac_alloc.h - the
+parent chain means arenas are owned and freed with the sema state).
+
+
+## Stage 1 - the soundex key
+
+### The classic coding table
+
+Soundex collapses a word to four characters: the first letter, then up to
+three digits encoding the consonant classes, vowels and h/w are separators
+and are simply not coded.
+
+        class 1     class 2          class 3   class 4   class 5   class 6
+        -------     -------          -------   -------   -------   -------
+          b           c                d         l         m         r
+          f           g                t         n
+          p           j
+          v           k
+                      q
+                      s
+                      x
+                      z
+
+        separators (never coded):  a e i o u y  h w
+
+Classic examples:  Robert   -> R163
+                   Rupert   -> R163      (b and p are both class 1)
+                   Ashcraft -> A261      (s codes 2; the c is the same class
+                                          with only an h between them so it
+                                          is dropped; r=6, f=1, t=3 follow
+                                          and the tail gets truncated)
+                   Tymczak  -> T522      (z is the same class as the c right
+                                          before it and gets dropped, k after
+                                          the vowel codes again)
+
+### Identifier and keyboard tuning
+
+For compiler identifiers a few adjustments make the key much more useful
+than the 1918 census version:
+
+  * case fold first - `MyBuffer` and `mybuffer` must produce the same key
+  * `_` is a separator like h/w, but letters after a `_` still code
+    normally, so snake_case segments fall out for free:
+        get_total   -> G233
+        get_totoal  -> G233   (typo is caught)
+  * digits that appear inside identifiers code as themselves
+    (`md5sum` keeps the 5) - digits are already "distinct symbols" in code
+  * the first letter may differ from the candidate if the two letters are
+    keyboard neighbors - this is the keyboard-typo part:
+
+        1 2 3 4 5 6 7 8 9 0 - =
+         q w e r t y u i o p [ ]
+        a s d f g h j k l ; '
+          z x c v b n m , . /
+
+        f and v are neighbors (same column),
+        so  vunction  and  function  get:
+              vunction -> V253
+              function -> F253
+        first letters differ but are keyboard adjacent,
+        digit tails 253 == 253 -> key match accepted.
+
+    The neighbor relation is a static 26x26 bit table generated once from
+    the row/col positions above (accounting for the stagger, row r col c
+    neighbors are (r, c+-1) and (r+-1, c, c+-1)). The misspelled word
+    produces a 26-bit mask of "acceptable first letters" in one pass.
+
+So the full stage-1 test for a candidate is:
+
+    keep if
+        sx(candidate) == sx(misspelled)
+     || (firstLettersKeyboardAdjacent(a, b)
+         && digitTail(a) == digitTail(b))
+
+### Worked example - lenght vs length
+
+    spell it:  l   e   n   g   h   t          l   e   n   g   t   h
+               |   |   |   |   |   |          |   |   |   |   |   |
+               L   -   5   2   -   3          L   -   5   2   3   -
+                 \___________________/          \___________________/
+                     L 5 2 3                        L 5 2 3
+
+    h is a separator, so it disappears in both spellings; the digit
+    sequence comes out identical even though the letters moved.
+    Same key -> stage 1 passes -> stage 2 only has to confirm.
+
+### Doing it 8-wide with the simd abstraction
+
+The key packs into a 16-bit integer (first letter in the high nibble
+region, three digits at 4 bits each). Candidates are then compared in
+batches of eight exactly the way `MetaCSemantic_LRU_LookupIdentifier` already
+probes its eight slots (semantic/metac_semantic.c:844-873):
+
+    int16x8_t cand = Load16(&batch->Keys);        // 8 candidate keys
+    int16x8_t want = Set1_16(misspelledKey);      // broadcast ours
+    int16x8_t eq   = Eq16(cand, want);
+    uint32_t  mask = MoveMask16(eq);              // bit per candidate
+
+then walk the set bits with BSF like the LRU does and only those lanes
+proceed to stage 2. `os/metac_simd.h` already provides the portable
+fallbacks for SSE2, NEON and plain C, so this costs nothing extra on
+machines without vector units.
+
+Keys of candidates can be cached in a small open-addressed table keyed by
+`idPtr.v` living in the speller's child allocator - identifiers are
+interned once and never change spelling, so we compute each key at most
+once per compilation.
+
+
+## Stage 2 - Damerau-Levenshtein with adjacent swapping
+
+Plain Levenshtein counts a transposition as two edits: delete + insert.
+For typos that is wrong - the most common slip of the fingers is swapping
+two adjacent keys, and `lenght` is one edit away from `length`, not two.
+So we use the Damerau edit distance in its "optimal string alignment" form,
+which adds one extra production to the classic recurrence: a swap of two
+adjacent characters costs 1.
+
+For strings a[1..m] and b[1..n], with d[][] the matrix:
+
+    d[i][j] = min(
+        d[i-1][j]   + 1,                              // delete a[i]
+        d[i][j-1]   + 1,                              // insert b[j]
+        d[i-1][j-1] + (a[i] != b[j]),                 // substitute
+        d[i-2][j-2] + 1                               // ADJACENT SWAP
+                      if i > 1 and j > 1
+                      and a[i] == b[j-1]
+                      and a[i-1] == b[j]
+    )
+
+with the usual borders d[i][0] = i, d[0][j] = j.
+
+### The matrix for lenght -> length
+
+rows are prefixes of `lenght`, columns of `length`:
+
+                 ""   l   e   n   g   t   h
+          ""      0   1   2   3   4   5   6
+           l      1   0   1   2   3   4   5
+           e      2   1   0   1   2   3   4
+           n      3   2   1   1   2   3   4
+           g      4   3   2   2   1   2   3
+           h      5   4   3   3   2   1  [1]
+           t      6   5   4   4   3 [1] <1>
+
+    the bottom-right cell <1> does not come from its neighbours by
+    substitution - it comes from the swap rule:
+
+        a = ... h t
+        b = ... t h
+        a[i]=t == b[j-1]=t   and   a[i-1]=h == b[j]=h
+        => d[6][6] = d[4][4] + 1 = 0 + 1 = 1
+
+    Without the swap rule the path would have to go
+    d[5][6]=1 --sub--> 2 or d[6][5]=1 --sub--> 2 and
+    plain Levenshtein would answer 2. With the rule: 1.
+
+(For reference, kitten -> sitting needs the ordinary three edits and comes
+out 3 under both variants - the swap rule only ever lowers the count for
+real transpositions.)
+
+### Keeping it cheap
+
+The failure path is rare, but the global scope can hold thousands of
+identifiers, so stage 2 is bounded in three ways:
+
+  1. length gate - if abs(len(a) - len(b)) > maxDist the answer already
+     exceeds the budget, skip. Length of the misspelled side comes from
+     the token key, candidate length from the nul-terminated string.
+
+  2. rolling rows - only two rows of the matrix are live at a time,
+     O(min(m,n)) space instead of O(m*n). The swap rule only needs
+     d[i-2][j-2], so two rows back is enough (keep three to be safe).
+
+  3. band + early abort - cells outside |i - j| > maxDist can never
+     influence a result within budget; prune them. If an entire row ends
+     up > maxDist the distance can only grow, abort the whole candidate.
+     Cost is then O(n * (2*maxDist + 1)) per candidate, not O(n*m).
+
+Budget by identifier length (tunable in `metac_speller_options_t`):
+
+    length <= 4    maxDist 1
+    length <= 8    maxDist 2
+    length >  8    maxDist 2, or 3 when the soundex keys already matched
+
+and a candidate is only suggested if it stays inside the budget AND
+(stage1 matched OR dist <= 1). That last clause stops "same soundex,
+wildly different spelling" noise from leaking through for short names.
+
+
+## Ranking, and turning the list into a fixit
+
+Survivors are sorted by:
+
+    1. smaller distance
+    2. soundex key equal (phonetic agreement beats a lucky edit distance)
+    3. scope depth - inner scopes first, they shadow and are closer to
+       the use site
+    4. shorter length delta, then lexicographic for stable output
+
+Top N (default 3) become suggestions. The hook formats them; the speller
+itself only returns `metac_speller_suggestion_t { idPtr, distance,
+soundexMatched }` so it knows nothing about printing.
+
+Locations for the fixit span come from the sema state the same way
+`SemanticError` callers already get them: `CurrentLocIdx` / `CurrentLoc`
+(AT(TaskLocal), metac_semantic.h:134-136). The new diagnostics container
+(parser/metac_diagnostics.h) has file/line/column per entry - a fixit is
+just the replacement text for the identifier span on that diagnostic.
+
+
+## What the compiler knows that a generic spellchecker does not
+
+This is the "compile assisted" part - four advantages a standalone tool
+never has:
+
+  * Only in-scope names are candidates. No dictionary of english words,
+    no suggestions that don't even exist in this compilation unit. If
+    nothing in the scope chain is close, we correctly say nothing.
+  * Position awareness: when the failure is in a type position
+    (`doTypeSemantic`) we may prefer suggesting over tag scopes
+    (StructTagScope / UnionTagScope / EnumTagScope, metac_semantic.h:120-122)
+    which are mounted exactly for this purpose.
+  * Deferred lookup is distinguishable from real failure via the
+    OnResolveFail stack, so we never fight the fiber scheduler with bogus
+    suggestions for names that are merely not registered *yet*.
+  * Every identifier is interned through `GetOrAddIdentifier` and its
+    soundex key can therefore be computed once and cached against the
+    interned pointer for the whole session.
+
+
+## How the facilities are used
+
+  allocator  - speller owns a child `metac_alloc_t` off `sema->Allocator`
+               (or `TempAlloc` for one-shot scans). Candidate arrays are
+               ARENA_ARRAY / STACK_ARENA_ARRAY, so a failed lookup costs
+               a bump pointer and nothing else.
+
+  simd       - stage-1 key comparisons, 8 candidates at a time, through
+               the Load16 / Set1_16 / Eq16 / MoveMask16 helpers in
+               os/metac_simd.h - same pattern as the semantic LRU.
+
+  task system - the scan itself stays synchronous: a diagnostic needs its
+               fixit now, not after two scheduler rounds. What CAN move
+               to a task is precomputing soundex keys for a freshly grown
+               identifier table (ENQUEUE_TASK off the critical path, the
+               results are just cache fills). If a scope is so huge that
+               even the banded scan hurts, the whole suggest call can be
+               wrapped like `MetaCSemantic_doDeclSemantic_` wraps its work
+               (push a continuation, YIELD, come back) - but measure that
+               before building it, the filters should make it unnecessary.
+
+  mountScope - no special casing: mounted scopes are already linked into
+               `CurrentScope->Parent`, so the ordinary chain walk sees
+               them.
+
+
+## Keeping it self contained
+
+Everything lives in two files:
+
+    semantic/metac_speller.h    types, options, the three entry points
+    semantic/metac_speller.c    soundex, keyboard table, damerau, ranking
+
+Entry points:
+
+    bool     MetaCSpeller_Init  (metac_speller_t*, metac_alloc_t* parent);
+    uint32_t MetaCSpeller_Suggest(metac_speller_t*, metac_sema_state_t* sema,
+                                  metac_identifier_ptr_t misspelled,
+                                  metac_speller_suggestion_t** out);
+    void     MetaCSpeller_Free  (metac_speller_t*);
+
+Integration is two touches and both are removable:
+
+    1. one field in metac_sema_state_t:
+           metac_speller_t* Speller;   // 0 = off
+       (or a plain function pointer if we don't even want the type in
+        metac_semantic.h - a forward declaration is enough)
+
+    2. the hook body where the commented call already sits
+       (metac_type_semantic.c:1437, metac_expr_semantic.c:1398):
+           if (self->Speller) MetaCSemantic_ResolveFail(self, idPtr);
+
+Build wiring is the unity object we already have: add
+`#include "metac_speller.c"` to semantic/metac_semantic_obj.c next to the
+other includes, or leave it out and the feature simply isn't there.
+No headers of scope, alloc, simd or task get a single new dependency.
+
+
+## Conclusion
+
+If you want a cheap "sounds like" filter over everything in scope: soundex,
+keyboard-tuned, 8-wide. If you want the edit count that actually matches
+how people mistype: Damerau-Levenshtein with adjacent swapping, banded and
+early-aborted. If you want suggestions that can only name things that
+really exist where the error happened: walk the mounted scope chain.
+
+All three together, behind one pointer, on one hook line - and the compiler
+never mentions the speller again until the next resolve failure.
