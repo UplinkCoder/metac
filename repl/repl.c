@@ -306,7 +306,10 @@ void Presemantic_(repl_state_t* self)
         decl_array_t decls = {0};
         AddIdentifierToCompletion(self, "Compiler");
         {
-            MetaCLPP_Init(&tmpLpp, &PresemanticAlloc, 0);
+            /* use the file storage of the session, so that the
+             * preprocessor of the compiler interface can resolve
+             * #include directives through the file system of the ui */
+            MetaCLPP_Init(&tmpLpp, &PresemanticAlloc, &self->FileStorage);
 #if 1
             {
                 identifier_callback_t cb;

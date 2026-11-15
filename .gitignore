@@ -11,3 +11,4 @@ coro_test
 coro_test_fcontext
 task_system_test
 task_system_test_fcontext
+repl/gtk/gtk_repl

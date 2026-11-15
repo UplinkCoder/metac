@@ -1258,10 +1258,15 @@ const char* doDeclSemantic_PrintFunction(task_t* task)
     MetaCSemantic_doDeclSemantic_task_context_t* ctx =
          (MetaCSemantic_doDeclSemantic_task_context_t*)
             task->Context;
-    metac_alloc_t tmpAlloc = ctx->Sema->TempAlloc;
+    /* Do not copy the allocator: a copy would share the array of the
+     * arenas with the original one, and growing that array (which happens
+     * when an allocation does not fit into the existing arenas) would
+     * free the array of the original allocator and leave it with a
+     * dangling pointer. */
+    metac_alloc_t* tmpAlloc = &ctx->Sema->TempAlloc;
     const char* declPrint;
 
-    MetaCPrinter_Init(&printer, ctx->Sema->ParserIdentifierTable, ctx->Sema->ParserStringTable, &tmpAlloc);
+    MetaCPrinter_Init(&printer, ctx->Sema->ParserIdentifierTable, ctx->Sema->ParserStringTable, tmpAlloc);
     declPrint = MetaCPrinter_PrintDecl(&printer, ctx->Decl);
 
     return declPrint;

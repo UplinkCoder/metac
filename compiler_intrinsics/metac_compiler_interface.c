@@ -41,12 +41,14 @@ static metac_enum_members_t* compiler_GetEnumMembers (struct metac_compiler_t* c
 {
     metac_sema_state_t* sema = (metac_sema_state_t*) compilerP->semanticState;
     metac_type_enum_t* enumType = EnumTypePtr(sema, TYPE_INDEX_INDEX(T));
-    metac_alloc_t alloc =  sema->TempAlloc;
+    /* the allocator must not be copied - see the comment in
+     * doDeclSemantic_PrintFunction (semantic/metac_semantic.c) */
+    metac_alloc_t* alloc = &sema->TempAlloc;
     uint32_t nMembers = enumType->MemberCount;
-    metac_enum_members_t *memberMemory = Allocator_Calloc(&alloc, metac_enum_members_t, 1);
+    metac_enum_members_t *memberMemory = Allocator_Calloc(alloc, metac_enum_members_t, 1);
     memberMemory->Count = nMembers;
-    memberMemory->Names = Allocator_Calloc(&alloc, char*, nMembers);
-    memberMemory->Values = Allocator_Calloc(&alloc, uint32_t, nMembers);
+    memberMemory->Names = Allocator_Calloc(alloc, char*, nMembers);
+    memberMemory->Values = Allocator_Calloc(alloc, uint32_t, nMembers);
     
     for(uint32_t i = 0; i < nMembers; i++)
     {

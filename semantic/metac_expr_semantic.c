@@ -1280,7 +1280,17 @@ LswitchIdKey:
             decl_type_t* typeExpr = expr->TypeExp;
             if (typeExpr->TypeKind == type_identifier)
             {
-                metac_identifier_ptr_t idPtr = typeExpr->TypeIdentifier;
+                /* The scope table is keyed with the identifiers of the
+                 * semantic identifier table (see
+                 * MetaCSemantic_declSemantic, which copies the identifier
+                 * of a variable into it), so we have to look the name up
+                 * with the semantic identifier as well.  Looking it up
+                 * with the parser identifier would never find anything. */
+                metac_identifier_ptr_t idPtr =
+                    MetaCIdentifierTable_CopyIdentifier(
+                        self->ParserIdentifierTable,
+                        &self->SemanticIdentifierTable,
+                        typeExpr->TypeIdentifier);
 
                 metac_node_t node =
                     MetaCSemantic_LookupIdentifier(self, idPtr);
