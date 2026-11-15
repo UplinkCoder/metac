@@ -1407,6 +1407,8 @@ metac_type_index_t MetaCSemantic_TypeSemantic(metac_sema_state_t* self,
     {
         metac_identifier_ptr_t semaId = {0};
         metac_node_t node = 0;
+        const char* idChars =
+            IdentifierPtrToCharPtr(self->ParserIdentifierTable, type->TypeIdentifier);
 
         if ((type->TypeKind != type_identifier) && (type->TypeKind != type_template_instance))
         {
@@ -1422,8 +1424,6 @@ metac_type_index_t MetaCSemantic_TypeSemantic(metac_sema_state_t* self,
 LtryAgian: {}
         node = MetaCSemantic_LookupIdentifier(self, semaId);
         {
-            const char* idChars =
-                IdentifierPtrToCharPtr(self->ParserIdentifierTable, type->TypeIdentifier);
 #if 0
             printf("Lookup: (%s) = %s\n", idChars, ((node != emptyNode) ?
                                        MetaCNodeKind_toChars(node->Kind) :
@@ -1491,11 +1491,16 @@ LtryAgian: {}
                     sema_decl_variable_t* var = (sema_decl_variable_t*)node;
                     result.v = var->TypeIndex.v;
                 } break;
+                case expr_unknown_value:
+                {
+                    metac_sema_expr_t* val = cast(metac_sema_expr_t*)node;
+                    result.v = val->TypeIndex.v;
+                } break;
             }
         }
         else
         {
-            printf("Empty node during lookup\n");
+            printf("Error: Empty node during lookup of '%s'\n", idChars);
             assert(0);
         }
     }
