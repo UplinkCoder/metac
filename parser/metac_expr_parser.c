@@ -339,6 +339,7 @@ static inline uint32_t OpToPrecedence(metac_expr_kind_t exp)
         return 32;
     }
     else if (exp == expr_umin
+          || exp == expr_uplus
           || exp == expr_sizeof
           || exp == expr_typeof
           || exp == expr_not
@@ -537,7 +538,15 @@ static bool CouldBeCast(metac_parser_t* self, metac_token_enum_t tok)
         else
         {
             if (peek->TokenType == tok_identifier && seenStar)
+            {
+                /* `identifier *` -- e.g. `sizeof(uint8_t*)`.  If the
+                   identifier is directly followed by '*' then it is a
+                   pointer type, not a multiplication. */
+                metac_token_t* peek2 = MetaCParser_PeekToken(self, peekCount + 1);
+                if (peek2 && peek2->TokenType == tok_rParen)
+                    continue;
                 return false;
+            }
         }
     }
 
@@ -644,6 +653,25 @@ static inline bool CouldBeType(metac_parser_t* self,
     return result;
 }
 
+
+/* Returns true if the tokens up to the matching ')' form a type name:
+   an identifier (a typedef name) followed by one or more '*'. */
+static bool CouldBeSizeofTypeName(metac_parser_t* self)
+{
+    metac_token_t* peek = MetaCParser_PeekToken(self, 1);
+    if (!peek || peek->TokenType != tok_identifier)
+        return false;
+
+    uint32_t n = 2;
+    while (true)
+    {
+        peek = MetaCParser_PeekToken(self, n);
+        if (!peek) return false;
+        if (peek->TokenType == tok_star) { n++; continue; }
+        if (peek->TokenType == tok_rParen) return true;
+        return false;
+    }
+}
 
 metac_expr_t* MetaCParser_ParsePrimaryExpr(metac_parser_t* self, parse_expr_flags_t flags)
 {
@@ -1245,10 +1273,28 @@ metac_expr_t* MetaCParser_ParseUnaryExpr(metac_parser_t* self)
             MetaCParser_Match(self, tok_lParen);
         }
 
-        result->E1 = MetaCParser_ParseExpr(self, flags, 0);
-        if (wasParen)
+        /* `sizeof(type-name)`: if the operand is a type name (e.g.
+           `sizeof(uint8_t*)`) it has to be parsed as a type, not as an
+           expression -- `identifier *` cannot be a multiplication,
+           because the `*` has no right hand operand. */
+        if (wasParen && CouldBeSizeofTypeName(self))
         {
+            metac_location_t typeLoc = MetaCParser_CurrentLocation(self);
+            decl_type_t* type = MetaCParser_ParseTypeDecl(self, 0, 0);
+            result->E1 = AllocNewExpr(expr_type);
+            result->E1->TypeExp = type;
+            result->E1->Hash = CRC32C_VALUE(type_key, type->Hash);
+            result->E1->LocationIdx =
+                MetaCLocationStorage_Store(&self->LocationStorage, typeLoc);
             MetaCParser_Match(self, tok_rParen);
+        }
+        else
+        {
+            result->E1 = MetaCParser_ParseExpr(self, flags, 0);
+            if (wasParen)
+            {
+                MetaCParser_Match(self, tok_rParen);
+            }
         }
         result->Hash = CRC32C_VALUE(sizeof_key, result->E1->Hash);
     }
@@ -1605,6 +1651,19 @@ metac_expr_t* MetaCParser_ParseBinaryExpr(metac_parser_t* self,
             {
             LparseArgumentList:
                 rhs = (metac_expr_t*)MetaCParser_ParseArgumentList(self, expr_flags_call).Arguments;
+                if ((metac_node_t)rhs == emptyPointer)
+                {
+                    /* a call with no arguments: synthesize an empty
+                       argument list node, so that a following binary
+                       operator does not dereference emptyPointer */
+                    expr_argument_t* emptyArgs = (expr_argument_t*)AllocNewExpr(expr_argument);
+                    METAC_NODE(emptyArgs->Next) = emptyNode;
+                    METAC_NODE(emptyArgs->Expr) = emptyNode;
+                    emptyArgs->Hash = ~0;
+                    emptyArgs->LocationIdx =
+                        MetaCLocationStorage_Store(&self->LocationStorage, loc);
+                    rhs = (metac_expr_t*)emptyArgs;
+                }
                 if ((metac_node_t)rhs != emptyPointer)
                 {
                     rhsIsArgs = true;

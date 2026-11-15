@@ -2753,6 +2753,8 @@ const char* MetaCNodeKind_toChars(metac_node_kind_t type)
 
 #include "../driver/metac_lpp.h"
 
+#include "metac_decl_test.c"
+
 void TestParseExprssion(void)
 {
     metac_printer_t printer;
@@ -2834,6 +2836,7 @@ int main(int argc, char* argv[])
 {
     TestParseExprssion();
     TestParseDecl();
+    return TestParseDeclTypes();
 }
 
 #  endif

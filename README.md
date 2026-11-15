@@ -68,6 +68,25 @@ When you then call that same function again it will not start at the beginning b
 All local variables are preserved.
 So is any `global` state which is annotated with `@TaskLocal`.
 
+### Metac Tactics (a browser game)
+
+`website/game/` contains a coding game: you write the function `play(world)`
+and the hero does what you say. It is implemented in plain JavaScript and
+speaks a subset of MetaC - the same subset the REPL speaks.
+
+It is built around the ideas that make MetaC different from C:
+
+* **types are values** - `typeof(world.hero).kind` is `"tuple"`,
+* **the compiler is an API** - `.Compiler->GetFields(world.hero)` tells the
+  program what the world looks like,
+* **you can rewrite code while it runs** - `inject(enemy.ai, "...")` changes
+  the behaviour of an enemy,
+* **you can generate code** - `@run { emit("..."); }` runs before the program
+  and writes part of it.
+
+Open `website/game/index.html` in a browser (no build step), or run the
+tests with `node website/game/test.js`.
+
 ### REPL
 
 #### Building the REPL

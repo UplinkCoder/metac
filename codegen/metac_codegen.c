@@ -7,6 +7,7 @@
 #include "../libinterpret/bc_common.c"
 #include "../libinterpret/bc_interpreter_backend.c"
 #include "../libinterpret/printer_backend.c"
+#include "../libinterpret/js_backend.c"
 #include "../printer/metac_printer.h"
 
 #ifndef U32

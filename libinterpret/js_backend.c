@@ -40,36 +40,39 @@ BCTypeInfo* LookupTypeinfo(JsBackend* self, BCType bct)
 static inline int PrintF(JsBackend* self, const char* format, ...)
 {
     va_list args;
-    int n;
+    int n = 0;
     int32_t sizeLeft = cast(int32_t) (self->CodeCapacity - self->CodeCount);
-    va_start (args, format);
+    va_start(args, format);
 
     if (sizeLeft < 1024)
-    LGrow:
     {
-
-        uint32_t newCapa = (self->CodeCapacity * 1.3f);
+        uint32_t newCapa = self->CodeCapacity + 1024;
         self->Code = realloc(self->Code, newCapa);
         self->CodeCapacity = newCapa;
         sizeLeft = cast(int32_t) (self->CodeCapacity - self->CodeCount);
     }
 
-/*
-    n = vsnprintf(self->Code + self->CodeCount, sizeLeft,
-                  format, args);
+    n = vsnprintf(self->Code + self->CodeCount, sizeLeft, format, args);
 
-    if (n > sizeLeft)
+    if (n >= sizeLeft)
     {
-        goto LGrow;
+        /* it did not fit - make room and try again */
+        va_end(args);
+
+        uint32_t newCapa = self->CodeCapacity + cast(uint32_t)n + 1024;
+        self->Code = realloc(self->Code, newCapa);
+        self->CodeCapacity = newCapa;
+
+        va_start(args, format);
+        n = vsnprintf(self->Code + self->CodeCount,
+                      cast(int32_t)(self->CodeCapacity - self->CodeCount),
+                      format, args);
     }
 
-    self->CodeCount += n;
-    self->Code += n;
-*/
-    vprintf(format, args);
+    self->CodeCount += cast(uint32_t)n;
     self->staticBfUsed = 0;
 
-    va_end (args);
+    va_end(args);
 
 
     return n;
@@ -163,6 +166,11 @@ static inline bool DirectEmit(BCType t1, BCType t2)
 
 static inline void JsBackend_Initialize(JsBackend* self, uint32_t n_args, ...)
 {
+    if (!self->Code)
+    {
+        self->CodeCapacity = 64 * 1024;
+        self->Code = (char*)malloc(self->CodeCapacity);
+    }
     self->CodeCount = 0;
     self->CurrentFunctionId = 0;
     self->ParamterCount = 0;

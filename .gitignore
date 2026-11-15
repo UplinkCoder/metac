@@ -7,3 +7,7 @@ repl/repl
 completion_trie_test
 test.dot
 .repl_history
+coro_test
+coro_test_fcontext
+task_system_test
+task_system_test_fcontext

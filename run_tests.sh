@@ -14,6 +14,21 @@ $CC $CFLAGS parser/metac_parser_obj.c driver/metac_lpp.c \
     -o parser_test &&
 ./parser_test &&
 
+# the coroutine layer - once with libaco and once with boost.context
+$CC $CFLAGS tests/coro_test.c -g3 -o coro_test &&
+./coro_test &&
+
+$CC $CFLAGS tests/coro_test.c -g3 -DMETAC_CORO_FCONTEXT -o coro_test_fcontext &&
+./coro_test_fcontext &&
+
+# the task system runs its tasks in coroutines - so it has to work with
+# both of the coroutine backends as well
+$CC $CFLAGS tests/task_system_test.c -g3 -I. -o task_system_test &&
+./task_system_test &&
+
+$CC $CFLAGS tests/task_system_test.c -g3 -I. -DMETAC_CORO_FCONTEXT -o task_system_test_fcontext &&
+./task_system_test_fcontext &&
+
 #$CC $CFLAGS repl/completion_trie.c -g3 -DCOMP_TRIE_TEST_MAIN -o completion_trie_test &&
 #./completion_trie_test
 
