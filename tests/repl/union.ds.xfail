@@ -1,0 +1,9 @@
+The semantic layer does not implement unions yet.
+
+semantic/metac_type_semantic.c has an empty `case type_union:` branch, so
+MetaCSemantic_TypeSemantic returns 0 and the assertion
+
+    metac_type_semantic.c:1523: MetaCSemantic_TypeSemantic:
+        Assertion `result.v != 0' failed.
+
+fires.  The same happens on the unmodified compiler.

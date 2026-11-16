@@ -1,0 +1,5 @@
+int x = 1;
+if (x > 0) { int y = 2; } else { int z = 3; }
+while (x < 10) { x = x + 1; }
+for (int i = 0; i < 10; i = i + 1) { }
+{ int shadow = 5; }

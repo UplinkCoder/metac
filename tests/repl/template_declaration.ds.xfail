@@ -1,0 +1,5 @@
+The template system is not implemented yet.
+
+A template *instance* works (see template_instance.ds.mtc) but declaring a
+template aggregate crashes the compiler.  See TEMPLATE_ROADMAP.md for the
+plan.
