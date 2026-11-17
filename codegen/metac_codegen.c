@@ -1339,14 +1339,14 @@ static void MetaCCodegen_doExpr(metac_bytecode_ctx_t* ctx,
         {
             BCValue cond = gen.GenTemporary(c, BCType_i32);
 
-            MetaCCodegen_doExpr(ctx, exp->E1, &lhs, _Rvalue);
-            MetaCCodegen_doExpr(ctx, exp->E2, &rhs, _Rvalue);
             MetaCCodegen_doExpr(ctx, exp->Econd, &cond, _Cond);
 
             CndJmpBegin condExpJmp = gen.BeginCndJmp(c, &cond, false);
+            MetaCCodegen_doExpr(ctx, exp->E1, &lhs, _Rvalue);
             gen.Set(c, result, &lhs);
             BCAddr toEnd = gen.BeginJmp(c);
             BCLabel falseBranch = gen.GenLabel(c);
+            MetaCCodegen_doExpr(ctx, exp->E2, &rhs, _Rvalue);
             gen.Set(c, result, &rhs);
             BCLabel endLabel = gen.GenLabel(c);
             gen.EndJmp(c, toEnd, endLabel);
