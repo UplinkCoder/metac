@@ -7,3 +7,8 @@ repl/repl
 completion_trie_test
 test.dot
 .repl_history
+arena_test
+node_alloc_test
+arena_array_test
+g*.dot
+completion_trie_bench

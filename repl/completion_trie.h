@@ -11,10 +11,26 @@ typedef struct node_range_t
     bool     IsValid;
 } node_range_t;
 
+/*
+    A node of the trie.
+
+    The children of a node are a singly linked list.  The nodes are
+    stored in an array that grows without ever moving the nodes that are
+    already in it, so the index of a node stays valid for the lifetime
+    of the trie.  Storing the children in a contiguous block instead
+    would not work: growing that block copies the children over and
+    with them their indices change.
+*/
 typedef struct completion_trie_node_t {
     char Prefix4[4];
     uint16_t ChildCount;
-    uint16_t ChildrenBaseIdx;
+    uint16_t Reserved;
+    /// index of the first child
+    uint32_t FirstChild;
+    /// index of the last child, so that appending is cheap
+    uint32_t LastChild;
+    /// index of the next sibling
+    uint32_t NextSibling;
     // below are debug field which should be removed asap
     node_range_t* Range;
 } completion_trie_node_t;
@@ -26,9 +42,9 @@ typedef void (*collect_cb_t) (const char* completionString, uint32_t length, voi
 bool CompletionTrie_NoPreallocatedCIdentifierChars = false;
 
 typedef struct completion_trie_root_t {
-    ARENA_ARRAY(completion_trie_node_t, Nodes)
+    ARENA_CHUNK_ARRAY(completion_trie_node_t, Nodes)
 #if TRACK_RANGES
-    ARENA_ARRAY(node_range_t, NodeRanges)
+    ARENA_CHUNK_ARRAY(node_range_t, NodeRanges)
 #endif
     // How many nodes are currently allocated for the root
     // The root get's trated specially ebcayse it has the most children typically

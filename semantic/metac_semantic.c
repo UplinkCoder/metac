@@ -85,7 +85,7 @@ Lret:
 
 // In case we do a stand alone compile of semantic we need this
 #ifndef _METAC_PARSER_C_
-    static uint32_t _nodeCounter = 64;
+    uint32_t g_metacNodeSerialCounter = 64;
 #endif
 
 #ifndef _emptyPointer
@@ -134,10 +134,10 @@ void MetaCSemantic_Init(metac_sema_state_t* self, metac_parser_t* parser,
 
     FOREACH_SEMA_STATE_ARRAY(self, INIT_ARENA_STATE_ARRAY)
 
-    ARENA_ARRAY_INIT(metac_scope_t*, self->DeclStmtScope, &self->Allocator);
+    ARENA_CHUNK_ARRAY_INIT(metac_scope_t*, self->DeclStmtScope, &self->Allocator);
 
-    ARENA_ARRAY_INIT(metac_sema_decl_t*, self->Globals, &self->Allocator);
-    ARENA_ARRAY_INIT(metac_scope_t, self->Scopes, &self->Allocator);
+    ARENA_CHUNK_ARRAY_INIT(metac_sema_decl_t*, self->Globals, &self->Allocator);
+    ARENA_CHUNK_ARRAY_INIT(metac_scope_t, self->Scopes, &self->Allocator);
 
     self->TemporaryScopeDepth = 0;
 
@@ -179,7 +179,7 @@ void MetaCSemantic_Init(metac_sema_state_t* self, metac_parser_t* parser,
     self->CurrentScope = 0;
     self->CurrentDeclState = 0;
 
-    ARENA_ARRAY_INIT(metac_semantic_on_resolve_fail_t, self->OnResolveFailStack, &self->Allocator);
+    ARENA_CHUNK_ARRAY_INIT(metac_semantic_on_resolve_fail_t, self->OnResolveFailStack, &self->Allocator);
 
     memset(&self->LRU, 0, sizeof(self->LRU));
 
@@ -400,7 +400,7 @@ sema_stmt_casebody_t* MetaCSemantic_doCaseBodySemantic(metac_sema_state_t* self,
             stmtIndex < caseBodyStmtsCount;
             stmtIndex++)
         {
-            result->Stmts[stmtIndex] =
+            ARENA_CHUNK_ARRAY_AT(result->Stmts, stmtIndex) =
                 MetaCSemantic_doStmtSemantic(self, caseBodyStmts[stmtIndex]);
         }
     }
@@ -503,21 +503,25 @@ metac_sema_stmt_t* MetaCSemantic_doStmtSemantic_(metac_sema_state_t* self,
             stmt_eject_t* ejectStmt = cast(stmt_eject_t*) stmt;
             sema_stmt_eject_t* semaEjectStmt = AllocNewSemaStmt(self, stmt_eject, &result);
             const uint32_t exprCount = ejectStmt->EjectExpressionsCount;
-            ARENA_ARRAY_INIT_SZ(metac_sema_expr_t*, semaEjectStmt->EjectExpressions, &self->Allocator, exprCount);
+            ARENA_CHUNK_ARRAY_INIT_SZ(metac_sema_expr_t*, semaEjectStmt->EjectExpressions, &self->Allocator, exprCount);
+            ARENA_CHUNK_ARRAY_RESERVE(semaEjectStmt->EjectExpressions, exprCount);
             hash ^= eject_key;
 
             for(int i = 0; i < exprCount; i++)
             {
-                semaEjectStmt->EjectExpressions[i] = MetaCSemantic_doExprSemantic(self, ejectStmt->EjectExpressions[i], 0);
-                hash = CRC32C_VALUE(hash, semaEjectStmt->EjectExpressions[i]->Hash);
+                ARENA_CHUNK_ARRAY_AT(semaEjectStmt->EjectExpressions, i) =
+                    MetaCSemantic_doExprSemantic(self, ejectStmt->EjectExpressions[i], 0);
+                hash = CRC32C_VALUE(hash, ARENA_CHUNK_ARRAY_AT(semaEjectStmt->EjectExpressions, i)->Hash);
             }
             semaEjectStmt->EjectExpressionsCount = exprCount;
             // copy the tokens .... sigh!
             // TODO maybe we can transfer the array in one go ?
-            ARENA_ARRAY_INIT_SZ(metac_token_t, semaEjectStmt->EjectTokens, &self->Allocator, ejectStmt->EjectTokensCount);
+            ARENA_CHUNK_ARRAY_INIT_SZ(metac_token_t, semaEjectStmt->EjectTokens, &self->Allocator, ejectStmt->EjectTokensCount);
+            ARENA_CHUNK_ARRAY_RESERVE(semaEjectStmt->EjectTokens, ejectStmt->EjectTokensCount);
             for(int i = 0; i < ejectStmt->EjectTokensCount; i++)
             {
-                semaEjectStmt->EjectTokens[i] = ejectStmt->EjectTokens[i];
+                ARENA_CHUNK_ARRAY_AT(semaEjectStmt->EjectTokens, i) =
+                    ejectStmt->EjectTokens[i];
             }
             semaEjectStmt->EjectTokensCount = ejectStmt->EjectTokensCount;
         } break;
@@ -550,7 +554,7 @@ metac_sema_stmt_t* MetaCSemantic_doStmtSemantic_(metac_sema_state_t* self,
                 metac_scope_t* declScope =
                     MetaCScope_PushNewScope(self, self->CurrentScope, owner);
 
-                ARENA_ARRAY_ADD(self->DeclStmtScope, declScope);
+                ARENA_CHUNK_ARRAY_ADD(self->DeclStmtScope, declScope);
 
                 // MetaCSemantic_PushTemporaryScope(self, &declScope);
             }
@@ -649,12 +653,12 @@ metac_sema_stmt_t* MetaCSemantic_doStmtSemantic_(metac_sema_state_t* self,
                 i++)
             {
 
-                semaBlockStmt->Body[i] =
+                ARENA_CHUNK_ARRAY_AT(semaBlockStmt->Body, i) =
                     MetaCSemantic_doStmtSemantic(self, currentStmt);
 
-                if (METAC_NODE(semaBlockStmt->Body[i]) != emptyPointer)
+                if (METAC_NODE(ARENA_CHUNK_ARRAY_AT(semaBlockStmt->Body, i)) != emptyPointer)
                 {
-                    hash = CRC32C_VALUE(hash, semaBlockStmt->Body[i]->Hash);
+                    hash = CRC32C_VALUE(hash, ARENA_CHUNK_ARRAY_AT(semaBlockStmt->Body, i)->Hash);
                 }
 
                 currentStmt = currentStmt->Next;
@@ -1083,7 +1087,7 @@ sema_decl_function_t* MetaCSemantic_doFunctionSemantic(metac_sema_state_t* self,
     {
         uint32_t hash = crc32c_nozero(~0, &returnType, sizeof(returnType));
         STACK_ARENA_ARRAY(metac_type_index_t, fParameterTypes, 16, &self->TempAlloc);
-        ARENA_ARRAY_ENSURE_SIZE(fParameterTypes, func->ParameterCount);
+        STACK_ARENA_ARRAY_ENSURE_SIZE(fParameterTypes, func->ParameterCount);
         for(uint32_t i = 0; i < func->ParameterCount; i++)
         {
             ARENA_ARRAY_ADD(fParameterTypes, f->Parameters[i].TypeIndex);
@@ -1325,7 +1329,7 @@ metac_sema_decl_t* MetaCSemantic_declSemantic(metac_sema_state_t* self,
             {
                 var->Storage.v = STORAGE_V(storage_global, self->GlobalsCount);
                 // TODO maybe we have to mark the global as having been inserted.
-                ARENA_ARRAY_ADD(self->Globals, cast(metac_sema_decl_t*)var);
+                ARENA_CHUNK_ARRAY_ADD(self->Globals, cast(metac_sema_decl_t*)var);
             }
             MetaCSemantic_RegisterInScope(self, var->VarIdentifier, METAC_NODE(var));
 /*
@@ -1456,7 +1460,7 @@ metac_sema_decl_t* MetaCSemantic_doDeclSemantic_(metac_sema_state_t* self,
 void MetaCSemantic_PushOnResolveFail(metac_sema_state_t* self,
                                      metac_semantic_on_resolve_fail_t onFail)
 {
-    ARENA_ARRAY_ADD(self->OnResolveFailStack, onFail);
+    ARENA_CHUNK_ARRAY_ADD(self->OnResolveFailStack, onFail);
 }
 
 // Resets the behavior for the case of a name-resolve failing

@@ -732,7 +732,7 @@ void MetaCSemantic_ComputeEnumValues(metac_sema_state_t* self,
     hash = CRC32C_VALUE(hash, enum_->Identifier.v);
     assert(SCOPE_OWNER_KIND(self->CurrentScope->Owner) == scope_owner_enum);
 #if !DEBUG_MEMORY
-    ARENA_ARRAY_ENSURE_SIZE(memberPlaceholders, memberCount);
+    STACK_ARENA_ARRAY_ENSURE_SIZE(memberPlaceholders, memberCount);
 #endif
     MetaCPrinter_Init(&debugPrinter,
         self->ParserIdentifierTable, self->ParserStringTable, 0);
@@ -1010,7 +1010,7 @@ metac_type_index_t TypeEnumSemantic(metac_sema_state_t* self,
 
     MetaCSemantic_PushTemporaryScope(self, &enumScope);
 
-    ARENA_ARRAY_ENSURE_SIZE(semaMembers, tmpSemaEnum.MemberCount);
+    STACK_ARENA_ARRAY_ENSURE_SIZE(semaMembers, tmpSemaEnum.MemberCount);
 
     semaMembersCount = tmpSemaEnum.MemberCount;
     tmpSemaEnum.Members = semaMembers;
@@ -1185,7 +1185,7 @@ metac_type_index_t MetaCSemantic_TypeSemantic(metac_sema_state_t* self,
             assert(0);
         }
 
-        ARENA_ARRAY_ENSURE_SIZE(tmpFields, agg->FieldCount);
+        STACK_ARENA_ARRAY_ENSURE_SIZE(tmpFields, agg->FieldCount);
 
         tmpSemaAgg->Header.Kind = agg->Kind;
         tmpSemaAgg->Identifier =
@@ -1313,7 +1313,7 @@ metac_type_index_t MetaCSemantic_TypeSemantic(metac_sema_state_t* self,
 
         const uint32_t nParams = functionType->ParameterCount;
         STACK_ARENA_ARRAY(metac_type_index_t, parameterTypes, 64, &self->TempAlloc);
-        ARENA_ARRAY_ENSURE_SIZE(parameterTypes, nParams);
+        STACK_ARENA_ARRAY_ENSURE_SIZE(parameterTypes, nParams);
 
         for(uint32_t i = 0;
             i < nParams;
@@ -1361,7 +1361,7 @@ metac_type_index_t MetaCSemantic_TypeSemantic(metac_sema_state_t* self,
         metac_printer_t debugPrinter = {0};
         MetaCPrinter_Init(&debugPrinter, self->ParserIdentifierTable, self->ParserStringTable, &self->TempAlloc);
 #endif
-        ARENA_ARRAY_ENSURE_SIZE(semaArguments, tInst->ArgumentCount);
+        STACK_ARENA_ARRAY_ENSURE_SIZE(semaArguments, tInst->ArgumentCount);
         // before calling semantic we need to mount the template instance scope.
         metac_scope_t tmpScope = {scope_flag_temporary};
         MetaCSemantic_PushTemporaryScope(self, &tmpScope);
@@ -1432,7 +1432,7 @@ LtryAgian: {}
                 uint32_t stackIdx =
                     (self->OnResolveFailStackCount ? self->OnResolveFailStackCount - 1 : 0);
 
-                if (self->OnResolveFailStack[stackIdx] == OnResolveFail_ReturnNull)
+                if (ARENA_CHUNK_ARRAY_AT(self->OnResolveFailStack, stackIdx) == OnResolveFail_ReturnNull)
                 {
                     // MetaCSemantic_ResolveFail(self, type->TypeIdentifier);
                     metac_type_index_t unresolvedIdx = {0};

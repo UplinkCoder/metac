@@ -151,7 +151,7 @@ EvaluateExpr(metac_sema_state_t* sema,
 
         for(uint32_t i = 0; i < sema->GlobalsCount; i++)
         {
-            MetaCCodegen_doGlobal(&ctx, sema->Globals[i], i);
+            MetaCCodegen_doGlobal(&ctx, ARENA_CHUNK_ARRAY_PTR(sema->Globals, i), i);
         }
 
         MetaCCodegen_Begin(&ctx, sema->ParserIdentifierTable, sema->ParserStringTable, sema);
@@ -171,7 +171,7 @@ EvaluateExpr(metac_sema_state_t* sema,
 
     for(uint32_t i = 0; i < sema->GlobalsCount; i++)
     {
-        MetaCCodegen_doGlobal(&ctx, sema->Globals[i], i);
+        MetaCCodegen_doGlobal(&ctx, ARENA_CHUNK_ARRAY_PTR(sema->Globals, i), i);
     }
 
     MetaCCodegen_Begin(&ctx, sema->ParserIdentifierTable, sema->ParserStringTable, sema);
@@ -210,7 +210,7 @@ EvaluateExpr(metac_sema_state_t* sema,
 
         STACK_ARENA_ARRAY(metac_sema_expr_t*, tupleExps, 32, &sema->TempAlloc)
 
-        ARENA_ARRAY_ENSURE_SIZE(tupleExps, count);
+        STACK_ARENA_ARRAY_ENSURE_SIZE(tupleExps, count);
 
         result.Kind = expr_tuple;
         result.TypeIndex = e->TypeIndex;
@@ -1102,7 +1102,7 @@ LswitchIdKey:
             const uint32_t tupleExprCount = expr->TupleExprCount;
             STACK_ARENA_ARRAY(metac_type_index_t, typeIndicies, 32, &self->TempAlloc)
             STACK_ARENA_ARRAY(metac_sema_expr_t, tupleElements, 32, &self->TempAlloc)
-            ARENA_ARRAY_ENSURE_SIZE(tupleElements, tupleExprCount);
+            STACK_ARENA_ARRAY_ENSURE_SIZE(tupleElements, tupleExprCount);
 
             // result->TupleExprCount = tupleExprCount;
             // result->TupleExprs = AllocNewSemaExpr(self, expr);

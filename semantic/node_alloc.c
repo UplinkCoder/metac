@@ -17,13 +17,13 @@ uint32_t UnionIndex(metac_sema_state_t* self, metac_type_aggregate_t* union_)
 
 uint32_t FunctionIndex(metac_sema_state_t* self, sema_decl_function_t* func)
 {
-    uint32_t result = (func - self->Functions);
+    uint32_t result = ArenaArray_IndexOf(&self->Functions, func);
     return result;
 }
 
 uint32_t StmtIndex_(metac_sema_state_t* self, metac_sema_stmt_t* stmt)
 {
-    uint32_t result = (stmt - self->Stmts);
+    uint32_t result = ArenaArray_IndexOf(&self->Stmts, stmt);
     return result;
 }
 
@@ -78,13 +78,15 @@ metac_type_aggregate_t* UnionPtr(metac_sema_state_t* self, uint32_t index)
 
 sema_decl_function_t* FunctionPtr(metac_sema_state_t* self, uint32_t index)
 {
-    sema_decl_function_t* result = (self->Functions + index);
+    sema_decl_function_t* result =
+        ARENA_CHUNK_ARRAY_PTR(self->Functions, index);
     return result;
 }
 
 metac_sema_stmt_t* StmtPtr(metac_sema_state_t* self, uint32_t index)
 {
-    metac_sema_stmt_t* result = (self->Stmts + index);
+    metac_sema_stmt_t* result =
+        ARENA_CHUNK_ARRAY_PTR(self->Stmts, index);
     return result;
 }
 
@@ -156,20 +158,18 @@ metac_sema_expr_t* AllocNewSemaExpr(metac_sema_state_t* self, metac_expr_t* expr
         METAC_COPY_HEADER(expr, &exp);
 
         exp.TypeIndex.v = 0;
-        exp.Serial = INC(_nodeCounter);
-        ARENA_ARRAY_ADD(self->Exprs, exp);
-        result = self->Exprs + self->ExprsCount - 1;
+        exp.Serial = INC(g_metacNodeSerialCounter);
+        ARENA_CHUNK_ARRAY_ADD(self->Exprs, exp);
+        result = self->Exprs_ElementPtr;
     }
 
 
     if (expr->Kind == expr_tuple)
     {
         const uint32_t tupleExpCount = expr->TupleExprCount;
-        ARENA_ARRAY_ENSURE_SIZE(self->Exprs, tupleExpCount);
+        ARENA_CHUNK_ARRAY_RESERVE(self->Exprs, tupleExpCount);
 
-        uint32_t allocPos = POST_ADD(self->ExprsCount, tupleExpCount);
-        metac_sema_expr_t* elements =
-            self->Exprs + allocPos;
+        metac_sema_expr_t* elements = self->Exprs_ElementPtr;
         metac_sema_expr_t** elemArray =
             Allocator_Calloc(&self->Allocator, metac_sema_expr_t*, tupleExpCount);
         expr_tuple_t* expList = expr->TupleExprList;
@@ -181,7 +181,7 @@ metac_sema_expr_t* AllocNewSemaExpr(metac_sema_state_t* self, metac_expr_t* expr
         {
             elemExpr = expList->Expr;
             metac_sema_expr_t* semaElem = elements + i;
-            semaElem->Serial = INC(_nodeCounter);
+            semaElem->Serial = INC(g_metacNodeSerialCounter);
             METAC_COPY_HEADER(elemExpr, semaElem);
 
             memcpy(
@@ -220,12 +220,12 @@ metac_scope_t* AllocNewScope(metac_sema_state_t* self,
     metac_scope_t* result = 0;
 
     {
-        scope_.Serial = INC(_nodeCounter);
+        scope_.Serial = INC(g_metacNodeSerialCounter);
         scope_.Owner = owner;
         scope_.Parent = parent;
 
-        ARENA_ARRAY_ADD(self->Scopes, scope_);
-        result = self->Scopes + self->ScopesCount - 1;
+        ARENA_CHUNK_ARRAY_ADD(self->Scopes, scope_);
+        result = self->Scopes_ElementPtr;
     }
 
     return result;
@@ -239,10 +239,10 @@ sema_decl_function_t* AllocNewSemaFunction(metac_sema_state_t* self,
     sema_decl_function_t func = {(metac_decl_kind_t)0};
 
     {
-        func.Serial = INC(_nodeCounter);
+        func.Serial = INC(g_metacNodeSerialCounter);
         func.TypeIndex.v = 0;
-        ARENA_ARRAY_ADD(self->Functions, func);
-        result = self->Functions + self->FunctionsCount - 1;
+        ARENA_CHUNK_ARRAY_ADD(self->Functions, func);
+        result = self->Functions_ElementPtr;
         (*(metac_node_header_t*) result) = (*(metac_node_header_t*) declFunc);
     }
 
@@ -256,9 +256,10 @@ sema_decl_variable_t* AllocNewSemaVariable(metac_sema_state_t* self,
     sema_decl_variable_t* result = 0;
     sema_decl_variable_t variable = {decl_variable};
 
-    variable.Serial = INC(_nodeCounter);
+    variable.Serial = INC(g_metacNodeSerialCounter);
 
-    result = self->Variables + INC(self->VariablesCount);
+    ARENA_CHUNK_ARRAY_RESERVE(self->Variables, 1);
+    result = self->Variables_ElementPtr;
     (*result) = variable;
     (*result_ptr) = (metac_sema_decl_t*)result;
 
@@ -271,17 +272,16 @@ sema_decl_variable_t* AllocFunctionParameters(metac_sema_state_t* self,
 {
     sema_decl_variable_t* result = 0;
 
-    ARENA_ARRAY_ENSURE_SIZE(self->Variables,
-                            self->VariablesCount + parameterCount);
+    ARENA_CHUNK_ARRAY_RESERVE(self->Variables, parameterCount);
 
     {
-        result = self->Variables + POST_ADD(self->VariablesCount, parameterCount);
+        result = self->Variables_ElementPtr;
         for(uint32_t i = 0;
             i < parameterCount;
             i++)
         {
             (result + i)->Kind = decl_parameter;
-            (result + i)->Serial = INC(_nodeCounter);
+            (result + i)->Serial = INC(g_metacNodeSerialCounter);
             (result + i)->Storage.v = STORAGE_V(storage_parameter, i);
         }
 
@@ -326,7 +326,7 @@ metac_type_aggregate_field_t* AllocAggregateFields(metac_sema_state_t* self,
             i < fieldCount;
             i++)
         {
-            (result + i)->Header.Serial = INC(_nodeCounter);
+            (result + i)->Header.Serial = INC(g_metacNodeSerialCounter);
             (result + i)->AggregateIndex = aggregateIndex;
         }
 
@@ -348,11 +348,11 @@ metac_sema_stmt_t* AllocNewSemaStmt_(metac_sema_state_t* self,
     {
         // result->Parent = 0;
         stmt.Kind = kind;
-        stmt.Serial = INC(_nodeCounter);
+        stmt.Serial = INC(g_metacNodeSerialCounter);
         // result->TypeIndex.v = 0;
-        ARENA_ARRAY_ADD(self->Stmts, stmt);
+        ARENA_CHUNK_ARRAY_ADD(self->Stmts, stmt);
     }
-    result = self->Stmts + self->StmtsCount - 1;
+    result = self->Stmts_ElementPtr;
 
     *result_ptr = result;
 
@@ -372,11 +372,12 @@ sema_stmt_block_t* AllocNewSemaBlockStmt(metac_sema_state_t* self,
     {
         stmt.Kind = stmt_block;
         stmt.StmtCount = stmtCount;
-        stmt.Serial = INC(_nodeCounter);
+        stmt.Serial = INC(g_metacNodeSerialCounter);
 
-        ARENA_ARRAY_ADD(self->BlockStmts, stmt);
-        result = self->BlockStmts + self->BlockStmtsCount - 1;
-        ARENA_ARRAY_INIT_SZ(metac_sema_stmt_t*, result->Body, &self->Allocator, stmtCount);
+        ARENA_CHUNK_ARRAY_ADD(self->BlockStmts, stmt);
+        result = self->BlockStmts_ElementPtr;
+        ARENA_CHUNK_ARRAY_INIT_SZ(metac_sema_stmt_t*, result->Body, &self->Allocator, stmtCount);
+        ARENA_CHUNK_ARRAY_RESERVE(result->Body, stmtCount);
     }
     (*result_ptr) = result;
 
@@ -394,12 +395,14 @@ sema_stmt_casebody_t* AllocNewSemaCasebodyStmt(metac_sema_state_t* self,
         result = cast(sema_stmt_casebody_t*)
             AllocNewSemaStmt(self, stmt_casebody, &result);
 
-        ARENA_ARRAY_ADD(self->Stmts, *(metac_sema_stmt_t*)&stmt);
-        result = (sema_stmt_casebody_t*) self->BlockStmts + self->BlockStmtsCount - 1;
-        ARENA_ARRAY_INIT_SZ(metac_sema_stmt_t*, result->Stmts, &self->Allocator, stmtCount);
+        ARENA_CHUNK_ARRAY_ADD(self->Stmts, *(metac_sema_stmt_t*)&stmt);
+        result = (sema_stmt_casebody_t*)
+            ARENA_CHUNK_ARRAY_PTR(self->BlockStmts, self->BlockStmtsCount - 1);
+        ARENA_CHUNK_ARRAY_INIT_SZ(metac_sema_stmt_t*, result->Stmts, &self->Allocator, stmtCount);
+        ARENA_CHUNK_ARRAY_RESERVE(result->Stmts, stmtCount);
 
         result->StmtCount = stmtCount;
-        result->Serial = INC(_nodeCounter);
+        result->Serial = INC(g_metacNodeSerialCounter);
     }
     (*result_ptr) = result;
 
@@ -411,6 +414,6 @@ sema_stmt_casebody_t* AllocNewSemaCasebodyStmt(metac_sema_state_t* self,
 uint32_t BlockStmtIndex(metac_sema_state_t* self,
                              sema_stmt_block_t* blockstmt)
 {
-    return blockstmt - self->BlockStmts;
+    return ArenaArray_IndexOf(&self->BlockStmts, blockstmt);
 }
 

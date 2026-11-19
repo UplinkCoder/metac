@@ -13,6 +13,9 @@ if [ -z $ACCEL ]; then
     ACCEL=ACCEL_TABLE
 fi
 
+$CC $CFLAGS completion_trie_bench.c -g3 -O2 -o completion_trie_bench \
+    -lm -lpthread &&
+
 $CC $CFLAGS linenoise_repl.c \
     -I.. -DACCEL=$ACCEL \
     -mtune=core2 -march=core2 -mstackrealign \

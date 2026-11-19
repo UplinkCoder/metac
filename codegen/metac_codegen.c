@@ -716,7 +716,7 @@ metac_bytecode_function_t MetaCCodegen_GenerateFunction(metac_bytecode_ctx_t* ct
          i < function->FunctionBody->StmtCount;
          i++)
     {
-        MetaCCodegen_doStmt(ctx, function->FunctionBody->Body[i]);
+        MetaCCodegen_doStmt(ctx, ARENA_CHUNK_ARRAY_AT(function->FunctionBody->Body, i));
     }
 
     // gen.Comment(c, "Function body end");
@@ -1445,10 +1445,10 @@ static void MetaCCodegen_doExpr(metac_bytecode_ctx_t* ctx,
 /*
                 // TODO don't know if this does mean an ARENA_ARRAY_ADD
                 // would lead to append behind the preallocated space
-                ARENA_ARRAY_ENSURE_SIZE(types, exp->TupleExprCount);
-                ARENA_ARRAY_ENSURE_SIZE(offsets, exp->TupleExprCount);
-                ARENA_ARRAY_ENSURE_SIZE(bcTypes, exp->TupleExprCount);
-                ARENA_ARRAY_ENSURE_SIZE(bcValues, exp->TupleExprCount);
+                STACK_ARENA_ARRAY_ENSURE_SIZE(types, exp->TupleExprCount);
+                STACK_ARENA_ARRAY_ENSURE_SIZE(offsets, exp->TupleExprCount);
+                STACK_ARENA_ARRAY_ENSURE_SIZE(bcTypes, exp->TupleExprCount);
+                STACK_ARENA_ARRAY_ENSURE_SIZE(bcValues, exp->TupleExprCount);
 */
 
                 for(uint32_t i = 0; i < exp->TupleExprCount; i++)
@@ -1787,7 +1787,7 @@ static void MetaCCodegen_doBlockStmt(metac_bytecode_ctx_t* ctx,
     assert(stmt->Kind == stmt_block);
     for(uint32_t i = 0; i < stmt->StmtCount; i++)
     {
-        MetaCCodegen_doStmt(ctx, stmt->Body[i]);
+        MetaCCodegen_doStmt(ctx, ARENA_CHUNK_ARRAY_AT(stmt->Body, i));
     }
 }
 
@@ -1857,7 +1857,7 @@ static inline void MetaCCodegen_doCaseStmt(metac_bytecode_ctx_t* ctx,
                 i < stmtCount;
                 i++)
             {
-                MetaCCodegen_doStmt(ctx, caseStmt->CaseBody->Stmts[i]);
+                MetaCCodegen_doStmt(ctx, ARENA_CHUNK_ARRAY_AT(caseStmt->CaseBody->Stmts, i));
             }
         }
         else

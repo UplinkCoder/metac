@@ -768,7 +768,7 @@ LswitchMode:
                 {
                     for(uint32_t i = 0; i < repl->SemanticState.GlobalsCount; i++)
                     {
-                        metac_sema_decl_t* global = repl->SemanticState.Globals[i];
+                        metac_sema_decl_t* global = ARENA_CHUNK_ARRAY_PTR(repl->SemanticState.Globals, i);
                         if (global->Kind == decl_variable)
                         {
                             sema_decl_variable_t var = global->sema_decl_variable;
@@ -1402,11 +1402,10 @@ completion_list_t ReplComplete (repl_state_t* repl, const char *input, int32_t i
 
     {
         uint32_t originalLastWordLength = lastWordLength;
-        completion_trie_node_t* PrefixNode =
-            CompletionTrie_FindLongestMatchingPrefix(&repl->CompletionTrie, lastWord, &lastWordLength);
+        uint32_t nodeIndex =
+            CompletionTrie_FindLongestMatchingPrefix(&repl->CompletionTrie,
+                                                     lastWord, &lastWordLength);
         uint32_t matchedPrefixLength = originalLastWordLength - lastWordLength;
-
-        uint32_t nodeIndex = PrefixNode - repl->CompletionTrie.Nodes;
 
         completion_state_t completionState;
 

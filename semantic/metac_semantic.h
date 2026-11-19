@@ -26,15 +26,14 @@
 
 #define DECLARE_ARENA_STATE_ARRAY(UNUSED, TYPE_NAME, VAR) \
     metac_alloc_t VAR##Allocator; \
-    ARENA_ARRAY(TYPE_NAME, VAR)
+    ARENA_CHUNK_ARRAY(TYPE_NAME, VAR)
 
 #define INIT_ARENA_STATE_ARRAY(SELF, TYPE_NAME, VAR) \
-    SELF->VAR = (TYPE_NAME*) 0; \
     Allocator_Init(&SELF->VAR##Allocator, &(SELF->Allocator)); \
-    ARENA_ARRAY_INIT(TYPE_NAME, SELF->VAR, &(SELF->VAR##Allocator));
+    ARENA_CHUNK_ARRAY_INIT(TYPE_NAME, SELF->VAR, &(SELF->VAR##Allocator));
 
 metac_noinline void _newMemRealloc(void** memP, uint32_t* capacityP, const uint32_t elementSize);
-//static uint32_t _nodeCounter = 1;
+extern uint32_t g_metacNodeSerialCounter;
 
 typedef struct metac_semantic_waiter_t
 {
@@ -150,13 +149,13 @@ typedef struct metac_sema_state_t
     AT(transient) uint32_t SwitchStackSize;
     AT(transient) uint32_t SwitchStackCapacity;
 
-    ARENA_ARRAY(metac_scope_t*, DeclStmtScope)
+    ARENA_CHUNK_ARRAY(metac_scope_t*, DeclStmtScope)
 
     metac_type_aggregate_t* CompilerInterface;
     sema_decl_variable_t CompilerVariable;
 
-    ARENA_ARRAY(metac_sema_decl_t*, Globals)
-    ARENA_ARRAY(metac_semantic_on_resolve_fail_t, OnResolveFailStack)
+    ARENA_CHUNK_ARRAY(metac_sema_decl_t*, Globals)
+    ARENA_CHUNK_ARRAY(metac_semantic_on_resolve_fail_t, OnResolveFailStack)
 } metac_sema_state_t;
 
 bool IsUnresolved(metac_node_t node);

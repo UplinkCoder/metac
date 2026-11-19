@@ -180,7 +180,7 @@ typedef struct sema_stmt_block_t
 {
     SEMA_STMT_HEADER
 
-    ARENA_ARRAY(struct metac_sema_stmt_t*, Body)
+    ARENA_CHUNK_ARRAY(struct metac_sema_stmt_t*, Body)
     uint32_t StmtCount;
 } sema_stmt_block_t;
 
@@ -242,7 +242,7 @@ typedef struct sema_stmt_casebody_t
 {
     SEMA_STMT_HEADER
 
-    ARENA_ARRAY(struct metac_sema_stmt_t*, Stmts)
+    ARENA_CHUNK_ARRAY(struct metac_sema_stmt_t*, Stmts)
 
     uint32_t StmtCount;
 } sema_stmt_casebody_t;
@@ -320,8 +320,8 @@ typedef struct sema_stmt_eject_t
 {
     SEMA_STMT_HEADER
 
-    ARENA_ARRAY(metac_token_t, EjectTokens);
-    ARENA_ARRAY(metac_sema_expr_t*, EjectExpressions);
+    ARENA_CHUNK_ARRAY(metac_token_t, EjectTokens);
+    ARENA_CHUNK_ARRAY(metac_sema_expr_t*, EjectExpressions);
 } sema_stmt_eject_t;
 
 typedef struct sema_stmt_run_t

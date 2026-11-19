@@ -73,36 +73,114 @@ metac_scope_table_slot_t* MetaCScopeTable_Lookup(metac_scope_table_t* self,
 #define existsPointer ((metac_scope_table_slot_t*) 2)
 #define fullPointer ((metac_scope_table_slot_t*) 3)
 
+/*
+    Grow the scope table and move all the entries into it.
+
+    The table is an open addressing hash table with linear probing, so
+    growing it means rehashing every entry into a table that is twice as
+    big.  Without this the table simply fills up and every further
+    identifier is rejected with "table_full".
+*/
+static void MetaCScopeTable_Grow(metac_scope_table_t* self)
+{
+    const uint32_t newSlotCountLog2 = self->SlotCount_Log2 + 1;
+    const uint32_t newMaxSlots = (1 << newSlotCountLog2);
+    const uint32_t newSlotIndexMask = newMaxSlots - 1;
+    const uint32_t oldMaxSlots = (1 << self->SlotCount_Log2);
+    metac_scope_table_slot_t* newSlots =
+        cast(metac_scope_table_slot_t*)
+            Allocator_Calloc(self->Alloc, metac_scope_table_slot_t, newMaxSlots);
+
+    if (!newSlots)
+    {
+        return;
+    }
+
+    for (uint32_t i = 0; i < oldMaxSlots; i++)
+    {
+        metac_scope_table_slot_t* old = &self->Slots[i];
+
+        if (!old->Hash)
+        {
+            continue;
+        }
+
+        {
+            const uint32_t initialSlotIndex = (old->Hash & newSlotIndexMask);
+
+            for(uint32_t slotIndex = initialSlotIndex;
+                (++slotIndex & newSlotIndexMask) != initialSlotIndex;
+                //TODO change computation of next slot index
+            )
+            {
+                metac_scope_table_slot_t* slot =
+                    &newSlots[(slotIndex - 1) & newSlotIndexMask];
+
+                if (slot->Hash == 0)
+                {
+                    *slot = *old;
+                    break;
+                }
+            }
+        }
+    }
+
+    self->Slots = newSlots;
+    self->SlotCount_Log2 = newSlotCountLog2;
+
+    self->SlotsUsed = 0;
+    for (uint32_t i = 0; i < newMaxSlots; i++)
+    {
+        if (newSlots[i].Hash)
+        {
+            self->SlotsUsed++;
+        }
+    }
+}
+
 metac_scope_table_slot_t* MetaCScopeTable_Insert(metac_scope_table_t* self,
                                                  metac_identifier_ptr_t idPtr)
 {
     uint32_t hash = crc32c_nozero(~0, &idPtr.v, sizeof(idPtr.v));
-    const uint32_t slotIndexMask = ((1 << self->SlotCount_Log2) - 1);
-    const uint32_t initialSlotIndex = (hash & slotIndexMask);
 
-
-    for(
-        uint32_t slotIndex = initialSlotIndex;
-        (++slotIndex & slotIndexMask) != initialSlotIndex;
-        //TODO change computation of next slot index
-    )
+    /*
+        If the table is full it is grown and the insertion is retried.
+        The second attempt can only fail if the allocation of the bigger
+        table failed.
+    */
+    for (uint32_t attempt = 0; attempt < 2; attempt++)
     {
-        metac_scope_table_slot_t* slot =
-            &self->Slots[(slotIndex - 1) & slotIndexMask];
-        if (slot->Hash == 0)
-        {
-LdoOverride:
-            self->SlotsUsed++;
-            slot->Hash = hash;
-            slot->Ptr = idPtr;
+        const uint32_t slotIndexMask = ((1 << self->SlotCount_Log2) - 1);
+        const uint32_t initialSlotIndex = (hash & slotIndexMask);
 
-            return slot;
-        }
-        else if (slot->Hash == hash && slot->Ptr.v == idPtr.v)
+        for(
+            uint32_t slotIndex = initialSlotIndex;
+            (++slotIndex & slotIndexMask) != initialSlotIndex;
+            //TODO change computation of next slot index
+        )
         {
-            if (self->AllowOverride)
-                goto LdoOverride;
-            return existsPointer;
+            metac_scope_table_slot_t* slot =
+                &self->Slots[(slotIndex - 1) & slotIndexMask];
+            if (slot->Hash == 0)
+            {
+LdoOverride:
+                self->SlotsUsed++;
+                slot->Hash = hash;
+                slot->Ptr = idPtr;
+
+                return slot;
+            }
+            else if (slot->Hash == hash && slot->Ptr.v == idPtr.v)
+            {
+                if (self->AllowOverride)
+                    goto LdoOverride;
+                return existsPointer;
+            }
+        }
+
+        if (attempt == 0)
+        {
+            MetaCScopeTable_Grow(self);
         }
     }
 

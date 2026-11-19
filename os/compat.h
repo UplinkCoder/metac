@@ -15,6 +15,16 @@
 
 #define cast(T) (T)
 
+/*
+    The type of an expression.  Used to recover the element type of an
+    arena array at a point of use.
+*/
+#if defined(__cplusplus)
+#  define METAC_TYPEOF(X) decltype(+X)
+#else
+#  define METAC_TYPEOF(X) __typeof__(X)
+#endif
+
 #ifndef ARRAY_SIZE
 #  define ARRAY_SIZE(A) \
      ((unsigned int)(sizeof((A)) / sizeof((A)[0])))

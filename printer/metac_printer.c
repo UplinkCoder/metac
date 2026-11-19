@@ -2260,7 +2260,7 @@ static inline void PrintSemaStmt(metac_printer_t* self, metac_sema_state_t* sema
                 i < stmtCount;
                 i++)
             {
-                PrintSemaStmt(self, sema, stmtCasebody->Stmts[i]);
+                PrintSemaStmt(self, sema, ARENA_CHUNK_ARRAY_AT(stmtCasebody->Stmts, i));
 
                 if (i < (stmtCount - 1))
                 {
@@ -2305,7 +2305,7 @@ static inline void PrintSemaStmt(metac_printer_t* self, metac_sema_state_t* sema
                 i < stmtCount;
                 i++)
             {
-                PrintSemaStmt(self, sema, blockStmt->Body[i]);
+                PrintSemaStmt(self, sema, ARENA_CHUNK_ARRAY_AT(blockStmt->Body, i));
                 if(i < (stmtCount - 1))
                 {
                     PrintNewline(self);
@@ -2476,7 +2476,7 @@ static inline void PrintSemaStmt(metac_printer_t* self, metac_sema_state_t* sema
                         i < stmtCount;
                         i++)
                     {
-                        metac_sema_stmt_t* s = caseBody->Stmts[i];
+                        metac_sema_stmt_t* s = ARENA_CHUNK_ARRAY_PTR(caseBody->Stmts, i);
                         PrintSemaStmt(self, sema, s);
                         if (i < (stmtCount - 1))
                         {
@@ -2558,11 +2558,11 @@ static inline void PrintSemaStmt(metac_printer_t* self, metac_sema_state_t* sema
             PrintIndent(self);
             for (int i = 0; i < stmt_eject->EjectTokensCount; i++)
             {
-                metac_token_t tok = stmt_eject->EjectTokens[i];
+                metac_token_t tok = ARENA_CHUNK_ARRAY_AT(stmt_eject->EjectTokens, i);
                 if (tok.TokenType == tok_eject_parameter)
                 {
                     PrintString(self, "$(", sizeof("$(") - 1);
-                    PrintSemaExpr(self, sema, stmt_eject->EjectExpressions[tok.EjectParameterIndex]);
+                    PrintSemaExpr(self, sema, ARENA_CHUNK_ARRAY_AT(stmt_eject->EjectExpressions, tok.EjectParameterIndex));
                     PrintChar(self, ')');
                 }
                 else

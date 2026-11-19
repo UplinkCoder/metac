@@ -4,5 +4,5 @@ RETVAL=0
 set -euo pipefail
 
 ./gen_code.sh &&
-./run_tests.sh &&
-./build_repl.sh
+./build_repl.sh &&
+./run_tests.sh
