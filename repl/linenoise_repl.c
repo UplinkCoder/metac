@@ -15,25 +15,63 @@
 typedef struct ui_state_t
 {
     repl_mode_t parseMode;
+    char MultilineBuffer[8192];
+    uint32_t MultilineLength;
+    bool InMultiline;
 } ui_state_t;
 
-const char* Linenoise_GetInputLine(ui_state_t* state, repl_state_t* repl, uint32_t* lengthP)
+static bool DelimitersBalanced(const char* s, uint32_t n)
 {
-    const char* line = "";
-    uint32_t length = 0;
-
-    ALIGN_STACK();
-    line = linenoise(repl->Prompt);
-    RESTORE_STACK();
-
-    if (line && *line)
+    int b = 0, p = 0, k = 0, q = 0, block = 0, line = 0;
+    for (uint32_t i = 0; i < n; i++)
     {
-        length = strlen(line);
-        linenoiseHistoryAdd(line);
+        char c = s[i], next = i + 1 < n ? s[i + 1] : 0;
+        if (line) { if (c == '\n') line = 0; continue; }
+        if (block) { if (c == '*' && next == '/') { block = 0; i++; } continue; }
+        if (q) { if (c == '\\') i++; else if (c == q) q = 0; continue; }
+        if (c == '/' && next == '/') { line = 1; i++; continue; }
+        if (c == '/' && next == '*') { block = 1; i++; continue; }
+        if (c == '"' || c == '\'') { q = c; continue; }
+        if (c == '{') b++; else if (c == '}') b--;
+        else if (c == '[') k++; else if (c == ']') k--;
+        else if (c == '(') p++; else if (c == ')') p--;
     }
+    return b <= 0 && k <= 0 && p <= 0;
+}
 
-    (*lengthP) = length;
-    return line;
+const char* Linenoise_GetInputLine(ui_state_t* st, repl_state_t* repl, uint32_t* lengthP)
+{
+    for (;;)
+    {
+        const char* prompt = st->InMultiline ? "..." : repl->Prompt;
+        const char* line;
+        ALIGN_STACK();
+        line = linenoise(prompt);
+        RESTORE_STACK();
+
+        if (!line) { st->InMultiline = false; st->MultilineLength = 0; *lengthP = 0; return NULL; }
+
+        uint32_t len = strlen(line);
+        if (!st->InMultiline) st->MultilineLength = 0;
+        if (st->MultilineLength + len + 2 <= sizeof(st->MultilineBuffer))
+        {
+            if (st->MultilineLength) st->MultilineBuffer[st->MultilineLength++] = '\n';
+            memcpy(st->MultilineBuffer + st->MultilineLength, line, len);
+            st->MultilineLength += len;
+            st->MultilineBuffer[st->MultilineLength] = 0;
+        }
+
+        if (len) linenoiseHistoryAdd(line);
+        linenoiseFree((void*)line);
+
+        if (DelimitersBalanced(st->MultilineBuffer, st->MultilineLength))
+        {
+            st->InMultiline = false;
+            *lengthP = st->MultilineLength;
+            return st->MultilineBuffer;
+        }
+        st->InMultiline = true;
+    }
 }
 
 #include <stdarg.h>

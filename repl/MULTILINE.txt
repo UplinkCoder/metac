@@ -1,0 +1,121 @@
+MULTILINE INPUT IN THE LINENOISE REPL
+=====================================
+
+WHAT IT DOES
+------------
+
+The linenoise REPL now accepts multiline input. If you press Enter and the
+text you have typed contains an unbalanced '{', '[' or '(', the REPL does
+not parse it yet. Instead it changes the prompt to "..." and keeps reading
+more lines. Once all delimiters are balanced, the accumulated text is
+handed to the parser as a single input.
+
+Example session:
+
+    EE>> :d
+    Decl> struct Point {
+    ...  int x;
+    ...  int y;
+    ... };
+    decl = struct Point {
+        int x;
+        int y;
+    } ;
+
+Without this feature, each of those lines would have been parsed on its
+own and would have produced parse errors.
+
+
+HOW TO USE IT
+-------------
+
+Just type as you normally would. Nothing changes for single-line input.
+When a line leaves a delimiter open, the prompt becomes "..." and you can
+keep typing. Close the delimiter and press Enter to submit.
+
+If you want to abandon a half-typed multiline construct, press Ctrl-D.
+That cancels the accumulated text and returns you to the normal prompt.
+
+
+HOW IT WORKS
+------------
+
+All of the logic lives in repl/linenoise_repl.c, in the UI adapter that
+glues linenoise to the core REPL. The core (repl/repl.c) is unchanged; it
+still sees one NUL-terminated string per call to GetInputLine.
+
+1. State
+   ui_state_t gained three fields:
+     - MultilineBuffer: a fixed 8192-byte scratch buffer holding the text
+       accumulated so far.
+     - MultilineLength: number of bytes currently in that buffer.
+     - InMultiline: whether we are currently gathering continuation lines.
+
+   uiState is zero-initialized in main(), so the buffer starts empty and
+   InMultiline is false.
+
+2. Reading lines
+   Linenoise_GetInputLine() now runs a loop. On each pass it calls
+   linenoise(prompt). The prompt is the mode prompt ("EE>", "Decl>", ...)
+   when InMultiline is false, or "..." when it is true.
+
+   If linenoise returns NULL (Ctrl-D / EOF), the accumulated text is
+   dropped, InMultiline is reset, and NULL is returned to the core loop.
+
+3. Accumulating
+   When InMultiline is false, the buffer is reset before copying the new
+   line. When it is true, the new line is appended after a '\n'. Each line
+   is also added to the linenoise history as before, and the heap buffer
+   returned by linenoise is freed with linenoiseFree() after we copy it.
+
+4. Deciding whether to continue
+   DelimitersBalanced() scans the whole accumulated buffer and counts
+   '{', '[' and '(' against '}', ']' and ')'. If any count is positive,
+   there is still something open and the loop reads another line. If all
+   counts are zero or negative, the text is complete.
+
+   The scan skips characters that are not actual delimiters:
+     - text inside double or single quotes (including backslash escapes)
+     - // line comments (until the next newline)
+     - /* block comments */ (which can span lines)
+
+   This is why typing a string such as "(" does not put the REPL into
+   multiline mode: the parenthesis is inside a quoted literal and is never
+   counted.
+
+   Because the scan re-reads the entire buffer each time, comment and
+   quote state is tracked correctly across lines: a block comment opened
+   on one line stays open until its closing '*/' on a later line.
+
+5. Returning
+   Once balanced, InMultiline is cleared, *lengthP is set to the buffer
+   length, and the buffer itself is returned. repl.c then parses the
+   whole thing exactly as if it had been typed on one line.
+
+
+LIMITATIONS
+-----------
+
+- The scratch buffer is 8192 bytes. Input beyond that is truncated; a
+  longer construct cannot be completed. This is a deliberate trade-off to
+  keep the change small and avoid dynamic allocation.
+
+- The check is lexical, not semantic. It does not know about preprocessor
+  directives, templates, or operator overloads. It only counts the three
+  bracket characters outside strings and comments.
+
+- A stray closing delimiter (for example entering '}' on its own) makes
+  the count negative, which is treated as balanced. The line is submitted
+  immediately and the parser reports the syntax error, rather than the
+  REPL waiting forever for a matching opener.
+
+- Ctrl-D while in multiline mode discards the accumulated text.
+
+
+FILES CHANGED
+-------------
+
+repl/linenoise_repl.c  - ui_state_t, DelimitersBalanced(),
+                         Linenoise_GetInputLine(), and freeing the line
+                         returned by linenoise.
+repl/MULTILINE.txt     - this document.
