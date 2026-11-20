@@ -26,6 +26,8 @@ bool TypeIndex_isSigned(metac_type_index_t typeIndex)
         case type_int:
         case type_long:
         case type_long_long:
+        case type_float:
+        case type_double:
             return true;
     }
 

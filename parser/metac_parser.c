@@ -1081,7 +1081,6 @@ decl_type_t* MetaCParser_ParseTypeDecl(metac_parser_t* self, metac_decl_t* paren
                 hash = CRC32C_VALUE(hash, type->TypeIdentifier);
                 if (MetaCParser_PeekMatch(self, tok_bang, 1))
                 {
-
                     decl_type_template_instance_t* tinst =
                         AllocNewDecl(decl_type_template_instance, &result);
 
@@ -1102,7 +1101,6 @@ decl_type_t* MetaCParser_ParseTypeDecl(metac_parser_t* self, metac_decl_t* paren
                     {
                         METAC_NODE(tinst->Arguments) = emptyNode;
                     }
-
                 }
                 else
                 {
@@ -1152,24 +1150,25 @@ decl_type_t* MetaCParser_ParseTypeDecl(metac_parser_t* self, metac_decl_t* paren
         }
         else if (tokenType == tok_kw_struct || tokenType == tok_kw_union)
         {
-
-            bool isStruct = tokenType == tok_kw_struct;
-
             bool isPredeclated = true;
 
             decl_type_struct_t* struct_ = AllocNewDecl(decl_type_struct, &result);
             type = (decl_type_t*)struct_;
             MetaCParser_Match(self, tokenType);
 
-            if (isStruct)
+            switch(tokenType)
             {
-                struct_->TypeKind = type_struct;
-                struct_->Kind = decl_type_struct;
-            }
-            else
-            {
-                struct_->TypeKind = type_union;
-                struct_->Kind = decl_type_union;
+                case tok_kw_struct: {
+                    struct_->TypeKind = type_struct;
+                    struct_->Kind = decl_type_struct;
+                    hash = struct_key;
+                } break;
+                case tok_kw_union: {
+                    struct_->TypeKind = type_union;
+                    struct_->Kind = decl_type_union;
+                    hash = union_key;
+                } break;
+                default: assert(0);
             }
 
             if (MetaCParser_PeekMatch(self, tok_identifier, 1))
@@ -1186,22 +1185,13 @@ decl_type_t* MetaCParser_ParseTypeDecl(metac_parser_t* self, metac_decl_t* paren
             {
                 decl_parameter_list_t params;
                 MetaCParser_Match(self, tok_bang);
+                hash ^= CRC32C_BANG;
                 params = ParseParameterList(self, 0);
                 struct_->Parameters = params.List;
                 struct_->ParameterCount = params.ParameterCount;
-
+                hash = CRC32C_VALUE(hash, params.Hash);
             }
 
-            switch(struct_->TypeKind)
-            {
-                default: assert(0);
-                case type_struct:
-                    hash = struct_key;
-                break;
-                case type_union:
-                    hash = union_key;
-                break;
-            }
             hash = CRC32C_VALUE(hash, struct_->Identifier);
             if (tokenType == tok_kw_struct)
             {
